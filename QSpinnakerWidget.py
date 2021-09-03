@@ -9,6 +9,7 @@ class QSpinnakerWidget(QCameraWidget):
                          camera=QSpinnakerCamera(),
                          uiFile='QSpinakerWidget.ui',
                          **kwargs)
+        self.camera.fpsReady.connect(self.ui.actualrate.setValue)
 
 
 def main():

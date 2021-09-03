@@ -161,7 +161,7 @@ class QCameraWidget(QWidget):
     def _wmethod(self, widget, method):
         typeName = type(widget).__name__.split('.')[-1]
         if typeName in method:
-             return getattr(widget, method[typeName])
+            return getattr(widget, method[typeName])
         return None
 
     def _loadUi(self, uiFile):

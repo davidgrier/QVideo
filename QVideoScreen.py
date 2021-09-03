@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (QThread, pyqtSignal, pyqtSlot, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
 import pyqtgraph as pg
 import numpy as np
@@ -42,14 +42,7 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         if camera is None:
             return
         self.updateShape()
-        self.thread = QThread()
-        camera.moveToThread(self.thread)
-        self.thread.started.connect(camera.run)
-        camera.finished.connect(self.thread.quit)
-        camera.finished.connect(self.camera.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
         self.source = camera
-        self.thread.start(QThread.TimeCriticalPriority)
 
     def updateShape(self):
         self.resize(self.camera.width, self.camera.height)

@@ -1,4 +1,4 @@
-# *QVideo* PyQt5 support for video cameras
+# **QVideo:** PyQt5 support for video cameras
 
 This package provides a unified framework for working with
 video cameras under PyQt5. It simplifies development of hardware

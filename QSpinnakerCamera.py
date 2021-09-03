@@ -227,9 +227,6 @@ class QSpinnakerCamera(QVideoCamera):
         self.start()
         ready, frame = self.read()
 
-    def __del__(self):
-        self.close()
-
     def open(self, index=0):
         '''
         Initialize Spinnaker and open specified camera

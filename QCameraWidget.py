@@ -10,7 +10,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class QCameraWidget(QWidget):
@@ -52,6 +52,16 @@ class QCameraWidget(QWidget):
         self._syncProperties()
         self._connectSignals()
 
+    def __del__(self):
+        logger.debug('Deleted')
+        if self.camera is not None:
+            self.close()
+
+    def closeEvent(self, event):
+        logger.debug('Close event')
+        self.close()
+        event.accept()
+
     @pyqtProperty(QVideoCamera)
     def camera(self):
         return self._camera
@@ -65,9 +75,6 @@ class QCameraWidget(QWidget):
         self.thread = QThread()
         camera.moveToThread(self.thread)
         self.thread.started.connect(camera.run)
-        camera.finished.connect(self.thread.quit)
-        camera.finished.connect(self.camera.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start(QThread.TimeCriticalPriority)
 
     def close(self):
@@ -75,11 +82,7 @@ class QCameraWidget(QWidget):
         self.camera.stop()
         self.thread.quit()
         self.thread.wait()
-
-    def closeEvent(self, event):
-        logger.debug('Close Event')
-        self.close()
-        event.accept()
+        self.camera = None
 
     @pyqtProperty(list)
     def properties(self):

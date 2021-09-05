@@ -12,7 +12,6 @@ logger.setLevel(logging.DEBUG)
 class QVideoCamera(QObject):
 
     newFrame = pyqtSignal(np.ndarray)
-    finished = pyqtSignal()
     sizeChanged = pyqtSignal(int)
 
     def protected(method):
@@ -61,7 +60,6 @@ class QVideoCamera(QObject):
             else:
                 logger.warning('Frame acquisition failed')
         self.close()
-        self.finished.emit()
         logger.debug('Video acquisition stopped')
 
     def read(self):
@@ -73,4 +71,5 @@ class QVideoCamera(QObject):
         self._running = False
 
     def close(self):
+        logger.debug('Calling default close() method')
         pass

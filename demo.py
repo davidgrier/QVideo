@@ -19,9 +19,6 @@ class demo(QWidget):
         self.layout.addWidget(self.source)
         self.screen.updateShape()
 
-    def closeEvent(self, event):
-        self.source.close()
-
 
 def main():
     from PyQt5.QtWidgets import QApplication

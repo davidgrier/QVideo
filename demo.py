@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
 from QVideoScreen import QVideoScreen
-from QNoiseWidget import QNoiseWidget as QCameraWidget
-# from QOpenCVWidget import QOpenCVWidget as QCameraWidget
+# from QNoiseWidget import QNoiseWidget as QCameraWidget
+from QOpenCVWidget import QOpenCVWidget as QCameraWidget
 # from QSpinnakerWidget import QSpinnakerWidget as QCameraWidget
 
 
@@ -17,7 +17,7 @@ class demo(QWidget):
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.source)
-        self.screen.updateShape()
+        self.update()
 
 
 def main():

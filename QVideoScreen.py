@@ -17,19 +17,23 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     mouseMove = pyqtSignal(QMouseEvent)
     mouseWheel = pyqtSignal(QWheelEvent)
 
+    options = dict(enableMenu=False,
+                   enableMouse=False,
+                   invertY=True,
+                   lockAspect=True)
+
     def __init__(self, *args, camera=None, **kwargs):
         pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
-        self.ci.layout.setContentsMargins(0, 0, 0, 0)
-        self.image = pg.ImageItem()
-        self.view = self.addViewBox(enableMenu=False,
-                                    enableMouse=False,
-                                    invertY=True,
-                                    lockAspect=True)
-        self.view.addItem(self.image)
-        self._filters = []
+        self.setupUi()
         self.pauseSignals(False)
         self.camera = camera
+
+    def setupUi(self):
+        self.ci.layout.setContentsMargins(0, 0, 0, 0)
+        self.image = pg.ImageItem()
+        self.view = self.addViewBox(**self.options)
+        self.view.addItem(self.image)
 
     @pyqtProperty(QVideoCamera)
     def camera(self):
@@ -43,16 +47,6 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
             return
         self.source = camera
         self.updateShape()
-
-    def sizeHint(self):
-        return QSize(self.source.width, self.source.height)
-
-    @pyqtSlot()
-    def updateShape(self):
-        self.resize(self.source.width, self.source.height)
-        self.view.setRange(xRange=(0, self.source.width),
-                           yRange=(0, self.source.height),
-                           padding=0, update=True)
 
     @pyqtProperty(object)
     def source(self):
@@ -72,6 +66,19 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     @pyqtSlot(np.ndarray)
     def updateImage(self, image):
         self.image.setImage(image)
+
+    def sizeHint(self):
+        return QSize(self.source.width, self.source.height)
+
+    def minimumSizeHint(self):
+        return QSize(self.source.width % 2, self.source.height % 2)
+
+    @pyqtSlot()
+    def updateShape(self):
+        self.view.setRange(xRange=(0, self.source.width),
+                           yRange=(0, self.source.height),
+                           padding=0, update=True)
+        self.update()
 
     @pyqtSlot(bool)
     def pauseSignals(self, value):

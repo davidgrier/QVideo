@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
 from QVideoScreen import QVideoScreen
-# from QNoiseSource import QNoiseSource as Camera
-from QOpenCVWidget import QOpenCVWidget as QCameraWidget
+from QNoiseWidget import QNoiseWidget as QCameraWidget
+# from QOpenCVWidget import QOpenCVWidget as QCameraWidget
 # from QSpinnakerWidget import QSpinnakerWidget as QCameraWidget
 
 

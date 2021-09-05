@@ -6,13 +6,13 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class QVideoCamera(QObject):
 
     newFrame = pyqtSignal(np.ndarray)
-    sizeChanged = pyqtSignal(int)
+    sizeChanged = pyqtSignal()
 
     def protected(method):
         '''Decorator for preventing clashes in camera operations'''

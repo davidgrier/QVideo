@@ -41,13 +41,13 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         self._camera = camera
         if camera is None:
             return
-        self.updateShape()
         self.source = camera
+        self.updateShape()
 
     def updateShape(self):
-        self.resize(self.camera.width, self.camera.height)
-        self.view.setRange(xRange=(0, self.camera.width),
-                           yRange=(0, self.camera.height),
+        self.resize(self.source.width, self.source.height)
+        self.view.setRange(xRange=(0, self.source.width),
+                           yRange=(0, self.source.height),
                            padding=0, update=True)
 
     @pyqtProperty(object)

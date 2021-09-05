@@ -10,7 +10,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 class QCameraWidget(QWidget):
@@ -70,10 +70,15 @@ class QCameraWidget(QWidget):
         self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start(QThread.TimeCriticalPriority)
 
-    def closeEvent(self, event):
+    def close(self):
+        logger.debug('Closing')
         self.camera.stop()
         self.thread.quit()
         self.thread.wait()
+
+    def closeEvent(self, event):
+        logger.debug('Close Event')
+        self.close()
         event.accept()
 
     @pyqtProperty(list)

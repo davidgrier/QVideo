@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>248</width>
+    <width>469</width>
     <height>244</height>
    </rect>
   </property>
@@ -382,6 +382,9 @@
        <widget class="QSpinBox" name="height">
         <property name="statusTip">
          <string>Camera ROI: height</string>
+        </property>
+        <property name="suffix">
+         <string>0</string>
         </property>
         <property name="minimum">
          <number>16</number>

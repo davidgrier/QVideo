@@ -137,15 +137,16 @@ class QSpinnakerCamera(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
-    def Property(pstr, dtype=int, stop=False):
+    def Property(pstr, dtype=float, stop=False):
         def getter(self):
             return self._get_feature(pstr)
 
+        @QVideoCamera.protected
         def setter(self, value, stop=stop):
             if stop and self._running:
-                self.stop()
+                self.endAcquisition()
                 self._set_feature(pstr, value)
-                self.start()
+                self.beginAcquisition()
             else:
                 self._set_feature(pstr, value)
         return pyqtProperty(dtype, getter, setter)
@@ -165,7 +166,7 @@ class QSpinnakerCamera(QVideoCamera):
     blacklevelenable            = Property('BlackLevelEnabled')
     exposureauto                = Property('ExposureAuto')
     exposuremode                = Property('ExposureMode')
-    exposuretime                = Property('ExposureTime')
+    exposuretime                = Property('ExposureTime', dtype=float)
     exposuretimerange           = GetRange('ExposureTime')
     # flipped                    = Property('ReverseY', stop=True)
     framerate                   = Property('AcquisitionFrameRate')
@@ -224,7 +225,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.flipped = flipped
         self.mirrored = mirrored
 
-        self.start()
+        self.beginAcquisition()
         ready, frame = self.read()
 
     def open(self, index=0):
@@ -252,19 +253,19 @@ class QSpinnakerCamera(QVideoCamera):
     def close(self):
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Cleaning up')
-        self.stop()
+        self.endAcquisition()
         self.device.DeInit()
         del self.device
         self._devices.Clear()
         self._system.ReleaseInstance()
 
-    def start(self):
+    def beginAcquitision(self):
         '''Start image acquisition'''
         if not self._running:
             self._running = True
             self.device.BeginAcquisition()
 
-    def stop(self):
+    def endAcquisition(self):
         '''Stop image acquisition'''
         if self._running:
             self.device.EndAcquisition()
@@ -316,10 +317,9 @@ class QSpinnakerCamera(QVideoCamera):
         return self.pixelformat == 'Mono8'
 
     @gray.setter
+    @QVideoCamera.protected
     def gray(self, gray):
-        self.stop()
         self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
-        self.start()
 
     @pyqtProperty(int)
     def heightmax(self):

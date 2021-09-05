@@ -115,6 +115,9 @@
       </item>
       <item row="2" column="0">
        <widget class="QSpinBox" name="width">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
         <property name="suffix">
          <string> pixels</string>
         </property>
@@ -128,6 +131,9 @@
       </item>
       <item row="2" column="1">
        <widget class="QSpinBox" name="height">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
         <property name="suffix">
          <string> pixels</string>
         </property>
@@ -144,11 +150,14 @@
         <property name="focusPolicy">
          <enum>Qt::WheelFocus</enum>
         </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
         <property name="suffix">
-         <string> frames/s</string>
+         <string> Hz</string>
         </property>
         <property name="maximum">
          <double>200.000000000000000</double>

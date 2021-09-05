@@ -22,6 +22,29 @@ class QOpenCVCamera(QVideoCamera):
 
     '''
 
+    def Property(propid, dtype=int):
+        def getter(self):
+            return dtype(self.device.get(propid))
+
+        def setter(self, value):
+            self.device.set(propid, value)
+
+        return pyqtProperty(dtype, getter, setter)
+
+    if cv2.__version__.startswith('2.'):
+        WIDTH = cv2.cv.CV_CAP_PROP_FRAME_WIDTH
+        HEIGHT = cv2.cv.CV_CAP_PROP_FRAME_HEIGHT
+        BGR2RGB = cv2.cv.CV_BGR2RGB
+        BGR2GRAY = cv2.cv.CV_BGR2GRAY
+    else:
+        WIDTH = cv2.CAP_PROP_FRAME_WIDTH
+        HEIGHT = cv2.CAP_PROP_FRAME_HEIGHT
+        BGR2RGB = cv2.COLOR_BGR2RGB
+        BGR2GRAY = cv2.COLOR_BGR2GRAY
+
+    height = Property(HEIGHT)
+    width = Property(WIDTH)
+
     def __init__(self, *args,
                  cameraID=0,
                  mirrored=False,
@@ -32,21 +55,10 @@ class QOpenCVCamera(QVideoCamera):
 
         self.device = cv2.VideoCapture(cameraID)
 
-        if cv2.__version__.startswith('2.'):
-            self._WIDTH = cv2.cv.CV_CAP_PROP_FRAME_WIDTH
-            self._HEIGHT = cv2.cv.CV_CAP_PROP_FRAME_HEIGHT
-            self._toRGB = cv2.cv.CV_BGR2RGB
-            self._toGRAY = cv2.cv.CV_BGR2GRAY
-        else:
-            self._WIDTH = cv2.CAP_PROP_FRAME_WIDTH
-            self._HEIGHT = cv2.CAP_PROP_FRAME_HEIGHT
-            self._toRGB = cv2.COLOR_BGR2RGB
-            self._toGRAY = cv2.COLOR_BGR2GRAY
-
         # camera properties
-        self.mirrored = bool(mirrored)
-        self.flipped = bool(flipped)
-        self.gray = bool(gray)
+        self.mirrored = mirrored
+        self.flipped = flipped
+        self.gray = gray
 
         # initialize camera with one frame
         while True:
@@ -70,23 +82,6 @@ class QOpenCVCamera(QVideoCamera):
         self.device.release()
 
     # Camera properties
-    @pyqtProperty(int)
-    def width(self):
-        return int(self.device.get(self._WIDTH))
-
-    @width.setter
-    def width(self, width):
-        self.device.set(self._WIDTH, width)
-        logger.info(f'Setting camera width: {width}')
-
-    @pyqtProperty(int)
-    def height(self):
-        return int(self.device.get(self._HEIGHT))
-
-    @height.setter
-    def height(self, height):
-        self.device.set(self._HEIGHT, height)
-        logger.info(f'Setting camera height: {height}')
 
     @pyqtProperty(bool)
     def mirrored(self):
@@ -106,11 +101,11 @@ class QOpenCVCamera(QVideoCamera):
 
     @pyqtProperty(bool)
     def gray(self):
-        gray = self._conversion == self._toGRAY
+        gray = (self._conversion == self.BGR2GRAY)
         logger.debug(f'Getting gray: {gray}')
         return gray
 
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting gray: {gray}')
-        self._conversion = self._toGRAY if gray else self._toRGB
+        self._conversion = self.BGR2GRAY if gray else self.BGR2RGB

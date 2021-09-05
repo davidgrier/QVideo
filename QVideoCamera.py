@@ -13,6 +13,7 @@ class QVideoCamera(QObject):
 
     newFrame = pyqtSignal(np.ndarray)
     finished = pyqtSignal()
+    sizeChanged = pyqtSignal(int)
 
     def protected(method):
         '''Decorator for preventing clashes in camera operations'''

@@ -22,15 +22,6 @@ class QOpenCVCamera(QVideoCamera):
 
     '''
 
-    def Property(propid, dtype=int):
-        def getter(self):
-            return dtype(self.device.get(propid))
-
-        def setter(self, value):
-            self.device.set(propid, value)
-
-        return pyqtProperty(dtype, getter, setter)
-
     if cv2.__version__.startswith('2.'):
         WIDTH = cv2.cv.CV_CAP_PROP_FRAME_WIDTH
         HEIGHT = cv2.cv.CV_CAP_PROP_FRAME_HEIGHT
@@ -42,8 +33,20 @@ class QOpenCVCamera(QVideoCamera):
         BGR2RGB = cv2.COLOR_BGR2RGB
         BGR2GRAY = cv2.COLOR_BGR2GRAY
 
-    height = Property(HEIGHT)
-    width = Property(WIDTH)
+    def Dimension(propid):
+        def getter(self):
+            return self.device.get(propid)
+
+        def setter(self, value):
+            if value == self.device.get(propid):
+                return
+            self.device.set(propid, value)
+            if value == self.device.get(propid):
+                self.sizeChanged.emit(value)
+        return pyqtProperty(int, getter, setter)
+
+    width = Dimension(WIDTH)
+    height = Dimension(HEIGHT)
 
     def __init__(self, *args,
                  cameraID=0,

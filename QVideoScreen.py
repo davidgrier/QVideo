@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QSize)
 from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
 import pyqtgraph as pg
 import numpy as np
@@ -12,10 +12,10 @@ logger.setLevel(logging.DEBUG)
 
 class QVideoScreen(pg.GraphicsLayoutWidget):
 
-    mousePress   = pyqtSignal(QMouseEvent)
+    mousePress = pyqtSignal(QMouseEvent)
     mouseRelease = pyqtSignal(QMouseEvent)
-    mouseMove    = pyqtSignal(QMouseEvent)
-    mouseWheel   = pyqtSignal(QWheelEvent)
+    mouseMove = pyqtSignal(QMouseEvent)
+    mouseWheel = pyqtSignal(QWheelEvent)
 
     def __init__(self, *args, camera=None, **kwargs):
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -44,6 +44,10 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         self.source = camera
         self.updateShape()
 
+    def sizeHint(self):
+        return QSize(self.source.width, self.source.height)
+
+    @pyqtSlot()
     def updateShape(self):
         self.resize(self.source.width, self.source.height)
         self.view.setRange(xRange=(0, self.source.width),
@@ -58,10 +62,12 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     def source(self, source):
         try:
             self._source.newFrame.disconnect(self.updateImage)
+            self._source.sizeChanged.disconnect(self.updateShape)
         except AttributeError:
             pass
         self._source = source or self.thread
         self._source.newFrame.connect(self.updateImage)
+        self._source.sizeChanged.connect(self.updateShape)
 
     @pyqtSlot(np.ndarray)
     def updateImage(self, image):

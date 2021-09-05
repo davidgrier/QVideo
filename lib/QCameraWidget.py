@@ -1,6 +1,6 @@
 from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot)
 from PyQt5.QtWidgets import (QWidget, QPushButton)
-from QVideoCamera import QVideoCamera
+from QVideo.lib.QVideoCamera import QVideoCamera
 from PyQt5 import uic
 import types
 import sys

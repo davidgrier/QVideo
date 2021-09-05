@@ -1,4 +1,4 @@
-from QCameraWidget import QCameraWidget
+from QVideo.lib import QCameraWidget
 from QSpinnakerCamera import QSpinnakerCamera
 
 

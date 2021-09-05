@@ -2,7 +2,7 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QSize)
 from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
 import pyqtgraph as pg
 import numpy as np
-from QVideoCamera import QVideoCamera
+from QVideo.lib.QVideoCamera import QVideoCamera
 import logging
 
 logging.basicConfig()

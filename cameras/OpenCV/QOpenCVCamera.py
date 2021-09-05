@@ -1,4 +1,4 @@
-from QVideoCamera import QVideoCamera
+from QVideo.lib import QVideoCamera
 from PyQt5.QtCore import pyqtProperty
 import cv2
 import time

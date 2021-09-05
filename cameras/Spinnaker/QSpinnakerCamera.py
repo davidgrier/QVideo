@@ -1,4 +1,4 @@
-from QVideoCamera import QVideoCamera
+from QVideo.lib import QVideoCamera
 import PySpin
 from PyQt5.QtCore import pyqtProperty
 import logging

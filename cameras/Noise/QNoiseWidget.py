@@ -1,13 +1,13 @@
-from QCameraWidget import QCameraWidget
-from QOpenCVCamera import QOpenCVCamera
+from QVideo.lib import QCameraWidget
+from QVideo.cameras.Noise.QNoiseSource import QNoiseSource
 
 
-class QOpenCVWidget(QCameraWidget):
+class QNoiseWidget(QCameraWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args,
-                         camera=QOpenCVCamera(),
-                         uiFile='QOpenCVWidget.ui',
+                         camera=QNoiseSource(),
+                         uiFile='QNoiseWidget.ui',
                          **kwargs)
         self.camera.fpsReady.connect(self.ui.rate.setValue)
 
@@ -17,7 +17,7 @@ def main():
     import sys
 
     app = QApplication(sys.argv)
-    widget = QOpenCVWidget()
+    widget = QNoiseWidget()
     widget.show()
     sys.exit(app.exec_())
 

@@ -20,7 +20,7 @@ class demo(QWidget):
     def __init__(self, QCameraWidget):
         super().__init__()
         self.source = QCameraWidget(self)
-        self.screen = QVideoScreen(self, camera=self.source.camera)
+        self.screen = QVideoScreen(self, source=self.source.camera)
         self.setupUi()
 
     def setupUi(self):

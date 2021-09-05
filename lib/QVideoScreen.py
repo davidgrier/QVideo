@@ -2,7 +2,6 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QSize)
 from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
 import pyqtgraph as pg
 import numpy as np
-from QVideo.lib.QVideoCamera import QVideoCamera
 import logging
 
 logging.basicConfig()
@@ -22,31 +21,18 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
                    invertY=True,
                    lockAspect=True)
 
-    def __init__(self, *args, camera=None, **kwargs):
+    def __init__(self, *args, source=None, **kwargs):
         pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
         self.setupUi()
         self.pauseSignals(False)
-        self.camera = camera
+        self.source = source
 
     def setupUi(self):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem()
         self.view = self.addViewBox(**self.options)
         self.view.addItem(self.image)
-
-    @pyqtProperty(QVideoCamera)
-    def camera(self):
-        return self._camera
-
-    @camera.setter
-    def camera(self, camera):
-        logger.debug(f'Setting camera: {type(camera)}')
-        self._camera = camera
-        if camera is None:
-            return
-        self.source = camera
-        self.updateShape()
 
     @pyqtProperty(object)
     def source(self):
@@ -59,7 +45,10 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
             self._source.sizeChanged.disconnect(self.updateShape)
         except AttributeError:
             pass
-        self._source = source or self.thread
+        logger.debug(f'Setting video source: {type(source)}')
+        self._source = source
+        if source is None:
+            return
         self._source.newFrame.connect(self.updateImage)
         self._source.sizeChanged.connect(self.updateShape)
 

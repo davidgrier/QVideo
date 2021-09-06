@@ -6,12 +6,13 @@ import numpy as np
 class QNoiseSource(QVideoCamera):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.width = 640
-        self.height = 480
+        self._width = 640
+        self._height = 480
         self.rng = np.random.default_rng()
 
     def read(self):
-        image = self.rng.integers(0, 255, self.shape(), np.uint8)
+        shape = (self._height, self._width)
+        image = self.rng.integers(0, 255, shape, np.uint8)
         return True, image
 
     @pyqtProperty(int)
@@ -21,7 +22,7 @@ class QNoiseSource(QVideoCamera):
     @width.setter
     def width(self, value):
         self._width = value
-        self.sizeChanged.emit()
+        self.shapeChanged.emit()
 
     @pyqtProperty(int)
     def height(self):
@@ -30,7 +31,4 @@ class QNoiseSource(QVideoCamera):
     @height.setter
     def height(self, value):
         self._height = value
-        self.sizeChanged.emit()
-
-    def shape(self):
-        return (self.height, self.width)
+        self.shapeChanged.emit()

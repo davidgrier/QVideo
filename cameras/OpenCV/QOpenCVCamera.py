@@ -38,11 +38,9 @@ class QOpenCVCamera(QVideoCamera):
             return self.device.get(propid)
 
         def setter(self, value):
-            if value == self.device.get(propid):
-                return
+            logger.debug(f'Setting dimension {propid}: {value}')
             self.device.set(propid, value)
-            if value == self.device.get(propid):
-                self.sizeChanged.emit()
+            self.shapeChanged.emit()
         return pyqtProperty(int, getter, setter)
 
     width = Dimension(WIDTH)

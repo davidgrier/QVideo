@@ -1,7 +1,6 @@
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QSize)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QSize)
 from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
 import pyqtgraph as pg
-import numpy as np
 import logging
 
 logging.basicConfig()
@@ -21,52 +20,33 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
                    invertY=True,
                    lockAspect=True)
 
-    def __init__(self, *args, source=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
         self.setupUi()
         self.pauseSignals(False)
-        self.source = source
 
     def setupUi(self):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem()
         self.view = self.addViewBox(**self.options)
         self.view.addItem(self.image)
-
-    @pyqtProperty(object)
-    def source(self):
-        return self._source
-
-    @source.setter
-    def source(self, source):
-        try:
-            self._source.newFrame.disconnect(self.updateImage)
-            self._source.sizeChanged.disconnect(self.updateShape)
-        except AttributeError:
-            pass
-        logger.debug(f'Setting video source: {type(source)}')
-        self._source = source
-        if source is None:
-            return
-        self._source.newFrame.connect(self.updateImage)
-        self._source.sizeChanged.connect(self.updateShape)
-
-    @pyqtSlot(np.ndarray)
-    def updateImage(self, image):
-        self.image.setImage(image)
+        self.updateShape(QSize(640, 480))
+        self.setImage = self.image.setImage
 
     def sizeHint(self):
-        return QSize(self.source.width, self.source.height)
+        return self._size
 
     def minimumSizeHint(self):
-        return QSize(self.source.width % 2, self.source.height % 2)
+        return self._size / 2
 
-    @pyqtSlot()
-    def updateShape(self):
-        self.view.setRange(xRange=(0, self.source.width),
-                           yRange=(0, self.source.height),
+    @pyqtSlot(QSize)
+    def updateShape(self, shape):
+        logger.debug(f'Resizing to {shape}')
+        self.view.setRange(xRange=(0, shape.width()),
+                           yRange=(0, shape.height()),
                            padding=0, update=True)
+        self._size = shape
         self.update()
 
     @pyqtSlot(bool)

@@ -1,4 +1,5 @@
-from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot, QMutex)
+from PyQt5.QtCore import (QObject, QMutex, QSize,
+                          pyqtSignal, pyqtSlot, pyqtProperty)
 from functools import wraps
 import numpy as np
 import time
@@ -12,7 +13,7 @@ logger.setLevel(logging.WARNING)
 class QVideoCamera(QObject):
 
     newFrame = pyqtSignal(np.ndarray)
-    sizeChanged = pyqtSignal()
+    shapeChanged = pyqtSignal()
 
     def protected(method):
         '''Decorator for preventing clashes in camera operations'''
@@ -33,13 +34,19 @@ class QVideoCamera(QObject):
             self.window = 10
             self.count = 0
             self.start = time.time()
+            self._value = 0
 
         def tick(self):
             self.count = (self.count + 1) % self.window
             if (self.count == 0):
                 now = time.time()
-                self.fpsReady.emit(self.window / (now - self.start))
+                self._value = self.window / (now - self.start)
+                self.fpsReady.emit(self._value)
                 self.start = now
+
+        @pyqtProperty(float)
+        def value(self):
+            return self._value
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,12 +60,12 @@ class QVideoCamera(QObject):
         while self._running:
             self.mutex.lock()
             ready, frame = self.read()
-            self.mutex.unlock()
             if ready:
                 self.newFrame.emit(frame)
                 self.meter.tick()
             else:
                 logger.warning('Frame acquisition failed')
+            self.mutex.unlock()
         self.close()
         logger.debug('Video acquisition stopped')
 
@@ -73,3 +80,13 @@ class QVideoCamera(QObject):
     def close(self):
         logger.debug('Calling default close() method')
         pass
+
+    @pyqtProperty(object)
+    @protected
+    def shape(self):
+        return QSize(self.width, self.height)
+
+    @pyqtProperty(float)
+    @protected
+    def fps(self):
+        return self.meter.value

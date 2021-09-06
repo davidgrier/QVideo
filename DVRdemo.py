@@ -1,30 +1,39 @@
-from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
-from QVideo.lib import QVideoScreen
+from PyQt5.QtWidgets import QWidget
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSlot
 
 
-class demo(QWidget):
+class DVRdemo(QWidget):
 
-    def __init__(self, QCameraWidget, *args, **kwargs):
-        super().__init__(*args, *kwargs)
-        self.screen = QVideoScreen(self)
-        self.cameraWidget = QCameraWidget(self)
-        self.camera = self.cameraWidget.camera
+    def __init__(self, *args, cameraWidget=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cameraWidget = cameraWidget
+        self.camera = cameraWidget.camera
         self.setupUi()
         self.connectSignals()
 
     def setupUi(self):
-        self.layout = QHBoxLayout(self)
-        self.layout.addWidget(self.screen)
-        self.layout.addWidget(self.cameraWidget)
+        uic.loadUi('DVRdemo.ui', self)
+        self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
-        self.update()
 
     def connectSignals(self):
+        self.dvr.source = self.camera
         self.camera.newFrame.connect(self.screen.setImage)
         self.camera.shapeChanged.connect(self.updateShape)
+        self.dvr.playing.connect(self.dvrPlayback)
 
     def updateShape(self):
         self.screen.updateShape(self.camera.shape)
+
+    @pyqtSlot(bool)
+    def dvrPlayback(self, playback):
+        if playback:
+            self.camera.newFrame.disconnect(self.screen.setImage)
+            self.dvr.newFrame.connect(self.screen.updateImage)
+        else:
+            self.camera.newFrame.connect(self.screen.setImage)
+        self.cameraWidget.setDisabled(playback)
 
 
 def parse_command_line():
@@ -66,7 +75,7 @@ def main():
     CameraWidget = choose_camera(args)
 
     app = QApplication(qtargs)
-    widget = demo(CameraWidget)
+    widget = DVRdemo(cameraWidget=CameraWidget())
     widget.show()
     sys.exit(app.exec_())
 

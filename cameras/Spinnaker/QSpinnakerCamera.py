@@ -147,6 +147,8 @@ class QSpinnakerCamera(QVideoCamera):
                 self.endAcquisition()
                 self._set_feature(pstr, value)
                 self.beginAcquisition()
+                if pstr in ['Width', 'Height']:
+                    self.shapeChanged.emit()
             else:
                 self._set_feature(pstr, value)
         return pyqtProperty(dtype, getter, setter)

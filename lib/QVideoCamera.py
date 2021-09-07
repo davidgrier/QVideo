@@ -62,6 +62,7 @@ class QVideoCamera(QObject):
             ready, frame = self.read()
             if ready:
                 self.newFrame.emit(frame)
+                self._color = frame.ndim == 3
                 self.meter.tick()
             else:
                 logger.warning('Frame acquisition failed')
@@ -90,3 +91,15 @@ class QVideoCamera(QObject):
     @protected
     def fps(self):
         return self.meter.value
+
+    @pyqtProperty(bool)
+    def color(self):
+        return self._color
+
+    @pyqtProperty(int)
+    def width(self):
+        return 640
+
+    @pyqtProperty(int)
+    def height(self):
+        return 480

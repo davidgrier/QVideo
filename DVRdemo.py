@@ -30,7 +30,7 @@ class DVRdemo(QWidget):
     def dvrPlayback(self, playback):
         if playback:
             self.camera.newFrame.disconnect(self.screen.setImage)
-            self.dvr.newFrame.connect(self.screen.updateImage)
+            self.dvr.newFrame.connect(self.screen.setImage)
         else:
             self.camera.newFrame.connect(self.screen.setImage)
         self.cameraWidget.setDisabled(playback)

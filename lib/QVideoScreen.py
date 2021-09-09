@@ -9,6 +9,8 @@ logger.setLevel(logging.WARNING)
 
 
 class QVideoScreen(pg.GraphicsLayoutWidget):
+    '''Video screen widget that emits signals for mouse events
+    '''
 
     mousePress = pyqtSignal(QMouseEvent)
     mouseRelease = pyqtSignal(QMouseEvent)

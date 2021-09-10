@@ -200,6 +200,7 @@ class QSpinnakerCamera(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
+
         # Enable access to controls
         self.blacklevelselector = 'All'
         self.framerateenable = True
@@ -244,7 +245,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.device.Init()
         self._nodes = self.device.GetNodeMap()
         self._running = False
-        logger.debug('Camera open')
+        logger.debug(f'Camera {index} open')
 
     def close(self):
         '''Stop acquisition, close camera and release Spinnaker'''
@@ -254,18 +255,23 @@ class QSpinnakerCamera(QVideoCamera):
         del self.device
         self._devices.Clear()
         self._system.ReleaseInstance()
+        logger.debug('Camera closed')
 
     def beginAcquitision(self):
         '''Start image acquisition'''
         if not self._running:
+            logger.debug('Beginning acquisition')
             self._running = True
             self.device.BeginAcquisition()
+            logger.debug('Acquisition started')
 
     def endAcquisition(self):
         '''Stop image acquisition'''
         if self._running:
+            logger.debug('Ending acquisition')
             self.device.EndAcquisition()
             self._running = False
+            logger.debug('Acquisition ended')
 
     def read(self):
         '''The whole point of the thing: Gimme da piccy'''

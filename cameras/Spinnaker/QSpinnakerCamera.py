@@ -5,7 +5,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 '''
 Technical Reference:
@@ -128,7 +128,7 @@ class QSpinnakerCamera(QVideoCamera):
         Close camera
     start() :
         Start image acquisition
-    stop() : 
+    stop() :
         Stop image acquisition
     read() : (bool, numpy.ndarray)
         Return a tuple containing the status of the acquisition
@@ -159,69 +159,61 @@ class QSpinnakerCamera(QVideoCamera):
             return self._feature_range(pstr)
         return prop
 
-    acquisitionframecount       = Property('AcquisitionFrameCount')
-    acquisitionframerate        = Property('AcquisitionFrameRate')
-    acquisitionmode             = Property('AcquisitionMode')
-    blacklevel                  = Property('BlackLevel')
-    blacklevelrange             = GetRange('BlackLevel')
-    blacklevelauto              = Property('BlackLevelAuto')
-    blacklevelenable            = Property('BlackLevelEnabled')
-    exposureauto                = Property('ExposureAuto')
-    exposuremode                = Property('ExposureMode')
-    exposuretime                = Property('ExposureTime', dtype=float)
-    exposuretimerange           = GetRange('ExposureTime')
+    acquisitionframecount = Property('AcquisitionFrameCount')
+    acquisitionframerate = Property('AcquisitionFrameRate')
+    acquisitionmode = Property('AcquisitionMode')
+    blacklevel = Property('BlackLevel')
+    blacklevelrange = GetRange('BlackLevel')
+    blacklevelauto = Property('BlackLevelAuto')
+    blacklevelenable = Property('BlackLevelEnabled')
+    exposureauto = Property('ExposureAuto')
+    exposuremode = Property('ExposureMode')
+    exposuretime = Property('ExposureTime', dtype=float)
+    exposuretimerange = GetRange('ExposureTime')
     # flipped                    = Property('ReverseY', stop=True)
-    framerate                   = Property('AcquisitionFrameRate')
-    framerateenable             = Property('AcquisitionFrameRateEnabled')
-    frameraterange              = GetRange('AcquisitionFrameRate')
-    gain                        = Property('Gain')
-    gainauto                    = Property('GainAuto')
-    gainrange                   = GetRange('Gain')
-    gamma                       = Property('Gamma')
-    gammaenable                 = Property('GammaEnabled')
-    gammarange                  = GetRange('Gamma')
-    height                      = Property('Height', stop=True)
-    mirrored                    = Property('ReverseX', stop=True)
-    pixelformat                 = Property('PixelFormat')
-    reversex                    = Property('ReverseX', stop=True)
+    framerate = Property('AcquisitionFrameRate')
+    framerateenable = Property('AcquisitionFrameRateEnabled')
+    frameraterange = GetRange('AcquisitionFrameRate')
+    gain = Property('Gain')
+    gainauto = Property('GainAuto')
+    gainrange = GetRange('Gain')
+    gamma = Property('Gamma')
+    gammaenable = Property('GammaEnabled')
+    gammarange = GetRange('Gamma')
+    height = Property('Height', stop=True)
+    mirrored = Property('ReverseX', stop=True)
+    pixelformat = Property('PixelFormat')
+    reversex = Property('ReverseX', stop=True)
     # reversey                   = Property('ReverseY', stop=True)
-    sharpening                  = Property('Sharpness')
-    sharpeningauto              = Property('SharpnessAuto')
-    sharpeningenable            = Property('SharpnessEnabled')
-    sharpeningthreshold         = Property('SharpeningThreshold')
-    width                       = Property('Width', stop=True)
+    sharpening = Property('Sharpness')
+    sharpeningauto = Property('SharpnessAuto')
+    sharpeningenable = Property('SharpnessEnabled')
+    sharpeningthreshold = Property('SharpeningThreshold')
+    width = Property('Width', stop=True)
 
-    def __init__(self,
-                 *args,
-                 framerateenable=True,
-                 gammaenable=True,
-                 sharpeningenable=False,
-                 acquisitionmode='Continuous',
-                 exposureauto='Off',
-                 exposuremode='Timed',
-                 framerateauto='Off',
-                 gainauto='Off',
-                 sharpeningauto='Off',
-                 gray=True,
-                 flipped=False,
+    def __init__(self, *args,
+                 cameraID=0,
                  mirrored=False,
+                 flipped=False,
+                 gray=True,
                  **kwargs):
         super().__init__(*args, **kwargs)
-        self.open()
+
+        self.open(cameraID)
 
         # Enable access to controls
         self.blacklevelselector = 'All'
-        self.framerateenable = framerateenable
-        self.gammaenable = gammaenable
-        self.sharpeningenable = sharpeningenable
+        self.framerateenable = True
+        self.gammaenable = True
+        self.sharpeningenable = False
 
         # Start acquisition
-        self.acquisitionmode = acquisitionmode
-        self.exposureauto = exposureauto
-        self.exposuremode = exposuremode
-        self.sharpeningauto = sharpeningauto
-        self.framerateauto = framerateauto
-        self.gainauto = gainauto
+        self.acquisitionmode = 'Continuous'
+        self.exposureauto = 'Off'
+        self.exposuremode = 'Timed'
+        self.framerateauto = 'Off'
+        self.gainauto = 'Off'
+        self.sharpeningauto = 'Off'
 
         self.gray = gray
         self.flipped = flipped
@@ -242,15 +234,18 @@ class QSpinnakerCamera(QVideoCamera):
         # Initialize Spinnaker and get list of cameras
         self._system = PySpin.System.GetInstance()
         self._devices = self._system.GetCameras()
-        if self._devices.GetSize() < 1:
+        ncameras = self._devices.GetSize()
+        if ncameras < 1:
             raise IndexError('No Spinnaker cameras found')
+        logger.debug(f'{ncameras} Spinnaker cameras found')
 
         # Initialize selected camera and get map of nodes
+        logger.debug(f'Initializing camera {index}')
         self.device = self._devices[index]
         self.device.Init()
         self._nodes = self.device.GetNodeMap()
-
         self._running = False
+        logger.debug(f'Camera {index} open')
 
     def close(self):
         '''Stop acquisition, close camera and release Spinnaker'''
@@ -260,18 +255,23 @@ class QSpinnakerCamera(QVideoCamera):
         del self.device
         self._devices.Clear()
         self._system.ReleaseInstance()
+        logger.debug('Camera closed')
 
     def beginAcquitision(self):
         '''Start image acquisition'''
         if not self._running:
+            logger.debug('Beginning acquisition')
             self._running = True
             self.device.BeginAcquisition()
+            logger.debug('Acquisition started')
 
     def endAcquisition(self):
         '''Stop image acquisition'''
         if self._running:
+            logger.debug('Ending acquisition')
             self.device.EndAcquisition()
             self._running = False
+            logger.debug('Acquisition ended')
 
     def read(self):
         '''The whole point of the thing: Gimme da piccy'''

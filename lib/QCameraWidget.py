@@ -14,6 +14,10 @@ logger.setLevel(logging.WARNING)
 
 
 class QCameraWidget(QWidget):
+    '''Glue class that binds a QVideoCamera to a UI that
+    controls its attributes
+
+    '''
 
     wsetter = {'QCheckBox':      'setChecked',
                'QComboBox':      'setCurrentIndex',

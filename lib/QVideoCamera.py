@@ -11,6 +11,7 @@ logger.setLevel(logging.WARNING)
 
 
 class QVideoCamera(QObject):
+    '''Base class for a video camera implementation'''
 
     newFrame = pyqtSignal(np.ndarray)
     shapeChanged = pyqtSignal()

@@ -40,22 +40,22 @@ def parse_command_line():
 
 def choose_camera(args):
     from QVideo.cameras.Noise import QNoiseWidget
-    try:
-        from QVideo.cameras.OpenCV import QOpenCVWidget
-        have_opencv = True
-    except ImportError:
-        have_opencv = False
-    try:
-        from QVideo.cameras.Spinnaker import QSpinnakerWidget
-        have_spinnaker = True
-    except ImportError:
-        have_spinnaker = False
 
-    if have_opencv and args.opencv:
-        return QOpenCVWidget
-    elif have_spinnaker and args.spinnaker:
-        return QSpinnakerWidget
-    return QNoiseWidget
+    CameraWidget = QNoiseWidget
+    if args.opencv:
+        try:
+            from QVideo.cameras.OpenCV import QOpenCVWidget
+            CameraWidget = QOpenCVWidget
+        except ImportError:
+            print('Could not open OpenCV camera')
+    elif args.spinnaker:
+        try:
+            from QVideo.cameras.Spinnaker import QSpinnakerWidget
+            CameraWidget = QSpinnakerWidget
+        except ImportError:
+            print('Could not open Spinnaker camera')
+
+    return CameraWidget
 
 
 def main():

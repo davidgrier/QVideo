@@ -5,7 +5,7 @@ from QVideo.lib import QVideoScreen
 class demo(QWidget):
 
     def __init__(self, QCameraWidget, *args, **kwargs):
-        super().__init__(*args, *kwargs)
+        super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
         self.cameraWidget = QCameraWidget(self)
         self.camera = self.cameraWidget.camera

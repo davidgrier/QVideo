@@ -5,7 +5,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 '''
 Technical Reference:
@@ -159,37 +159,36 @@ class QSpinnakerCamera(QVideoCamera):
             return self._feature_range(pstr)
         return prop
 
-    acquisitionframecount = Property('AcquisitionFrameCount')
+    acquisitionframecount = Property('AcquisitionFrameCount', dtype=int)
     acquisitionframerate = Property('AcquisitionFrameRate')
-    acquisitionmode = Property('AcquisitionMode')
+    acquisitionframerateenable = Property('AcquisitionFrameRateEnable', dtype=bool)
+    acquisitionframeraterange = GetRange('AcquisitionFrameRate')
+    acquisitionmode = Property('AcquisitionMode', dtype=str)
     blacklevel = Property('BlackLevel')
+    blacklevelenable = Property('BlackLevelEnable', dtype=bool)
     blacklevelrange = GetRange('BlackLevel')
-    blacklevelauto = Property('BlackLevelAuto')
-    blacklevelenable = Property('BlackLevelEnabled')
-    exposureauto = Property('ExposureAuto')
-    exposuremode = Property('ExposureMode')
+    blacklevelselector = Property('BlackLevelSelector', dtype=str)
+    exposureauto = Property('ExposureAuto', dtype=str)
+    exposuremode = Property('ExposureMode', dtype=str)
     exposuretime = Property('ExposureTime', dtype=float)
     exposuretimerange = GetRange('ExposureTime')
     # flipped                    = Property('ReverseY', stop=True)
-    framerate = Property('AcquisitionFrameRate')
-    framerateenable = Property('AcquisitionFrameRateEnabled')
-    frameraterange = GetRange('AcquisitionFrameRate')
     gain = Property('Gain')
-    gainauto = Property('GainAuto')
+    gainauto = Property('GainAuto', dtype=str)
     gainrange = GetRange('Gain')
     gamma = Property('Gamma')
-    gammaenable = Property('GammaEnabled')
+    gammaenable = Property('GammaEnable', dtype=bool)
     gammarange = GetRange('Gamma')
-    height = Property('Height', stop=True)
-    mirrored = Property('ReverseX', stop=True)
+    height = Property('Height', dtype=int, stop=True)
+    mirrored = Property('ReverseX', dtype=bool, stop=True)
     pixelformat = Property('PixelFormat')
     reversex = Property('ReverseX', stop=True)
     # reversey                   = Property('ReverseY', stop=True)
-    sharpening = Property('Sharpness')
-    sharpeningauto = Property('SharpnessAuto')
-    sharpeningenable = Property('SharpnessEnabled')
+    sharpening = Property('Sharpening')
+    sharpeningauto = Property('SharpeningAuto', dtype=str)
+    sharpeningenable = Property('SharpeningEnable', dtype=bool)
     sharpeningthreshold = Property('SharpeningThreshold')
-    width = Property('Width', stop=True)
+    width = Property('Width', dtype=int, stop=True)
 
     def __init__(self, *args,
                  cameraID=0,
@@ -202,8 +201,8 @@ class QSpinnakerCamera(QVideoCamera):
         self.open(cameraID)
 
         # Enable access to controls
+        self.acquisitionframerateenable = True
         self.blacklevelselector = 'All'
-        self.framerateenable = True
         self.gammaenable = True
         self.sharpeningenable = False
 
@@ -257,7 +256,7 @@ class QSpinnakerCamera(QVideoCamera):
         self._system.ReleaseInstance()
         logger.debug('Camera closed')
 
-    def beginAcquitision(self):
+    def beginAcquisition(self):
         '''Start image acquisition'''
         if not self._running:
             logger.debug('Beginning acquisition')
@@ -298,12 +297,11 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtProperty(bool)
     def flipped(self):
-        # return bool(self._get_feature('ReverseY'))
         return self._flipped
 
     @flipped.setter
     def flipped(self, value):
-        # self._set_feature('ReverseY', bool(value))
+        logger.debug(f'Setting Flipped: {value}')
         self._flipped = value
 
     @pyqtProperty(float)
@@ -318,9 +316,10 @@ class QSpinnakerCamera(QVideoCamera):
     def gray(self):
         return self.pixelformat == 'Mono8'
 
-    @gray.setter
     @QVideoCamera.protected
+    @gray.setter
     def gray(self, gray):
+        logger.debug(f'Setting Gray: {gray}')
         self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
     @pyqtProperty(int)
@@ -396,7 +395,7 @@ class QSpinnakerCamera(QVideoCamera):
         return value
 
     def _set_feature(self, fname, value):
-        logger.debug('Setting {fname}: {value}')
+        logger.debug(f'Setting {fname}: {value}')
         feature = self._feature(fname)
         if not self._is_writable(feature):
             logger.warning(f'Property {fname} is not writable')
@@ -463,7 +462,7 @@ class QSpinnakerCamera(QVideoCamera):
 
 if __name__ == '__main__':
     cam = QSpinnakerCamera()
-    print(cam.width)
     _, img = cam.read()
     print(img.shape)
+    cam.close()
     del cam

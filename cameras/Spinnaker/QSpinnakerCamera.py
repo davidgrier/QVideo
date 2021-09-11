@@ -201,7 +201,7 @@ class QSpinnakerCamera(QVideoCamera):
 
         self.open(cameraID)
 
-        setattr(self, 'gammaenable', self.add('GammaEnable', dtype=bool))
+        setattr(self, 'gammaenable', self.add('GammaEnable'))
 
         # Enable access to controls
         self.acquisitionframerateenable = True
@@ -224,7 +224,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.beginAcquisition()
         ready, frame = self.read()
 
-    def add(self, pstr, dtype=float, stop=False):
+    def add(self, pstr, stop=False):
         def getter(self):
             return self._get_feature(pstr)
 
@@ -238,6 +238,8 @@ class QSpinnakerCamera(QVideoCamera):
                     self.shapeChanged.emit()
             else:
                 self._set_feature(pstr, value)
+
+        dtype = self._feature_type(pstr)
         return pyqtProperty(dtype, getter, setter)
 
     def open(self, index=0):
@@ -387,6 +389,14 @@ class QSpinnakerCamera(QVideoCamera):
              PySpin.intfICommand: PySpin.CCommandPtr,
              PySpin.intfIEnumeration: PySpin.CEnumerationPtr}
 
+    _tmap = {PySpin.intfICategory: str,
+             PySpin.intfIString: str,
+             PySpin.intfIInteger: int,
+             PySpin.intfIFloat: float,
+             PySpin.intfIBoolean: bool,
+             PySpin.intfICommand: str,
+             PySpin.intfIEnumeration: str}
+
     def _feature(self, fname):
         '''Return inode for named feature'''
         feature = None
@@ -397,6 +407,11 @@ class QSpinnakerCamera(QVideoCamera):
         except Exception as ex:
             logger.warning(f'Could not access Property: {fname} {ex}')
         return feature
+
+    def _feature_type(self, fname):
+        node = self._nodes.GetNode(fname)
+        type = node.GetPrincipalInterfaceType()
+        return self._tmap[type]
 
     def _get_feature(self, fname):
         value = None

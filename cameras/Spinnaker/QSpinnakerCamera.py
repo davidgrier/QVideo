@@ -460,9 +460,14 @@ class QSpinnakerCamera(QVideoCamera):
             logger.warning('{}'.format(ex))
 
 
-if __name__ == '__main__':
+def main():
+    import json
+
     cam = QSpinnakerCamera()
-    _, img = cam.read()
-    print(img.shape)
+    print(json.dumps(cam.camera_info(), indent=4, sort_keys=True))
     cam.close()
     del cam
+
+
+if __name__ == '__main__':
+    main()

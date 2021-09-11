@@ -453,9 +453,9 @@ class QSpinnakerCamera(QVideoCamera):
                 features = info.GetFeatures()
                 for feature in features:
                     this = PySpin.CValuePtr(feature)
-                    print('{}: {}'.format(this.GetName(), this.ToString()))
+                    logger.info(f'{this.GetName()}: {this.ToString()}')
                 else:
-                    print('Device control information not available')
+                    logger.warning('Device control information not available')
         except PySpin.SpinnakerException as ex:
             logger.warning('{}'.format(ex))
 

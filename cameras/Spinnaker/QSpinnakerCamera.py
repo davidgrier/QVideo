@@ -160,34 +160,34 @@ class QSpinnakerCamera(QVideoCamera):
         return prop
 
     acquisitionframecount = Property('AcquisitionFrameCount', dtype=int)
-    acquisitionframerate = Property('AcquisitionFrameRate')
+    acquisitionframerate = Property('AcquisitionFrameRate', dtype=float)
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable', dtype=bool)
     acquisitionframeraterange = GetRange('AcquisitionFrameRate')
     acquisitionmode = Property('AcquisitionMode', dtype=str)
-    blacklevel = Property('BlackLevel')
+    blacklevel = Property('BlackLevel', dtype=float)
     blacklevelenable = Property('BlackLevelEnable', dtype=bool)
-    blacklevelrange = GetRange('BlackLevel')
+    blacklevelrange = GetRange('BlackLevel', dtype=float)
     blacklevelselector = Property('BlackLevelSelector', dtype=str)
     exposureauto = Property('ExposureAuto', dtype=str)
     exposuremode = Property('ExposureMode', dtype=str)
     exposuretime = Property('ExposureTime', dtype=float)
     exposuretimerange = GetRange('ExposureTime')
-    # flipped                    = Property('ReverseY', stop=True)
-    gain = Property('Gain')
+    flipped = Property('ReverseY', dtype=bool, stop=True)
+    gain = Property('Gain', dtype=float)
     gainauto = Property('GainAuto', dtype=str)
     gainrange = GetRange('Gain')
-    gamma = Property('Gamma')
+    gamma = Property('Gamma', dtype=float)
     gammaenable = Property('GammaEnable', dtype=bool)
-    gammarange = GetRange('Gamma')
+    gammarange = GetRange('Gamma', dtype=float)
     height = Property('Height', dtype=int, stop=True)
     mirrored = Property('ReverseX', dtype=bool, stop=True)
-    pixelformat = Property('PixelFormat')
-    reversex = Property('ReverseX', stop=True)
-    # reversey                   = Property('ReverseY', stop=True)
-    sharpening = Property('Sharpening')
+    pixelformat = Property('PixelFormat', dtype=str)
+    reversex = Property('ReverseX', dtype=bool, stop=True)
+    reversey = Property('ReverseY', dtype=bool, stop=True)
+    sharpening = Property('Sharpening', dtype=float)
     sharpeningauto = Property('SharpeningAuto', dtype=str)
     sharpeningenable = Property('SharpeningEnable', dtype=bool)
-    sharpeningthreshold = Property('SharpeningThreshold')
+    sharpeningthreshold = Property('SharpeningThreshold', dtype=float)
     width = Property('Width', dtype=int, stop=True)
 
     def __init__(self, *args,
@@ -295,14 +295,15 @@ class QSpinnakerCamera(QVideoCamera):
     def cameraname(self, value):
         logger.debug(f'Attempting to set camera name: {value}')
 
-    @pyqtProperty(bool)
-    def flipped(self):
-        return self._flipped
+    #@pyqtProperty(bool)
+    #def flipped(self):
+    #    return self._flipped
 
-    @flipped.setter
-    def flipped(self, value):
-        logger.debug(f'Setting Flipped: {value}')
-        self._flipped = value
+
+    #@flipped.setter
+    #def flipped(self, value):
+    #    logger.debug(f'Setting Flipped: {value}')
+    #    self._flipped = value
 
     @pyqtProperty(float)
     def frameratemax(self):

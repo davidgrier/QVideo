@@ -201,7 +201,7 @@ class QSpinnakerCamera(QVideoCamera):
 
         self.open(cameraID)
 
-        setattr(self, 'gammaenable', self.Property('GammaEnable', dtype=bool))
+        setattr(self, 'gammaenable', self.add('GammaEnable', dtype=bool))
 
         # Enable access to controls
         self.acquisitionframerateenable = True
@@ -223,6 +223,22 @@ class QSpinnakerCamera(QVideoCamera):
 
         self.beginAcquisition()
         ready, frame = self.read()
+
+    def add(self, pstr, dtype=float, stop=False):
+        def getter(self):
+            return self._get_feature(pstr)
+
+        @QVideoCamera.protected
+        def setter(self, value, stop=stop):
+            if stop and self._running:
+                self.endAcquisition()
+                self._set_feature(pstr, value)
+                self.beginAcquisition()
+                if pstr in ['Width', 'Height']:
+                    self.shapeChanged.emit()
+            else:
+                self._set_feature(pstr, value)
+        return pyqtProperty(dtype, getter, setter)
 
     def open(self, index=0):
         '''

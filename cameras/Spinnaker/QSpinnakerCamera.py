@@ -166,7 +166,7 @@ class QSpinnakerCamera(QVideoCamera):
     acquisitionmode = Property('AcquisitionMode', dtype=str)
     blacklevel = Property('BlackLevel', dtype=float)
     blacklevelenable = Property('BlackLevelEnable', dtype=bool)
-    blacklevelrange = GetRange('BlackLevel', dtype=float)
+    blacklevelrange = GetRange('BlackLevel')
     blacklevelselector = Property('BlackLevelSelector', dtype=str)
     exposureauto = Property('ExposureAuto', dtype=str)
     exposuremode = Property('ExposureMode', dtype=str)

@@ -153,34 +153,21 @@ class QSpinnakerCamera(QVideoCamera):
                 self._set_feature(pstr, value)
         return pyqtProperty(dtype, getter, setter)
 
-    def GetRange(pstr):
-        @pyqtProperty(object)
-        def prop(self):
-            return self._feature_range(pstr)
-        return prop
-
     acquisitionframecount = Property('AcquisitionFrameCount', dtype=int)
     acquisitionframerate = Property('AcquisitionFrameRate', dtype=float)
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable', dtype=bool)
-    acquisitionframeraterange = GetRange('AcquisitionFrameRate')
     acquisitionmode = Property('AcquisitionMode', dtype=str)
     blacklevel = Property('BlackLevel', dtype=float)
     blacklevelenable = Property('BlackLevelEnable', dtype=bool)
-    blacklevelrange = GetRange('BlackLevel')
     blacklevelselector = Property('BlackLevelSelector', dtype=str)
     exposureauto = Property('ExposureAuto', dtype=str)
     exposuremode = Property('ExposureMode', dtype=str)
     exposuretime = Property('ExposureTime', dtype=float)
-    exposuretimerange = GetRange('ExposureTime')
-    flipped = Property('ReverseY', dtype=bool, stop=True)
     gain = Property('Gain', dtype=float)
     gainauto = Property('GainAuto', dtype=str)
-    gainrange = GetRange('Gain')
     gamma = Property('Gamma', dtype=float)
     gammaenable = Property('GammaEnable', dtype=bool)
-    gammarange = GetRange('Gamma', dtype=float)
     height = Property('Height', dtype=int, stop=True)
-    mirrored = Property('ReverseX', dtype=bool, stop=True)
     pixelformat = Property('PixelFormat', dtype=str)
     reversex = Property('ReverseX', dtype=bool, stop=True)
     reversey = Property('ReverseY', dtype=bool, stop=True)
@@ -189,6 +176,20 @@ class QSpinnakerCamera(QVideoCamera):
     sharpeningenable = Property('SharpeningEnable', dtype=bool)
     sharpeningthreshold = Property('SharpeningThreshold', dtype=float)
     width = Property('Width', dtype=int, stop=True)
+
+    flipped = Property('ReverseY', dtype=bool, stop=True)
+    mirrored = Property('ReverseX', dtype=bool, stop=True)
+
+    def GetRange(pstr):
+        def getter(self):
+            return self._feature_range(pstr)
+        return pyqtProperty(object, getter)
+
+    acquisitionframeraterange = GetRange('AcquisitionFrameRate')
+    blacklevelrange = GetRange('BlackLevel')
+    exposuretimerange = GetRange('ExposureTime')
+    gainrange = GetRange('Gain')
+    gammarange = GetRange('Gamma')
 
     def __init__(self, *args,
                  cameraID=0,

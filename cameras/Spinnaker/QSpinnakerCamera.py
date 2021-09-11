@@ -166,7 +166,7 @@ class QSpinnakerCamera(QVideoCamera):
     gain = Property('Gain', dtype=float)
     gainauto = Property('GainAuto', dtype=str)
     gamma = Property('Gamma', dtype=float)
-    gammaenable = Property('GammaEnable', dtype=bool)
+    #gammaenable = Property('GammaEnable', dtype=bool)
     height = Property('Height', dtype=int, stop=True)
     pixelformat = Property('PixelFormat', dtype=str)
     reversex = Property('ReverseX', dtype=bool, stop=True)
@@ -200,6 +200,8 @@ class QSpinnakerCamera(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
+
+        setattr(self, 'gammaenable', self.Property('GammaEnable', dtype=bool))
 
         # Enable access to controls
         self.acquisitionframerateenable = True

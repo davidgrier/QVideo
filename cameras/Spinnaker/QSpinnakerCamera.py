@@ -204,7 +204,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.acquisitionframerateenable = True
         self.blacklevelselector = 'All'
         self.gammaenable = True
-        self.sharpeningenable = False
+        self.sharpeningenable = True
 
         # Start acquisition
         self.acquisitionmode = 'Continuous'

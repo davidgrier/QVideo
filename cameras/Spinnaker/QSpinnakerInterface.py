@@ -150,8 +150,6 @@ class QSpinnakerInterface(QVideoCamera):
         dtype = self._feature_type(fname)
         return pyqtProperty(dtype, getter, setter)
 
-    def _properties(self):
-
     _fmap = {PySpin.intfICategory: PySpin.CCategoryPtr,
              PySpin.intfIString: PySpin.CStringPtr,
              PySpin.intfIInteger: PySpin.CIntegerPtr,

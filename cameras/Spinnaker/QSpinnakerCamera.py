@@ -253,9 +253,13 @@ class QSpinnakerCamera(QVideoCamera):
         '''
         # Initialize Spinnaker and get list of cameras
         self._system = PySpin.System.GetInstance()
+        v = self._system.GetLibraryVersion()
+        logger.info(f'PySpin {v.major}.{v.minor}.{v.type}.{v.build}')
         self._devices = self._system.GetCameras()
         ncameras = self._devices.GetSize()
         if ncameras < 1:
+            self._devices.Clear()
+            self._system.ReleaseInstance()
             raise IndexError('No Spinnaker cameras found')
         logger.debug(f'{ncameras} Spinnaker cameras found')
 
@@ -420,10 +424,8 @@ class QSpinnakerCamera(QVideoCamera):
             value = feature.ToString()
         elif self._is_category(feature):
             nodes = feature.GetFeatures()
-            value = dict()
-            for node in nodes:
-                name = node.GetName()
-                value[name] = self._get_feature(name)
+            names = [node.GetName() for node in nodes]
+            value = {name: self._get_feature(name) for name in names}
         elif self._is_readable(feature):
             value = feature.GetValue()
         logger.debug(f'Getting {fname}: {value}')
@@ -453,6 +455,15 @@ class QSpinnakerCamera(QVideoCamera):
             range = None
         return range
 
+    def _is_readwrite(self, feature):
+        return self._is_readable(feature) and self._is_writable(feature)
+
+    def _is_readonly(self, feature):
+        return self._is_readable(feature) and not self._is_writable(feature)
+
+    def _is_writeonly(self, feature):
+        return self._is_writable(feature) and not self._is_readable(feature)
+    
     def _is_readable(self, feature):
         return PySpin.IsAvailable(feature) and PySpin.IsReadable(feature)
 

@@ -72,6 +72,9 @@ class QSpinnakerInterface(QVideoCamera):
         @QVideoCamera.protected
         def setter(self, value, stop=stop):
             logger.debug(f'Setting {name}: {value}')
+            restart = stop and self._running
+            if restart:
+                self.endAcquisition()
             feature = getattr(self.device, name)
             if not PySpin.IsWritable(feature):
                 logger.warning(f'{name} is not writable')
@@ -79,12 +82,9 @@ class QSpinnakerInterface(QVideoCamera):
             iface = feature.GetPrincipalInterfaceType()
             is_enum = iface == PySpin.intfIEnumeration
             fset = feature.FromString if is_enum else feature.SetValue
-            if stop and self._running:
-                self.endAcquisition()
-                fset(value)
+            fset(value)
+            if restart:
                 self.beginAcquisition()
-            else:
-                fset(value)
 
         return pyqtProperty(object, getter, setter)
 

@@ -182,7 +182,7 @@ class QSpinnakerInterface(QVideoCamera):
 
         @QVideoCamera.protected
         def setter(self, value):
-            logger.debug(f'Setting {name}')
+            print(f'Setting {name}')
             set = feature.FromString if is_enum else feature.SetValue
             if stop and self._running:
                 self.endAcquisition()

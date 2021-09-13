@@ -62,7 +62,7 @@ class QSpinnakerInterface(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
-        self._register_properties()
+        self._setup_properties()
 
         # enable access to controls
         self.framerateenable = True
@@ -100,7 +100,7 @@ class QSpinnakerInterface(QVideoCamera):
         self._running = False
         logger.debug(f'Camera {index} open')
 
-    def _create_properties(self):
+    def _setup_properties(self):
         self.acquisitionmode = self._property('AcquisitionMode')
         self.framerate = self._property('AcquisitionFrameRate')
         self.framerateenable = self._property('AcquisitionFrameRateEnable')

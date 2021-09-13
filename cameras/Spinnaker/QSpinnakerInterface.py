@@ -202,7 +202,7 @@ class QSpinnakerInterface(QVideoCamera):
 
     def register(self, name, stop=False):
 
-        def getter(self):
+        def getter(self, name=name):
             logger.debug(f'Getting {name}')
             feature = getattr(self.device, name)
             if not PySpin.IsReadable(feature):
@@ -213,7 +213,7 @@ class QSpinnakerInterface(QVideoCamera):
             return feature.ToString() if is_enum else feature.GetValue()
 
         @QVideoCamera.protected
-        def setter(self, value, stop=stop):
+        def setter(self, value, stop=stop, name=name):
             logger.debug(f'Setting {name}: {value}')
             feature = getattr(self.device, name)
             if not PySpin.IsWritable(feature):

@@ -123,6 +123,7 @@ class QSpinnakerInterface(QVideoCamera):
         self.exposureauto = 'Off'
         self.exposuremode = 'Timed'
         self.gainauto = 'Off'
+        print(self.width)
 
     def open(self, index=0):
         '''

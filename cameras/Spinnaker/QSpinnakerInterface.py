@@ -56,17 +56,70 @@ class QSpinnakerInterface(QVideoCamera):
         status: True if acquisition was successful
         frame: numpy ndarray containing image information
     '''
+
+    def Property(name, stop=False):
+
+        dtype = {PySpin.intfIBoolean: bool,
+                 PySpin.intfIInteger: int,
+                 PySpin.intfIFloat: float,
+                 PySpin.intfIString: str,
+                 PySpin.intfIEnumeration: str}
+
+        def getter(self):
+            logger.debug(f'Getting {name}')
+            feature = getattr(self.device, name)
+            if not PySpin.IsReadable(feature):
+                return None
+            iface = feature.GetPrincipalInterfaceType()
+            is_enum = iface == PySpin.intfIEnumeration
+            return feature.ToString() if is_enum else feature.Getvalue()
+
+        @QVideoCamera.protected
+        def setter(self, value, stop=stop):
+            print(f'Setting {name}')
+            feature = getattr(self.device, name)
+            if not PySpin.IsWritable(feature):
+                return
+            iface = feature.GetPrincipalInterfaceType()
+            is_enum = iface == PySpin.intfIEnumeration
+            fset = feature.FromString if is_enum else feature.SetValue
+            if stop and self._running:
+                self.endAcquisition()
+                fset(value)
+                self.beginAcquisition()
+            else:
+                fset(value)
+
+        return pyqtProperty(object, getter, setter))
+
+    acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
+    acquisitionframerate = Property('AcquisitionFrameRate')
+    acquisitionmode = Property('AcquisitionMode')
+    blacklevel = Property('BlackLevel')
+    blacklevelenable = Property('BlackLevelEnable')
+    blacklevelselector = Property('BlackLevelSelector')
+    exposureauto = Property('ExposureAuto')
+    exposuremode = Property('ExposureMode')
+    exposuretime = Property('ExposureTime')
+    gain = Property('Gain')
+    gainauto = Property('GainAuto')
+    gamma = Property('Gamma')
+    gammaenable = Property('GammaEnable')
+    height = Property('Height', stop=True)
+    pixelformat = Property('PixelFormat')
+    width = Property('Width', stop=True)
+
+    
     def __init__(self, *args,
                  cameraID=0,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
-        self._setup_properties()
 
         # enable access to controls
         self.blacklevelselector = 'All'
-        self.framerateenable = True
+        self.acquisitionframerateenable = True
         self.gammaenable = True
 
         # start acquisition
@@ -94,15 +147,13 @@ class QSpinnakerInterface(QVideoCamera):
             raise IndexError('No Spinnaker cameras found')
         logger.debug(f'{ncameras} Spinnaker cameras found')
 
-        # Initialize selected camera and get map of nodes
+        # Initialize selected camera
         logger.debug(f'Initializing camera {index}')
         self.device = self._devices[index]
         self.device.Init()
-        self._nodes = self.device.GetNodeMap()
         self._running = False
         logger.debug(f'Camera {index} open')
 
-    
     def version(self):
         v = self._system.GetLibraryVersion()
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
@@ -146,74 +197,7 @@ class QSpinnakerInterface(QVideoCamera):
             error_msg = img.GetImageStatusDescription(status)
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
-        return True, img.GetNDArray()
-
-    def _property(self, name, stop=False, notify=None):
-
-        dtype = {PySpin.intfIBoolean: bool,
-                 PySpin.intfIInteger: int,
-                 PySpin.intfIFloat: float,
-                 PySpin.intfIString: str,
-                 PySpin.intfIEnumeration: str}
-        try:
-            feature = getattr(self.device, name)
-        except AttributeError:
-            logger.warning(f'Camera does not have feature {name}')
-            return
-        if not PySpin.IsAvailable(feature):
-            logger.warning(f'{name} is not available')
-            return
-        if not PySpin.IsReadable(feature):
-            logger.warning(f'{name} is not readable')
-            return
-        if not PySpin.IsWritable(feature):
-            logger.warning(f'{name} is not writable')
-            return
-
-        iface = feature.GetPrincipalInterfaceType()
-        is_enum = iface == PySpin.intfIEnumeration
-        type = dtype[iface]
-        logger.debug(f'{name}: {type.__name__}, {is_enum}')
-
-        def getter(self):
-            logger.debug(f'Getting {name}')
-            feature = getattr(self.device, name)
-            fget = feature.ToString if is_enum else feature.Getvalue
-            return fget()
-
-        @QVideoCamera.protected
-        def setter(self, value):
-            print(f'Setting {name}')
-            feature = getattr(self.device, name)
-            fset = feature.FromString if is_enum else feature.SetValue
-            if stop and self._running:
-                self.endAcquisition()
-                fset(value)
-                self.beginAcquisition()
-            else:
-                set(value)
-            if notify is not None:
-                notify.emit()
-
-        setattr(self, name.lower(), pyqtProperty(type, getter, setter))
-
-    def _setup_properties(self):
-        self._property('AcquisitionFrameRateEnable')
-        self._property('AcquisitionFrameRate')
-        self._property('AcquisitionMode')
-        self._property('BlackLevel')
-        self._property('BlackLevelEnable')
-        self._property('BlackLevelSelector')
-        self._property('ExposureAuto')
-        self._property('ExposureMode')
-        self._property('ExposureTime')
-        self._property('Gain')
-        self._property('GainAuto')
-        self._property('Gamma')
-        self._property('GammaEnable')
-        self._property('Height', stop=True, notify=self.shapeChanged)
-        self._property('PixelFormat')
-        self._property('Width', stop=True, notify=self.shapeChanged)
+        return True, img.GetNDArray()        
 
 
 def main():

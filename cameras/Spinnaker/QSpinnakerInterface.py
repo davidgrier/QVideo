@@ -177,16 +177,18 @@ class QSpinnakerInterface(QVideoCamera):
 
         def getter(self):
             logger.debug(f'Getting {name}')
-            get = feature.ToString if is_enum else feature.Getvalue
-            return get()
+            feature = getattr(self.device, name)
+            fget = feature.ToString if is_enum else feature.Getvalue
+            return fget()
 
         @QVideoCamera.protected
         def setter(self, value):
             print(f'Setting {name}')
-            set = feature.FromString if is_enum else feature.SetValue
+            feature = getattr(self.device, name)
+            fset = feature.FromString if is_enum else feature.SetValue
             if stop and self._running:
                 self.endAcquisition()
-                set(value)
+                fset(value)
                 self.beginAcquisition()
             else:
                 set(value)

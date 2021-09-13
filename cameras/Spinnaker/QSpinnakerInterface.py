@@ -57,7 +57,7 @@ class QSpinnakerInterface(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
-    def Property(name, stop=False):
+    def Property(name, dtype, stop=False):
 
         dtype = {PySpin.intfIBoolean: bool,
                  PySpin.intfIInteger: int,
@@ -92,24 +92,24 @@ class QSpinnakerInterface(QVideoCamera):
             else:
                 fset(value)
 
-        return pyqtProperty(object, getter, setter)
+        return pyqtProperty(dtype, getter, setter)
 
-    acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
-    acquisitionframerate = Property('AcquisitionFrameRate')
-    acquisitionmode = Property('AcquisitionMode')
-    blacklevel = Property('BlackLevel')
-    blacklevelenable = Property('BlackLevelEnable')
-    blacklevelselector = Property('BlackLevelSelector')
-    exposureauto = Property('ExposureAuto')
-    exposuremode = Property('ExposureMode')
-    exposuretime = Property('ExposureTime')
-    gain = Property('Gain')
-    gainauto = Property('GainAuto')
-    gamma = Property('Gamma')
-    gammaenable = Property('GammaEnable')
-    height = Property('Height', stop=True)
-    pixelformat = Property('PixelFormat')
-    width = Property('Width', stop=True)
+    acquisitionframerateenable = Property('AcquisitionFrameRateEnable', bool)
+    acquisitionframerate = Property('AcquisitionFrameRate', float)
+    acquisitionmode = Property('AcquisitionMode', str)
+    blacklevel = Property('BlackLevel', int)
+    blacklevelenable = Property('BlackLevelEnable', bool)
+    blacklevelselector = Property('BlackLevelSelector', str)
+    exposureauto = Property('ExposureAuto', str)
+    exposuremode = Property('ExposureMode', str)
+    exposuretime = Property('ExposureTime', float)
+    gain = Property('Gain', float)
+    gainauto = Property('GainAuto', str)
+    gamma = Property('Gamma', float)
+    gammaenable = Property('GammaEnable', bool)
+    height = Property('Height', int, stop=True)
+    pixelformat = Property('PixelFormat', str)
+    width = Property('Width', int, stop=True)
 
     
     def __init__(self, *args,

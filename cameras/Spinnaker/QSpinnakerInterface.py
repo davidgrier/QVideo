@@ -86,6 +86,7 @@ class QSpinnakerInterface(QVideoCamera):
             else:
                 fset(value)
 
+        logger.debug(f'Creating {name} ({dtype})')
         return pyqtProperty(dtype, getter, setter)
 
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable', bool)
@@ -123,7 +124,6 @@ class QSpinnakerInterface(QVideoCamera):
         self.exposureauto = 'Off'
         self.exposuremode = 'Timed'
         self.gainauto = 'Off'
-        print(self.width)
 
     def open(self, index=0):
         '''

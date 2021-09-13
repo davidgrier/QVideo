@@ -62,8 +62,15 @@ class QSpinnakerInterface(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
-        self.acquisitionmode = self._property('AcquisitionMode')
+        self._register_properties()
+
+        # enable access to controls
+        self.framerateenable = True
+        self.gammaenable = True
+
+        # start acquisition
         self.acquisitionmode = 'Continuous'
+        
         # self.width = self._property('Width', stop=True)
 
     def open(self, index=0):
@@ -93,6 +100,12 @@ class QSpinnakerInterface(QVideoCamera):
         self._running = False
         logger.debug(f'Camera {index} open')
 
+    def _create_properties(self):
+        self.acquisitionmode = self._property('AcquisitionMode')
+        self.framerate = self._property('AcquisitionFrameRate')
+        self.framerateenable = self._property('AcquisitionFrameRateEnable')
+        self.gammaenable = self._property('GammaEnable')
+        
     def version(self):
         v = self._system.GetLibraryVersion()
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
@@ -163,7 +176,7 @@ class QSpinnakerInterface(QVideoCamera):
         iface = feature.GetPrincipalInterfaceType()
         is_enum = iface == PySpin.intfIEnumeration
         type = dtype[iface]
-        print(f'{name}: {type}, {is_enum}')
+        logger.debug(f'{name}: {type.__name__}, {is_enum}')
 
         def getter(self):
             logger.debug(f'Getting {name}')

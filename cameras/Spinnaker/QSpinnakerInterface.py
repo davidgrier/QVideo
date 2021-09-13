@@ -114,7 +114,7 @@ class QSpinnakerInterface(QVideoCamera):
 
         self.open(cameraID)
 
-        self.width = self.register('Width', stop=True)
+        self.register('Width', stop=True)
         
         # enable access to controls
         self.blacklevelselector = 'All'

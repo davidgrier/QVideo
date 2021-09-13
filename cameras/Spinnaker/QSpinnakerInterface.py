@@ -59,12 +59,6 @@ class QSpinnakerInterface(QVideoCamera):
 
     def Property(name, dtype, stop=False):
 
-        dtype = {PySpin.intfIBoolean: bool,
-                 PySpin.intfIInteger: int,
-                 PySpin.intfIFloat: float,
-                 PySpin.intfIString: str,
-                 PySpin.intfIEnumeration: str}
-
         def getter(self):
             logger.debug(f'Getting {name}')
             feature = getattr(self.device, name)

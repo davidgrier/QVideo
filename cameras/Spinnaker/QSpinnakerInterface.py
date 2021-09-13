@@ -57,7 +57,7 @@ class QSpinnakerInterface(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
-    def Property(name, dtype, stop=False):
+    def Property(name, stop=False):
 
         def getter(self):
             logger.debug(f'Getting {name}')
@@ -88,41 +88,72 @@ class QSpinnakerInterface(QVideoCamera):
 
         return pyqtProperty(object, getter, setter)
 
-    acquisitionframerateenable = Property('AcquisitionFrameRateEnable', bool)
-    acquisitionframerate = Property('AcquisitionFrameRate', float)
-    acquisitionmode = Property('AcquisitionMode', str)
+    acquisitionframecount = Property('AcquisitionFrameCout')
+    acquisitionframerate = Property('AcquisitionFrameRate')
+    acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
+    acquisitionmode = Property('AcquisitionMode')
     blacklevel = Property('BlackLevel', int)
-    blacklevelenable = Property('BlackLevelEnable', bool)
-    blacklevelselector = Property('BlackLevelSelector', str)
-    exposureauto = Property('ExposureAuto', str)
-    exposuremode = Property('ExposureMode', str)
-    exposuretime = Property('ExposureTime', float)
-    gain = Property('Gain', float)
-    gainauto = Property('GainAuto', str)
-    gamma = Property('Gamma', float)
-    gammaenable = Property('GammaEnable', bool)
-    height = Property('Height', int, stop=True)
-    pixelformat = Property('PixelFormat', str)
-    width = Property('Width', int, stop=True)
+    blacklevelenable = Property('BlackLevelEnable')
+    blacklevelselector = Property('BlackLevelSelector')
+    devicevendorname = Property('DeviceVendorName')
+    devicemodelname = Property('DeviceModelName')
+    exposureauto = Property('ExposureAuto')
+    exposuremode = Property('ExposureMode')
+    exposuretime = Property('ExposureTime')
+    gain = Property('Gain')
+    gainauto = Property('GainAuto')
+    gamma = Property('Gamma')
+    gammaenable = Property('GammaEnable')
+    height = Property('Height', stop=True)
+    pixelformat = Property('PixelFormat')
+    reversex = Property('ReverseX', stop=True)
+    reversey = Property('ReverseY', stop=True)
+    sharpening = Property('Sharpening')
+    sharpeningauto = Property('SharpeningAuto')
+    sharpeningenable = Property('SharpeningEnable')
+    sharpeningthreshold = Property('SharpeningThreshold')
+    width = Property('Width', stop=True)
 
-    
+    def GetRange(name):
+        def getter(self):
+            feature = getattr(self.device, name)
+            if not PySpin.IsAvailable(feature):
+                return None
+            return (feature.GetMin(), feature.GetMax())
+        return pyqtProperty(object, getter)
+
+    acquisitionframeraterange = GetRange('AcquisitionFrameRate')
+    blacklevelrange = GetRange('BlackLevel')
+    exposuretimerange = GetRange('ExposureTime')
+    gainrange = GetRange('Gain')
+    gammarange = GetRange('Gamma')
+
     def __init__(self, *args,
                  cameraID=0,
+                 mirrored=False,
+                 flipped=False,
+                 gray=True,
                  **kwargs):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
-        
+
         # enable access to controls
-        self.blacklevelselector = 'All'
         self.acquisitionframerateenable = True
+        self.blacklevelselector = 'All'
         self.gammaenable = True
+        self.sharpeningenable = False
 
         # start acquisition
         self.acquisitionmode = 'Continuous'
         self.exposureauto = 'Off'
         self.exposuremode = 'Timed'
         self.gainauto = 'Off'
+        self.sharpeningauto = 'Off'
+
+        self.gray = gray
+        self.flipped = flipped
+        self.mirrored = mirrored
 
         self.beginAcquisition()
         _, frame = self.read()
@@ -152,12 +183,6 @@ class QSpinnakerInterface(QVideoCamera):
         self.device.Init()
         self._running = False
         logger.debug(f'Camera {index} open')
-
-    def version(self):
-        v = self._system.GetLibraryVersion()
-        s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
-        logger.debug(f'PySpin version: {s}')
-        return s
 
     def close(self):
         '''Stop acquisition, close camera and release Spinnaker'''
@@ -196,7 +221,70 @@ class QSpinnakerInterface(QVideoCamera):
             error_msg = img.GetImageStatusDescription(status)
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
-        return True, img.GetNDArray()
+        frame = img.GetNDArray()
+        # implement flipped and mirrored if necessary
+        return True, frame
+
+    def is_available(self, name):
+        feature = getattr(self.device, name)
+        return PySpin.IsAvailable(feature)
+
+    @pyqtProperty(str)
+    def cameraname(self):
+        return f'{self.devicevendorname} {self.device.modelname}'
+
+    @pyqtProperty(bool)
+    def flipped(self):
+        if self.is_available('ReverseX'):
+            return self.reversex
+        else:
+            return self._flipped
+
+    @flipped.setter
+    def flipped(self, value):
+        if self.is_available('ReverseX'):
+            self.reversex = value
+            self._flipped = False
+        else:
+            self._flipped = value
+
+    @pyqtProperty(bool)
+    def gray(self):
+        return self.pixelformat == 'Mono8'
+
+    @QVideoCamera.protected
+    @gray.setter
+    def gray(self, gray):
+        logger.debug(f'Setting Gray: {gray}')
+        self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
+
+    @pyqtProperty(bool)
+    def mirrored(self):
+        if self.is_available('ReverseY'):
+            return self.reversey
+        else:
+            return self._mirrored
+
+    @mirrored.setter
+    def mirrored(self, value):
+        if self.is_available('ReverseY'):
+            self.reversey = value
+            self.mirrored = False
+        else:
+            self._mirrored = value
+
+    @pyqtProperty(str)
+    def version(self):
+        v = self._system.GetLibraryVersion()
+        s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
+        logger.debug(f'PySpin version: {s}')
+        return s
+
+    def autoexposure(self):
+        self.exposureauto = 'Once'
+
+    def autogain(self):
+        self.gainauto = 'Once'
 
 
 def main():

@@ -166,7 +166,7 @@ class QSpinnakerCamera(QVideoCamera):
     gain = Property('Gain', dtype=float)
     gainauto = Property('GainAuto', dtype=str)
     gamma = Property('Gamma', dtype=float)
-    #gammaenable = Property('GammaEnable', dtype=bool)
+    gammaenable = Property('GammaEnable', dtype=bool)
     height = Property('Height', dtype=int, stop=True)
     pixelformat = Property('PixelFormat', dtype=str)
     reversex = Property('ReverseX', dtype=bool, stop=True)
@@ -201,8 +201,6 @@ class QSpinnakerCamera(QVideoCamera):
 
         self.open(cameraID)
 
-        setattr(self, 'gammaenable', self.add('GammaEnable'))
-
         # Enable access to controls
         self.acquisitionframerateenable = True
         self.blacklevelselector = 'All'
@@ -223,24 +221,6 @@ class QSpinnakerCamera(QVideoCamera):
 
         self.beginAcquisition()
         ready, frame = self.read()
-
-    def add(self, pstr, stop=False):
-        def getter(self):
-            return self._get_feature(pstr)
-
-        @QVideoCamera.protected
-        def setter(self, value, stop=stop):
-            if stop and self._running:
-                self.endAcquisition()
-                self._set_feature(pstr, value)
-                self.beginAcquisition()
-                if pstr in ['Width', 'Height']:
-                    self.shapeChanged.emit()
-            else:
-                self._set_feature(pstr, value)
-
-        dtype = self._feature_type(pstr)
-        return pyqtProperty(dtype, getter, setter)
 
     def open(self, index=0):
         '''

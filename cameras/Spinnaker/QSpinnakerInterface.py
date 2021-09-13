@@ -209,9 +209,9 @@ class QSpinnakerInterface(QVideoCamera):
         self.gainauto = self._property('GainAuto')
         self.gamma = self._property('Gamma')
         self.gammaenable = self._property('GammaEnable')
-        self.height = self._property('Height', stop=True, notify=self.sizeChanged)
+        self.height = self._property('Height', stop=True, notify=self.shapeChanged)
         self.pixelformat = self._property('PixelFormat')
-        self.width = self._property('Width', stop=True, notify=self.sizeChanged)
+        self.width = self._property('Width', stop=True, notify=self.shapeChanged)
 
 
 def main():

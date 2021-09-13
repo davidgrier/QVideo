@@ -5,7 +5,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 '''
 Technical Reference:
@@ -161,13 +161,16 @@ class QSpinnakerInterface(QVideoCamera):
         iface = feature.GetPrincipalInterfaceType()
         is_enum = iface == PySpin.intfIEnumeration
         type = dtype[iface]
+        logger.debug(f'{name}: {type}, {is_enum}')
 
         def getter(self):
+            logger.debug(f'Getting {name}')
             get = feature.ToString if is_enum else feature.Getvalue
             return get()
 
         @QVideoCamera.protected
         def setter(self, value):
+            logger.debug(f'Setting {name}')
             set = feature.FromString if is_enum else feature.SetValue
             if stop and self._running:
                 self.endAcquisition()

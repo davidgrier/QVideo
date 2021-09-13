@@ -69,6 +69,7 @@ class QSpinnakerInterface(QVideoCamera):
             logger.debug(f'Getting {name}')
             feature = getattr(self.device, name)
             if not PySpin.IsReadable(feature):
+                logger.warning(f'{name} is not readable')
                 return None
             iface = feature.GetPrincipalInterfaceType()
             is_enum = iface == PySpin.intfIEnumeration
@@ -76,9 +77,10 @@ class QSpinnakerInterface(QVideoCamera):
 
         @QVideoCamera.protected
         def setter(self, value, stop=stop):
-            print(f'Setting {name}')
+            logger.debug(f'Setting {name}: {value}')
             feature = getattr(self.device, name)
             if not PySpin.IsWritable(feature):
+                logger.warning(f'{name} is not writable')
                 return
             iface = feature.GetPrincipalInterfaceType()
             is_enum = iface == PySpin.intfIEnumeration

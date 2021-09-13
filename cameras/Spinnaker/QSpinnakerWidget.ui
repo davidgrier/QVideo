@@ -384,7 +384,7 @@
          <string>Camera ROI: height</string>
         </property>
         <property name="suffix">
-         <string>0</string>
+         <string/>
         </property>
         <property name="minimum">
          <number>16</number>

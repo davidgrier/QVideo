@@ -5,7 +5,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 '''
 Technical Reference:
@@ -15,7 +15,7 @@ NOTE:
 USB 3.x communication on Ubuntu 16.04 through 20.04 requires
 > sudo sh -c 'echo 1000 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 
-This can be set permanently by 
+This can be set permanently by
 1. Editing /etc/default/grub
 Change:
 GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
@@ -28,7 +28,7 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet splash usbcore.usbfs_memory_mb=1000"
 
 class QSpinnakerCamera(QVideoCamera):
 
-    '''Abstraction of FLiR camera for PyFab/Jansen
+    '''Expose properties of FLiR camera
 
     ...
 
@@ -38,86 +38,6 @@ class QSpinnakerCamera(QVideoCamera):
         camera device in Spinnaker system
     cameraname : str
         Vendor and camera model
-
-    Acquisition Control
-    -------------------
-    acquisitionmode : str
-        Mode for acquiring frames:
-        'Continuous': acquire frames continuously (Default)
-        'MultiFrame': acquire specified number of frames
-        'SingleFrame': acquire one image before stopping
-    acquisitionframecount : int
-        Number of frames to acquire with MultiFrame
-    exposuremode : str
-        Mode for setting single-frame exposure:
-        'Timed': Fixed exposure time (Default)
-        'TriggerWidth': Determined by external trigger
-    exposuretime : float
-        Exposure time in microseconds when exposuremode is 'Timed'
-    exposuretimerange : (float, float)
-        Range of exposure times in microseconds
-    exposureauto: str
-        Automatic exposure mode:
-        'Off': Do not adjust exposure time (Default)
-        'Once': Optimize exposure time, then return to 'Off'
-        'Continuous': Optimize exposure time
-    framerate : float
-        Acquisition frame rate in Hertz
-    framerateenable : bool
-        Manually control framerate
-    frameraterange : (float, float)
-        Range of frame rates in Hertz
-    framerateauto: str
-        Automatic frame rate mode:
-        'Off': Do not optimize frame rate (Default)
-        'Continuous': Optimize frame rate
-
-    NOTE: Trigger Commands are not yet implemented
-
-    Analog Control
-    --------------
-    gain : float
-        Amplification of video signal in dB
-    gainrange : (float, float)
-        Range of gain values in dB
-    gainauto: 
-        Enable automatic control of gain
-        'Off': Do not adjust gain (Default)
-        'Once': Optimize gain, then return to 'Off'
-        'Continuous': Optimize gain
-    blacklevel : int
-        Offset of video signal in camera-specific units
-    blacklevelrange : (int, int)
-        Range of black level values
-    gamma : float
-        Gamma correction of pixel intensity
-    gammarange : (float, float)
-        Range of gamma values
-    gammaenable : bool
-        Enable gamma correction
-        Default: True
-    sharpening : float
-        Amount of sharpening to apply to image
-        Default: 2.
-    sharpeningrange : (float, float)
-        Range of sharpening values
-    sharpeningenable : bool
-        Enable image sharpening
-        Default: False
-    sharpeningthreshold : float
-        Only sharpen regions with intensity changes greater than threshold
-    sharpeningthresholdrange : (float, float)
-        Range of sharpening threshold values
-
-    Image Format Control
-    --------------------
-    flipped : bool
-        Vertically flip image
-    mirrored : bool
-        Horizontally flip image
-    gray: bool
-        True: read() returns single-channel (grayscale) image
-        False: read() returns RGB8Packed three-channel image
 
     Methods
     =======
@@ -137,52 +57,69 @@ class QSpinnakerCamera(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
-    def Property(pstr, dtype=float, stop=False):
+    def Property(name, stop=False):
+
         def getter(self):
-            return self._get_feature(pstr)
+            logger.debug(f'Getting {name}')
+            feature = getattr(self.device, name)
+            if not PySpin.IsReadable(feature):
+                logger.warning(f'{name} is not readable')
+                return None
+            iface = feature.GetPrincipalInterfaceType()
+            is_enum = iface == PySpin.intfIEnumeration
+            return feature.ToString() if is_enum else feature.GetValue()
 
         @QVideoCamera.protected
         def setter(self, value, stop=stop):
-            if stop and self._running:
+            logger.debug(f'Setting {name}: {value}')
+            restart = stop and self._running
+            if restart:
                 self.endAcquisition()
-                self._set_feature(pstr, value)
+            feature = getattr(self.device, name)
+            if not PySpin.IsWritable(feature):
+                logger.warning(f'{name} is not writable')
+                return
+            iface = feature.GetPrincipalInterfaceType()
+            is_enum = iface == PySpin.intfIEnumeration
+            fset = feature.FromString if is_enum else feature.SetValue
+            fset(value)
+            if restart:
                 self.beginAcquisition()
-                if pstr in ['Width', 'Height']:
-                    self.shapeChanged.emit()
-            else:
-                self._set_feature(pstr, value)
-        return pyqtProperty(dtype, getter, setter)
 
-    acquisitionframecount = Property('AcquisitionFrameCount', dtype=int)
-    acquisitionframerate = Property('AcquisitionFrameRate', dtype=float)
-    acquisitionframerateenable = Property('AcquisitionFrameRateEnable', dtype=bool)
-    acquisitionmode = Property('AcquisitionMode', dtype=str)
-    blacklevel = Property('BlackLevel', dtype=float)
-    blacklevelenable = Property('BlackLevelEnable', dtype=bool)
-    blacklevelselector = Property('BlackLevelSelector', dtype=str)
-    exposureauto = Property('ExposureAuto', dtype=str)
-    exposuremode = Property('ExposureMode', dtype=str)
-    exposuretime = Property('ExposureTime', dtype=float)
-    gain = Property('Gain', dtype=float)
-    gainauto = Property('GainAuto', dtype=str)
-    gamma = Property('Gamma', dtype=float)
-    gammaenable = Property('GammaEnable', dtype=bool)
-    height = Property('Height', dtype=int, stop=True)
-    pixelformat = Property('PixelFormat', dtype=str)
-    reversex = Property('ReverseX', dtype=bool, stop=True)
-    reversey = Property('ReverseY', dtype=bool, stop=True)
-    sharpening = Property('Sharpening', dtype=float)
-    sharpeningauto = Property('SharpeningAuto', dtype=str)
-    sharpeningenable = Property('SharpeningEnable', dtype=bool)
-    sharpeningthreshold = Property('SharpeningThreshold', dtype=float)
-    width = Property('Width', dtype=int, stop=True)
+        return pyqtProperty(object, getter, setter)
 
-    flipped = Property('ReverseY', dtype=bool, stop=True)
-    mirrored = Property('ReverseX', dtype=bool, stop=True)
+    acquisitionframecount = Property('AcquisitionFrameCout')
+    acquisitionframerate = Property('AcquisitionFrameRate')
+    acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
+    acquisitionmode = Property('AcquisitionMode')
+    blacklevel = Property('BlackLevel', int)
+    blacklevelenable = Property('BlackLevelEnable')
+    blacklevelselector = Property('BlackLevelSelector')
+    devicevendorname = Property('DeviceVendorName')
+    devicemodelname = Property('DeviceModelName')
+    exposureauto = Property('ExposureAuto')
+    exposuremode = Property('ExposureMode')
+    exposuretime = Property('ExposureTime')
+    gain = Property('Gain')
+    gainauto = Property('GainAuto')
+    gamma = Property('Gamma')
+    gammaenable = Property('GammaEnable')
+    height = Property('Height', stop=True)
+    pixelformat = Property('PixelFormat')
+    reversex = Property('ReverseX', stop=True)
+    reversey = Property('ReverseY', stop=True)
+    sharpening = Property('Sharpening')
+    sharpeningauto = Property('SharpeningAuto')
+    sharpeningenable = Property('SharpeningEnable')
+    sharpeningthreshold = Property('SharpeningThreshold')
+    width = Property('Width', stop=True)
 
-    def GetRange(pstr):
+    def GetRange(name):
         def getter(self):
-            return self._feature_range(pstr)
+            feature = getattr(self.device, name)
+            if not PySpin.IsAvailable(feature):
+                return None
+            return (feature.GetMin(), feature.GetMax())
         return pyqtProperty(object, getter)
 
     acquisitionframeraterange = GetRange('AcquisitionFrameRate')
@@ -201,17 +138,16 @@ class QSpinnakerCamera(QVideoCamera):
 
         self.open(cameraID)
 
-        # Enable access to controls
+        # enable access to controls
         self.acquisitionframerateenable = True
         self.blacklevelselector = 'All'
         self.gammaenable = True
         self.sharpeningenable = False
 
-        # Start acquisition
+        # start acquisition
         self.acquisitionmode = 'Continuous'
         self.exposureauto = 'Off'
         self.exposuremode = 'Timed'
-        self.framerateauto = 'Off'
         self.gainauto = 'Off'
         self.sharpeningauto = 'Off'
 
@@ -220,7 +156,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.mirrored = mirrored
 
         self.beginAcquisition()
-        ready, frame = self.read()
+        _, frame = self.read()
 
     def open(self, index=0):
         '''
@@ -233,8 +169,6 @@ class QSpinnakerCamera(QVideoCamera):
         '''
         # Initialize Spinnaker and get list of cameras
         self._system = PySpin.System.GetInstance()
-        v = self._system.GetLibraryVersion()
-        logger.info(f'PySpin {v.major}.{v.minor}.{v.type}.{v.build}')
         self._devices = self._system.GetCameras()
         ncameras = self._devices.GetSize()
         if ncameras < 1:
@@ -243,11 +177,10 @@ class QSpinnakerCamera(QVideoCamera):
             raise IndexError('No Spinnaker cameras found')
         logger.debug(f'{ncameras} Spinnaker cameras found')
 
-        # Initialize selected camera and get map of nodes
+        # Initialize selected camera
         logger.debug(f'Initializing camera {index}')
         self.device = self._devices[index]
         self.device.Init()
-        self._nodes = self.device.GetNodeMap()
         self._running = False
         logger.debug(f'Camera {index} open')
 
@@ -288,35 +221,32 @@ class QSpinnakerCamera(QVideoCamera):
             error_msg = img.GetImageStatusDescription(status)
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
-        return True, img.GetNDArray()
+        frame = img.GetNDArray()
+        # implement flipped and mirrored if necessary
+        return True, frame
+
+    def is_available(self, name):
+        feature = getattr(self.device, name)
+        return PySpin.IsAvailable(feature)
 
     @pyqtProperty(str)
     def cameraname(self):
-        vendor = self._get_feature('DeviceVendorName')
-        model = self._get_feature('DeviceModelName')
-        return f'{vendor} {model}'
+        return f'{self.devicevendorname} {self.device.modelname}'
 
-    @cameraname.setter
-    def cameraname(self, value):
-        logger.debug(f'Attempting to set camera name: {value}')
+    @pyqtProperty(bool)
+    def flipped(self):
+        if self.is_available('ReverseX'):
+            return self.reversex
+        else:
+            return self._flipped
 
-    #@pyqtProperty(bool)
-    #def flipped(self):
-    #    return self._flipped
-
-
-    #@flipped.setter
-    #def flipped(self, value):
-    #    logger.debug(f'Setting Flipped: {value}')
-    #    self._flipped = value
-
-    @pyqtProperty(float)
-    def frameratemax(self):
-        return self._feature('AcquisitionFrameRate').GetMax()
-
-    @pyqtProperty(float)
-    def frameratemin(self):
-        return self._feature('AcquisitionFrameRate').GetMin()
+    @flipped.setter
+    def flipped(self, value):
+        if self.is_available('ReverseX'):
+            self.reversex = value
+            self._flipped = False
+        else:
+            self._flipped = value
 
     @pyqtProperty(bool)
     def gray(self):
@@ -328,33 +258,27 @@ class QSpinnakerCamera(QVideoCamera):
         logger.debug(f'Setting Gray: {gray}')
         self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
-    @pyqtProperty(int)
-    def heightmax(self):
-        return self._get_feature('HeightMax')
+    @pyqtProperty(bool)
+    def mirrored(self):
+        if self.is_available('ReverseY'):
+            return self.reversey
+        else:
+            return self._mirrored
 
-    @pyqtProperty(float)
-    def sharpeningrange(self):
-        return (1., 8.)
+    @mirrored.setter
+    def mirrored(self, value):
+        if self.is_available('ReverseY'):
+            self.reversey = value
+            self.mirrored = False
+        else:
+            self._mirrored = value
 
-    @pyqtProperty(float)
-    def sharpeningthresholdrange(self):
-        return (0., 0.25)
-
-    '''
-    @property
-    def videomode(self):
-        return self._feature('VideoMode').GetValue()
-
-    @videomode.setter
-    def videomode(self, mode):
-        self.stop()
-        self._feature('VideoMode').SetValue(mode)
-        self.start()
-    '''
-
-    @pyqtProperty(int)
-    def widthmax(self):
-        return self._get_feature('WidthMax')
+    @pyqtProperty(str)
+    def version(self):
+        v = self._system.GetLibraryVersion()
+        s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
+        logger.debug(f'PySpin version: {s}')
+        return s
 
     def autoexposure(self):
         self.exposureauto = 'Once'
@@ -362,135 +286,13 @@ class QSpinnakerCamera(QVideoCamera):
     def autogain(self):
         self.gainauto = 'Once'
 
-    #
-    # private methods for handling interactions with GenICam
-    #
-    _fmap = {PySpin.intfICategory: PySpin.CCategoryPtr,
-             PySpin.intfIString: PySpin.CStringPtr,
-             PySpin.intfIInteger: PySpin.CIntegerPtr,
-             PySpin.intfIFloat: PySpin.CFloatPtr,
-             PySpin.intfIBoolean: PySpin.CBooleanPtr,
-             PySpin.intfICommand: PySpin.CCommandPtr,
-             PySpin.intfIEnumeration: PySpin.CEnumerationPtr}
-
-    _tmap = {PySpin.intfICategory: str,
-             PySpin.intfIString: str,
-             PySpin.intfIInteger: int,
-             PySpin.intfIFloat: float,
-             PySpin.intfIBoolean: bool,
-             PySpin.intfICommand: str,
-             PySpin.intfIEnumeration: str}
-
-    def _feature(self, fname):
-        '''Return inode for named feature'''
-        feature = None
-        try:
-            node = self._nodes.GetNode(fname)
-            type = node.GetPrincipalInterfaceType()
-            feature = self._fmap[type](node)
-        except Exception as ex:
-            logger.warning(f'Could not access Property: {fname} {ex}')
-        return feature
-
-    def _feature_type(self, fname):
-        node = self._nodes.GetNode(fname)
-        type = node.GetPrincipalInterfaceType()
-        return self._tmap[type]
-
-    def _get_feature(self, fname):
-        value = None
-        feature = self._feature(fname)
-        if self._is_enum(feature) or self._is_command(feature):
-            value = feature.ToString()
-        elif self._is_category(feature):
-            nodes = feature.GetFeatures()
-            names = [node.GetName() for node in nodes]
-            value = {name: self._get_feature(name) for name in names}
-        elif self._is_readable(feature):
-            value = feature.GetValue()
-        logger.debug(f'Getting {fname}: {value}')
-        return value
-
-    def _set_feature(self, fname, value):
-        logger.debug(f'Setting {fname}: {value}')
-        feature = self._feature(fname)
-        if not self._is_writable(feature):
-            logger.warning(f'Property {fname} is not writable')
-            return
-        try:
-            if self._is_enum(feature) or self._is_command(feature):
-                feature.FromString(value)
-            else:
-                feature.SetValue(value)
-        except PySpin.SpinnakerException as ex:
-            logger.warning(f'Could not set {fname}: {ex}')
-
-    def _feature_range(self, fname):
-        '''Return minimum and maximum values of named feature'''
-        feature = self._feature(fname)
-        try:
-            range = (feature.GetMin(), feature.GetMax())
-        except PySpin.SpinnakerException as ex:
-            logger.warning(f'Could not get range of {fname}: {ex}')
-            range = None
-        return range
-
-    def _is_readwrite(self, feature):
-        return self._is_readable(feature) and self._is_writable(feature)
-
-    def _is_readonly(self, feature):
-        return self._is_readable(feature) and not self._is_writable(feature)
-
-    def _is_writeonly(self, feature):
-        return self._is_writable(feature) and not self._is_readable(feature)
-    
-    def _is_readable(self, feature):
-        return PySpin.IsAvailable(feature) and PySpin.IsReadable(feature)
-
-    def _is_writable(self, feature):
-        return PySpin.IsAvailable(feature) and PySpin.IsWritable(feature)
-
-    def _is_type(self, feature, typevalue):
-        return (self._is_readable(feature) and
-                feature.GetPrincipalInterfaceType() == typevalue)
-
-    def _is_category(self, feature):
-        return self._is_type(feature, PySpin.intfICategory)
-
-    def _is_enum(self, feature):
-        return self._is_type(feature, PySpin.intfIEnumeration)
-
-    def _is_command(self, feature):
-        return self._is_type(feature, PySpin.intfICommand)
-
-    #
-    # Methods for introspection
-    #
-    def camera_info(self):
-        '''Return dict of camera inodes and values'''
-        return self._get_feature('Root')
-
-    def transport_info(self):
-        '''Return dict of Transport Layer Device inodes and values'''
-        nodemap = self.device.GetTLDeviceNodeMap()  # Transport layer
-        try:
-            info = PySpin.CCategoryPtr(nodemap.GetNode('DeviceInformation'))
-            if self._is_readable(info):
-                features = info.GetFeatures()
-                for feature in features:
-                    this = PySpin.CValuePtr(feature)
-                    logger.info(f'{this.GetName()}: {this.ToString()}')
-                else:
-                    logger.warning('Device control information not available')
-        except PySpin.SpinnakerException as ex:
-            logger.warning('{}'.format(ex))
-
 
 def main():
     import json
 
     cam = QSpinnakerCamera()
-    print(json.dumps(cam.camera_info(), indent=4, sort_keys=True))
+    #    print(json.dumps(cam.camera_info(), indent=4, sort_keys=True))
+    print(dir(cam.device))
     cam.close()
     del cam
 

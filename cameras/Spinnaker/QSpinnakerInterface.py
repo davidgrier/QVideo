@@ -67,7 +67,7 @@ class QSpinnakerInterface(QVideoCamera):
                 return None
             iface = feature.GetPrincipalInterfaceType()
             is_enum = iface == PySpin.intfIEnumeration
-            return feature.ToString() if is_enum else feature.Getvalue()
+            return feature.ToString() if is_enum else feature.GetValue()
 
         @QVideoCamera.protected
         def setter(self, value, stop=stop):

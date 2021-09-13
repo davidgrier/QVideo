@@ -62,7 +62,9 @@ class QSpinnakerInterface(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
-        self.width = self._property('Width')
+        self.acquisitionmode = self._property('AcquisitionMode')
+        self.acquisitionmode = 'Continuous'
+        # self.width = self._property('Width', stop=True)
 
     def open(self, index=0):
         '''
@@ -96,7 +98,7 @@ class QSpinnakerInterface(QVideoCamera):
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
         logger.debug(f'PySpin version: {s}')
         return s
-    
+
     def close(self):
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Cleaning up')

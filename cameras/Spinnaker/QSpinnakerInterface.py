@@ -90,7 +90,7 @@ class QSpinnakerInterface(QVideoCamera):
             else:
                 fset(value)
 
-        return pyqtProperty(object, getter, setter))
+        return pyqtProperty(object, getter, setter)
 
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
     acquisitionframerate = Property('AcquisitionFrameRate')

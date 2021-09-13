@@ -161,7 +161,7 @@ class QSpinnakerInterface(QVideoCamera):
         iface = feature.GetPrincipalInterfaceType()
         is_enum = iface == PySpin.intfIEnumeration
         type = dtype[iface]
-        logger.debug(f'{name}: {type}, {is_enum}')
+        print(f'{name}: {type}, {is_enum}')
 
         def getter(self):
             logger.debug(f'Getting {name}')

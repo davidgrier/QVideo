@@ -159,16 +159,16 @@ class QSpinnakerInterface(QVideoCamera):
             feature = getattr(self.device, name)
         except AttributeError:
             logger.warning(f'Camera does not have feature {name}')
-            return None
+            return
         if not PySpin.IsAvailable(feature):
             logger.warning(f'{name} is not available')
-            return None
+            return
         if not PySpin.IsReadable(feature):
             logger.warning(f'{name} is not readable')
-            return None
+            return
         if not PySpin.IsWritable(feature):
             logger.warning(f'{name} is not writable')
-            return None
+            return
 
         iface = feature.GetPrincipalInterfaceType()
         is_enum = iface == PySpin.intfIEnumeration
@@ -193,25 +193,25 @@ class QSpinnakerInterface(QVideoCamera):
             if notify is not None:
                 notify.emit()
 
-        return pyqtProperty(type, getter, setter)
+        setattr(self, name.lower(), pyqtProperty(type, getter, setter))
 
     def _setup_properties(self):
-        self.acquisitionmode = self._property('AcquisitionMode')
-        self.blacklevel = self._property('BlackLevel')
-        self.blacklevelenable = self._property('BlackLevelEnable')
-        self.blacklevelselector = self._property('BlackLevelSelector')
-        self.exposureauto = self._property('ExposureAuto')
-        self.exposuremode = self._property('ExposureMode')
-        self.exposuretime = self._property('ExposureTime')
-        self.framerate = self._property('AcquisitionFrameRate')
-        self.framerateenable = self._property('AcquisitionFrameRateEnable')
-        self.gain = self._property('Gain')
-        self.gainauto = self._property('GainAuto')
-        self.gamma = self._property('Gamma')
-        self.gammaenable = self._property('GammaEnable')
-        self.height = self._property('Height', stop=True, notify=self.shapeChanged)
-        self.pixelformat = self._property('PixelFormat')
-        self.width = self._property('Width', stop=True, notify=self.shapeChanged)
+        self._property('AcquisitionFrameRateEnable')
+        self._property('AcquisitionFrameRate')
+        self._property('AcquisitionMode')
+        self._property('BlackLevel')
+        self._property('BlackLevelEnable')
+        self._property('BlackLevelSelector')
+        self._property('ExposureAuto')
+        self._property('ExposureMode')
+        self._property('ExposureTime')
+        self._property('Gain')
+        self._property('GainAuto')
+        self._property('Gamma')
+        self._property('GammaEnable')
+        self._property('Height', stop=True, notify=self.shapeChanged)
+        self._property('PixelFormat')
+        self._property('Width', stop=True, notify=self.shapeChanged)
 
 
 def main():

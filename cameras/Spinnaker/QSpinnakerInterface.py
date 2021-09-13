@@ -138,7 +138,7 @@ class QSpinnakerInterface(QVideoCamera):
 
     def _property(self, name, stop=False, notify=None):
 
-        dtype = {PySpin.infIBoolean: bool,
+        dtype = {PySpin.intfIBoolean: bool,
                  PySpin.intfIInteger: int,
                  PySpin.intfIFloat: float,
                  PySpin.intfIString: str,

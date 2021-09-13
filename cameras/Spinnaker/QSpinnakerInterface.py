@@ -86,7 +86,6 @@ class QSpinnakerInterface(QVideoCamera):
             else:
                 fset(value)
 
-        logger.debug(f'Creating {name} ({dtype})')
         return pyqtProperty(dtype, getter, setter)
 
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable', bool)

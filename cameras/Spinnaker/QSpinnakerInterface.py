@@ -86,7 +86,7 @@ class QSpinnakerInterface(QVideoCamera):
             else:
                 fset(value)
 
-        return pyqtProperty(dtype, getter, setter)
+        return pyqtProperty(object, getter, setter)
 
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable', bool)
     acquisitionframerate = Property('AcquisitionFrameRate', float)
@@ -103,7 +103,7 @@ class QSpinnakerInterface(QVideoCamera):
     gammaenable = Property('GammaEnable', bool)
     height = Property('Height', int, stop=True)
     pixelformat = Property('PixelFormat', str)
-    # width = Property('Width', int, stop=True)
+    width = Property('Width', int, stop=True)
 
     
     def __init__(self, *args,
@@ -112,8 +112,6 @@ class QSpinnakerInterface(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
-
-        setattr(self, 'width', self.register('Width', stop=True))
         
         # enable access to controls
         self.blacklevelselector = 'All'
@@ -199,38 +197,6 @@ class QSpinnakerInterface(QVideoCamera):
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
         return True, img.GetNDArray()
-
-    def register(self, name, stop=False):
-
-        def getter(self, name=name):
-            logger.debug(f'Getting {name}')
-            feature = getattr(self.device, name)
-            if not PySpin.IsReadable(feature):
-                logger.warning(f'{name} is not readable')
-                return None
-            iface = feature.GetPrincipalInterfaceType()
-            is_enum = iface == PySpin.intfIEnumeration
-            return feature.ToString() if is_enum else feature.GetValue()
-
-        @QVideoCamera.protected
-        def setter(self, value, stop=stop, name=name):
-            logger.debug(f'Setting {name}: {value}')
-            feature = getattr(self.device, name)
-            if not PySpin.IsWritable(feature):
-                logger.warning(f'{name} is not writable')
-                return
-            iface = feature.GetPrincipalInterfaceType()
-            is_enum = iface == PySpin.intfIEnumeration
-            fset = feature.FromString if is_enum else feature.SetValue
-            if stop and self._running:
-                self.endAcquisition()
-                fset(value)
-                self.beginAcquisition()
-            else:
-                fset(value)
-
-        return pyqtProperty(object, getter, setter)
-
 
 
 def main():

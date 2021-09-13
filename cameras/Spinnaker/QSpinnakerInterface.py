@@ -125,6 +125,9 @@ class QSpinnakerInterface(QVideoCamera):
         self.exposuremode = 'Timed'
         self.gainauto = 'Off'
 
+        self.beginAcquisition()
+        _, frame = self.read()
+
     def open(self, index=0):
         '''
         Initialize Spinnaker and open specified camera

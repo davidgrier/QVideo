@@ -158,16 +158,16 @@ class QSpinnakerInterface(QVideoCamera):
         try:
             feature = getattr(self.device, name)
         except AttributeError:
-            logger.warning(f'Camera does not have feature {fname}')
+            logger.warning(f'Camera does not have feature {name}')
             return None
         if not PySpin.IsAvailable(feature):
-            logger.warning(f'{fname} is not available')
+            logger.warning(f'{name} is not available')
             return None
         if not PySpin.IsReadable(feature):
-            logger.warning(f'{fname} is not readable')
+            logger.warning(f'{name} is not readable')
             return None
         if not PySpin.IsWritable(feature):
-            logger.warning(f'{fname} is not writable')
+            logger.warning(f'{name} is not writable')
             return None
 
         iface = feature.GetPrincipalInterfaceType()

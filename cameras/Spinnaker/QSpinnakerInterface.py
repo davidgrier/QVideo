@@ -65,13 +65,15 @@ class QSpinnakerInterface(QVideoCamera):
         self._setup_properties()
 
         # enable access to controls
+        self.blacklevelselector = 'All'
         self.framerateenable = True
         self.gammaenable = True
 
         # start acquisition
         self.acquisitionmode = 'Continuous'
-        
-        # self.width = self._property('Width', stop=True)
+        self.exposureauto = 'Off'
+        self.exposuremode = 'Timed'
+        self.gainauto = 'Off'
 
     def open(self, index=0):
         '''
@@ -100,12 +102,7 @@ class QSpinnakerInterface(QVideoCamera):
         self._running = False
         logger.debug(f'Camera {index} open')
 
-    def _setup_properties(self):
-        self.acquisitionmode = self._property('AcquisitionMode')
-        self.framerate = self._property('AcquisitionFrameRate')
-        self.framerateenable = self._property('AcquisitionFrameRateEnable')
-        self.gammaenable = self._property('GammaEnable')
-        
+    
     def version(self):
         v = self._system.GetLibraryVersion()
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
@@ -197,7 +194,25 @@ class QSpinnakerInterface(QVideoCamera):
                 notify.emit()
 
         return pyqtProperty(type, getter, setter)
-                
+
+    def _setup_properties(self):
+        self.acquisitionmode = self._property('AcquisitionMode')
+        self.blacklevel = self._property('BlackLevel')
+        self.blacklevelenable = self._property('BlackLevelEnable')
+        self.blacklevelselector = self._property('BlackLevelSelector')
+        self.exposureauto = self._property('ExposureAuto')
+        self.exposuremode = self._property('ExposureMode')
+        self.exposuretime = self._property('ExposureTime')
+        self.framerate = self._property('AcquisitionFrameRate')
+        self.framerateenable = self._property('AcquisitionFrameRateEnable')
+        self.gain = self._property('Gain')
+        self.gainauto = self._property('GainAuto')
+        self.gamma = self._property('Gamma')
+        self.gammaenable = self._property('GammaEnable')
+        self.height = self._property('Height', stop=True, notify=self.sizeChanged)
+        self.pixelformat = self._property('PixelFormat')
+        self.width = self._property('Width', stop=True, notify=self.sizeChanged)
+
 
 def main():
     import json

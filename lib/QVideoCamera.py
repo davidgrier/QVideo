@@ -97,6 +97,7 @@ class QVideoCamera(QObject):
     def color(self):
         return self._color
 
+    '''
     @pyqtProperty(int)
     def width(self):
         return 640
@@ -104,3 +105,4 @@ class QVideoCamera(QObject):
     @pyqtProperty(int)
     def height(self):
         return 480
+    '''

@@ -294,10 +294,9 @@ class QSpinnakerCamera(QVideoCamera):
 
 
 def main():
-    import json
-
     cam = QSpinnakerCamera()
     print(cam.properties())
+    print(cam.methods())
     cam.close()
     del cam
 

@@ -187,15 +187,9 @@ class QCameraWidget(QWidget):
 
     def _identifyProperties(self):
         uiprops = vars(self.ui).keys()
-        self._properties = []
-        self._methods = []
-        for k, v in vars(type(self.camera)).items():
-            if k not in uiprops:
-                continue
-            if isinstance(v, pyqtProperty):
-                self._properties.append(k)
-            elif isinstance(v, types.FunctionType):
-                self._methods.append(k)
+        self._properties = [p for p in self.camera.properties()
+                            if p in uiprops]
+        self._methods = [m for m in self.camera.methods() if m in uiprops]
 
     def _syncProperties(self):
         for prop in self.properties:

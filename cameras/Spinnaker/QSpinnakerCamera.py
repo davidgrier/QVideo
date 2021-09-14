@@ -258,7 +258,7 @@ class QSpinnakerCamera(QVideoCamera):
     def gray(self):
         return self.pixelformat == 'Mono8'
 
-    @QVideoCamera.protected
+    # @QVideoCamera.protected
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')

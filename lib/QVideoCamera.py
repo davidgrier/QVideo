@@ -3,6 +3,7 @@ from PyQt5.QtCore import (QObject, QMutex, QSize,
 from functools import wraps
 import numpy as np
 import time
+import types
 import logging
 
 logging.basicConfig()
@@ -106,3 +107,11 @@ class QVideoCamera(QObject):
     def height(self):
         return 480
     '''
+
+    def properties(self):
+        return [k for k, v in vars(type(self)).items()
+                if isinstance(v, pyqtProperty)]
+
+    def methods(self):
+        return [k for k, v in vars(types(self)).items()
+                if isinstance(v, types.FunctionType)]

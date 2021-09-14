@@ -176,7 +176,7 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QDoubleSpinBox" name="framerate">
+       <widget class="QDoubleSpinBox" name="acquisitionframerate">
         <property name="statusTip">
          <string>Camera frame rate</string>
         </property>
@@ -228,7 +228,7 @@
          <string>Frame &amp;Rate</string>
         </property>
         <property name="buddy">
-         <cstring>framerate</cstring>
+         <cstring>acquisitionframerate</cstring>
         </property>
        </widget>
       </item>
@@ -367,12 +367,12 @@
          <string>&amp;y0</string>
         </property>
         <property name="buddy">
-         <cstring>y0</cstring>
+         <cstring>offsety</cstring>
         </property>
        </widget>
       </item>
       <item row="3" column="0">
-       <widget class="QSpinBox" name="x0">
+       <widget class="QSpinBox" name="offsetx">
         <property name="statusTip">
          <string>Camera ROI: bottom left corner</string>
         </property>
@@ -411,7 +411,7 @@
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QSpinBox" name="y0">
+       <widget class="QSpinBox" name="offsety">
         <property name="statusTip">
          <string>Camera ROI: bottom left corner</string>
         </property>
@@ -442,7 +442,7 @@
          <string>&amp;x0</string>
         </property>
         <property name="buddy">
-         <cstring>x0</cstring>
+         <cstring>offsetx</cstring>
         </property>
        </widget>
       </item>
@@ -463,15 +463,15 @@
  </widget>
  <tabstops>
   <tabstop>mirrored</tabstop>
-  <tabstop>framerate</tabstop>
+  <tabstop>acquisitionframerate</tabstop>
   <tabstop>exposuretime</tabstop>
   <tabstop>autoexposure</tabstop>
   <tabstop>gain</tabstop>
   <tabstop>autogain</tabstop>
   <tabstop>blacklevel</tabstop>
   <tabstop>gamma</tabstop>
-  <tabstop>x0</tabstop>
-  <tabstop>y0</tabstop>
+  <tabstop>offsetx</tabstop>
+  <tabstop>offsety</tabstop>
   <tabstop>width</tabstop>
   <tabstop>height</tabstop>
  </tabstops>

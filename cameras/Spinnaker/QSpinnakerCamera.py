@@ -297,8 +297,7 @@ def main():
     import json
 
     cam = QSpinnakerCamera()
-    #    print(json.dumps(cam.camera_info(), indent=4, sort_keys=True))
-    print(cam.heightrange, cam.widthrange)
+    print(cam.properties())
     cam.close()
     del cam
 

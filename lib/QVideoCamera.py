@@ -113,5 +113,5 @@ class QVideoCamera(QObject):
                 if isinstance(v, pyqtProperty)]
 
     def methods(self):
-        return [k for k, v in vars(types(self)).items()
+        return [k for k, v in vars(type(self)).items()
                 if isinstance(v, types.FunctionType)]

@@ -1,6 +1,6 @@
 from QVideo.lib import QVideoCamera
 import PySpin
-from PyQt5.QtCore import pyqtProperty
+from PyQt5.QtCore import (pyqtSignal, pyqtProperty)
 import logging
 
 logging.basicConfig()
@@ -57,6 +57,8 @@ class QSpinnakerCamera(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
+    propertyChanged = pyqtSignal(str, object)
+
     def Property(name, stop=False):
 
         def getter(self):
@@ -85,6 +87,7 @@ class QSpinnakerCamera(QVideoCamera):
             fset(value)
             if restart:
                 self.beginAcquisition()
+            self.propertyChanged.emit(name, value)
 
         return pyqtProperty(object, getter, setter)
 

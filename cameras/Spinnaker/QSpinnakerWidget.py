@@ -1,5 +1,6 @@
 from QVideo.lib import QCameraWidget
 from QSpinnakerCamera import QSpinnakerCamera
+from PyQt5.QtCore import pyqtSlot
 import logging
 
 
@@ -37,6 +38,11 @@ class QSpinnakerWidget(QCameraWidget):
 
     def connectSignals(self):
         self.camera.fpsReady.connect(self.ui.actualrate.setValue)
+        self.camera.propertyChanged.connect(self.changeHandler)
+
+    @pyqtSlot(str, object)
+    def changeHandler(self, name, value):
+        logger.debug(f'Changed: {name}: {value}')
 
 
 def main():

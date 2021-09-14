@@ -57,7 +57,7 @@ class QSpinnakerCamera(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
-    propertyChanged = pyqtSignal(str, object)
+    propertyChanged = pyqtSignal(str)
 
     def Property(name, stop=False):
 
@@ -87,7 +87,7 @@ class QSpinnakerCamera(QVideoCamera):
             fset(value)
             if restart:
                 self.beginAcquisition()
-            self.propertyChanged.emit(name, value)
+            self.propertyChanged.emit(name)
 
         return pyqtProperty(object, getter, setter)
 

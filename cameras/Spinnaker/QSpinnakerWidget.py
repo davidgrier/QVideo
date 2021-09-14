@@ -40,9 +40,9 @@ class QSpinnakerWidget(QCameraWidget):
         self.camera.fpsReady.connect(self.ui.actualrate.setValue)
         self.camera.propertyChanged.connect(self.changeHandler)
 
-    @pyqtSlot(str, object)
+    @pyqtSlot(str)
     def changeHandler(self, name, value):
-        logger.debug(f'Changed: {name}: {value}')
+        logger.debug(f'Changed: {name}')
 
 
 def main():

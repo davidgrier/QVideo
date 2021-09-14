@@ -252,6 +252,7 @@ class QSpinnakerCamera(QVideoCamera):
             self.reversex = value
             self._flipped = False
         else:
+            logger.warning('Implement Flipped')
             self._flipped = value
 
     @pyqtProperty(bool)
@@ -277,6 +278,7 @@ class QSpinnakerCamera(QVideoCamera):
             self.reversey = value
             self._mirrored = False
         else:
+            logger.warning('Implement Mirrored')
             self._mirrored = value
 
     @pyqtProperty(str)

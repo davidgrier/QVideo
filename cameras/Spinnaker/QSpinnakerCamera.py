@@ -105,6 +105,8 @@ class QSpinnakerCamera(QVideoCamera):
     gamma = Property('Gamma')
     gammaenable = Property('GammaEnable')
     height = Property('Height', stop=True)
+    offsetx = Property('OffsetX', stop=True)
+    offsety = Property('OffsetY', stop=True)
     pixelformat = Property('PixelFormat')
     reversex = Property('ReverseX', stop=True)
     reversey = Property('ReverseY', stop=True)
@@ -128,6 +130,8 @@ class QSpinnakerCamera(QVideoCamera):
     gainrange = GetRange('Gain')
     gammarange = GetRange('Gamma')
     heightrange = GetRange('Height')
+    offsetxrange = GetRange('OffsetX')
+    offsetyrange = GetRange('OffsetY')
     widthrange = GetRange('Width')
 
     def __init__(self, *args,

@@ -235,14 +235,14 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtProperty(bool)
     def flipped(self):
-        if self.is_available('ReverseX'):
+        if self.is_available('ReverseY'):
             return self.reversex
         else:
             return self._flipped
 
     @flipped.setter
     def flipped(self, value):
-        if self.is_available('ReverseX'):
+        if self.is_available('ReverseY'):
             self.reversex = value
             self._flipped = False
         else:
@@ -260,16 +260,16 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtProperty(bool)
     def mirrored(self):
-        if self.is_available('ReverseY'):
+        if self.is_available('ReverseX'):
             return self.reversey
         else:
             return self._mirrored
 
     @mirrored.setter
     def mirrored(self, value):
-        if self.is_available('ReverseY'):
+        if self.is_available('ReverseX'):
             self.reversey = value
-            self.mirrored = False
+            self._mirrored = False
         else:
             self._mirrored = value
 

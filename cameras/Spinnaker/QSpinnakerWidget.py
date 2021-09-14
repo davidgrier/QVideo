@@ -41,7 +41,7 @@ class QSpinnakerWidget(QCameraWidget):
         self.camera.propertyChanged.connect(self.changeHandler)
 
     @pyqtSlot(str)
-    def changeHandler(self, name, value):
+    def changeHandler(self, name):
         logger.debug(f'Changed: {name}')
 
 

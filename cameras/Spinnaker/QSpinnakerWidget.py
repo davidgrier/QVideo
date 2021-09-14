@@ -1,5 +1,11 @@
 from QVideo.lib import QCameraWidget
 from QSpinnakerCamera import QSpinnakerCamera
+import logging
+
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class QSpinnakerWidget(QCameraWidget):
@@ -12,16 +18,21 @@ class QSpinnakerWidget(QCameraWidget):
         self.setRanges()
         self.connectSignals()
 
+    def setRange(self, name):
+        setter = getattr(self.ui, name).setRange
+        getter = getattr(self.camera, name+'range')
+        logger.debug(f'Setting Range: {name}: {getter()}')
+        setter(*getter)
+
     def setRanges(self):
-        cam = self.camera
-        self.ui.acquisitionframerate.setRange(*cam.acquisitionframeraterange)
-        self.ui.exposuretime.setRange(*cam.exposuretimerange)
-        self.ui.gain.setRange(*cam.gainrange)
-        self.ui.gamma.setRange(*cam.gammarange)
-        self.ui.height.setRange(*cam.heightrange)
-        self.ui.offsetx.setRange(*cam.offsetxrange)
-        self.ui.offsety.setRange(*cam.offsetyrange)
-        self.ui.width.setRange(*cam.widthrange)
+        self.setRange('acquisitionframerate')
+        self.setRange('exposuretime')
+        self.setRange('gain')
+        self.setRange('gamma')
+        self.setRange('height')
+        self.setRange('offsetx')
+        self.setRange('offsety')
+        self.setRange('width')
         self.update()
 
     def connectSignals(self):

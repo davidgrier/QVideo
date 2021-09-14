@@ -20,10 +20,10 @@ class QSpinnakerWidget(QCameraWidget):
         self.connectSignals()
 
     def setRange(self, name):
-        setter = getattr(self.ui, name).setRange
-        getter = getattr(self.camera, name+'range')
-        logger.debug(f'Setting Range: {name}: {getter()}')
-        setter(*getter)
+        set = getattr(self.ui, name).setRange
+        range = getattr(self.camera, name+'range')
+        logger.debug(f'Setting Range: {name}: {range}')
+        set(*range)
 
     def setRanges(self):
         self.setRange('acquisitionframerate')

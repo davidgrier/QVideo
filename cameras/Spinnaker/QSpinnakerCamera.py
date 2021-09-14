@@ -127,6 +127,8 @@ class QSpinnakerCamera(QVideoCamera):
     exposuretimerange = GetRange('ExposureTime')
     gainrange = GetRange('Gain')
     gammarange = GetRange('Gamma')
+    heightrange = GetRange('Height')
+    widthrange = GetRange('Width')
 
     def __init__(self, *args,
                  cameraID=0,
@@ -292,7 +294,7 @@ def main():
 
     cam = QSpinnakerCamera()
     #    print(json.dumps(cam.camera_info(), indent=4, sort_keys=True))
-    print(dir(cam.device))
+    print(cam.heightrange, cam.widthrange)
     cam.close()
     del cam
 

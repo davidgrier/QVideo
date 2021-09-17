@@ -1,3 +1,4 @@
+from abc import (ABCMeta, abstractmethod)
 from PyQt5.QtCore import (QObject, QMutex, QMutexLocker, QTimer, QSize,
                           pyqtSignal, pyqtSlot, pyqtProperty)
 from functools import wraps
@@ -11,7 +12,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class QVideoCamera(QObject):
+class QVideoCameraMeta(type(QObject), ABCMeta):
+    pass
+
+
+class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     '''Base class for a video camera implementation'''
 
     newFrame = pyqtSignal(np.ndarray)
@@ -58,17 +63,26 @@ class QVideoCamera(QObject):
 
     @pyqtSlot()
     def start(self):
+        '''Start video acquisition'''
         logger.debug('Starting video acquisition')
         self.timer.timeout.connect(self.acquire)
         self.timer.start(1)
 
     @pyqtSlot()
     def stop(self):
+        '''Stop video acquisition
+
+        Acquisition can be restarted with a call to start()
+        '''
         logger.debug('Stopping video acquisition')
         self.timer.stop()
 
     @pyqtSlot()
     def close(self):
+        '''Perform clean-up operations at closing
+
+        This slot should be overridden by subclasses
+        '''
         logger.debug('Calling default close() method')
 
     @pyqtSlot()
@@ -99,15 +113,25 @@ class QVideoCamera(QObject):
     def color(self):
         return self._color
 
-    '''
     @pyqtProperty(int)
+    @abstractmethod
     def width(self):
-        return 640
+        pass
+
+    @width.setter
+    @abstractmethod
+    def width(self, value):
+        pass
 
     @pyqtProperty(int)
+    @abstractmethod
     def height(self):
-        return 480
-    '''
+        pass
+
+    @height.setter
+    @abstractmethod
+    def height(self, value):
+        pass
 
     def properties(self):
         return [k for k, v in vars(type(self)).items()

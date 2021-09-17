@@ -2,7 +2,6 @@ from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot)
 from PyQt5.QtWidgets import (QWidget, QPushButton)
 from QVideo.lib.QVideoCamera import QVideoCamera
 from PyQt5 import uic
-import types
 import sys
 import os
 import logging
@@ -10,7 +9,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class QCameraWidget(QWidget):
@@ -72,18 +71,18 @@ class QCameraWidget(QWidget):
 
     @camera.setter
     def camera(self, camera):
-        logger.debug(f'Setting camera: {type(camera)}')
+        logger.info(f'Setting camera: {type(camera).__name__}')
         self._camera = camera
         if camera is None:
             return
         self.thread = QThread()
         camera.moveToThread(self.thread)
-        self.thread.started.connect(camera.run)
+        self.thread.started.connect(camera.start)
+        self.thread.finished.connect(camera.close)
         self.thread.start(QThread.TimeCriticalPriority)
 
     def close(self):
         logger.debug('Closing')
-        self.camera.stop()
         self.thread.quit()
         self.thread.wait()
         self.camera = None

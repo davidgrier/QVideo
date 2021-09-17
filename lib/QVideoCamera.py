@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (QObject, QMutex, QSize,
+from PyQt5.QtCore import (QObject, QMutex, QMutexLocker, QTimer, QSize,
                           pyqtSignal, pyqtSlot, pyqtProperty)
 from functools import wraps
 import numpy as np
@@ -21,9 +21,8 @@ class QVideoCamera(QObject):
         '''Decorator for preventing clashes in camera operations'''
         @wraps(method)
         def wrapper(inst, *args, **kwargs):
-            inst.mutex.lock()
-            result = method(inst, *args, **kwargs)
-            inst.mutex.unlock()
+            with QMutexLocker(inst.mutex):
+                result = method(inst, *args, **kwargs)
             return result
         return wrapper
 
@@ -53,14 +52,28 @@ class QVideoCamera(QObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mutex = QMutex()
+        self.timer = QTimer(self)
         self.meter = self.fpsMeter()
         self.fpsReady = self.meter.fpsReady
 
-    def run(self):
+    @pyqtSlot()
+    def start(self):
         logger.debug('Starting video acquisition')
-        self._running = True
-        while self._running:
-            self.mutex.lock()
+        self.timer.timeout.connect(self.acquire)
+        self.timer.start(1)
+
+    @pyqtSlot()
+    def stop(self):
+        logger.debug('Stopping video acquisition')
+        self.timer.stop()
+
+    @pyqtSlot()
+    def close(self):
+        logger.debug('Calling default close() method')
+
+    @pyqtSlot()
+    def acquire(self):
+        with QMutexLocker(self.mutex):
             ready, frame = self.read()
             if ready:
                 self.newFrame.emit(frame)
@@ -68,21 +81,9 @@ class QVideoCamera(QObject):
                 self.meter.tick()
             else:
                 logger.warning('Frame acquisition failed')
-            self.mutex.unlock()
-        self.close()
-        logger.debug('Video acquisition stopped')
 
     def read(self):
         return False, None
-
-    @pyqtSlot()
-    def stop(self):
-        logger.debug('Stopping video acquisition')
-        self._running = False
-
-    def close(self):
-        logger.debug('Calling default close() method')
-        pass
 
     @pyqtProperty(object)
     @protected

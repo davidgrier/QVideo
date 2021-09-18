@@ -71,7 +71,7 @@ class QSpinnakerCamera(QVideoCamera):
             is_enum = iface == PySpin.intfIEnumeration
             return feature.ToString() if is_enum else feature.GetValue()
 
-        # @QVideoCamera.protected
+        @QVideoCamera.protected
         def setter(self, value, stop=stop):
             logger.debug(f'Setting {name}: {value}')
             restart = stop and self._running
@@ -257,6 +257,7 @@ class QSpinnakerCamera(QVideoCamera):
         else:
             return self._flipped
 
+    @QVideoCamera.protected
     @flipped.setter
     def flipped(self, value):
         if self.is_writable('ReverseY'):
@@ -270,7 +271,7 @@ class QSpinnakerCamera(QVideoCamera):
     def gray(self):
         return self.pixelformat == 'Mono8'
 
-    # @QVideoCamera.protected
+    @QVideoCamera.protected
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
@@ -283,6 +284,7 @@ class QSpinnakerCamera(QVideoCamera):
         else:
             return self._mirrored
 
+    @QVideoCamera.protected
     @mirrored.setter
     def mirrored(self, value):
         if self.is_writable('ReverseX'):
@@ -299,9 +301,11 @@ class QSpinnakerCamera(QVideoCamera):
         logger.debug(f'PySpin version: {s}')
         return s
 
+    @QVideoCamera.protected
     def autoexposure(self):
         self.exposureauto = 'Once'
 
+    @QVideoCamera.protected
     def autogain(self):
         self.gainauto = 'Once'
 

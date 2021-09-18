@@ -61,6 +61,8 @@ class QSpinnakerCamera(QVideoCamera):
 
     def Property(name, stop=False):
 
+        logger.debug(f'Registering {name}')
+
         def getter(self):
             logger.debug(f'Getting {name}')
             feature = getattr(self.device, name)

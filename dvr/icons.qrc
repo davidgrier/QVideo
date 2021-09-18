@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>icons/media-playback-pause.svg</file>
+    <file>icons/media-playback-start.svg</file>
+    <file>icons/media-playback-stop.svg</file>
+    <file>icons/media-record.svg</file>
+    <file>icons/media-skip-backward.svg</file>
+  </qresource>
+</RCC>

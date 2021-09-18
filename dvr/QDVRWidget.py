@@ -6,7 +6,7 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
 from PyQt5.QtWidgets import (QFrame, QFileDialog)
 import os
 
-from QVideo.lib.clickable import clickable
+from QVideo.lib import clickable
 from .QVideoWriter import QVideoWriter
 from .QHDF5Writer import QHDF5Writer
 from .QVideoPlayer import QVideoPlayer

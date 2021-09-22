@@ -1,6 +1,6 @@
 from QVideo.lib import QVideoCamera
 import PySpin
-from PyQt5.QtCore import (pyqtSignal, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtProperty, QMutexLocker)
 import numpy as np
 import logging
 
@@ -278,7 +278,8 @@ class QSpinnakerCamera(QVideoCamera):
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
-        self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
+        with QMutexLocker(self.mutex):
+            self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
     @pyqtProperty(bool)
     def mirrored(self):

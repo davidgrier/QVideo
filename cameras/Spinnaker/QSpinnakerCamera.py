@@ -237,10 +237,10 @@ class QSpinnakerCamera(QVideoCamera):
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
         frame = img.GetNDArray()
-        if self._flipped:
-            frame = np.flipud(frame)
-        if self._mirrored:
-            frame = np.fliplr(frame)
+        #if self._flipped:
+        #    frame = np.flipud(frame)
+        #if self._mirrored:
+        #    frame = np.fliplr(frame)
         return True, frame
 
     def is_available(self, name):

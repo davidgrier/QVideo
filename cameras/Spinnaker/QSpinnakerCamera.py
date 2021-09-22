@@ -113,7 +113,7 @@ class QSpinnakerCamera(QVideoCamera):
     height = Property('Height', stop=True)
     offsetx = Property('OffsetX', stop=True)
     offsety = Property('OffsetY', stop=True)
-    pixelformat = Property('PixelFormat')
+    pixelformat = Property('PixelFormat', stop=True)
     reversex = Property('ReverseX')
     reversey = Property('ReverseY')
     sharpening = Property('Sharpening')
@@ -278,13 +278,7 @@ class QSpinnakerCamera(QVideoCamera):
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
-        with QMutexLocker(self.mutex):
-            restart = self._running
-            if restart:
-                self.endAcquisition()
-            self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
-            if restart:
-                self.beginAcquisition()
+        self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
     @pyqtProperty(bool)
     def mirrored(self):

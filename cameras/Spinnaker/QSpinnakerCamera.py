@@ -116,7 +116,7 @@ class QSpinnakerCamera(QVideoCamera):
     pixelformat = Property('PixelFormat', stop=True)
     reversex = Property('ReverseX', stop=True)
     reversey = Property('ReverseY', stop=True)
-    sharpening = Property('Sharpening')
+    sharpening = Property('Sharpening', stop=True)
     sharpeningauto = Property('SharpeningAuto')
     sharpeningenable = Property('SharpeningEnable')
     sharpeningthreshold = Property('SharpeningThreshold')
@@ -237,10 +237,6 @@ class QSpinnakerCamera(QVideoCamera):
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
         frame = img.GetNDArray()
-        #if self._flipped:
-        #    frame = np.flipud(frame)
-        #if self._mirrored:
-        #    frame = np.fliplr(frame)
         return True, frame
 
     def is_available(self, name):

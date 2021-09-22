@@ -1,6 +1,7 @@
 from QVideo.lib import QVideoCamera
 import PySpin
 from PyQt5.QtCore import (pyqtSignal, pyqtProperty)
+import numpy as np
 import logging
 
 logging.basicConfig()
@@ -233,7 +234,10 @@ class QSpinnakerCamera(QVideoCamera):
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
         frame = img.GetNDArray()
-        # implement flipped and mirrored if necessary
+        if self._flipped:
+            frame = np.flipud(frame)
+        if self._mirrored:
+            frame = np.fliplr(frame)
         return True, frame
 
     def is_available(self, name):
@@ -265,7 +269,6 @@ class QSpinnakerCamera(QVideoCamera):
             self.reversey = value
             self._flipped = False
         else:
-            logger.warning('Implement Flipped')
             self._flipped = value
 
     @pyqtProperty(bool)
@@ -290,7 +293,6 @@ class QSpinnakerCamera(QVideoCamera):
             self.reversey = value
             self._mirrored = False
         else:
-            logger.warning('Implement Mirrored')
             self._mirrored = value
 
     @pyqtProperty(str)

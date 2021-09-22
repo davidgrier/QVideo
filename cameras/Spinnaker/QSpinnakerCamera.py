@@ -292,9 +292,11 @@ class QSpinnakerCamera(QVideoCamera):
     @mirrored.setter
     def mirrored(self, value):
         if self.is_writable('ReverseX'):
+            logger.debug('Using hardware mirror')
             self.reversey = value
             self._mirrored = False
         else:
+            logger.debug('usting software mirror')
             self._mirrored = value
 
     @pyqtProperty(str)

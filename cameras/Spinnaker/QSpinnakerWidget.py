@@ -1,5 +1,5 @@
 from QVideo.lib import QCameraWidget
-from QSpinnakerCamera import QSpinnakerCamera
+from QVideo.cameras.Spinnaker.QSpinnakerCamera import QSpinnakerCamera
 from PyQt5.QtCore import pyqtSlot
 import logging
 

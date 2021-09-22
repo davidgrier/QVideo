@@ -259,7 +259,7 @@ class QSpinnakerCamera(QVideoCamera):
         else:
             return self._flipped
 
-    @QVideoCamera.protected
+    # @QVideoCamera.protected
     @flipped.setter
     def flipped(self, value):
         if self.is_writable('ReverseY'):
@@ -273,7 +273,7 @@ class QSpinnakerCamera(QVideoCamera):
     def gray(self):
         return self.pixelformat == 'Mono8'
 
-    @QVideoCamera.protected
+    # @QVideoCamera.protected
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
@@ -286,7 +286,7 @@ class QSpinnakerCamera(QVideoCamera):
         else:
             return self._mirrored
 
-    @QVideoCamera.protected
+    # @QVideoCamera.protected
     @mirrored.setter
     def mirrored(self, value):
         if self.is_writable('ReverseX'):

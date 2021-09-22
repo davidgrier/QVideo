@@ -259,8 +259,8 @@ class QSpinnakerCamera(QVideoCamera):
         else:
             return self._flipped
 
-    # @QVideoCamera.protected
     @flipped.setter
+    @QVideoCamera.protected
     def flipped(self, value):
         if self.is_writable('ReverseY'):
             self.reversey = value

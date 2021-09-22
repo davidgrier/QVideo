@@ -1,6 +1,7 @@
 from QVideo.lib import QVideoCamera
 import PySpin
-from PyQt5.QtCore import (pyqtSignal, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtProperty, QMutexLocker)
+import numpy as np
 import logging
 
 logging.basicConfig()
@@ -112,14 +113,17 @@ class QSpinnakerCamera(QVideoCamera):
     height = Property('Height', stop=True)
     offsetx = Property('OffsetX', stop=True)
     offsety = Property('OffsetY', stop=True)
-    pixelformat = Property('PixelFormat')
-    reversex = Property('ReverseX')
-    reversey = Property('ReverseY')
-    sharpening = Property('Sharpening')
+    pixelformat = Property('PixelFormat', stop=True)
+    reversex = Property('ReverseX', stop=True)
+    reversey = Property('ReverseY', stop=True)
+    sharpening = Property('Sharpening', stop=True)
     sharpeningauto = Property('SharpeningAuto')
     sharpeningenable = Property('SharpeningEnable')
     sharpeningthreshold = Property('SharpeningThreshold')
     width = Property('Width', stop=True)
+
+    flipped = Property('ReverseY', stop=True)
+    mirrored = Property('ReverseX', stop=True)
 
     def GetRange(name):
         def getter(self):
@@ -233,7 +237,6 @@ class QSpinnakerCamera(QVideoCamera):
             logger.warning(f'Incomplete Image: {error_msg}')
             return False, None
         frame = img.GetNDArray()
-        # implement flipped and mirrored if necessary
         return True, frame
 
     def is_available(self, name):
@@ -250,51 +253,16 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtProperty(str)
     def cameraname(self):
-        return f'{self.devicevendorname} {self.device.modelname}'
-
-    @pyqtProperty(bool)
-    def flipped(self):
-        if self.is_readable('ReverseY'):
-            return self.reversey
-        else:
-            return self._flipped
-
-    @QVideoCamera.protected
-    @flipped.setter
-    def flipped(self, value):
-        if self.is_writable('ReverseY'):
-            self.reversey = value
-            self._flipped = False
-        else:
-            logger.warning('Implement Flipped')
-            self._flipped = value
+        return f'{self.device.vendorname} {self.device.modelname}'
 
     @pyqtProperty(bool)
     def gray(self):
         return self.pixelformat == 'Mono8'
 
-    @QVideoCamera.protected
     @gray.setter
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
         self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
-
-    @pyqtProperty(bool)
-    def mirrored(self):
-        if self.is_readable('ReverseX'):
-            return self.reversex
-        else:
-            return self._mirrored
-
-    @QVideoCamera.protected
-    @mirrored.setter
-    def mirrored(self, value):
-        if self.is_writable('ReverseX'):
-            self.reversey = value
-            self._mirrored = False
-        else:
-            logger.warning('Implement Mirrored')
-            self._mirrored = value
 
     @pyqtProperty(str)
     def version(self):
@@ -304,11 +272,11 @@ class QSpinnakerCamera(QVideoCamera):
         return s
 
     @QVideoCamera.protected
-    def autoexposure(self):
+    def autoexposure(self, *args):
         self.exposureauto = 'Once'
 
     @QVideoCamera.protected
-    def autogain(self):
+    def autogain(self, *args):
         self.gainauto = 'Once'
 
 

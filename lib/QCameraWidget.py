@@ -162,6 +162,7 @@ class QCameraWidget(QWidget):
                 value = getattr(self.camera, key, None)
                 self.blockSignals(True)
             try:
+                logger.debug(f'Setting {key}: {value}')
                 setter(value)
             except Exception as ex:
                 logger.error(f'Could not set {key} to {value}: {ex}')

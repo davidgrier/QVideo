@@ -114,8 +114,8 @@ class QSpinnakerCamera(QVideoCamera):
     offsetx = Property('OffsetX', stop=True)
     offsety = Property('OffsetY', stop=True)
     pixelformat = Property('PixelFormat', stop=True)
-    reversex = Property('ReverseX')
-    reversey = Property('ReverseY')
+    reversex = Property('ReverseX', stop=True)
+    reversey = Property('ReverseY', stop=True)
     sharpening = Property('Sharpening')
     sharpeningauto = Property('SharpeningAuto')
     sharpeningenable = Property('SharpeningEnable')
@@ -266,9 +266,11 @@ class QSpinnakerCamera(QVideoCamera):
     @flipped.setter
     def flipped(self, value):
         if self.is_writable('ReverseY'):
+            logger.debug('Using hardware flip')
             self.reversey = value
             self._flipped = False
         else:
+            logger.debug('Using software flip')
             self._flipped = value
 
     @pyqtProperty(bool)

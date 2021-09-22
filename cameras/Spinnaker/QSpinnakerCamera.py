@@ -279,6 +279,7 @@ class QSpinnakerCamera(QVideoCamera):
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
         with QMutexLocker(self.mutex):
+            logger.debug('Got mutex')
             self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
     @pyqtProperty(bool)

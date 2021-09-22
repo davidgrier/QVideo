@@ -265,7 +265,7 @@ class QSpinnakerCamera(QVideoCamera):
 
     @flipped.setter
     def flipped(self, value):
-        if self.is_writable('ReverseY'):
+        if True:  # self.is_writable('ReverseY'):
             logger.debug('Using hardware flip')
             self.reversey = value
             self._flipped = False
@@ -291,7 +291,7 @@ class QSpinnakerCamera(QVideoCamera):
 
     @mirrored.setter
     def mirrored(self, value):
-        if self.is_writable('ReverseX'):
+        if True:  # self.is_writable('ReverseX'):
             logger.debug('Using hardware mirror')
             self.reversey = value
             self._mirrored = False

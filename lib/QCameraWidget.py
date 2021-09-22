@@ -199,8 +199,10 @@ class QCameraWidget(QWidget):
             widget = getattr(self.ui, prop)
             signal = self._wmethod(widget, self.wsignal)
             if signal is not None:
+                logger.debug(f'Connecting property {prop}')
                 signal.connect(self._setCameraProperty)
         for method in self.methods:
+            logger.debug(f'Connecting method {method}')
             widget = getattr(self.ui, method)
             if isinstance(widget, QPushButton):
                 widget.clicked.connect(getattr(self.camera, method))

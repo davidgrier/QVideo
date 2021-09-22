@@ -296,7 +296,7 @@ class QSpinnakerCamera(QVideoCamera):
             self.reversey = value
             self._mirrored = False
         else:
-            logger.debug('usting software mirror')
+            logger.debug('Using software mirror')
             self._mirrored = value
 
     @pyqtProperty(str)

@@ -272,11 +272,11 @@ class QSpinnakerCamera(QVideoCamera):
         return s
 
     @QVideoCamera.protected
-    def autoexposure(self):
+    def autoexposure(self, *args):
         self.exposureauto = 'Once'
 
     @QVideoCamera.protected
-    def autogain(self):
+    def autogain(self, *args):
         self.gainauto = 'Once'
 
 

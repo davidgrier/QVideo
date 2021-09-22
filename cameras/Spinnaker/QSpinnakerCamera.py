@@ -253,7 +253,7 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtProperty(str)
     def cameraname(self):
-        return f'{self.device.vendorname} {self.device.modelname}'
+        return f'{self.devicevendorname} {self.devicemodelname}'
 
     @pyqtProperty(bool)
     def gray(self):

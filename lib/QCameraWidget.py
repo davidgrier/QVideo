@@ -160,7 +160,7 @@ class QCameraWidget(QWidget):
             setter = self._wmethod(widget, self.wsetter)
             if value is None:
                 value = getattr(self.camera, key, None)
-                logger.debug(f'Obtained {value}')
+                logger.debug(f'Requesting {key}: Obtained {value}')
             self.blockSignals(True)
             try:
                 logger.debug(f'Setting {key} to {value}')

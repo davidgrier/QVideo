@@ -122,6 +122,9 @@ class QSpinnakerCamera(QVideoCamera):
     sharpeningthreshold = Property('SharpeningThreshold')
     width = Property('Width', stop=True)
 
+    flipped = Property('ReverseY', stop=True)
+    mirrored = Property('ReverseX', stop=True)
+
     def GetRange(name):
         def getter(self):
             feature = getattr(self.device, name)
@@ -257,23 +260,6 @@ class QSpinnakerCamera(QVideoCamera):
         return f'{self.device.vendorname} {self.device.modelname}'
 
     @pyqtProperty(bool)
-    def flipped(self):
-        if self.is_readable('ReverseY'):
-            return self.reversey
-        else:
-            return self._flipped
-
-    @flipped.setter
-    def flipped(self, value):
-        if True:  # self.is_writable('ReverseY'):
-            logger.debug('Using hardware flip')
-            self.reversey = value
-            self._flipped = False
-        else:
-            logger.debug('Using software flip')
-            self._flipped = value
-
-    @pyqtProperty(bool)
     def gray(self):
         return self.pixelformat == 'Mono8'
 
@@ -281,23 +267,6 @@ class QSpinnakerCamera(QVideoCamera):
     def gray(self, gray):
         logger.debug(f'Setting Gray: {gray}')
         self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
-
-    @pyqtProperty(bool)
-    def mirrored(self):
-        if self.is_readable('ReverseX'):
-            return self.reversex
-        else:
-            return self._mirrored
-
-    @mirrored.setter
-    def mirrored(self, value):
-        if True:  # self.is_writable('ReverseX'):
-            logger.debug('Using hardware mirror')
-            self.reversey = value
-            self._mirrored = False
-        else:
-            logger.debug('Using software mirror')
-            self._mirrored = value
 
     @pyqtProperty(str)
     def version(self):

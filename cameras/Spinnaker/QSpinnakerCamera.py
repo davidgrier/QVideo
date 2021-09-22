@@ -250,7 +250,7 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtProperty(str)
     def cameraname(self):
-        return f'{self.devicevendorname} {self.device.modelname}'
+        return f'{self.device.vendorname} {self.device.modelname}'
 
     @pyqtProperty(bool)
     def flipped(self):

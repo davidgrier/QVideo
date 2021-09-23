@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot)
+from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot, QMutexLocker)
 from PyQt5.QtWidgets import (QWidget, QPushButton)
 from QVideo.lib.QVideoCamera import QVideoCamera
 from PyQt5 import uic
@@ -161,7 +161,7 @@ class QCameraWidget(QWidget):
             if value is None:
                 value = getattr(self.camera, key, None)
                 logger.debug(f'Requesting {key}: Obtained {value}')
-            self.blockSignals(True)
+                self.blockSignals(True)
             try:
                 logger.debug(f'Setting {key} to {value}')
                 setter(value)
@@ -216,5 +216,8 @@ class QCameraWidget(QWidget):
     def _setCameraProperty(self, value):
         name = self.sender().objectName()
         if hasattr(self.camera, name):
-            setattr(self.camera, name, value)
-            logger.debug(f'Setting camera: {name}: {value}')
+            with QMutexLocker(self.camera.mutex):
+                setattr(self.camera, name, value)
+                logger.debug(f'Set camera property: {name}: {value}')
+        else:
+            logger.warning(f'Failed to set {name} ({value}): unknown')

@@ -9,7 +9,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 class QVideoCameraMeta(type(QObject), ABCMeta):
@@ -58,14 +58,17 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         super().__init__(*args, **kwargs)
         self.mutex = QMutex()
         self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.acquire)
         self.meter = self.fpsMeter()
         self.fpsReady = self.meter.fpsReady
+        self._running = False
 
     @pyqtSlot()
     def start(self):
         '''Start video acquisition'''
         logger.debug('Starting video acquisition')
-        self.timer.timeout.connect(self.acquire)
+        self._running = True
         self.timer.start(1)
 
     @pyqtSlot()
@@ -75,7 +78,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         Acquisition can be restarted with a call to start()
         '''
         logger.debug('Stopping video acquisition')
-        self.timer.stop()
+        self._running = False
 
     @pyqtSlot()
     def close(self):
@@ -93,11 +96,16 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
                 self.newFrame.emit(frame)
                 self._color = frame.ndim == 3
                 self.meter.tick()
+                if self._running:
+                    self.timer.start(1)
             else:
                 logger.warning('Frame acquisition failed')
 
     def read(self):
         return False, None
+
+    def is_running(self):
+        return self._running
 
     @pyqtProperty(object)
     @protected

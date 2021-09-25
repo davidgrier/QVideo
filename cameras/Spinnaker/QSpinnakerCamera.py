@@ -103,7 +103,7 @@ class QSpinnakerCamera(QVideoCamera):
     acquisitionframerate = Property('AcquisitionFrameRate')
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
     acquisitionmode = Property('AcquisitionMode')
-    autoexposurecontrolpriority = Property('AutoExposureControlPriority', stop=True)
+    autoexposurecontrolpriority = Property('AutoExposureControlPriority')
     blacklevel = Property('BlackLevel')
     blacklevelenable = Property('BlackLevelEnable')
     blacklevelselector = Property('BlackLevelSelector')
@@ -112,7 +112,7 @@ class QSpinnakerCamera(QVideoCamera):
     exposureauto = Property('ExposureAuto')
     exposuremode = Property('ExposureMode')
     exposuretime = Property('ExposureTime')
-    exposuretimemode = Property('ExposureTimeMode', stop=True)
+    exposuretimemode = Property('ExposureTimeMode')
     gain = Property('Gain')
     gainauto = Property('GainAuto')
     gamma = Property('Gamma')
@@ -124,7 +124,7 @@ class QSpinnakerCamera(QVideoCamera):
     reversex = Property('ReverseX', stop=True)
     reversey = Property('ReverseY', stop=True)
     sharpening = Property('Sharpening', stop=True)
-    sharpeningauto = Property('SharpeningAuto', stop=True)
+    sharpeningauto = Property('SharpeningAuto')
     sharpeningenable = Property('SharpeningEnable')
     sharpeningthreshold = Property('SharpeningThreshold')
     width = Property('Width', stop=True)
@@ -150,12 +150,12 @@ class QSpinnakerCamera(QVideoCamera):
 
         # start acquisition
         self.acquisitionmode = 'Continuous'
-        self.autoexposurecontrolpriority = 'Gain'
+        # self.autoexposurecontrolpriority = 'Gain'
         self.exposureauto = 'Off'
         self.exposuremode = 'Timed'
-        self.exposuretimemode = 'Common'
+        # self.exposuretimemode = 'Common'
         self.gainauto = 'Off'
-        self.sharpeningauto = 'Off'
+        # self.sharpeningauto = 'Off'
 
         self.gray = gray
         self.flipped = flipped

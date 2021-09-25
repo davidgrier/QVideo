@@ -50,6 +50,9 @@ class QSpinnakerWidget(QCameraWidget):
     @pyqtSlot(str)
     def changeHandler(self, name):
         logger.debug(f'Changed: {name}')
+        if 'auto' in name:
+            self._syncProperties()
+        self.setRanges()
 
 
 def main():

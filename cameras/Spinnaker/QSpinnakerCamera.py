@@ -104,7 +104,8 @@ class QSpinnakerCamera(QVideoCamera):
     acquisitionframerate = Property('AcquisitionFrameRate')
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
     acquisitionmode = Property('AcquisitionMode')
-    blacklevel = Property('BlackLevel', int)
+    autoexposurecontrolpriority = Property('AutoExposureControlPriority')
+    blacklevel = Property('BlackLevel')
     blacklevelenable = Property('BlackLevelEnable')
     blacklevelselector = Property('BlackLevelSelector')
     devicevendorname = Property('DeviceVendorName')
@@ -112,6 +113,7 @@ class QSpinnakerCamera(QVideoCamera):
     exposureauto = Property('ExposureAuto')
     exposuremode = Property('ExposureMode')
     exposuretime = Property('ExposureTime')
+    exposuretimemode = Property('ExposureTimeMode')
     gain = Property('Gain')
     gainauto = Property('GainAuto')
     gamma = Property('Gamma')
@@ -149,8 +151,10 @@ class QSpinnakerCamera(QVideoCamera):
 
         # start acquisition
         self.acquisitionmode = 'Continuous'
+        self.autoexposurecontrolpriority = 'Gain'
         self.exposureauto = 'Off'
         self.exposuremode = 'Timed'
+        self.exposuretimemode = 'Common'
         self.gainauto = 'Off'
         self.sharpeningauto = 'Off'
 

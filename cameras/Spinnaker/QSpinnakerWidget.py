@@ -20,7 +20,7 @@ class QSpinnakerWidget(QCameraWidget):
         self.connectSignals()
 
     def setRange(self, name):
-        prop = getattr(self.camera, name)
+        prop = getattr(self.camera.device, name)
         range = (prop.GetMin(), prop.GetMax())
         step = prop.GetInc()
         logger.debug(f'Setting Range: {name}: {range} (step)')

@@ -171,7 +171,7 @@
          <string>Black Level</string>
         </property>
         <property name="buddy">
-         <cstring>blacklevelraw</cstring>
+         <cstring>blacklevel</cstring>
         </property>
        </widget>
       </item>
@@ -300,7 +300,7 @@
        </widget>
       </item>
       <item row="4" column="1">
-       <widget class="QSpinBox" name="blacklevelraw">
+       <widget class="QSpinBox" name="blacklevel">
         <property name="statusTip">
          <string>Camera black level</string>
         </property>
@@ -468,7 +468,7 @@
   <tabstop>autoexposure</tabstop>
   <tabstop>gain</tabstop>
   <tabstop>autogain</tabstop>
-  <tabstop>blacklevelraw</tabstop>
+  <tabstop>blacklevel</tabstop>
   <tabstop>gamma</tabstop>
   <tabstop>offsetx</tabstop>
   <tabstop>offsety</tabstop>

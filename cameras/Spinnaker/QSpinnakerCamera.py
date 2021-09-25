@@ -105,6 +105,7 @@ class QSpinnakerCamera(QVideoCamera):
     acquisitionmode = Property('AcquisitionMode')
     autoexposurecontrolpriority = Property('AutoExposureControlPriority')
     blacklevel = Property('BlackLevel')
+    blacklevelraw = Property('BlackLevelRaw')
     blacklevelenable = Property('BlackLevelEnable')
     blacklevelselector = Property('BlackLevelSelector')
     devicevendorname = Property('DeviceVendorName')

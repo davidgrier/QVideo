@@ -75,8 +75,6 @@ class QSpinnakerCamera(QVideoCamera):
                 if not PySpin.IsReadable(feature):
                     logger.warning(f'{name} is not readable')
                     return None
-                # iface = feature.GetPrincipalInterfaceType()
-                # is_enum = iface == PySpin.intfIEnumeration
                 return feature.ToString() if is_enum(feature) else feature.GetValue()
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error getting {name}: {ex}')
@@ -92,10 +90,7 @@ class QSpinnakerCamera(QVideoCamera):
                 if not PySpin.IsWritable(feature):
                     logger.warning(f'{name} is not writable')
                     return
-                # iface = feature.GetPrincipalInterfaceType()
-                # is_enum = iface == PySpin.intfIEnumeration
                 feature.FromString(value) if is_enum(feature) else feature.SetValue(value)
-                # fset(value)
                 if restart:
                     self.beginAcquisition()
                 self.propertyChanged.emit(name)
@@ -117,7 +112,7 @@ class QSpinnakerCamera(QVideoCamera):
     exposureauto = Property('ExposureAuto')
     exposuremode = Property('ExposureMode')
     exposuretime = Property('ExposureTime')
-    exposuretimemode = Property('ExposureTimeMode')
+    exposuretimemode = Property('ExposureTimeMode', stop=True)
     gain = Property('Gain')
     gainauto = Property('GainAuto')
     gamma = Property('Gamma')

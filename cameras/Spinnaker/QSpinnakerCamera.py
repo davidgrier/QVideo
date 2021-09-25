@@ -66,31 +66,37 @@ class QSpinnakerCamera(QVideoCamera):
 
         def getter(self):
             logger.debug(f'Getting {name}')
-            feature = getattr(self.device, name)
-            if not PySpin.IsReadable(feature):
-                logger.warning(f'{name} is not readable')
-                return None
-            iface = feature.GetPrincipalInterfaceType()
-            is_enum = iface == PySpin.intfIEnumeration
-            return feature.ToString() if is_enum else feature.GetValue()
+            try:
+                feature = getattr(self.device, name)
+                if not PySpin.IsReadable(feature):
+                    logger.warning(f'{name} is not readable')
+                    return None
+                iface = feature.GetPrincipalInterfaceType()
+                is_enum = iface == PySpin.intfIEnumeration
+                return feature.ToString() if is_enum else feature.GetValue()
+            except PySpin.SpinnakerException as ex:
+                logger.error(f'Error getting {name}: {ex}')
 
         @QVideoCamera.protected
         def setter(self, value, stop=stop):
             logger.debug(f'Setting {name}: {value}')
-            restart = stop and self._running
-            if restart:
-                self.endAcquisition()
-            feature = getattr(self.device, name)
-            if not PySpin.IsWritable(feature):
-                logger.warning(f'{name} is not writable')
-                return
-            iface = feature.GetPrincipalInterfaceType()
-            is_enum = iface == PySpin.intfIEnumeration
-            fset = feature.FromString if is_enum else feature.SetValue
-            fset(value)
-            if restart:
-                self.beginAcquisition()
-            self.propertyChanged.emit(name)
+            try:
+                restart = stop and self._running
+                if restart:
+                    self.endAcquisition()
+                feature = getattr(self.device, name)
+                if not PySpin.IsWritable(feature):
+                    logger.warning(f'{name} is not writable')
+                    return
+                iface = feature.GetPrincipalInterfaceType()
+                is_enum = iface == PySpin.intfIEnumeration
+                fset = feature.FromString if is_enum else feature.SetValue
+                fset(value)
+                if restart:
+                    self.beginAcquisition()
+                self.propertyChanged.emit(name)
+            except PySpin.SpinnakerException as ex:
+                logger.error(f'Error setting {name}: {ex}')
 
         return pyqtProperty(object, getter, setter)
 
@@ -124,24 +130,6 @@ class QSpinnakerCamera(QVideoCamera):
 
     flipped = Property('ReverseY', stop=True)
     mirrored = Property('ReverseX', stop=True)
-
-    def GetRange(name):
-        def getter(self):
-            feature = getattr(self.device, name)
-            if not PySpin.IsAvailable(feature):
-                return None
-            return (feature.GetMin(), feature.GetMax())
-        return pyqtProperty(object, getter)
-
-    acquisitionframeraterange = GetRange('AcquisitionFrameRate')
-    blacklevelrange = GetRange('BlackLevel')
-    exposuretimerange = GetRange('ExposureTime')
-    gainrange = GetRange('Gain')
-    gammarange = GetRange('Gamma')
-    heightrange = GetRange('Height')
-    offsetxrange = GetRange('OffsetX')
-    offsetyrange = GetRange('OffsetY')
-    widthrange = GetRange('Width')
 
     def __init__(self, *args,
                  cameraID=0,

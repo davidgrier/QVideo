@@ -20,20 +20,25 @@ class QSpinnakerWidget(QCameraWidget):
         self.connectSignals()
 
     def setRange(self, name):
-        set = getattr(self.ui, name).setRange
-        range = getattr(self.camera, name+'range')
-        logger.debug(f'Setting Range: {name}: {range}')
-        set(*range)
+        prop = getattr(self.camera, name)
+        range = (prop.GetMin(), prop.GetMax())
+        step = prop.GetInc()
+        logger.debug(f'Setting Range: {name}: {range} (step)')
+        widget = getattr(self.ui, name.lower())
+        widget.setRange(*range)
+        if step != 0:
+            widget.setSingleStep(step)
 
     def setRanges(self):
-        self.setRange('acquisitionframerate')
-        self.setRange('exposuretime')
-        self.setRange('gain')
-        self.setRange('gamma')
-        self.setRange('height')
-        self.setRange('offsetx')
-        self.setRange('offsety')
-        self.setRange('width')
+        self.setRange('AcquisitionFrameRate')
+        setl.setRange('BlackLevel')
+        self.setRange('ExposureTime')
+        self.setRange('Gain')
+        self.setRange('Gamma')
+        self.setRange('Height')
+        self.setRange('OffsetX')
+        self.setRange('OffsetY')
+        self.setRange('Width')
         self.update()
 
     def connectSignals(self):

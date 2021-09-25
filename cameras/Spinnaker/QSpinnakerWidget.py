@@ -21,14 +21,13 @@ class QSpinnakerWidget(QCameraWidget):
 
     def setRange(self, name):
         prop = getattr(self.camera.device, name)
-        range = (prop.GetMin(), prop.GetMax())
         try:
             step = prop.GetInc()
         except:
             step = 0
-        logger.debug(f'Setting Range: {name}: {range} ({step})')
+        logger.debug(f'Setting Range: {name}: ({prop.GetMin()}, {prop.GetMax()}, {step})')
         widget = getattr(self.ui, name.lower())
-        widget.setRange(*range)
+        widget.setRange(prop.GetMin(), prop.GetMax())
         if step != 0:
             widget.setSingleStep(step)
 

@@ -34,7 +34,7 @@ class QSpinnakerWidget(QCameraWidget):
 
     def setRanges(self):
         self.setRange('AcquisitionFrameRate')
-        setl.setRange('BlackLevel')
+        self.setRange('BlackLevel')
         self.setRange('ExposureTime')
         self.setRange('Gain')
         self.setRange('Gamma')

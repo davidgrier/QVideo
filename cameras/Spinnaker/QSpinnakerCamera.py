@@ -1,6 +1,6 @@
 from QVideo.lib import QVideoCamera
 import PySpin
-from PyQt5.QtCore import (pyqtSignal, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
 import numpy as np
 import logging
 

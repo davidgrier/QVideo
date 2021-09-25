@@ -26,7 +26,7 @@ class QSpinnakerWidget(QCameraWidget):
             step = prop.GetInc()
         except:
             step = 0
-        logger.debug(f'Setting Range: {name}: {range} (step)')
+        logger.debug(f'Setting Range: {name}: {range} ({step})')
         widget = getattr(self.ui, name.lower())
         widget.setRange(*range)
         if step != 0:

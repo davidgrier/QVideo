@@ -262,12 +262,16 @@ class QSpinnakerCamera(QVideoCamera):
         logger.debug(f'PySpin version: {s}')
         return s
 
+    @pyqtSlot(object)
     @QVideoCamera.protected
     def autoexposure(self, *args):
+        print(args)
         self.exposureauto = 'Once'
 
+    @pyqtSlot(object)
     @QVideoCamera.protected
     def autogain(self, *args):
+        print(args)
         self.gainauto = 'Once'
 
 

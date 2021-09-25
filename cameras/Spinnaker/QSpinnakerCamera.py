@@ -263,15 +263,11 @@ class QSpinnakerCamera(QVideoCamera):
         return s
 
     @pyqtSlot(bool)
-    @QVideoCamera.protected
     def autoexposure(self, state):
-        print(state)
         self.exposureauto = 'Once'
 
     @pyqtSlot(bool)
-    @QVideoCamera.protected
     def autogain(self, state):
-        print(state)
         self.gainauto = 'Once'
 
 

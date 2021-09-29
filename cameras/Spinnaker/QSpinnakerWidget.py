@@ -28,7 +28,8 @@ class QSpinnakerWidget(QCameraWidget):
             step = 0
         logger.debug(f'Setting Range: {name}: ({prop.GetMin()}, {prop.GetMax()}, {step})')
         widget = getattr(self.ui, name.lower())
-        widget.setRange(prop.GetMin(), prop.GetMax())
+        dtype = float if 'Double' in type(widget) else int
+        widget.setRange(dtype(prop.GetMin()), dtype(prop.GetMax()))
         if step != 0:
             widget.setSingleStep(step)
 

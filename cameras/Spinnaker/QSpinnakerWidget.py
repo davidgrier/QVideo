@@ -16,6 +16,7 @@ class QSpinnakerWidget(QCameraWidget):
                          camera=QSpinnakerCamera(),
                          uiFile='QSpinnakerWidget.ui',
                          **kwargs)
+        self.ui.gray.setEnabled(self.camera.colorCapable())
         self.setRanges()
         self.connectSignals()
 

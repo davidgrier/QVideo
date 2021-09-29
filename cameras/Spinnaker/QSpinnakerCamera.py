@@ -161,6 +161,7 @@ class QSpinnakerCamera(QVideoCamera):
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
+        self._test_color()
 
         # enable access to controls
         self.acquisitionframerateenable = True
@@ -281,6 +282,20 @@ class QSpinnakerCamera(QVideoCamera):
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
         logger.debug(f'PySpin version: {s}')
         return s
+
+    def colorCapable(self):
+        return self._color_capable
+
+    def _test_color(self):
+        if self.pixelformat == 'RGB8Packed':
+            self._color_capable = True
+        else:
+            try:
+                self.pixelformat = 'RGB8Packed'
+                self._color_capable = True
+            except PySpin.SpinnakerException:
+                self._color_capable = False
+            self.pixelformat = 'Mono8'
 
 
 def main():

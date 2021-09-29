@@ -31,7 +31,6 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
 
     def setupUi(self):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
-        # self.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem()
         self.view = self.addViewBox(**self.options)
         self.view.addItem(self.image)

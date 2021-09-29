@@ -1,7 +1,6 @@
 from QVideo.lib import QVideoCamera
 import PySpin
 from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
-import numpy as np
 import logging
 
 logging.basicConfig()
@@ -75,7 +74,10 @@ class QSpinnakerCamera(QVideoCamera):
                 if not PySpin.IsReadable(feature):
                     logger.warning(f'{name} is not readable')
                     return None
-                return feature.ToString() if is_enum(feature) else feature.GetValue()
+                if is_enum(feature):
+                    return feature.ToString()
+                else:
+                    return feature.GetValue()
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error getting {name}: {ex}')
 
@@ -90,7 +92,10 @@ class QSpinnakerCamera(QVideoCamera):
                 if not PySpin.IsWritable(feature):
                     logger.warning(f'{name} is not writable')
                     return
-                feature.FromString(value) if is_enum(feature) else feature.SetValue(value)
+                if is_enum(feature):
+                    feature.FromString(value)
+                else:
+                    feature.SetValue(value)
                 if restart:
                     self.beginAcquisition()
                 self.propertyChanged.emit(name)
@@ -109,12 +114,10 @@ class QSpinnakerCamera(QVideoCamera):
     blacklevelselector = Property('BlackLevelSelector')
     devicevendorname = Property('DeviceVendorName')
     devicemodelname = Property('DeviceModelName')
-    exposureauto = Property('ExposureAuto')
     exposuremode = Property('ExposureMode')
     exposuretime = Property('ExposureTime')
     exposuretimemode = Property('ExposureTimeMode')
     gain = Property('Gain')
-    gainauto = Property('GainAuto')
     gamma = Property('Gamma')
     gammaenable = Property('GammaEnable')
     height = Property('Height', stop=True)
@@ -264,11 +267,19 @@ class QSpinnakerCamera(QVideoCamera):
 
     @pyqtSlot(bool)
     def autoexposure(self, state):
-        self.exposureauto = 'Once'
+        feature = getattr(self.device, 'ExposureAuto')
+        if PySpin.IsWritable(feature):
+            feature.FromString('Once')
+        else:
+            logger.warning('could not trigger autoexposure')
 
     @pyqtSlot(bool)
     def autogain(self, state):
-        self.gainauto = 'Once'
+        feature = getattr(self.device, 'GainAuto')
+        if PySpin.IsWritable(feature):
+            feature.FromString('Once')
+        else:
+            logger.warning('could not trigger autogain')
 
 
 def main():

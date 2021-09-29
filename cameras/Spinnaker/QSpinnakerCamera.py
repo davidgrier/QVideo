@@ -102,9 +102,10 @@ class QSpinnakerCamera(QVideoCamera):
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error setting {name}: {ex}')
 
+        # FIXME: Get correct data type for properties
         return pyqtProperty(object, getter, setter)
 
-    acquisitionframecount = Property('AcquisitionFrameCout')
+    acquisitionframecount = Property('AcquisitionFrameCount')
     acquisitionframerate = Property('AcquisitionFrameRate')
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
     acquisitionmode = Property('AcquisitionMode')
@@ -114,10 +115,12 @@ class QSpinnakerCamera(QVideoCamera):
     blacklevelselector = Property('BlackLevelSelector')
     devicevendorname = Property('DeviceVendorName')
     devicemodelname = Property('DeviceModelName')
+    exposureauto = Property('ExposureAuto')
     exposuremode = Property('ExposureMode')
     exposuretime = Property('ExposureTime')
     exposuretimemode = Property('ExposureTimeMode')
     gain = Property('Gain')
+    gainauto = Property('GainAuto')
     gamma = Property('Gamma')
     gammaenable = Property('GammaEnable')
     height = Property('Height', stop=True)
@@ -134,6 +137,20 @@ class QSpinnakerCamera(QVideoCamera):
 
     flipped = Property('ReverseY', stop=True)
     mirrored = Property('ReverseX', stop=True)
+
+    def Trigger(name):
+        @pyqtSlot(bool)
+        def slot(self, state):
+            feature = getattr(self.device, name)
+            if PySpin.IsWritable(feature):
+                feature.FromString('Once')
+            else:
+                logger.warning(f'Could not trigger {name}')
+        return slot
+
+    autoexposure = Trigger('ExposureAuto')
+    autogain = Trigger('GainAuto')
+    autosharpening = Trigger('SharpeningAuto')
 
     def __init__(self, *args,
                  cameraID=0,
@@ -264,22 +281,6 @@ class QSpinnakerCamera(QVideoCamera):
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
         logger.debug(f'PySpin version: {s}')
         return s
-
-    @pyqtSlot(bool)
-    def autoexposure(self, state):
-        feature = getattr(self.device, 'ExposureAuto')
-        if PySpin.IsWritable(feature):
-            feature.FromString('Once')
-        else:
-            logger.warning('could not trigger autoexposure')
-
-    @pyqtSlot(bool)
-    def autogain(self, state):
-        feature = getattr(self.device, 'GainAuto')
-        if PySpin.IsWritable(feature):
-            feature.FromString('Once')
-        else:
-            logger.warning('could not trigger autogain')
 
 
 def main():

@@ -67,10 +67,10 @@ class QSpinnakerCamera(QVideoCamera):
             iface = feature.GetPrincipalInterfaceType()
             return iface == PySpin.intfIEnumeration
 
-        def getter(self):
+        def getter(inst):
             logger.debug(f'Getting {name}')
             try:
-                feature = getattr(self.device, name)
+                feature = getattr(inst.device, name)
                 if not PySpin.IsReadable(feature):
                     logger.warning(f'{name} is not readable')
                     return None
@@ -82,13 +82,13 @@ class QSpinnakerCamera(QVideoCamera):
                 logger.error(f'Error getting {name}: {ex}')
 
         @QVideoCamera.protected
-        def setter(self, value, stop=stop):
+        def setter(inst, value, stop=stop):
             logger.debug(f'Setting {name}: {value}')
             try:
-                restart = stop and self._running
+                restart = stop and inst._running
                 if restart:
-                    self.endAcquisition()
-                feature = getattr(self.device, name)
+                    inst.endAcquisition()
+                feature = getattr(inst.device, name)
                 if not PySpin.IsWritable(feature):
                     logger.warning(f'{name} is not writable')
                     return
@@ -97,8 +97,8 @@ class QSpinnakerCamera(QVideoCamera):
                 else:
                     feature.SetValue(value)
                 if restart:
-                    self.beginAcquisition()
-                self.propertyChanged.emit(name)
+                    inst.beginAcquisition()
+                inst.propertyChanged.emit(name)
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error setting {name}: {ex}')
 
@@ -140,8 +140,8 @@ class QSpinnakerCamera(QVideoCamera):
 
     def Trigger(name):
         @pyqtSlot(bool)
-        def slot(self, state):
-            feature = getattr(self.device, name)
+        def slot(inst, state):
+            feature = getattr(inst.device, name)
             if PySpin.IsWritable(feature):
                 feature.FromString('Once')
             else:

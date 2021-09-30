@@ -115,6 +115,7 @@ class QSpinnakerCamera(QVideoCamera):
     blacklevelselector = Property('BlackLevelSelector')
     devicevendorname = Property('DeviceVendorName')
     devicemodelname = Property('DeviceModelName')
+    deviceserialnumber = Property('DeviceSerialNumber')
     exposureauto = Property('ExposureAuto')
     exposuremode = Property('ExposureMode')
     exposuretime = Property('ExposureTime')
@@ -300,6 +301,8 @@ class QSpinnakerCamera(QVideoCamera):
 
 def main():
     cam = QSpinnakerCamera()
+    print(cam.cameraname)
+    print(cam.deviceserialnumber)
     print(cam.properties())
     print(cam.methods())
     cam.close()

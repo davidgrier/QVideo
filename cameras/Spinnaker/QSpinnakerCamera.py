@@ -302,7 +302,7 @@ class QSpinnakerCamera(QVideoCamera):
 def main():
     cam = QSpinnakerCamera()
     print(cam.cameraname)
-    print(cam.deviceserialnumber)
+    print(f'Serial number: {cam.deviceserialnumber}')
     print(cam.properties())
     print(cam.methods())
     cam.close()

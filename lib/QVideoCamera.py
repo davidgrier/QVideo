@@ -2,8 +2,8 @@ from abc import (ABCMeta, abstractmethod)
 from PyQt5.QtCore import (QObject, QMutex, QMutexLocker, QTimer, QSize,
                           pyqtSignal, pyqtSlot, pyqtProperty)
 from functools import wraps
+from QVideo.lib.QFPSMeter import QFPSMeter
 import numpy as np
-import time
 import types
 import logging
 
@@ -31,38 +31,48 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             return result
         return wrapper
 
-    class fpsMeter(QObject):
-
-        fpsReady = pyqtSignal(float)
-
-        def __init__(self):
-            super().__init__()
-            self.window = 10
-            self.count = 0
-            self.start = time.time()
-            self._value = 0
-
-        def tick(self):
-            self.count = (self.count + 1) % self.window
-            if (self.count == 0):
-                now = time.time()
-                self._value = self.window / (now - self.start)
-                self.fpsReady.emit(self._value)
-                self.start = now
-
-        @pyqtProperty(float)
-        def value(self):
-            return self._value
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._getProperties()
+        self._getMethods()
         self.mutex = QMutex()
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.acquire)
-        self.meter = self.fpsMeter()
-        self.fpsReady = self.meter.fpsReady
+        self.meter = QFPSMeter()
         self._running = False
+
+    def _getProperties(self):
+        self._properties = [k for k, v in vars(type(self)).items()
+                            if isinstance(v, pyqtProperty)]
+
+    def _getMethods(self):
+        self._methods = [k for k, v in vars(type(self)).items()
+                         if isinstance(v, types.FunctionType)]
+
+    def properties(self):
+        return self._properties
+
+    def methods(self):
+        return self._methods
+
+    @pyqtSlot(str, object)
+    def set(self, name, value):
+        '''Set named property to value'''
+        if name in self._properties:
+            setattr(self, name, value)
+
+    def get(self, name):
+        '''Get named property'''
+        if name in self._properties:
+            getattr(self, name)
+
+    @pyqtSlot(str)
+    def execute(self, name):
+        '''Execute named method'''
+        if name in self._methods:
+            method = getattr(self, name)
+            return method(self)
 
     @pyqtSlot()
     def start(self):
@@ -81,6 +91,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self._running = False
 
     @pyqtSlot()
+    @abstractmethod
     def close(self):
         '''Perform clean-up operations at closing
 
@@ -101,6 +112,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             else:
                 logger.warning('Frame acquisition failed')
 
+    @abstractmethod
     def read(self):
         return False, None
 
@@ -113,7 +125,6 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         return QSize(self.width, self.height)
 
     @pyqtProperty(float)
-    @protected
     def fps(self):
         return self.meter.value
 
@@ -140,11 +151,3 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     @abstractmethod
     def height(self, value):
         pass
-
-    def properties(self):
-        return [k for k, v in vars(type(self)).items()
-                if isinstance(v, pyqtProperty)]
-
-    def methods(self):
-        return [k for k, v in vars(type(self)).items()
-                if isinstance(v, types.FunctionType)]

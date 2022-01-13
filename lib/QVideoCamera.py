@@ -103,14 +103,14 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def acquire(self):
         with QMutexLocker(self.mutex):
             ready, frame = self.read()
-            if ready:
-                self.newFrame.emit(frame)
-                self._color = frame.ndim == 3
-                self.meter.tick()
-                if self._running:
-                    self.timer.start(1)
-            else:
-                logger.warning('Frame acquisition failed')
+        if ready:
+            self.newFrame.emit(frame)
+            self._color = frame.ndim == 3
+            self.meter.tick()
+            if self._running:
+                self.timer.start(1)
+        else:
+            logger.warning('Frame acquisition failed')
 
     @abstractmethod
     def read(self):

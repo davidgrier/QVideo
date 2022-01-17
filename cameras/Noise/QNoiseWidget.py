@@ -9,7 +9,7 @@ class QNoiseWidget(QCameraWidget):
                          camera=QNoiseSource(),
                          uiFile='QNoiseWidget.ui',
                          **kwargs)
-        self.camera.fpsReady.connect(self.ui.rate.setValue)
+        self.camera.meter.fpsReady.connect(self.ui.rate.setValue)
 
 
 def main():

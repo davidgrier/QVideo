@@ -9,7 +9,7 @@ class QOpenCVWidget(QCameraWidget):
                          camera=QOpenCVCamera(),
                          uiFile='QOpenCVWidget.ui',
                          **kwargs)
-        self.camera.fpsReady.connect(self.ui.rate.setValue)
+        self.camera.meter.fpsReady.connect(self.ui.rate.setValue)
 
 
 def main():

@@ -51,7 +51,7 @@ class QCameraWidget(QWidget):
         super().__init__(*args, **kwargs)
         self.camera = camera
         self.ui = self._loadUi(uiFile)
-        self._identifyProperties()
+        self._getInterface()
         self._syncProperties()
         self._connectSignals()
 
@@ -133,6 +133,7 @@ class QCameraWidget(QWidget):
         logger.error(f'Unknown property {key}')
         return None
 
+    @pyqtSlot(str, object)
     def set(self, key, value=None):
         '''Set value of named property
 
@@ -186,11 +187,12 @@ class QCameraWidget(QWidget):
         ui.setupUi(self)
         return ui
 
-    def _identifyProperties(self):
+    def _getInterface(self):
+        properties = self.camera.properties()
+        methods = self.camera.methods()
         uiprops = vars(self.ui).keys()
-        self._properties = [p for p in self.camera.properties()
-                            if p in uiprops]
-        self._methods = [m for m in self.camera.methods() if m in uiprops]
+        self._properties = [p for p in properties if p in uiprops]
+        self._methods = [m for m in methods if m in uiprops]
 
     def _syncProperties(self):
         for prop in self.properties:

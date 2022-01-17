@@ -33,8 +33,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._getProperties()
-        self._getMethods()
+        self._getInterface()
         self.mutex = QMutex()
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
@@ -42,12 +41,11 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self.meter = QFPSMeter()
         self._running = False
 
-    def _getProperties(self):
-        self._properties = [k for k, v in vars(type(self)).items()
+    def _getInterface(self):
+        interface = vars(type(self)).items()
+        self._properties = [k for k, v in interface
                             if isinstance(v, pyqtProperty)]
-
-    def _getMethods(self):
-        self._methods = [k for k, v in vars(type(self)).items()
+        self._methods = [k for k, v in interface
                          if isinstance(v, types.FunctionType)]
 
     def properties(self):
@@ -57,22 +55,29 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         return self._methods
 
     @pyqtSlot(str, object)
-    def set(self, name, value):
+    def set(self, key, value):
         '''Set named property to value'''
-        if name in self._properties:
-            setattr(self, name, value)
+        if key in self._properties:
+            setattr(self, key, value)
+        else:
+            logger.error(f'Unknown property: {key}')
 
-    def get(self, name):
+    def get(self, key):
         '''Get named property'''
-        if name in self._properties:
-            getattr(self, name)
+        if key in self._properties:
+            return getattr(self, key)
+        else:
+            logger.error(f'Unknown property: {key}')
+            return None
 
     @pyqtSlot(str)
-    def execute(self, name):
+    def execute(self, key):
         '''Execute named method'''
-        if name in self._methods:
-            method = getattr(self, name)
-            return method(self)
+        if key in self._methods:
+            method = getattr(self, key)
+            method(self)
+        else:
+            logger.error(f'Unknown method: {key}')
 
     @pyqtSlot()
     def start(self):
@@ -91,7 +96,6 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self._running = False
 
     @pyqtSlot()
-    @abstractmethod
     def close(self):
         '''Perform clean-up operations at closing
 

@@ -17,7 +17,6 @@ class demo(QWidget):
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.cameraWidget)
         self.updateShape()
-        self.update()
 
     def connectSignals(self):
         self.camera.newFrame.connect(self.screen.setImage)
@@ -25,6 +24,7 @@ class demo(QWidget):
 
     def updateShape(self):
         self.screen.updateShape(self.camera.shape)
+        self.update()
 
 
 def parse_command_line():
@@ -44,7 +44,7 @@ def choose_camera(args):
     CameraWidget = QNoiseWidget
     if args.opencv:
         try:
-            from QVideo.cameras.OpenCV import QOpenCVWidget
+            from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
             CameraWidget = QOpenCVWidget
         except ImportError:
             print('Could not open OpenCV camera')

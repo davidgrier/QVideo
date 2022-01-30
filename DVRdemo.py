@@ -48,9 +48,9 @@ def parse_command_line():
 
 
 def choose_camera(args):
-    from QVideo.cameras.Noise import QNoiseWidget
+    from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
     try:
-        from QVideo.cameras.OpenCV import QOpenCVWidget
+        from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
         have_opencv = True
     except ImportError:
         have_opencv = False

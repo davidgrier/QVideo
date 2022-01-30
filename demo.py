@@ -39,9 +39,9 @@ def parse_command_line():
 
 
 def choose_camera(args):
-    from QVideo.cameras.Noise import QNoiseWidget
-
+    from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
     CameraWidget = QNoiseWidget
+
     if args.opencv:
         try:
             from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget

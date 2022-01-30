@@ -14,6 +14,13 @@ class QCameraTree(ParameterTree):
 
     valueChanged = pyqtSignal(str, object)
 
+    controls = [
+        {'name': 'Shape', 'type': 'group', 'children': [
+            {'name': 'Width', 'type': 'int', 'value': 640},
+            {'name': 'Height', 'type': 'int', 'value': 480}]},
+        {'name': 'FPS', 'type': 'float', 'value': 0., 'readonly': True}
+    ]
+
     @staticmethod
     def _parseDescription(param):
         d = dict()

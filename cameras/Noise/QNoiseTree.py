@@ -6,7 +6,7 @@ class QNoiseTree(QCameraTree):
 
     def __init__(self, *args, camera=None, **kwargs):
         camera = camera or QNoiseSource()
-        controls = QCameraTree.controls
+        controls = []
         super().__init__(camera, controls, *args, **kwargs)
 
 

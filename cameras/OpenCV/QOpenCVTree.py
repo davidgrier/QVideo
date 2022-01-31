@@ -10,8 +10,7 @@ class QOpenCVTree(QCameraTree):
             {'name': 'Modifications', 'type': 'group', 'children': [
                 {'name': 'Flipped', 'type': 'bool', 'value': False},
                 {'name': 'Mirrored', 'type': 'bool', 'value': False},
-                {'name': 'Gray', 'type': 'bool', 'value': False}]},
-            *QCameraTree.controls
+                {'name': 'Gray', 'type': 'bool', 'value': False}]}
         ]
         super().__init__(camera, controls, *args, **kwargs)
 

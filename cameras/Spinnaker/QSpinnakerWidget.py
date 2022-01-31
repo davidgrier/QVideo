@@ -46,7 +46,7 @@ class QSpinnakerWidget(QCameraWidget):
         self.update()
 
     def connectSignals(self):
-        self.camera.fpsReady.connect(self.ui.actualrate.setValue)
+        self.camera.meter.fpsReady.connect(self.ui.actualrate.setValue)
         self.camera.propertyChanged.connect(self.changeHandler)
 
     @pyqtSlot(str)

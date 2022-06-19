@@ -7,7 +7,7 @@ widgets that control cameras' properties and operation.
 It also integrates with a flexible display widget that can
 stream video data while also supporting video overlays.
 
-<img src="docs/demo.png" width="75%" alt="Interface demo">
+<img src="docs/dvrdemo.png" width="75%" alt="Interface demo">
 
 ## Acknowledgements
 Work on this project at New York University is supported by

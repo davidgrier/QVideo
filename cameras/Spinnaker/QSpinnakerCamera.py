@@ -109,6 +109,7 @@ class QSpinnakerCamera(QVideoCamera):
     acquisitionframerate = Property('AcquisitionFrameRate')
     acquisitionframerateenable = Property('AcquisitionFrameRateEnable')
     acquisitionmode = Property('AcquisitionMode')
+    adcbitdepth = Property('AdcBitDepth')
     autoexposurecontrolpriority = Property('AutoExposureControlPriority')
     blacklevel = Property('BlackLevel')
     blacklevelenable = Property('BlackLevelEnable')

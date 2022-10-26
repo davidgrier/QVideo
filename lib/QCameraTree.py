@@ -38,7 +38,7 @@ class QCameraTree(ParameterTree):
         self.camera = camera
         self._connectSignals()
         self.setMinimumWidth(250)
-        self.header().setResizeMode(0, QHeaderView.Fixed)
+        self.header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.setColumnWidth(0, 150)
 
     def _setupUi(self, c):

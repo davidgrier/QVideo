@@ -126,7 +126,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     @pyqtProperty(object)
     @protected
     def shape(self):
-        return QSize(self.width, self.height)
+        return QSize(int(self.width), int(self.height))
 
     @pyqtProperty(float)
     def fps(self):

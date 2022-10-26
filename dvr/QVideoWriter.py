@@ -17,6 +17,7 @@ class QVideoWriter(QObject):
 
     def __init__(self, filename, shape, color,
                  nframes=10000,
+                 nskip=1,
                  fps=24,
                  codec=None):
         super(QVideoWriter, self).__init__()
@@ -45,6 +46,7 @@ class QVideoWriter(QObject):
         args = [filename, fourcc, fps, (w, h), color]
         self.writer = cv2.VideoWriter(*args)
         self.framenumber = 0
+        self.nskip = nskip
         self.target = nframes
         self.frameNumber.emit(self.framenumber)
 
@@ -62,7 +64,8 @@ class QVideoWriter(QObject):
             return
         if self.color:
             frame = cv2.cvtColor(frame, self.BGR2RGB)
-        self.writer.write(frame)
+        if self.framenumber % self.nskip == 0:
+            self.writer.write(frame)
         self.framenumber += 1
         self.frameNumber.emit(self.framenumber)
 

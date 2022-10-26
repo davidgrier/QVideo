@@ -5,6 +5,7 @@ from functools import wraps
 from QVideo.lib.QFPSMeter import QFPSMeter
 import numpy as np
 import types
+from typing import Any
 import logging
 
 logging.basicConfig()
@@ -30,6 +31,11 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
                 result = method(inst, *args, **kwargs)
             return result
         return wrapper
+
+    def __setattr__(self, prop: str, val: Any) -> None:
+        super().__setattr__(prop, val)
+        if prop in ['width', 'height']:
+            self.shapeChanged.emit()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

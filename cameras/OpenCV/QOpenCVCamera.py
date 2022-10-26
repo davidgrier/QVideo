@@ -33,25 +33,28 @@ class QOpenCVCamera(QVideoCamera):
         BGR2RGB = cv2.COLOR_BGR2RGB
         BGR2GRAY = cv2.COLOR_BGR2GRAY
 
-    def Dimension(propid):
-        def getter(self):
-            return self.device.get(propid)
+    def Property(dtype, prop):
+        return pyqtProperty(dtype,
+                            lambda self: getattr(self, f'_{prop}'),
+                            lambda self, v: setattr(self, f'_{prop}', v))
 
-        def setter(self, value):
-            logger.debug(f'Setting dimension {propid}: {value}')
-            self.device.set(propid, value)
-            self.shapeChanged.emit()
-        return pyqtProperty(int, getter, setter)
+    def DeviceProperty(dtype, prop):
+        return pyqtProperty(dtype,
+                            lambda self: self.device.get(prop),
+                            lambda self, v: self.device.set(prop, v))
 
-    width = Dimension(WIDTH)
-    height = Dimension(HEIGHT)
+    mirrored = Property(bool, 'mirrored')
+    flipped = Property(bool, 'flipped')
+    gray = Property(bool, 'gray')
+    width = DeviceProperty(int, WIDTH)
+    height = DeviceProperty(int, HEIGHT)
 
     def __init__(self, *args,
-                 cameraID=0,
-                 mirrored=False,
-                 flipped=False,
-                 gray=False,
-                 **kwargs):
+                 cameraID: int = 0,
+                 mirrored: bool = False,
+                 flipped: bool = False,
+                 gray: bool = False,
+                 **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.device = cv2.VideoCapture(cameraID)
@@ -73,7 +76,8 @@ class QOpenCVCamera(QVideoCamera):
             time.sleep(0.01)
             return ready, None
         if image.ndim == 3:
-            image = cv2.cvtColor(image, self._conversion)
+            image = cv2.cvtColor(image, (self.BGR2GRAY if self.gray
+                                         else self.BGR2RGB))
         if self.flipped or self.mirrored:
             image = cv2.flip(image, self.mirrored * (1 - 2 * self.flipped))
         return ready, image
@@ -81,32 +85,3 @@ class QOpenCVCamera(QVideoCamera):
     def close(self):
         logger.debug('Closing')
         self.device.release()
-
-    # Camera properties
-
-    @pyqtProperty(bool)
-    def mirrored(self):
-        return self._mirrored
-
-    @mirrored.setter
-    def mirrored(self, value):
-        self._mirrored = value
-
-    @pyqtProperty(bool)
-    def flipped(self):
-        return self._flipped
-
-    @flipped.setter
-    def flipped(self, value):
-        self._flipped = value
-
-    @pyqtProperty(bool)
-    def gray(self):
-        gray = (self._conversion == self.BGR2GRAY)
-        logger.debug(f'Getting gray: {gray}')
-        return gray
-
-    @gray.setter
-    def gray(self, gray):
-        logger.debug(f'Setting gray: {gray}')
-        self._conversion = self.BGR2GRAY if gray else self.BGR2RGB

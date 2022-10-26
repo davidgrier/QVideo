@@ -39,7 +39,7 @@ class QVideoPlayer(QObject):
 
         self.capture = cv2.VideoCapture(filename)
         if self.capture.isOpened():
-            self.delay = 1000. / self.fps
+            self.delay = np.round(1000. / self.fps).astype(int)
             self.width = int(self.capture.get(self.WIDTH))
             self.height = int(self.capture.get(self.HEIGHT))
         else:

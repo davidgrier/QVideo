@@ -48,7 +48,7 @@ class QHDF5Player(QObject):
             self.frame = self.images[key][()]
             self.newFrame.emit(self.frame)
             now = float(key)
-            delay = 1000.*(now - self.now)
+            delay = np.round(1000.*(now - self.now)).astype(int)
             self.framenumber += 1
             if self.framenumber >= self.nframes:
                 self.emitting = False

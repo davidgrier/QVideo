@@ -99,6 +99,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         Acquisition can be restarted with a call to start()
         '''
         logger.debug('Stopping video acquisition')
+        self.timer.stop()
         self._running = False
 
     @pyqtSlot()
@@ -107,6 +108,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
 
         This slot should be overridden by subclasses
         '''
+        self.stop()
         logger.debug('Calling default close() method')
 
     @pyqtSlot()

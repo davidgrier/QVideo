@@ -23,6 +23,9 @@ class DVRdemo(QWidget):
         self.camera.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)
 
+    def closeEvent(self, event):
+        self.cameraWidget.close()
+
     def updateShape(self):
         self.screen.updateShape(self.camera.shape)
 

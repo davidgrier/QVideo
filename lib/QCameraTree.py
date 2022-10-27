@@ -91,7 +91,8 @@ class QCameraTree(ParameterTree):
         self._thread.finished.connect(camera.close)
         self._thread.start(QThread.TimeCriticalPriority)
 
+    @pyqtSlot()
     def close(self):
-        self.thread.quit()
-        self.thread.wait()
+        self._thread.quit()
+        self._thread.wait()
         self.camera = None

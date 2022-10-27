@@ -84,4 +84,5 @@ class QOpenCVCamera(QVideoCamera):
 
     def close(self):
         logger.debug('Closing')
+        super().close()
         self.device.release()

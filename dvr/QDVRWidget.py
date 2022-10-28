@@ -37,7 +37,6 @@ class QDVRWidget(QFrame):
         self._writer = None
         self._player = None
         self._framenumber = 0
-        self._nframes = 0
 
         self.connectSignals()
 
@@ -83,8 +82,8 @@ class QDVRWidget(QFrame):
         return filename
 
     @pyqtSlot()
-    def record(self, nframes=10000):
-        if (self.is_playing() or (nframes <= 0)):
+    def record(self):
+        if self.is_playing():
             return
         if self.is_recording():
             self.stop()
@@ -98,9 +97,11 @@ class QDVRWidget(QFrame):
                                         self.source.shape,
                                         self.source.color,
                                         fps=self.source.fps,
-                                        nframes=nframes)
+                                        nframes=self.nframes.value(),
+                                        nskip=self.nskip.value())
         elif extension == '.h5':
-            self._writer = QHDF5Writer(self.filename, nframes=nframes)
+            self._writer = QHDF5Writer(self.filename,
+                                       nframes=self.nframes.value())
         else:
             logger.debug(f'unsupported file extension {extension}')
             return
@@ -168,7 +169,6 @@ class QDVRWidget(QFrame):
             self._player = None
             self.playing.emit(False)
         self.framenumber = 0
-        self._nframes = 0
 
     @pyqtSlot(int)
     def setFrameNumber(self, framenumber):

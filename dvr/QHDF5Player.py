@@ -3,13 +3,21 @@
 from PyQt5.QtCore import (QObject, QTimer, pyqtSignal, pyqtSlot)
 import h5py
 import numpy as np
+from typing import Optional
 
 
 class QHDF5Player(QObject):
+    '''Class for playing H5 video files
+
+    Inherits
+    --------
+    PyQt5.QtCore.QObject
+    '''
 
     newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, filename=None):
+    def __init__(self,
+                 filename: Optional[str] = None) -> None:
         super(QHDF5Player, self).__init__()
 
         self.running = False
@@ -21,21 +29,25 @@ class QHDF5Player(QObject):
         self.framenumber = 0
         self.now = self.timestamp()
 
-    def isOpened(self):
+    def isOpened(self) -> bool:
+        '''Returns True if playable file is open'''
         return self.file is not None
 
-    def close(self):
+    def close(self) -> None:
+        '''Closes video file'''
         self.file.close()
 
-    def timestamp(self):
+    def timestamp(self) -> float:
+        '''Returns timestamp from current frame'''
         return float(self.keys[self.framenumber])
 
-    def seek(self, framenumber):
+    def seek(self, framenumber: int) -> None:
+        '''Advamces playback to specified frame number'''
         self.framenumber = framenumber
         self.now = self.timestamp()
 
     @pyqtSlot()
-    def emit(self):
+    def emit(self) -> None:
         if not self.running:
             self.close()
             return
@@ -57,7 +69,7 @@ class QHDF5Player(QObject):
         QTimer.singleShot(delay, self.emit)
 
     @pyqtSlot()
-    def start(self):
+    def start(self) -> None:
         if self.running:
             return
         self.running = True
@@ -66,16 +78,16 @@ class QHDF5Player(QObject):
         self.emit()
 
     @pyqtSlot()
-    def stop(self):
+    def stop(self) -> None:
         self.running = False
 
     @pyqtSlot()
-    def rewind(self):
+    def rewind(self) -> None:
         self.rewinding = True
 
     @pyqtSlot(bool)
-    def pause(self, paused):
+    def pause(self, paused: bool) -> None:
         self.emitting = not paused
 
-    def isPaused(self):
+    def isPaused(self) -> bool:
         return not self.emitting

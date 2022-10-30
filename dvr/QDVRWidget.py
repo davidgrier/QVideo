@@ -5,13 +5,15 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
                           QObject, QThread)
 from PyQt5.QtWidgets import (QFrame, QFileDialog)
 import os
+from typing import Optional
 
-from QVideo.lib import clickable
+from QVideo.lib import (clickable, QVideoCamera)
 from .QVideoWriter import QVideoWriter
 from .QHDF5Writer import QHDF5Writer
 from .QVideoPlayer import QVideoPlayer
 from .QHDF5Player import QHDF5Player
 from .icons_rc import *
+
 
 import logging
 logging.basicConfig()
@@ -20,15 +22,34 @@ logger.setLevel(logging.DEBUG)
 
 
 class QDVRWidget(QFrame):
+    '''GUI for a Digital Video Recorder (DVR)
+
+    Inherits
+    --------
+    PyQt5.QtWidgets.QFrame
+
+    Properties
+    ----------
+    source: QVideoCamera
+        Source of video frames to present and record
+
+    filename: str
+        Name of video file to save and record
+
+    Methods
+    -------
+    All methods are invoked by widgets described in
+    QDVRWidget.ui
+    '''
 
     recording = pyqtSignal(bool)
     playing = pyqtSignal(bool)
 
     def __init__(self,
                  *args,
-                 source=None,
-                 filename=None,
-                 **kwargs):
+                 source: Optional[QVideoCamera] = None,
+                 filename: Optional[str] = None,
+                 **kwargs) -> None:
         super().__init__(*args, **kwargs)
         dir = os.path.dirname(os.path.abspath(__file__))
         uipath = os.path.join(dir, 'QDVRWidget.ui')
@@ -43,7 +64,8 @@ class QDVRWidget(QFrame):
         self.source = source
         self.filename = filename
 
-    def connectSignals(self):
+    def connectSignals(self) -> None:
+        '''Connects signals to slots for user interaction'''
         clickable(self.playEdit).connect(self.getPlayFilename)
         clickable(self.saveEdit).connect(self.getSaveFilename)
         self.recordButton.clicked.connect(self.record)
@@ -52,16 +74,19 @@ class QDVRWidget(QFrame):
         self.pauseButton.clicked.connect(self.pause)
         self.playButton.clicked.connect(self.play)
 
-    def is_recording(self):
+    def is_recording(self) -> bool:
+        '''Returns True if recording in progress'''
         return (self._writer is not None)
 
-    def is_playing(self):
+    def is_playing(self) -> bool:
+        '''Returns True is video is playing'''
         return (self._player is not None)
 
     @pyqtSlot()
-    def getPlayFilename(self):
+    def getPlayFilename(self) -> str:
+        '''Returns file name of video to be played'''
         if self.is_recording():
-            return
+            return ''
         get = QFileDialog.getOpenFileName
         filename, _ = get(self, 'Video File Name', self.filename,
                           'Video files (*.avi);;HDF5 files (*.h5)')
@@ -70,7 +95,8 @@ class QDVRWidget(QFrame):
         return filename
 
     @pyqtSlot()
-    def getSaveFilename(self):
+    def getSaveFilename(self) -> str:
+        '''Returns files name of video to be recorded'''
         if self.is_recording():
             return
         get = QFileDialog.getSaveFileName
@@ -82,7 +108,8 @@ class QDVRWidget(QFrame):
         return filename
 
     @pyqtSlot()
-    def record(self):
+    def record(self) -> None:
+        '''Implements functionality of Record button'''
         if self.is_playing():
             return
         if self.is_recording():
@@ -116,7 +143,8 @@ class QDVRWidget(QFrame):
         self.recording.emit(True)
 
     @pyqtSlot()
-    def play(self):
+    def play(self) -> None:
+        '''Implements functionality of Play buttoon'''
         if self.is_recording():
             return
         if self.is_playing():
@@ -143,19 +171,22 @@ class QDVRWidget(QFrame):
             self._player = None
 
     @pyqtSlot()
-    def pause(self):
+    def pause(self) -> None:
+        '''Implements functionality of Pause button'''
         if self.is_playing():
             state = self._player.isPaused()
             self._player.pause(not state)
 
     @pyqtSlot()
-    def rewind(self):
+    def rewind(self) -> None:
+        '''Implements functionality of Rewind button'''
         if self.is_playing():
             self._player.rewind()
             self.framenumber = 0
 
     @pyqtSlot()
-    def stop(self):
+    def stop(self) -> None:
+        '''Implements functionality of Stop button'''
         if self.is_recording():
             logger.debug('Stopping Recording')
             self._thread.quit()
@@ -172,11 +203,13 @@ class QDVRWidget(QFrame):
         self.framenumber = 0
 
     @pyqtSlot(int)
-    def setFrameNumber(self, framenumber):
+    def setFrameNumber(self, framenumber: int) -> None:
+        '''Sets frame number'''
         self.framenumber = framenumber
 
     @pyqtSlot()
-    def stepFrameNumber(self):
+    def stepFrameNumber(self) -> None:
+        '''Increments frame number'''
         self.framenumber += 1
 
     @pyqtProperty(QObject)
@@ -189,11 +222,13 @@ class QDVRWidget(QFrame):
         self.recordButton.setDisabled(source is None)
 
     @pyqtProperty(str)
-    def filename(self):
+    def filename(self) -> str:
+        '''Returns file name from Save widget'''
         return str(self.saveEdit.text())
 
     @filename.setter
-    def filename(self, filename):
+    def filename(self, filename: str) -> None:
+        '''Sets file name in Save widget'''
         if filename is None:
             return
         if not (self.is_recording() or self.is_playing()):
@@ -201,19 +236,23 @@ class QDVRWidget(QFrame):
             self.playname = self.filename
 
     @pyqtProperty(str)
-    def playname(self):
+    def playname(self) -> str:
+        '''Returns current filename from Play widget'''
         return str(self.playEdit.text())
 
     @playname.setter
-    def playname(self, filename):
+    def playname(self, filename: str) -> None:
+        '''Sets filename for Play widget'''
         if not (self.is_playing()):
             self.playEdit.setText(os.path.expanduser(filename))
 
     @pyqtProperty(int)
-    def framenumber(self):
+    def framenumber(self) -> int:
+        '''Returns current frame number'''
         return self._framenumber
 
     @framenumber.setter
-    def framenumber(self, number):
+    def framenumber(self, number: int) -> None:
+        '''Sets frame number'''
         self._framenumber = number
         self.frameNumber.display(self._framenumber)

@@ -12,13 +12,20 @@ logger.setLevel(logging.DEBUG)
 
 
 class QHDF5Writer(QObject):
+    '''Class for saving H5 video files
+
+    Inherits
+    --------
+    PyQt5.QtCore.QObject
+    '''
 
     frameNumber = pyqtSignal(int)
     finished = pyqtSignal()
 
-    def __init__(self, filename,
-                 nframes=10000,
-                 nskip=1):
+    def __init__(self,
+                 filename: str,
+                 nframes: int = 10000,
+                 nskip: int = 1):
         super(QHDF5Writer, self).__init__()
         # h5py.get_config().track_order = True
         self.file = h5py.File(filename, 'w', libver='latest',
@@ -31,7 +38,14 @@ class QHDF5Writer(QObject):
         self.target = nframes
 
     @pyqtSlot(np.ndarray)
-    def write(self, frame):
+    def write(self, frame: np.ndarray) -> None:
+        '''Writes video frame to video file
+
+        Arguments
+        ---------
+        frame: numpy.ndarray
+            Video deata to write
+        '''
         if (self.framenumber >= self.target):
             self.finished.emit()
             return
@@ -42,5 +56,6 @@ class QHDF5Writer(QObject):
         self.frameNumber.emit(self.framenumber)
 
     @pyqtSlot()
-    def close(self):
+    def close(self) -> None:
+        '''Closes video file'''
         self.file.close()

@@ -59,7 +59,7 @@ class QVideoWriter(QObject):
 
     @pyqtSlot(np.ndarray)
     def write(self, frame):
-        if (self.framenumber >= self.target) | self.formatChanged(frame):
+        if (self.framenumber >= self.target) or self.formatChanged(frame):
             self.finished.emit()
             return
         if self.color:

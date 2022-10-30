@@ -3,6 +3,7 @@
 from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot)
 import numpy as np
 import cv2
+from typing import (Optional, Tuple)
 
 import logging
 logging.basicConfig()
@@ -15,11 +16,14 @@ class QVideoWriter(QObject):
     frameNumber = pyqtSignal(int)
     finished = pyqtSignal()
 
-    def __init__(self, filename, shape, color,
-                 nframes=10000,
-                 nskip=1,
-                 fps=24,
-                 codec=None):
+    def __init__(self,
+                 filename: str,
+                 shape: Tuple,
+                 color: bool,
+                 nframes: int = 10000,
+                 nskip: int = 1,
+                 fps: int = 24,
+                 codec: Optional[str] = None) -> None:
         super(QVideoWriter, self).__init__()
 
         self.shape = shape
@@ -50,7 +54,7 @@ class QVideoWriter(QObject):
         self.target = nframes
         self.frameNumber.emit(self.framenumber)
 
-    def formatChanged(self, frame):
+    def formatChanged(self, frame: np.ndarray) -> bool:
         color = frame.ndim == 3
         h, w = frame.shape[0:2]
         return ((w != self.shape.width()) or
@@ -58,7 +62,7 @@ class QVideoWriter(QObject):
                 (color != self.color))
 
     @pyqtSlot(np.ndarray)
-    def write(self, frame):
+    def write(self, frame: np.ndarray) -> None:
         if (self.framenumber >= self.target) or self.formatChanged(frame):
             self.finished.emit()
             return
@@ -70,5 +74,5 @@ class QVideoWriter(QObject):
         self.frameNumber.emit(self.framenumber)
 
     @pyqtSlot()
-    def close(self):
+    def close(self) -> None:
         self.writer.release()

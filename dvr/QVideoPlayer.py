@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-"""QVideoPlayer.py: pyqtgraph module for OpenCV video playback."""
-
 import cv2
 from PyQt5.QtCore import (QObject, QTimer, QSize, QRectF,
                           pyqtSignal, pyqtSlot, pyqtProperty)
 import numpy as np
+from typing import Optional
 
 
 class QVideoPlayer(QObject):
@@ -32,7 +31,8 @@ class QVideoPlayer(QObject):
         FPS = cv2.CAP_PROP_FPS
         BRG2RGB = cv2.COLOR_BGR2RGB
 
-    def __init__(self, filename=None):
+    def __init__(self,
+                 filename: Optional[str] = None) -> None:
         super(QVideoPlayer, self).__init__()
 
         self.running = False
@@ -45,18 +45,18 @@ class QVideoPlayer(QObject):
         else:
             self.close()
 
-    def isOpened(self):
+    def isOpened(self) -> bool:
         return self.capture is not None
 
-    def close(self):
+    def close(self) -> None:
         self.capture.release()
         self.capture = None
 
-    def seek(self, frame):
+    def seek(self, frame: int) -> None:
         self.capture.set(self.SEEK, frame)
 
     @pyqtSlot()
-    def emit(self):
+    def emit(self) -> None:
         if not self.running:
             self.close()
             return
@@ -74,7 +74,7 @@ class QVideoPlayer(QObject):
         QTimer.singleShot(self.delay, self.emit)
 
     @pyqtSlot()
-    def start(self):
+    def start(self) -> None:
         if self.running:
             return
         self.running = True
@@ -83,34 +83,34 @@ class QVideoPlayer(QObject):
         self.emit()
 
     @pyqtSlot()
-    def stop(self):
+    def stop(self) -> None:
         self.running = False
 
     @pyqtSlot()
-    def rewind(self):
+    def rewind(self) -> None:
         self.rewinding = True
 
     @pyqtSlot(bool)
-    def pause(self, paused):
+    def pause(self, paused: bool) -> None:
         self.emitting = not paused
 
-    def isPaused(self):
+    def isPaused(self) -> bool:
         return not self.emitting
 
     @pyqtProperty(QSize)
-    def size(self):
+    def size(self) -> QSize:
         return QSize(self.width, self.height)
 
     @pyqtProperty(int)
-    def length(self):
+    def length(self) -> int:
         return int(self.capture.get(self.LENGTH))
 
     @pyqtProperty(int)
-    def fps(self):
+    def fps(self) -> int:
         return int(self.capture.get(self.FPS))
 
     @pyqtProperty(QRectF)
-    def roi(self):
+    def roi(self) -> QRectF:
         return QRectF(0., 0., self.width, self.height)
 
 

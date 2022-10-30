@@ -101,7 +101,8 @@ class QDVRWidget(QFrame):
                                         nskip=self.nskip.value())
         elif extension == '.h5':
             self._writer = QHDF5Writer(self.filename,
-                                       nframes=self.nframes.value())
+                                       nframes=self.nframes.value(),
+                                       nskip=self.nskip.value())
         else:
             logger.debug(f'unsupported file extension {extension}')
             return

@@ -16,7 +16,9 @@ class QHDF5Writer(QObject):
     frameNumber = pyqtSignal(int)
     finished = pyqtSignal()
 
-    def __init__(self, filename, nframes=10000):
+    def __init__(self, filename,
+                 nframes=10000,
+                 nskip=1):
         super(QHDF5Writer, self).__init__()
         # h5py.get_config().track_order = True
         self.file = h5py.File(filename, 'w', libver='latest',
@@ -25,6 +27,7 @@ class QHDF5Writer(QObject):
         self.start = time.time()
         self.file.attrs.update({'Timestamp': self.start})
         self.framenumber = 0
+        self.nskip = nskip
         self.target = nframes
 
     @pyqtSlot(np.ndarray)
@@ -33,7 +36,8 @@ class QHDF5Writer(QObject):
             self.finished.emit()
             return
         now = time.time() - self.start
-        self.video.create_dataset(str(now), data=frame)
+        if self.framenumber % self.nskip == 0:
+            self.video.create_dataset(str(now), data=frame)
         self.framenumber += 1
         self.frameNumber.emit(self.framenumber)
 

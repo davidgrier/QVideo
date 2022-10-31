@@ -15,7 +15,7 @@ class QOpenCVTree(QCameraTree):
         super().__init__(camera, controls, *args, **kwargs)
 
 
-if __name__ == '__main__':
+def example():
     from PyQt5.QtWidgets import QApplication
     import sys
 
@@ -25,3 +25,7 @@ if __name__ == '__main__':
     widget.show()
 
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    example()

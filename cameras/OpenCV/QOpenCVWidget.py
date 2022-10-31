@@ -12,7 +12,7 @@ class QOpenCVWidget(QCameraWidget):
         self.camera.meter.fpsReady.connect(self.ui.rate.setValue)
 
 
-def main():
+def example():
     from PyQt5.QtWidgets import QApplication
     import sys
 
@@ -23,4 +23,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    example()

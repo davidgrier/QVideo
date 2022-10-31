@@ -1,7 +1,12 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSlot
+# import pyqtgraph as pg
+import logging
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 class DVRdemo(QWidget):
 
@@ -16,6 +21,8 @@ class DVRdemo(QWidget):
         uic.loadUi('DVRdemo.ui', self)
         self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
+        # self.roi = pg.RectROI((100, 100), (400, 400))
+        # self.screen.view.addItem(self.roi)
 
     def connectSignals(self):
         self.dvr.source = self.camera
@@ -51,22 +58,19 @@ def parse_command_line():
 
 
 def choose_camera(args):
+    if args.opencv:
+        try:
+            from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
+            return QOpenCVWidget
+        except ImportError as ex:
+            logger.warning(f'Could not import OpenCV camera: {ex}')
+    if args.spinnaker:
+        try:
+            from QVideo.cameras.Spinnaker import QSpinnakerWidget
+            return QSpinnakerWidget
+        except ImportError as ex:
+            logger.warning(f'Could not import Spinnaker camera: {ex}')
     from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
-    try:
-        from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
-        have_opencv = True
-    except ImportError:
-        have_opencv = False
-    try:
-        from QVideo.cameras.Spinnaker import QSpinnakerWidget
-        have_spinnaker = True
-    except ImportError:
-        have_spinnaker = False
-
-    if have_opencv and args.opencv:
-        return QOpenCVWidget
-    elif have_spinnaker and args.spinnaker:
-        return QSpinnakerWidget
     return QNoiseWidget
 
 

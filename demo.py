@@ -1,5 +1,10 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
 from QVideo.lib import QVideoScreen
+import logging
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 class demo(QWidget):
@@ -39,23 +44,20 @@ def parse_command_line():
 
 
 def choose_camera(args):
-    from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
-    CameraWidget = QNoiseWidget
-
     if args.opencv:
         try:
             from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
-            CameraWidget = QOpenCVWidget
-        except ImportError:
-            print('Could not open OpenCV camera')
-    elif args.spinnaker:
+            return QOpenCVWidget
+        except ImportError as ex:
+            logger.warning(f'Could not import OpenCV camera: {ex}')
+    if args.spinnaker:
         try:
             from QVideo.cameras.Spinnaker import QSpinnakerWidget
-            CameraWidget = QSpinnakerWidget
-        except ImportError:
-            print('Could not open Spinnaker camera')
-
-    return CameraWidget
+            return QSpinnakerWidget
+        except ImportError as ex:
+            logger.warning(f'Could not import Spinnaker camera: {ex}')
+    from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
+    return QNoiseWidget
 
 
 def main():

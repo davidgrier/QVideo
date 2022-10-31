@@ -12,6 +12,12 @@ logger.setLevel(logging.DEBUG)
 
 
 class QVideoWriter(QObject):
+    '''Class for saving AVI video files
+
+    Inherits
+    --------
+    PyQt5.QtCore.QObject
+    '''
 
     frameNumber = pyqtSignal(int)
     finished = pyqtSignal()
@@ -54,7 +60,7 @@ class QVideoWriter(QObject):
         self.target = nframes
         self.frameNumber.emit(self.framenumber)
 
-    def formatChanged(self, frame: np.ndarray) -> bool:
+    def _formatChanged(self, frame: np.ndarray) -> bool:
         color = frame.ndim == 3
         h, w = frame.shape[0:2]
         return ((w != self.shape.width()) or
@@ -63,7 +69,14 @@ class QVideoWriter(QObject):
 
     @pyqtSlot(np.ndarray)
     def write(self, frame: np.ndarray) -> None:
-        if (self.framenumber >= self.target) or self.formatChanged(frame):
+        '''Writes video frame to video file
+
+        Arguments
+        ---------
+        frame: numpy.ndarray
+            Video deata to write
+        '''
+        if (self.framenumber >= self.target) or self._formatChanged(frame):
             self.finished.emit()
             return
         if self.color:
@@ -75,4 +88,5 @@ class QVideoWriter(QObject):
 
     @pyqtSlot()
     def close(self) -> None:
+        '''Closes video file'''
         self.writer.release()

@@ -17,8 +17,9 @@ class QHDF5Player(QObject):
     newFrame = pyqtSignal(np.ndarray)
 
     def __init__(self,
-                 filename: Optional[str] = None) -> None:
-        super(QHDF5Player, self).__init__()
+                 filename: Optional[str] = None,
+                 **kwargs) -> None:
+        super().__init__(**kwargs)
 
         self.running = False
 

@@ -32,8 +32,9 @@ class QVideoPlayer(QObject):
         BRG2RGB = cv2.COLOR_BGR2RGB
 
     def __init__(self,
-                 filename: Optional[str] = None) -> None:
-        super(QVideoPlayer, self).__init__()
+                 filename: Optional[str] = None,
+                 *kwargs) -> None:
+        super().__init__(**kwargs)
 
         self.running = False
 

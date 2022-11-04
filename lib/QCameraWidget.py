@@ -1,10 +1,11 @@
-from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot)
+from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot, QEvent)
 from PyQt5.QtWidgets import (QWidget, QPushButton)
 from QVideo.lib.QVideoCamera import QVideoCamera
 from PyQt5 import uic
 import sys
 import os
 import logging
+from typing import (Optional, List, Dict, Any)
 
 
 logging.basicConfig()
@@ -47,7 +48,11 @@ class QCameraWidget(QWidget):
                'QRadioButton':   'toggled',
                'QSpinBox':       'valueChanged'}
 
-    def __init__(self, *args, camera=None, uiFile=None, **kwargs):
+    def __init__(self,
+                 *args,
+                 camera: Optional[QVideoCamera] = None,
+                 uiFile: Optional[str] = None,
+                 **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.camera = camera
         self.ui = self._loadUi(uiFile)
@@ -55,22 +60,22 @@ class QCameraWidget(QWidget):
         self._syncProperties()
         self._connectSignals()
 
-    def __del__(self):
+    def __del__(self) -> None:
         logger.debug('Deleted')
         if self.camera is not None:
             self.close()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QEvent) -> None:
         logger.debug('Close event')
         self.close()
         event.accept()
 
     @pyqtProperty(QVideoCamera)
-    def camera(self):
+    def camera(self) -> QVideoCamera:
         return self._camera
 
     @camera.setter
-    def camera(self, camera):
+    def camera(self, camera: QVideoCamera) -> None:
         logger.info(f'Setting camera: {type(camera).__name__}')
         self._camera = camera
         if camera is None:
@@ -81,14 +86,14 @@ class QCameraWidget(QWidget):
         self.thread.finished.connect(camera.close)
         self.thread.start(QThread.TimeCriticalPriority)
 
-    def close(self):
+    def close(self) -> None:
         logger.debug('Closing')
         self.thread.quit()
         self.thread.wait()
         self.camera = None
 
     @pyqtProperty(list)
-    def properties(self):
+    def properties(self) -> List:
         '''List of camera properties that are controlled by the ui
 
            This property is configured automatically at instantiation
@@ -97,7 +102,7 @@ class QCameraWidget(QWidget):
         return self._properties
 
     @pyqtProperty(list)
-    def methods(self):
+    def methods(self) -> List:
         '''List of camera methods that are called by the ui
 
            This property is configured automatically at instantiation
@@ -106,7 +111,7 @@ class QCameraWidget(QWidget):
         return self._methods
 
     @pyqtProperty(dict)
-    def settings(self):
+    def settings(self) -> Dict:
         '''Dictionary of properties and their current values.
 
         Setting this property changes values on the UI and on
@@ -114,11 +119,11 @@ class QCameraWidget(QWidget):
         return {key: self.get(key) for key in self.properties}
 
     @settings.setter
-    def settings(self, settings):
+    def settings(self, settings: Dict) -> None:
         for key, value in settings.items():
             self.set(key, value)
 
-    def get(self, key):
+    def get(self, key: str) -> Any:
         '''Get value of named widget
 
         Arguments
@@ -134,7 +139,7 @@ class QCameraWidget(QWidget):
         return None
 
     @pyqtSlot(str, object)
-    def set(self, key, value=None):
+    def set(self, key: str, value: Optional[Any] = None) -> None:
         '''Set value of named property
 
         This method explicitly sets the value of the named

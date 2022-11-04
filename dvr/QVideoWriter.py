@@ -29,8 +29,9 @@ class QVideoWriter(QObject):
                  nframes: int = 10000,
                  nskip: int = 1,
                  fps: int = 24,
-                 codec: Optional[str] = None) -> None:
-        super(QVideoWriter, self).__init__()
+                 codec: Optional[str] = None,
+                 **kwargs) -> None:
+        super().__init__(**kwargs)
 
         self.shape = shape
         self.color = color

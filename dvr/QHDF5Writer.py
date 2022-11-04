@@ -25,8 +25,9 @@ class QHDF5Writer(QObject):
     def __init__(self,
                  filename: str,
                  nframes: int = 10000,
-                 nskip: int = 1):
-        super(QHDF5Writer, self).__init__()
+                 nskip: int = 1,
+                 **kwargs):
+        super().__init__(**kwargs)
         # h5py.get_config().track_order = True
         self.file = h5py.File(filename, 'w', libver='latest',
                               track_order=True)

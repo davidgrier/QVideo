@@ -6,7 +6,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 class QVideoScreen(pg.GraphicsLayoutWidget):
@@ -18,11 +18,6 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     mouseMove = pyqtSignal(QMouseEvent)
     mouseWheel = pyqtSignal(QWheelEvent)
 
-    options = dict(enableMenu=False,
-                   enableMouse=False,
-                   invertY=True,
-                   lockAspect=True)
-
     def __init__(self, *args, **kwargs):
         pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
@@ -32,7 +27,7 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     def setupUi(self):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem()
-        self.view = self.addViewBox(**self.options)
+        self.view = self.addViewBox(invertY=True, lockAspect=True)
         self.view.addItem(self.image)
         self.updateShape(QSize(640, 480))
 
@@ -61,18 +56,18 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
 
     def mousePressEvent(self, event):
         self.mousePress.emit(event)
-        event.accept()
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         self.mouseRelease.emit(event)
-        event.accept()
+        super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         if not self._pause:
             self.mouseMove.emit(event)
-        event.accept()
+        super().mouseMoveEvent(event)
 
     def wheelEvent(self, event):
         if not self._pause:
             self.mouseWheel.emit(event)
-        event.accept()
+        super().wheelEvent(event)

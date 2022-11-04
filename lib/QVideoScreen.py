@@ -18,31 +18,31 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     mouseMove = pyqtSignal(QMouseEvent)
     mouseWheel = pyqtSignal(QWheelEvent)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
         self.setupUi()
         self.pauseSignals(False)
 
-    def setupUi(self):
+    def setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem()
         self.view = self.addViewBox(invertY=True, lockAspect=True)
         self.view.addItem(self.image)
         self.updateShape(QSize(640, 480))
 
-    def sizeHint(self):
+    def sizeHint(self) -> QSize:
         return self._size
 
-    def minimumSizeHint(self):
+    def minimumSizeHint(self) -> QSize:
         return self._size / 2
 
     @pyqtSlot(ndarray)
-    def setImage(self, image):
+    def setImage(self, image: np.ndarray) -> None:
         self.image.setImage(image, autoLevels=False)
 
     @pyqtSlot(QSize)
-    def updateShape(self, shape):
+    def updateShape(self, shape: QSize) -> None:
         logger.debug(f'Resizing to {shape}')
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
@@ -51,23 +51,23 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         self.update()
 
     @pyqtSlot(bool)
-    def pauseSignals(self, value):
+    def pauseSignals(self, value: bool) -> None:
         self._pause = value
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         self.mousePress.emit(event)
         super().mousePressEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         self.mouseRelease.emit(event)
         super().mouseReleaseEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if not self._pause:
             self.mouseMove.emit(event)
         super().mouseMoveEvent(event)
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event: QWheelEvent) -> None:
         if not self._pause:
             self.mouseWheel.emit(event)
         super().wheelEvent(event)

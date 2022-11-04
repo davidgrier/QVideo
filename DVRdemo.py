@@ -1,12 +1,12 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSlot
-# import pyqtgraph as pg
 import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
 
 class DVRdemo(QWidget):
 
@@ -21,8 +21,6 @@ class DVRdemo(QWidget):
         uic.loadUi('DVRdemo.ui', self)
         self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
-        # self.roi = pg.RectROI((100, 100), (400, 400))
-        # self.screen.view.addItem(self.roi)
 
     def connectSignals(self):
         self.dvr.source = self.camera

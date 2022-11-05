@@ -36,7 +36,6 @@ class QAVIWriter(QObject):
         # HuffyYUV 'HFYU' appears to work on both
         # Ubuntu and Macports
         codec = codec or 'HFYU'
-
         if cv2.__version__.startswith('2.'):
             self.fourcc = cv2.cv.CV_FOURCC(*codec)
             self.BGR2RGB = cv2.cv.CV_COLOR_BGR2RGB
@@ -47,12 +46,15 @@ class QAVIWriter(QObject):
         self.framenumber = 0
         self.shape = None
 
-    def _initialize(self, frame: np.ndarray) -> None:
+    def open(self,
+             filename: str,
+             frame: np.ndarray) -> Optional[cv2.VideoWriter]:
         self.shape = frame.shape
         h, w = self.shape[:2]
         color = len(self.shape) > 2
-        args = [self.filename, self.fourcc, self.fps, (w, h), color]
-        self.writer = cv2.VideoWriter(*args)
+        args = [filename, self.fourcc, self.fps, (w, h), color]
+        writer = cv2.VideoWriter(*args)
+        return writer if writer.isOpened() else None
 
     @pyqtSlot(np.ndarray)
     def write(self, frame: np.ndarray) -> None:
@@ -64,7 +66,7 @@ class QAVIWriter(QObject):
             Video data to write
         '''
         if self.shape is None:
-            self._initialize(frame)
+            self.writer = self.open(self.filename, frame)
             return
         if (self.framenumber >= self.nframes) or (frame.shape != self.shape):
             self.finished.emit()

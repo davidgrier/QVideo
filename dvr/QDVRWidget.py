@@ -8,9 +8,9 @@ import os
 from typing import Optional
 
 from QVideo.lib import (clickable, QVideoCamera)
-from .QVideoWriter import QVideoWriter
+from .QAVIWriter import QAVIWriter
 from .QHDF5Writer import QHDF5Writer
-from .QVideoPlayer import QVideoPlayer
+from .QAVIPlayer import QAVIPlayer
 from .QHDF5Player import QHDF5Player
 from .icons_rc import *
 
@@ -120,7 +120,7 @@ class QDVRWidget(QFrame):
         logger.debug(f'Starting Recording: {self.filename}')
         extension = os.path.splitext(self.filename)[1]
         if extension == '.avi':
-            self._writer = QVideoWriter(self.filename,
+            self._writer = QAVIWriter(self.filename,
                                         self.source.shape,
                                         self.source.color,
                                         fps=self.source.fps,
@@ -156,7 +156,7 @@ class QDVRWidget(QFrame):
         logger.debug(f'Starting Playback: {self.playname}')
         extension = os.path.splitext(self.playname)[1]
         if extension == '.avi':
-            self._player = QVideoPlayer(self.playname)
+            self._player = QAVIPlayer(self.playname)
         elif extension == '.h5':
             self._player = QHDF5Player(self.playname)
         else:

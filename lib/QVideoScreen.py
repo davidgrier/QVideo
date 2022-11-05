@@ -1,7 +1,7 @@
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QSize)
 from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
 import pyqtgraph as pg
-from numpy import ndarray
+import numpy as np
 import logging
 
 logging.basicConfig()
@@ -37,7 +37,7 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     def minimumSizeHint(self) -> QSize:
         return self._size / 2
 
-    @pyqtSlot(ndarray)
+    @pyqtSlot(np.ndarray)
     def setImage(self, image: np.ndarray) -> None:
         self.image.setImage(image, autoLevels=False)
 

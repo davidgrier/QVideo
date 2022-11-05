@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class QVideoWriter(QObject):
+class QAVIWriter(QObject):
     '''Class for saving AVI video files
 
     Inherits

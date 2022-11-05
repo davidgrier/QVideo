@@ -7,8 +7,8 @@ import numpy as np
 from typing import Optional
 
 
-class QVideoPlayer(QObject):
-    '''OpenCV video player
+class QAVIPlayer(QObject):
+    '''Video player for AVI files
 
     Continuously reads frames from a video file,
     emitting newFrame when each frame becomes available.
@@ -33,7 +33,7 @@ class QVideoPlayer(QObject):
 
     def __init__(self,
                  filename: Optional[str] = None,
-                 *kwargs) -> None:
+                 **kwargs) -> None:
         super().__init__(**kwargs)
 
         self.running = False

@@ -121,11 +121,9 @@ class QDVRWidget(QFrame):
         extension = os.path.splitext(self.filename)[1]
         if extension == '.avi':
             self._writer = QAVIWriter(self.filename,
-                                        self.source.shape,
-                                        self.source.color,
-                                        fps=self.source.fps,
-                                        nframes=self.nframes.value(),
-                                        nskip=self.nskip.value())
+                                      fps=self.source.fps,
+                                      nframes=self.nframes.value(),
+                                      nskip=self.nskip.value())
         elif extension == '.h5':
             self._writer = QHDF5Writer(self.filename,
                                        nframes=self.nframes.value(),

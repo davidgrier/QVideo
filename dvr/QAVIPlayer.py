@@ -10,7 +10,7 @@ from typing import Optional
 class QAVIPlayer(QObject):
     '''Video player for AVI files
 
-    Continuously reads frames from a video file,
+    Reads frames from a video file,
     emitting newFrame when each frame becomes available.
     '''
 
@@ -38,23 +38,23 @@ class QAVIPlayer(QObject):
 
         self.running = False
 
-        self.capture = cv2.VideoCapture(filename)
-        if self.capture.isOpened():
+        self.reader = cv2.VideoCapture(filename)
+        if self.reader.isOpened():
             self.delay = np.round(1000. / self.fps).astype(int)
-            self.width = int(self.capture.get(self.WIDTH))
-            self.height = int(self.capture.get(self.HEIGHT))
+            self.width = int(self.reader.get(self.WIDTH))
+            self.height = int(self.reader.get(self.HEIGHT))
         else:
             self.close()
 
     def isOpened(self) -> bool:
-        return self.capture is not None
+        return self.reader is not None
 
     def close(self) -> None:
-        self.capture.release()
-        self.capture = None
+        self.reader.release()
+        self.reader = None
 
     def seek(self, frame: int) -> None:
-        self.capture.set(self.SEEK, frame)
+        self.reader.set(self.SEEK, frame)
 
     @pyqtSlot()
     def emit(self) -> None:
@@ -65,7 +65,7 @@ class QAVIPlayer(QObject):
             self.seek(0)
             self.rewinding = False
         if self.emitting:
-            ready, self.frame = self.capture.read()
+            ready, self.frame = self.reader.read()
             if ready:
                 if self.frame.ndim == 3:
                     self.frame = cv2.cvtColor(self.frame, self.BRG2RGB)
@@ -104,23 +104,12 @@ class QAVIPlayer(QObject):
 
     @pyqtProperty(int)
     def length(self) -> int:
-        return int(self.capture.get(self.LENGTH))
+        return int(self.reader.get(self.LENGTH))
 
     @pyqtProperty(int)
     def fps(self) -> int:
-        return int(self.capture.get(self.FPS))
+        return int(self.reader.get(self.FPS))
 
     @pyqtProperty(QRectF)
     def roi(self) -> QRectF:
         return QRectF(0., 0., self.width, self.height)
-
-
-if __name__ == '__main__':
-    import sys
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication(sys.argv)
-    fn = '/Users/grier/data/fabdvr.avi'
-    a = QVideoPlayer(fn)
-    a.start()
-    sys.exit(app.exec_())

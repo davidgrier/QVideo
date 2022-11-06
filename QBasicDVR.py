@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class DVRdemo(QWidget):
+class QBasicDVR(QWidget):
 
     def __init__(self, *args, cameraWidget=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,7 +18,7 @@ class DVRdemo(QWidget):
         self.connectSignals()
 
     def setupUi(self):
-        uic.loadUi('DVRdemo.ui', self)
+        uic.loadUi('QBasicDVR.ui', self)
         self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
 

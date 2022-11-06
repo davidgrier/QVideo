@@ -16,6 +16,7 @@ class DVRdemo(QWidget):
         self.camera = cameraWidget.camera
         self.setupUi()
         self.connectSignals()
+        self.dvr.source = self.camera
 
     def setupUi(self):
         uic.loadUi('DVRdemo.ui', self)
@@ -23,7 +24,6 @@ class DVRdemo(QWidget):
         self.updateShape()
 
     def connectSignals(self):
-        self.dvr.source = self.camera
         self.camera.newFrame.connect(self.screen.setImage)
         self.camera.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)

@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton)
 from QVideo.lib.QVideoCamera import QVideoCamera
 from PyQt5 import uic
 import sys
-import os
+from pathlib import Path
 import logging
 from typing import (Optional, List, Dict, Any)
 
@@ -185,8 +185,8 @@ class QCameraWidget(QWidget):
 
     def _loadUi(self, uiFile):
         file = sys.modules[self.__module__].__file__
-        dir = os.path.dirname(os.path.abspath(file))
-        uipath = os.path.join(dir, uiFile)
+        dir = Path(file).parent
+        uipath = str(dir / uiFile)
         form, _ = uic.loadUiType(uipath)
         ui = form()
         ui.setupUi(self)

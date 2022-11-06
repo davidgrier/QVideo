@@ -29,14 +29,17 @@ class QHDF5Writer(QObject):
                  **kwargs):
         super().__init__(**kwargs)
         # h5py.get_config().track_order = True
-        self.file = h5py.File(filename, 'w', libver='latest',
-                              track_order=True)
-        self.video = self.file.create_group('images')
-        self.start = time.time()
-        self.file.attrs.update({'Timestamp': self.start})
+        self.video = self.open(filename)
         self.framenumber = 0
         self.nskip = nskip
         self.target = nframes
+
+    def open(self, filename: str) -> h5py.File:
+        self.file = h5py.File(filename, 'w', libver='latest',
+                              track_order=True)
+        self.start = time.time()
+        self.file.attrs.update({'Timestamp': self.start})
+        return self.file.create_group('images')
 
     @pyqtSlot(np.ndarray)
     def write(self, frame: np.ndarray) -> None:

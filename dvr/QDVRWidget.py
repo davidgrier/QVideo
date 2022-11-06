@@ -4,7 +4,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
                           QObject, QThread)
 from PyQt5.QtWidgets import (QFrame, QFileDialog)
-import os
+from pathlib import Path
 from typing import Optional
 
 from QVideo.lib import (clickable, QVideoCamera)
@@ -18,7 +18,7 @@ from .icons_rc import *
 import logging
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class QDVRWidget(QFrame):
@@ -51,9 +51,8 @@ class QDVRWidget(QFrame):
                  filename: Optional[str] = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        dir = os.path.dirname(os.path.abspath(__file__))
-        uipath = os.path.join(dir, 'QDVRWidget.ui')
-        uic.loadUi(uipath, self)
+        dir = Path(__file__).parent
+        uic.loadUi(dir / 'QDVRWidget.ui', self)
 
         self._writer = None
         self._player = None
@@ -62,7 +61,7 @@ class QDVRWidget(QFrame):
         self.connectSignals()
 
         self.source = source
-        self.filename = filename
+        self.filename = filename or str(Path.home() / 'default.avi')
 
     def connectSignals(self) -> None:
         '''Connects signals to slots for user interaction'''
@@ -88,10 +87,10 @@ class QDVRWidget(QFrame):
         if self.is_recording():
             return ''
         get = QFileDialog.getOpenFileName
-        filename, _ = get(self, 'Video File Name', self.filename,
+        filename, _ = get(self, 'Video File Name', str(self.filename),
                           'Video files (*.avi);;HDF5 files (*.h5)')
         if filename:
-            self.playname = str(filename)
+            self.playname = filename
         return filename
 
     @pyqtSlot()
@@ -103,8 +102,8 @@ class QDVRWidget(QFrame):
         filename, _ = get(self, 'Video File Name', self.filename,
                           'Video files (*.avi);;HDF5 files (*.h5)')
         if filename:
-            self.filename = str(filename)
-            self.playname = str(filename)
+            self.filename = filename
+            self.playname = filename
         return filename
 
     @pyqtSlot()
@@ -118,18 +117,18 @@ class QDVRWidget(QFrame):
         if (self.filename == '') and (self.getSaveFilename() == ''):
             return
         logger.debug(f'Starting Recording: {self.filename}')
-        extension = os.path.splitext(self.filename)[1]
-        if extension == '.avi':
+        suffix = Path(self.filename).suffix
+        if suffix == '.avi':
             self._writer = QAVIWriter(self.filename,
                                       fps=self.source.fps,
                                       nframes=self.nframes.value(),
                                       nskip=self.nskip.value())
-        elif extension == '.h5':
+        elif suffix == '.h5':
             self._writer = QHDF5Writer(self.filename,
                                        nframes=self.nframes.value(),
                                        nskip=self.nskip.value())
         else:
-            logger.debug(f'unsupported file extension {extension}')
+            logger.debug(f'unsupported file extension {suffix}')
             return
         self._writer.frameNumber.connect(self.setFrameNumber)
         self._writer.finished.connect(self.stop)
@@ -152,13 +151,13 @@ class QDVRWidget(QFrame):
             return
         self.framenumber = 0
         logger.debug(f'Starting Playback: {self.playname}')
-        extension = os.path.splitext(self.playname)[1]
-        if extension == '.avi':
+        suffix = Path(self.playname).suffix
+        if suffix == '.avi':
             self._player = QAVIPlayer(self.playname)
-        elif extension == '.h5':
+        elif suffix == '.h5':
             self._player = QHDF5Player(self.playname)
         else:
-            logger.debug(f'unsupported file extension {extension}')
+            logger.debug(f'unsupported file extension {suffix}')
             return
         if self._player.isOpened():
             self.newFrame = self._player.newFrame
@@ -230,7 +229,7 @@ class QDVRWidget(QFrame):
         if filename is None:
             return
         if not (self.is_recording() or self.is_playing()):
-            self.saveEdit.setText(os.path.expanduser(filename))
+            self.saveEdit.setText(filename)
             self.playname = self.filename
 
     @pyqtProperty(str)
@@ -242,7 +241,7 @@ class QDVRWidget(QFrame):
     def playname(self, filename: str) -> None:
         '''Sets filename for Play widget'''
         if not (self.is_playing()):
-            self.playEdit.setText(os.path.expanduser(filename))
+            self.playEdit.setText(filename)
 
     @pyqtProperty(int)
     def framenumber(self) -> int:

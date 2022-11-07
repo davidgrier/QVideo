@@ -5,10 +5,12 @@ video cameras into PyQt5 projects.
 It simplifies development of hardware interfaces 
 that are compatible with Qt and automates developing
 widgets that control cameras' properties and operation.
-It provides a flexible display widget that can
-stream video data while also supporting graphical overlays
-and a digital video recorder for saving and playing
-AVI and H5 videos.
+It provides a flexible display widget
+and a configurable digital video recorder that work as
+a stand-alone camcorder application and can be
+integrated into larger projects.
+The display widget supports mouse-aware graphical overlays for
+annotations, regions of interest and general user interaction.
 
 <img src="docs/dvrdemo.png" width="75%" alt="Interface demo">
 

@@ -1,10 +1,10 @@
-from QBasicDVR import QBasicDVR
+from QCamcorder import QCamcorder
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 import pyqtgraph as pg
 import numpy as np
 
 
-class ROIDVR(QBasicDVR):
+class ROIdemo(QCamcorder):
 
     newFrame = pyqtSignal(np.ndarray)
 
@@ -45,7 +45,7 @@ def example():
     from QVideo.cameras.OpenCV import QOpenCVTree
 
     pg.mkQApp('DVR')
-    widget = ROIDVR(cameraWidget=QOpenCVTree())
+    widget = ROIdemo(cameraWidget=QOpenCVTree())
     widget.show()
     pg.exec()
 

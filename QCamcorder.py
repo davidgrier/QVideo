@@ -8,34 +8,36 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class QBasicDVR(QWidget):
+class QCamcorder(QWidget):
 
-    def __init__(self, *args, cameraWidget=None, **kwargs):
+    UIFILE = 'QCamcorder.ui'
+
+    def __init__(self, *args, cameraWidget=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
         self.camera = self.cameraWidget.camera
         self.setupUi()
         self.connectSignals()
 
-    def setupUi(self):
-        uic.loadUi('QBasicDVR.ui', self)
+    def setupUi(self) -> None:
+        uic.loadUi(self.UIFILE, self)
         self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
 
-    def connectSignals(self):
+    def connectSignals(self) -> None:
         self.camera.newFrame.connect(self.screen.setImage)
         self.camera.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)
         self.dvr.source = self.camera
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
         self.cameraWidget.close()
 
-    def updateShape(self):
+    def updateShape(self) -> None:
         self.screen.updateShape(self.camera.shape)
 
     @pyqtSlot(bool)
-    def dvrPlayback(self, playback):
+    def dvrPlayback(self, playback: bool) -> None:
         if playback:
             self.camera.newFrame.disconnect(self.screen.setImage)
             self.dvr.newFrame.connect(self.screen.setImage)
@@ -80,7 +82,7 @@ def main():
     CameraWidget = choose_camera(args)
 
     app = QApplication(qtargs)
-    widget = DVRdemo(cameraWidget=CameraWidget())
+    widget = QBasicDVR(cameraWidget=CameraWidget())
     widget.show()
     sys.exit(app.exec_())
 

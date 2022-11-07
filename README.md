@@ -1,11 +1,16 @@
 # **QVideo:** PyQt5 support for video cameras
 
-This package provides a unified framework for working with
-video cameras under PyQt5. It simplifies development of hardware
-interfaces that are compatible with Qt and automates developing
+**QVideo** is a framework for integrating
+video cameras into PyQt5 projects. 
+It simplifies development of hardware interfaces 
+that are compatible with Qt and automates developing
 widgets that control cameras' properties and operation.
-It also integrates with a flexible display widget that can
-stream video data while also supporting video overlays.
+It provides a flexible display widget
+and a configurable digital video recorder that work as
+a stand-alone camcorder application and can be
+integrated into larger projects.
+The display widget supports mouse-aware graphical overlays for
+annotations, regions of interest and general user interaction.
 
 <img src="docs/dvrdemo.png" width="75%" alt="Interface demo">
 

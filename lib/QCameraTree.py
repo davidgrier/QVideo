@@ -2,6 +2,7 @@ from pyqtgraph.parametertree import (Parameter, ParameterTree)
 from PyQt5.QtCore import (QThread, pyqtSignal, pyqtSlot, pyqtProperty)
 from PyQt5.QtWidgets import QHeaderView
 from QVideo.lib.QVideoCamera import QVideoCamera
+from typing import (Tuple, List, Dict, Any)
 import logging
 
 
@@ -22,7 +23,7 @@ class QCameraTree(ParameterTree):
     ]
 
     @staticmethod
-    def _parseDescription(param):
+    def _parseDescription(param: Parameter) -> Dict:
         d = dict()
         if param.hasChildren():
             for p in param.children():
@@ -31,7 +32,10 @@ class QCameraTree(ParameterTree):
             d.update({param.name().lower(): param})
         return d
 
-    def __init__(self, camera, controls, *args, **kwargs):
+    def __init__(self,
+                 camera: QVideoCamera,
+                 controls: List,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         controls = [*controls, *QCameraTree.controls]
         self._setupUi(controls)
@@ -41,19 +45,21 @@ class QCameraTree(ParameterTree):
         self.header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.setColumnWidth(0, 150)
 
-    def _setupUi(self, c):
+    def _setupUi(self, c) -> None:
         self._p = Parameter.create(name='params', type='group', children=c)
         self.setParameters(self._p, showTop=False)
         self._parameters = self._parseDescription(self._p)
 
-    def _connectSignals(self):
+    def _connectSignals(self) -> None:
         self._p.sigTreeStateChanged.connect(self._handleChanges)
         self.valueChanged.connect(self._camera.set)
         self._camera.meter.fpsReady.connect(
             lambda fps: self.set('fps', fps, updateCamera=False))
 
     @pyqtSlot(object, object)
-    def _handleChanges(self, tree, changes):
+    def _handleChanges(self,
+                       tree: ParameterTree,
+                       changes: List[Tuple]) -> None:
         if not self._updateCamera:
             return
         for param, change, value in changes:
@@ -62,7 +68,10 @@ class QCameraTree(ParameterTree):
                 self.valueChanged.emit(key, value)
                 logger.debug(f'Change {key}: {value}')
 
-    def set(self, key, value, updateCamera=True):
+    def set(self,
+            key: str,
+            value: Any,
+            updateCamera: bool = True) -> None:
         self._updateCamera = updateCamera
         if key in self._parameters:
             logger.debug(f'set {key}: {value}')
@@ -72,11 +81,11 @@ class QCameraTree(ParameterTree):
         self._updateCamera = True
 
     @pyqtProperty(QVideoCamera)
-    def camera(self):
+    def camera(self) -> QVideoCamera:
         return self._camera
 
     @camera.setter
-    def camera(self, camera):
+    def camera(self, camera: QVideoCamera) -> None:
         self._camera = camera
         if camera is None:
             return
@@ -92,7 +101,7 @@ class QCameraTree(ParameterTree):
         self._thread.start(QThread.TimeCriticalPriority)
 
     @pyqtSlot()
-    def close(self):
+    def close(self) -> None:
         self._thread.quit()
         self._thread.wait()
         self.camera = None

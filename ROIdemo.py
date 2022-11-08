@@ -41,7 +41,7 @@ class ROIdemo(QCamcorder):
         return self.camera.fps
 
 
-def example():
+def example() -> None:
     from QVideo.cameras.OpenCV import QOpenCVTree
 
     pg.mkQApp('DVR')

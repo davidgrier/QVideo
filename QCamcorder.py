@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5 import uic
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import (pyqtSlot, QEvent)
 import logging
 
 logging.basicConfig()
@@ -30,7 +30,7 @@ class QCamcorder(QWidget):
         self.dvr.playing.connect(self.dvrPlayback)
         self.dvr.source = self.camera
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event: QEvent) -> None:
         self.cameraWidget.close()
 
     def updateShape(self) -> None:
@@ -74,7 +74,7 @@ def choose_camera(args):
     return QNoiseWidget
 
 
-def main():
+def main() -> None:
     from PyQt5.QtWidgets import QApplication
     import sys
 
@@ -82,7 +82,7 @@ def main():
     CameraWidget = choose_camera(args)
 
     app = QApplication(qtargs)
-    widget = QBasicDVR(cameraWidget=CameraWidget())
+    widget = QCamcorder(cameraWidget=CameraWidget())
     widget.show()
     sys.exit(app.exec_())
 

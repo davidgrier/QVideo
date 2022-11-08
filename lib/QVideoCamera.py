@@ -5,7 +5,7 @@ from functools import wraps
 from QVideo.lib.QFPSMeter import QFPSMeter
 import numpy as np
 import types
-from typing import Any
+from typing import (List, Any)
 import logging
 
 logging.basicConfig()
@@ -32,12 +32,14 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             return result
         return wrapper
 
-    def __setattr__(self, prop: str, val: Any) -> None:
+    def __setattr__(self,
+                    prop: str,
+                    val: Any) -> None:
         super().__setattr__(prop, val)
         if prop in ['width', 'height']:
             self.shapeChanged.emit()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._getInterface()
         self.mutex = QMutex()
@@ -47,28 +49,28 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self.meter = QFPSMeter()
         self._running = False
 
-    def _getInterface(self):
+    def _getInterface(self) -> None:
         interface = vars(type(self)).items()
         self._properties = [k for k, v in interface
                             if isinstance(v, pyqtProperty)]
         self._methods = [k for k, v in interface
                          if isinstance(v, types.FunctionType)]
 
-    def properties(self):
+    def properties(self) -> List:
         return self._properties
 
-    def methods(self):
+    def methods(self) -> List:
         return self._methods
 
     @pyqtSlot(str, object)
-    def set(self, key, value):
+    def set(self, key: str, value: Any) -> None:
         '''Set named property to value'''
         if key in self._properties:
             setattr(self, key, value)
         else:
             logger.error(f'Unknown property: {key}')
 
-    def get(self, key):
+    def get(self, key: str) -> Any:
         '''Get named property'''
         if key in self._properties:
             return getattr(self, key)
@@ -77,7 +79,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             return None
 
     @pyqtSlot(str)
-    def execute(self, key):
+    def execute(self, key: str) -> None:
         '''Execute named method'''
         if key in self._methods:
             method = getattr(self, key)
@@ -86,14 +88,14 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             logger.error(f'Unknown method: {key}')
 
     @pyqtSlot()
-    def start(self):
+    def start(self) -> None:
         '''Start video acquisition'''
         logger.debug('Starting video acquisition')
         self._running = True
         self.timer.start(1)
 
     @pyqtSlot()
-    def stop(self):
+    def stop(self) -> None:
         '''Stop video acquisition
 
         Acquisition can be restarted with a call to start()
@@ -103,7 +105,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self._running = False
 
     @pyqtSlot()
-    def close(self):
+    def close(self) -> None:
         '''Perform clean-up operations at closing
 
         This slot should be overridden by subclasses
@@ -112,7 +114,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         logger.debug('Calling default close() method')
 
     @pyqtSlot()
-    def acquire(self):
+    def acquire(self) -> None:
         with QMutexLocker(self.mutex):
             ready, frame = self.read()
         if ready:
@@ -128,20 +130,20 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def read(self):
         return False, None
 
-    def is_running(self):
+    def is_running(self) -> bool:
         return self._running
 
     @pyqtProperty(object)
     @protected
-    def shape(self):
+    def shape(self) -> QSize:
         return QSize(int(self.width), int(self.height))
 
     @pyqtProperty(float)
-    def fps(self):
+    def fps(self) -> float:
         return self.meter.value
 
     @pyqtProperty(bool)
-    def color(self):
+    def color(self) -> bool:
         return self._color
 
     @pyqtProperty(int)

@@ -6,14 +6,15 @@ class QFPSMeter(QObject):
 
     fpsReady = pyqtSignal(float)
 
-    def __init__(self, window=10):
+    def __init__(self,
+                 window: int = 10) -> None:
         super().__init__()
         self.window = window
         self._value = 0.
         self.count = 0
         self.start = time.time()
 
-    def tick(self):
+    def tick(self) -> None:
         self.count += 1
         if (self.count >= self.window):
             now = time.time()
@@ -23,5 +24,5 @@ class QFPSMeter(QObject):
             self.count = 0
 
     @pyqtProperty(float)
-    def value(self):
+    def value(self) -> float:
         return self._value

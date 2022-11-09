@@ -1,16 +1,19 @@
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Noise import QNoiseSource
+from typing import Optional
 
 
 class QNoiseTree(QCameraTree):
 
-    def __init__(self, *args, camera=None, **kwargs):
+    def __init__(self, *args,
+                 camera: Optional[QNoiseSource] = None,
+                 **kwargs) -> None:
         camera = camera or QNoiseSource()
         controls = []
         super().__init__(camera, controls, *args, **kwargs)
 
 
-if __name__ == '__main__':
+def example() -> None:
     from PyQt5.QtWidgets import QApplication
     import sys
 
@@ -20,3 +23,7 @@ if __name__ == '__main__':
     widget.show()
 
     sys.exit(app.exec())
+
+
+if __name__ == '__main__':
+    example()

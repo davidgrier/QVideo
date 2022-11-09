@@ -4,15 +4,17 @@ from QVideo.cameras.Noise.QNoiseSource import QNoiseSource
 
 class QNoiseWidget(QCameraWidget):
 
-    def __init__(self, *args, **kwargs):
+    UIFILE = 'QNoiseWidget.ui'
+
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args,
                          camera=QNoiseSource(),
-                         uiFile='QNoiseWidget.ui',
+                         uiFile=self.UIFILE,
                          **kwargs)
         self.camera.meter.fpsReady.connect(self.ui.rate.setValue)
 
 
-def main():
+def example() -> None:
     from PyQt5.QtWidgets import QApplication
     import sys
 
@@ -23,4 +25,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    example()

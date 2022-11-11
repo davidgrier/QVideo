@@ -26,8 +26,11 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
 
     def setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
+        self.view = self.addViewBox(invertY=True,
+                                    lockAspect=True,
+                                    enableMouse=False)
         self.image = pg.ImageItem()
-        self.view = self.addViewBox(invertY=True, lockAspect=True)
+
         self.view.addItem(self.image)
         self.updateShape(QSize(640, 480))
 

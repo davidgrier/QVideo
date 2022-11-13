@@ -28,6 +28,7 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.view = self.addViewBox(invertY=True,
                                     lockAspect=True,
+                                    enableMenu=False,
                                     enableMouse=False)
         self.image = pg.ImageItem()
 

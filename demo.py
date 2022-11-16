@@ -1,5 +1,9 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
+from PyQt5.QtCore import QEvent
 from QVideo.lib import QVideoScreen
+
+# from QVideo.filters.Normalize import Normalize
+
 import logging
 
 logging.basicConfig()
@@ -9,25 +13,31 @@ logger.setLevel(logging.WARNING)
 
 class demo(QWidget):
 
-    def __init__(self, QCameraWidget, *args, **kwargs):
+    def __init__(self, QCameraWidget, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
+
+        # self.screen.registerFilter(Normalize(order=3))
+
         self.cameraWidget = QCameraWidget(self)
         self.camera = self.cameraWidget.camera
         self.setupUi()
         self.connectSignals()
 
-    def setupUi(self):
+    def setupUi(self) -> None:
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.cameraWidget)
         self.updateShape()
 
-    def connectSignals(self):
+    def connectSignals(self) -> None:
         self.camera.newFrame.connect(self.screen.setImage)
         self.camera.shapeChanged.connect(self.updateShape)
 
-    def updateShape(self):
+    def closeEvent(self, event: QEvent) -> None:
+        self.cameraWidget.close()
+
+    def updateShape(self) -> None:
         self.screen.updateShape(self.camera.shape)
         self.update()
 

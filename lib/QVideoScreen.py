@@ -1,5 +1,4 @@
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QSize)
-from PyQt5.QtGui import (QMouseEvent, QWheelEvent)
+from PyQt5.QtCore import (pyqtSlot, QSize)
 import pyqtgraph as pg
 import numpy as np
 import logging
@@ -10,19 +9,13 @@ logger.setLevel(logging.WARNING)
 
 
 class QVideoScreen(pg.GraphicsLayoutWidget):
-    '''Video screen widget that emits signals for mouse events
-    '''
-
-    mousePress = pyqtSignal(QMouseEvent)
-    mouseRelease = pyqtSignal(QMouseEvent)
-    mouseMove = pyqtSignal(QMouseEvent)
-    mouseWheel = pyqtSignal(QWheelEvent)
+    '''Video screen widget'''
 
     def __init__(self, *args, **kwargs) -> None:
         pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
         self.setupUi()
-        self.pauseSignals(False)
+        self._filters = []
 
     def setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -43,6 +36,8 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
 
     @pyqtSlot(np.ndarray)
     def setImage(self, image: np.ndarray) -> None:
+        for filter in self._filters:
+            image = filter(image)
         self.image.setImage(image, autoLevels=False)
 
     @pyqtSlot(QSize)
@@ -54,24 +49,9 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         self._size = shape
         self.update()
 
-    @pyqtSlot(bool)
-    def pauseSignals(self, value: bool) -> None:
-        self._pause = value
+    def registerFilter(self, filter: object) -> None:
+        self._filters.append(filter)
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        self.mousePress.emit(event)
-        super().mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        self.mouseRelease.emit(event)
-        super().mouseReleaseEvent(event)
-
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if not self._pause:
-            self.mouseMove.emit(event)
-        super().mouseMoveEvent(event)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        if not self._pause:
-            self.mouseWheel.emit(event)
-        super().wheelEvent(event)
+    def unregisterFilter(self, filter:object) -> None:
+        if filter in self._filters:
+            self._filters.remove(filter)

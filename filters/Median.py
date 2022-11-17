@@ -29,6 +29,7 @@ class Median(VideoFilter):
             self._next = None
 
     def add(self, data: np.ndarray) -> None:
+        '''Incorporates new data into the median estimate'''
         if data.shape != self.shape:
             self._initialize(data)
         if self._next is not None:
@@ -48,14 +49,17 @@ class Median(VideoFilter):
         self._index += 1
 
     def get(self) -> Optional[np.ndarray]:
+        '''Returns the most recent median estimate'''
         self._ready = False
         return self._result
 
     def ready(self) -> bool:
+        '''Returns True if all data have been processed'''
         return self._ready
 
     @property
     def order(self) -> int:
+        '''Number of contributing images = 3^order'''
         return self._order
 
     @order.setter

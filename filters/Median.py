@@ -1,8 +1,9 @@
+from QVideo.lib.VideoFilter import VideoFilter
 import numpy as np
 from typing import Optional
 
 
-class Median(object):
+class Median(VideoFilter):
 
     '''Fast median of medians filter'''
 
@@ -11,10 +12,6 @@ class Median(object):
                  data: Optional[np.ndarray] = None) -> None:
         self._order = order
         self._initialize(data)
-
-    def __call__(self, data: np.ndarray) -> np.ndarray:
-        self.add(data)
-        return self.get()
 
     def _initialize(self, data: Optional[np.ndarray] = None) -> None:
         self._index = 0

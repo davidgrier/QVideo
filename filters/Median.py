@@ -22,7 +22,7 @@ class Median(VideoFilter):
             return
         self.shape = data.shape
         self._result = data
-        self._buffer = np.zeros((2, *self.shape), data.dtype)
+        self._buffer = np.ones((2, *self.shape), data.dtype)
         if self._order > 1:
             self._next = Median(self._order-1, data)
         else:

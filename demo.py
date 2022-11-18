@@ -17,7 +17,7 @@ class demo(QWidget):
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
 
-        self.screen.registerFilter(Normalize(order=3))
+        self.screen.registerFilter(Normalize(order=2))
 
         self.cameraWidget = QCameraWidget(self)
         self.camera = self.cameraWidget.camera

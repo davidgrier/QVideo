@@ -43,12 +43,13 @@ class Normalize(Median):
 
     def add(self, data: np.ndarray) -> None:
         '''Incorporates new data into background estimate'''
-        super().add(data - self.darkcount)
+        data -= self.darkcount
         self._fg = data.astype(float)
+        super().add(data)
 
     def get(self) -> np.ndarray:
         '''Returns background-corrected image'''
         result = self._fg / super().get().astype(float)
         if self.scale:
             result = (self.mean * result).astype(np.uint8)
-        return(result)
+        return result

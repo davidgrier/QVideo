@@ -47,14 +47,13 @@ def Normalize_Factory(base_class):
         def add(self, data: np.ndarray) -> None:
             '''Incorporates new data into background estimate'''
             data -= self.darkcount
-            self._fg = data
             super().add(data)
+            self._fg = data
 
         def get(self) -> np.ndarray:
             '''Returns background-corrected image'''
             bg = super().get()
-            result = np.divide(self._fg, bg, where=(bg != 0),
-                               out=np.ones_like(bg, dtype=float))
+            result = np.divide(self._fg, bg, where=(bg != 0))
             if self.scale:
                 result = (self.mean * result).astype(np.uint8)
             return result

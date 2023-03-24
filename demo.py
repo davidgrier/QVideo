@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
 from PyQt5.QtCore import QEvent
 from QVideo.lib import QVideoScreen
 
-from QVideo.filters.SampleHold import SampleHold
+from QVideo.filters.Normalize import Normalize
 
 import logging
 
@@ -17,7 +17,7 @@ class demo(QWidget):
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
 
-        self.screen.filter.register(SampleHold(order=3))
+        self.screen.filter.register(Normalize(order=3))
 
         self.cameraWidget = QCameraWidget(self)
         self.camera = self.cameraWidget.camera

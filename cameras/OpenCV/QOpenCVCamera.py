@@ -4,6 +4,7 @@ import cv2
 import time
 import logging
 
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -38,16 +39,9 @@ class QOpenCVCamera(QVideoCamera):
                             lambda self: getattr(self, f'_{prop}'),
                             lambda self, v: setattr(self, f'_{prop}', v))
 
-    def DeviceProperty(dtype, prop):
-        return pyqtProperty(dtype,
-                            lambda self: self.device.get(prop),
-                            lambda self, v: self.device.set(prop, v))
-
     mirrored = Property(bool, 'mirrored')
     flipped = Property(bool, 'flipped')
     gray = Property(bool, 'gray')
-    width = DeviceProperty(int, WIDTH)
-    height = DeviceProperty(int, HEIGHT)
 
     def __init__(self, *args,
                  cameraID: int = 0,
@@ -86,3 +80,21 @@ class QOpenCVCamera(QVideoCamera):
         logger.debug('Closing')
         super().close()
         self.device.release()
+
+    @pyqtProperty(int)
+    def width(self):
+        return self.device.get(self.WIDTH)
+
+    @width.setter
+    def width(self, value):
+        self.device.set(self.WIDTH, value)
+        self.shapeChanged.emit()
+
+    @pyqtProperty(int)
+    def height(self):
+        return self.device.get(self.HEIGHT)
+
+    @height.setter
+    def height(self, value):
+        self.device.set(self.HEIGHT, value)
+        self.shapeChanged.emit()

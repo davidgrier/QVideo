@@ -32,13 +32,6 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             return result
         return wrapper
 
-    def __setattr__(self,
-                    prop: str,
-                    val: Any) -> None:
-        super().__setattr__(prop, val)
-        if prop in ['width', 'height']:
-            self.shapeChanged.emit()
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._getInterface()
@@ -146,7 +139,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def color(self) -> bool:
         return self._color
 
-    @pyqtProperty(int)
+    @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
     def width(self):
         pass
@@ -154,9 +147,9 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     @width.setter
     @abstractmethod
     def width(self, value):
-        pass
+        self.shapeChanged.emit()
 
-    @pyqtProperty(int)
+    @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
     def height(self):
         pass
@@ -164,4 +157,4 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     @height.setter
     @abstractmethod
     def height(self, value):
-        pass
+        self.shapeChanged.emit()

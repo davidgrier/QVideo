@@ -302,7 +302,7 @@
          <number>10</number>
         </property>
         <property name="maximum">
-         <number>10000</number>
+         <number>99000</number>
         </property>
         <property name="singleStep">
          <number>10</number>
@@ -332,6 +332,9 @@
         </property>
         <property name="minimum">
          <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>999</number>
         </property>
        </widget>
       </item>

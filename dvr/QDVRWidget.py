@@ -6,16 +6,15 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
 from PyQt5.QtWidgets import (QFrame, QFileDialog)
 from pathlib import Path
 from typing import Optional
-
 from QVideo.lib import (clickable, QVideoCamera)
 from .QAVIWriter import QAVIWriter
 from .QHDF5Writer import QHDF5Writer
 from .QAVIPlayer import QAVIPlayer
 from .QHDF5Player import QHDF5Player
 from .icons_rc import *
-
-
 import logging
+
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)

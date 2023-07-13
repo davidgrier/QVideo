@@ -56,8 +56,8 @@ class QHDF5Writer(QObject):
         now = time.time() - self.start
         if self.framenumber % self.nskip == 0:
             self.video.create_dataset(str(now), data=frame)
-        self.framenumber += 1
-        self.frameNumber.emit(self.framenumber)
+            self.framenumber += 1
+            self.frameNumber.emit(self.framenumber)
 
     @pyqtSlot()
     def close(self) -> None:

@@ -75,8 +75,8 @@ class QAVIWriter(QObject):
             frame = cv2.cvtColor(frame, self.BGR2RGB)
         if self.framenumber % self.nskip == 0:
             self.writer.write(frame)
-        self.framenumber += 1
-        self.frameNumber.emit(self.framenumber)
+            self.framenumber += 1
+            self.frameNumber.emit(self.framenumber)
 
     @pyqtSlot()
     def close(self) -> None:

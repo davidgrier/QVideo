@@ -1,10 +1,8 @@
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
 from PyQt5.QtCore import QEvent
 from QVideo.lib import QVideoScreen
-
-from QVideo.filters.Normalize import Normalize
-
 import logging
+
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -16,9 +14,6 @@ class demo(QWidget):
     def __init__(self, QCameraWidget, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
-
-        self.screen.filter.register(Normalize(order=3))
-
         self.cameraWidget = QCameraWidget(self)
         self.camera = self.cameraWidget.camera
         self.setupUi()
@@ -80,7 +75,7 @@ def main():
     app = QApplication(qtargs)
     widget = demo(CameraWidget)
     widget.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

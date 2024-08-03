@@ -1,6 +1,5 @@
 from PyQt5.QtCore import (pyqtSlot, QSize)
 import pyqtgraph as pg
-from QVideo.filters.FilterBank import FilterBank
 import numpy as np
 import logging
 
@@ -15,7 +14,6 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.filter = FilterBank()
         self.setupUi()
 
     def setupUi(self) -> None:
@@ -36,7 +34,7 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
 
     @pyqtSlot(np.ndarray)
     def setImage(self, image: np.ndarray) -> None:
-        self.image.setImage(self.filter(image), autoLevels=False)
+        self.image.setImage(image, autoLevels=False)
 
     @pyqtSlot(QSize)
     def updateShape(self, shape: QSize) -> None:
@@ -46,3 +44,17 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
                            padding=0, update=True)
         self._size = shape
         self.update()
+
+
+def main() -> None:
+    from PyQt5.QtWidgets import QApplication
+    import sys
+
+    app = QApplication([])
+    widget = QVideoScreen()
+    widget.show()
+    sys.exit(app.exec())
+
+
+if __name__ == '__main__':
+    main()

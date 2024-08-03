@@ -4,8 +4,9 @@ from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot)
 import numpy as np
 import h5py
 import time
-
 import logging
+
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -26,7 +27,7 @@ class QHDF5Writer(QObject):
                  filename: str,
                  nframes: int = 10000,
                  nskip: int = 1,
-                 **kwargs):
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         # h5py.get_config().track_order = True
         self.video = self.open(filename)

@@ -14,7 +14,6 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
     '''Video screen widget'''
 
     def __init__(self, *args, **kwargs) -> None:
-        pg.setConfigOptions(imageAxisOrder='row-major')
         super().__init__(*args, **kwargs)
         self.filter = FilterBank()
         self.setupUi()
@@ -25,7 +24,7 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
                                     lockAspect=True,
                                     enableMenu=False,
                                     enableMouse=False)
-        self.image = pg.ImageItem()
+        self.image = pg.ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
         self.updateShape(QSize(640, 480))
 

@@ -3,6 +3,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import (pyqtSlot, QEvent)
 import logging
 
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)

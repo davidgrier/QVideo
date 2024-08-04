@@ -1,5 +1,5 @@
 from PyQt5.QtCore import (pyqtSlot, QSize)
-import pyqtgraph as pg
+from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
 import logging
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class QVideoScreen(pg.GraphicsLayoutWidget):
+class QVideoScreen(GraphicsLayoutWidget):
     '''Video screen widget'''
 
     def __init__(self, *args, **kwargs) -> None:
@@ -22,9 +22,9 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
                                     lockAspect=True,
                                     enableMenu=False,
                                     enableMouse=False)
-        self.image = pg.ImageItem(axisOrder='row-major')
+        self.view.setDefaultPadding(0)
+        self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
-        self.updateShape(QSize(640, 480))
 
     def sizeHint(self) -> QSize:
         return self._size
@@ -42,8 +42,8 @@ class QVideoScreen(pg.GraphicsLayoutWidget):
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
                            padding=0, update=True)
+        self.resize(shape.width(), shape.height())
         self._size = shape
-        self.update()
 
 
 def main() -> None:

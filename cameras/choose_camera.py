@@ -33,23 +33,23 @@ def choose_camera():
             return QSpinnakerCamera
         except ImportError as ex:
             logger.warning(f'Could not import Spinnaker camera: {ex}')
-    from QVideo.cameras.Noise import QNoiseCamera
-    return QNoiseCamera
+    from QVideo.cameras.Noise import QNoiseSource
+    return QNoiseSource
 
 
 def choose_camera_widget():
     args, _ = parse_command_line()
     if args.opencv:
         try:
-            from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
-            return QOpenCVWidget
+            from QVideo.cameras.OpenCV import QOpenCVTree
+            return QOpenCVTree
         except ImportError as ex:
-            logger.warning(f'Could not import OpenCV camera: {ex}')
+            logger.warning(f'Could not import OpenCV widget: {ex}')
     if args.spinnaker:
         try:
             from QVideo.cameras.Spinnaker import QSpinnakerWidget
             return QSpinnakerWidget
         except ImportError as ex:
-            logger.warning(f'Could not import Spinnaker camera: {ex}')
-    from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
-    return QNoiseWidget
+            logger.warning(f'Could not import Spinnaker widget: {ex}')
+    from QVideo.cameras.Noise import QNoiseTree
+    return QNoiseTree

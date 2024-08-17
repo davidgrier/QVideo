@@ -126,7 +126,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def is_running(self) -> bool:
         return self._running
 
-    @pyqtProperty(object)
+    @pyqtProperty(QSize)
     @protected
     def shape(self) -> QSize:
         return QSize(int(self.width), int(self.height))

@@ -33,6 +33,7 @@ class QOpenCVCamera(QVideoCamera):
         HEIGHT = cv2.CAP_PROP_FRAME_HEIGHT
         BGR2RGB = cv2.COLOR_BGR2RGB
         BGR2GRAY = cv2.COLOR_BGR2GRAY
+    conversion = {True: BGR2GRAY, False: BGR2RGB}
 
     def Property(dtype, prop):
         return pyqtProperty(dtype,
@@ -70,8 +71,7 @@ class QOpenCVCamera(QVideoCamera):
             time.sleep(0.01)
             return ready, None
         if image.ndim == 3:
-            image = cv2.cvtColor(image, (self.BGR2GRAY if self.gray
-                                         else self.BGR2RGB))
+            image = cv2.cvtColor(image, self.conversion[self.gray])
         if self.flipped or self.mirrored:
             image = cv2.flip(image, self.mirrored * (1 - 2 * self.flipped))
         return ready, image

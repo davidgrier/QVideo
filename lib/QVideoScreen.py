@@ -1,4 +1,4 @@
-from QVideo.lib import QVideoCamera
+from QVideo.lib import (QVideoCamera, QVideoSource)
 from PyQt5.QtCore import (QThread, pyqtSlot, QSize)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
@@ -8,23 +8,6 @@ import logging
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
-
-
-class Source(QThread):
-    def __init__(self, camera):
-        super().__init__()
-        self.camera = camera
-        self.camera.moveToThread(self)
-        self.started.connect(self.camera.start)
-        self.finished.connect(self.camera.close)
-
-    def start(self):
-        super().start(QThread.TimeCriticalPriority)
-
-    @pyqtSlot()
-    def close(self):
-        self.quit()
-        self.wait()
 
 
 class QVideoScreen(GraphicsLayoutWidget):
@@ -58,7 +41,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         if self._source is not None:
             self._source.close()
             self._source = None
-        self._source = Source(camera)
+        self._source = QVideoSource(camera)
         self.updateShape(self._source.camera.shape)
         self._source.camera.shapeChanged.connect(self.updateShape)
         self._source.camera.newFrame.connect(self.setImage)

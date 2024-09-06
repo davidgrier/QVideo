@@ -23,7 +23,7 @@ class QNoiseSource(QVideoCamera):
     @width.setter
     def width(self, value: int) -> None:
         self._width = value
-        self.shapeChanged.emit()
+        self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int)
     def height(self) -> int:
@@ -32,4 +32,4 @@ class QNoiseSource(QVideoCamera):
     @height.setter
     def height(self, value: int) -> None:
         self._height = value
-        self.shapeChanged.emit()
+        self.shapeChanged.emit(self.shape)

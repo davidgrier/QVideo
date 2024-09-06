@@ -88,7 +88,7 @@ class QOpenCVCamera(QVideoCamera):
     @width.setter
     def width(self, value):
         self.device.set(self.WIDTH, value)
-        self.shapeChanged.emit()
+        self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int)
     def height(self):
@@ -97,4 +97,4 @@ class QOpenCVCamera(QVideoCamera):
     @height.setter
     def height(self, value):
         self.device.set(self.HEIGHT, value)
-        self.shapeChanged.emit()
+        self.shapeChanged.emit(self.shape)

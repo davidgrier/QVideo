@@ -21,7 +21,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     '''Base class for a video camera implementation'''
 
     newFrame = pyqtSignal(np.ndarray)
-    shapeChanged = pyqtSignal()
+    shapeChanged = pyqtSignal(QSize)
 
     def protected(method):
         '''Decorator for preventing clashes in camera operations'''
@@ -147,7 +147,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     @width.setter
     @abstractmethod
     def width(self, value):
-        self.shapeChanged.emit()
+        self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
@@ -157,4 +157,4 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     @height.setter
     @abstractmethod
     def height(self, value):
-        self.shapeChanged.emit()
+        self.shapeChanged.emit(self.shape)

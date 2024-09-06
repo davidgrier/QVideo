@@ -184,8 +184,14 @@ class QSpinnakerCamera(QVideoCamera):
         self.flipped = flipped
         self.mirrored = mirrored
 
+        self.width.propertyChanged.connect(self.emitShapeChanged)
+        self.height.propertyChanged.connect(self.emitShapeChanged)
+
         self.beginAcquisition()
         _, frame = self.read()
+
+    def emitShapeChanged(self):
+        self.shapeChanged.emit(self.shape)
 
     def open(self, index=0):
         '''

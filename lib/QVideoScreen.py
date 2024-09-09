@@ -34,14 +34,22 @@ class QVideoScreen(GraphicsLayoutWidget):
     def minimumSizeHint(self) -> QSize:
         return self._size / 2
 
-    def source(self) -> QVideoCamera:
-        return self._source.camera
+    def source(self) -> QVideoSource:
+        return self._source
 
-    def setSource(self, camera: QVideoCamera) -> None:
+    def setSource(self, source: QVideoSource) -> None:
+        '''Connect video source to view screen
+
+        Arguments
+        ---------
+        camera : QVideoSource
+            New video source.
+        '''
+        assert(isinstance(source, QVideoSource))
         if self._source is not None:
             self._source.close()
             self._source = None
-        self._source = QVideoSource(camera)
+        self._source = source
         self.updateShape(self._source.camera.shape)
         self._source.camera.shapeChanged.connect(self.updateShape)
         self._source.camera.newFrame.connect(self.setImage)

@@ -11,6 +11,7 @@ class QCamcorder(QWidget):
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
         self.camera = self.cameraWidget.camera
+        self.cameraWidget.source.start()
         self.setupUi()
         self.connectSignals()
 
@@ -49,7 +50,8 @@ def main() -> None:
     CameraWidget = choose_camera_widget()
 
     app = QApplication([])
-    widget = QCamcorder(cameraWidget=CameraWidget())
+    cameraWidget = CameraWidget().start()
+    widget = QCamcorder(cameraWidget=cameraWidget)
     widget.show()
     sys.exit(app.exec())
 

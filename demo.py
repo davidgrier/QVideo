@@ -5,30 +5,17 @@ from QVideo.lib import QVideoScreen
 
 class demo(QWidget):
 
-    def __init__(self, QCameraWidget, *args, **kwargs) -> None:
+    def __init__(self, CameraWidget, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
-        self.cameraWidget = QCameraWidget(self)
-        self.camera = self.cameraWidget.camera
+        self.cameraWidget = CameraWidget(self).start()
+        self.screen.setSource(self.cameraWidget.source)
         self.setupUi()
-        self.connectSignals()
 
     def setupUi(self) -> None:
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.cameraWidget)
-        self.updateShape()
-
-    def connectSignals(self) -> None:
-        self.camera.newFrame.connect(self.screen.setImage)
-        self.camera.shapeChanged.connect(self.updateShape)
-
-    def closeEvent(self, event: QEvent) -> None:
-        self.cameraWidget.close()
-
-    def updateShape(self) -> None:
-        self.screen.updateShape(self.camera.shape)
-        self.update()
 
 
 def main():

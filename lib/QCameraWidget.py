@@ -1,6 +1,7 @@
-from PyQt5.QtCore import (QThread, pyqtProperty, pyqtSlot, QEvent)
+from PyQt5.QtCore import (pyqtProperty, pyqtSlot, QEvent)
 from PyQt5.QtWidgets import (QWidget, QPushButton)
 from QVideo.lib.QVideoCamera import QVideoCamera
+from QVideo.lib.QVideoSource import QVideoSource
 from PyQt5 import uic
 import sys
 from pathlib import Path
@@ -79,17 +80,28 @@ class QCameraWidget(QWidget):
         logger.info(f'Setting camera: {type(camera).__name__}')
         self._camera = camera
         if camera is None:
+            self._source = None
             return
-        self.thread = QThread()
-        camera.moveToThread(self.thread)
-        self.thread.started.connect(camera.start)
-        self.thread.finished.connect(camera.close)
-        self.thread.start(QThread.TimeCriticalPriority)
+        self._source = QVideoSource(camera)
 
+    @pyqtProperty(QVideoSource)
+    def source(self) -> QVideoSource:
+        return self._source
+
+    @source.setter
+    def source(self, source: QVideoSource) -> None:
+        logger.info(f'Setting source: {type(source.camera).__name__}')
+        self._source = source
+        self._camera = self._source.camera
+
+    def start(self):
+        self.source.start()
+        return self
+
+    @pyqtSlot()
     def close(self) -> None:
         logger.debug('Closing')
-        self.thread.quit()
-        self.thread.wait()
+        self.source.close()
         self.camera = None
 
     @pyqtProperty(list)

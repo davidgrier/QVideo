@@ -1,7 +1,8 @@
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from PyQt5.QtCore import (QThread, pyqtSignal, pyqtSlot, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 from PyQt5.QtWidgets import QHeaderView
 from QVideo.lib.QVideoCamera import QVideoCamera
+from QVideo.lib.QVideoSource import QVideoSource
 from typing import (Tuple, List, Dict, Any)
 import logging
 
@@ -88,20 +89,29 @@ class QCameraTree(ParameterTree):
     def camera(self, camera: QVideoCamera) -> None:
         self._camera = camera
         if camera is None:
+            self._source = None
             return
         if not isinstance(camera, QVideoCamera):
             logger.error(f'unsupported camera of type {type(camera)}')
             return
         for p in camera.properties():
             self.set(p, camera.get(p), updateCamera=False)
-        self._thread = QThread()
-        camera.moveToThread(self._thread)
-        self._thread.started.connect(camera.start)
-        self._thread.finished.connect(camera.close)
-        self._thread.start(QThread.TimeCriticalPriority)
+        self._source = QVideoSource(camera)
+
+    @pyqtProperty(QVideoSource)
+    def source(self) -> QVideoSource:
+        return self._source
+
+    @source.setter
+    def source(self, source: QVideoSource) -> None:
+        self._source = source
+        self._camera = self._source.camera
+
+    def start(self):
+        self.source.start()
+        return self
 
     @pyqtSlot()
     def close(self) -> None:
-        self._thread.quit()
-        self._thread.wait()
+        self.source.close()
         self.camera = None

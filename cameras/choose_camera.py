@@ -12,10 +12,9 @@ __all__ = ['choose_camera', 'choose_camera_widget']
 
 def parse_command_line():
     parser = argparse.ArgumentParser()
-    opt = dict(action='store_true')
     arg = parser.add_argument
-    arg('-c', dest='opencv', help='OpenCV camera', **opt)
-    arg('-s', dest='spinnaker', help='Spinnaker camera', **opt)
+    arg('-c', dest='opencv', help='OpenCV camera', action='store_true')
+    arg('-s', dest='spinnaker', help='Spinnaker camera', action='store_true')
     return parser.parse_known_args()
 
 

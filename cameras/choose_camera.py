@@ -1,4 +1,4 @@
-import argparse
+from argparse import ArgumentParser
 import logging
 
 
@@ -10,11 +10,16 @@ logger.setLevel(logging.WARNING)
 __all__ = ['choose_camera', 'choose_camera_widget']
 
 
-def parse_command_line():
-    parser = argparse.ArgumentParser()
+def camera_parser(parser=None):
+    parser = parser or ArgumentParser()
     arg = parser.add_argument
     arg('-c', dest='opencv', help='OpenCV camera', action='store_true')
     arg('-s', dest='spinnaker', help='Spinnaker camera', action='store_true')
+    return parser
+
+
+def parse_command_line(parser=None):
+    parser = camera_parser(parser)
     return parser.parse_known_args()
 
 

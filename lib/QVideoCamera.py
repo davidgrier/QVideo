@@ -8,6 +8,7 @@ import types
 from typing import (List, Any)
 import logging
 
+
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -54,6 +55,9 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
 
     def methods(self) -> List:
         return self._methods
+
+    def settings(self) -> dict:
+        return {p: self.get(p) for p in self.properties()}
 
     @pyqtSlot(str, object)
     def set(self, key: str, value: Any) -> None:

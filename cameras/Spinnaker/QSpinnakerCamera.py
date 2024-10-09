@@ -1,12 +1,16 @@
 from QVideo.lib import QVideoCamera
 import PySpin
-from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot, QVariant)
+from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
+from typing import (TypeAlias, Union, Callable)
 import logging
 
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
+
+Value: TypeAlias = Union[bool, int, float, str]
 
 
 '''
@@ -59,11 +63,11 @@ class QSpinnakerCamera(QVideoCamera):
         frame: numpy ndarray containing image information
     '''
 
-    def Property(ptype, name, stop=False):
+    def Property(ptype, name: str, stop: bool = False) -> Callable:
 
         logger.debug(f'Registering {name}')
 
-        def getter(inst):
+        def getter(inst) -> Value:
             logger.debug(f'Getting {name}')
             value = None
             try:
@@ -80,7 +84,7 @@ class QSpinnakerCamera(QVideoCamera):
             return value
 
         @QVideoCamera.protected
-        def setter(inst, value, name=name, stop=stop):
+        def setter(inst, value: Value) -> None:
             logger.debug(f'Setting {name}: {value}')
             try:
                 restart = stop and inst._running
@@ -103,15 +107,15 @@ class QSpinnakerCamera(QVideoCamera):
                     feature.SetValue(value)
                 if restart:
                     inst.beginAcquisition()
-                    inst.propertyChanged.emit(name)
+                inst.propertyChanged.emit(name)
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error setting {name}: {ex}')
 
         return pyqtProperty(ptype, getter, setter)
 
-    def Trigger(name):
+    def Trigger(name) -> Callable:
         @pyqtSlot(bool)
-        def slot(inst, state):
+        def slot(inst, state) -> None:
             feature = getattr(inst.device, name)
             if PySpin.IsWritable(feature):
                 feature.FromString('Once')
@@ -161,11 +165,11 @@ class QSpinnakerCamera(QVideoCamera):
     autosharpening = Trigger('SharpeningAuto')
 
     def __init__(self, *args,
-                 cameraID=0,
-                 mirrored=True,
-                 flipped=False,
-                 gray=True,
-                 **kwargs):
+                 cameraID: int = 0,
+                 mirrored: bool = True,
+                 flipped: bool = False,
+                 gray: bool = True,
+                 **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.open(cameraID)
@@ -196,7 +200,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.sharpeningauto = 'Off'
 
 
-    def open(self, index=0):
+    def open(self, index: int = 0) -> None:
         '''
         Initialize Spinnaker and open specified camera
 
@@ -222,7 +226,7 @@ class QSpinnakerCamera(QVideoCamera):
         self._running = False
         logger.debug(f'Camera {index} open')
 
-    def close(self):
+    def close(self) -> None:
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Cleaning up')
         if self.device.IsStreaming():
@@ -235,7 +239,7 @@ class QSpinnakerCamera(QVideoCamera):
             del self._system
         logger.debug('Camera closed')
 
-    def beginAcquisition(self):
+    def beginAcquisition(self) -> None:
         '''Start image acquisition'''
         if not self._running:
             logger.debug('Beginning acquisition')
@@ -243,7 +247,7 @@ class QSpinnakerCamera(QVideoCamera):
             self.device.BeginAcquisition()
             logger.debug('Acquisition started')
 
-    def endAcquisition(self):
+    def endAcquisition(self) -> None:
         '''Stop image acquisition'''
         if self._running:
             logger.debug('Ending acquisition')
@@ -251,7 +255,7 @@ class QSpinnakerCamera(QVideoCamera):
             self._running = False
             logger.debug('Acquisition ended')
 
-    def read(self):
+    def read(self) -> tuple[bool, 'np.ndarray']:
         '''The whole point of the thing: Gimme da piccy'''
         try:
             img = self.device.GetNextImage()
@@ -267,55 +271,55 @@ class QSpinnakerCamera(QVideoCamera):
         return True, frame
 
     @pyqtProperty(int)
-    def width(self):
+    def width(self) -> int:
         feature = getattr(self.device, 'Width')
         if PySpin.IsAvailable(feature) and PySpin.IsReadable(feature):
             return feature.GetValue()
         return -1
 
     @width.setter
-    def width(self, value):
+    def width(self, value: int) -> None:
         feature = getattr(self.device, 'Width')
         if PySpin.IsAvailable(feature) and PySpin.IsReadable(feature):
             feature.SetValue(value)
             self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int)
-    def height(self):
+    def height(self) -> int:
         feature = getattr(self.device, 'Height')
         if PySpin.IsAvailable(feature) and PySpin.IsReadable(feature):
             return feature.GetValue()
         return -1
 
     @height.setter
-    def height(self, value):
+    def height(self, value: int) -> None:
         feature = getattr(self.device, 'Width')
         if PySpin.IsAvailable(feature) and PySpin.IsReadable(feature):
             feature.SetValue(value)
             self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(str)
-    def cameraname(self):
+    def cameraname(self) -> str:
         return f'{self.devicevendorname} {self.devicemodelname}'
 
     @pyqtProperty(bool)
-    def gray(self):
+    def gray(self) -> bool:
         return self.pixelformat == 'Mono8'
 
     @gray.setter
-    def gray(self, gray):
+    def gray(self, gray: bool) -> None:
         logger.debug(f'Setting Gray: {gray}')
         if self._color_capable:
             self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
     @pyqtProperty(str)
-    def version(self):
+    def version(self) -> str:
         v = self._system.GetLibraryVersion()
         s = f'{v.major}.{v.minor}.{v.type}.{v.build}'
         logger.debug(f'PySpin version: {s}')
         return s
 
-    def colorCapable(self):
+    def colorCapable(self) -> bool:
         return self._color_capable
 
     def _test_color(self) -> None:
@@ -338,7 +342,7 @@ class QSpinnakerCamera(QVideoCamera):
                 self._properties.remove(p)
 
 
-def main():
+def main() -> None:
     from pprint import pprint
 
     logger.setLevel(logging.ERROR)
@@ -346,7 +350,7 @@ def main():
     print(cam.cameraname)
     print(f'Serial number: {cam.deviceserialnumber}')
     print('Settings:')
-    pprint(cam.settings())
+    pprint(cam.settings)
     cam.close()
     del cam
 

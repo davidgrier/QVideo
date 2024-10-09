@@ -5,13 +5,16 @@ from functools import wraps
 from QVideo.lib.QFPSMeter import QFPSMeter
 import numpy as np
 import types
-from typing import (List, Dict, Any)
+from typing import (TypeAlias, Union, Callable)
 import logging
 
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
+
+Value: TypeAlias = Union[bool, int, float, str]
 
 
 class QVideoCameraMeta(type(QObject), ABCMeta):
@@ -24,7 +27,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     newFrame = pyqtSignal(np.ndarray)
     shapeChanged = pyqtSignal(QSize)
 
-    def protected(method):
+    def protected(method: Callable) -> Callable:
         '''Decorator for preventing clashes in camera operations'''
         @wraps(method)
         def wrapper(inst, *args, **kwargs):
@@ -50,30 +53,30 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self._methods = [k for k, v in interface
                          if isinstance(v, types.FunctionType)]
 
-    def properties(self) -> List:
+    def properties(self) -> list[str]:
         return self._properties
 
-    def methods(self) -> List:
+    def methods(self) -> list[str]:
         return self._methods
 
     @pyqtProperty(dict)
-    def settings(self) -> Dict:
+    def settings(self) -> dict[str, Value]:
         return {p: self.get(p) for p in self.properties()}
 
     @settings.setter
-    def settings(self, settings) -> None:
+    def settings(self, settings: dict[str, Value]) -> None:
         for key, value in settings.items():
             self.set(key, value)
 
     @pyqtSlot(str, object)
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: Value) -> None:
         '''Set named property to value'''
         if key in self._properties:
             setattr(self, key, value)
         else:
             logger.error(f'Unknown property: {key}')
 
-    def get(self, key: str) -> Any:
+    def get(self, key: str) -> Value:
         '''Get named property'''
         if key in self._properties:
             return getattr(self, key)
@@ -130,7 +133,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             logger.warning('Frame acquisition failed')
 
     @abstractmethod
-    def read(self):
+    def read(self) -> tuple[bool, np.ndarray]:
         return False, None
 
     def is_running(self) -> bool:
@@ -151,20 +154,20 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
 
     @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
-    def width(self):
+    def width(self) -> int:
         pass
 
     @width.setter
     @abstractmethod
-    def width(self, value):
+    def width(self, value: int) -> None:
         self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
-    def height(self):
+    def height(self) -> int:
         pass
 
     @height.setter
     @abstractmethod
-    def height(self, value):
+    def height(self, value: int) -> None:
         self.shapeChanged.emit(self.shape)

@@ -36,7 +36,7 @@ class QCameraTree(ParameterTree):
     def __init__(self,
                  camera: QVideoCamera,
                  controls: List,
-                 *args, **kwargs):
+                 *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         controls = [*controls, *QCameraTree.controls]
         self._setupUi(controls)

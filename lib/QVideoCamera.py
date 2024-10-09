@@ -5,7 +5,7 @@ from functools import wraps
 from QVideo.lib.QFPSMeter import QFPSMeter
 import numpy as np
 import types
-from typing import (List, Any)
+from typing import (List, Dict, Any)
 import logging
 
 
@@ -56,8 +56,14 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def methods(self) -> List:
         return self._methods
 
-    def settings(self) -> dict:
+    @pyqtProperty(dict)
+    def settings(self) -> Dict:
         return {p: self.get(p) for p in self.properties()}
+
+    @settings.setter
+    def settings(self, settings) -> None:
+        for key, value in settings.items():
+            self.set(key, value)
 
     @pyqtSlot(str, object)
     def set(self, key: str, value: Any) -> None:

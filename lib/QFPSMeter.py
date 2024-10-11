@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (QObject, pyqtSignal, pyqtProperty)
+from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot, pyqtProperty)
 import time
 
 
@@ -14,6 +14,7 @@ class QFPSMeter(QObject):
         self.count = 0
         self.start = time.time()
 
+    @pyqtSlot()
     def tick(self) -> None:
         self.count += 1
         if (self.count >= self.window):

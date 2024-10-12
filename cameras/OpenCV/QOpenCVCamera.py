@@ -51,19 +51,19 @@ class QOpenCVCamera(QVideoCamera):
                  gray: bool = False,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
-        self.device = cv2.VideoCapture(cameraID)
-
+        self.open(cameraID)
         # camera properties
         self.mirrored = mirrored
         self.flipped = flipped
         self.gray = gray
-
         # initialize camera with one frame
         while True:
             ready, image = self.read()
             if ready:
                 break
+
+    def open(self, cameraID:int) -> None:
+        self.device = cv2.VideoCapture(cameraID)
 
     def read(self):
         ready, image = self.device.read()
@@ -83,7 +83,7 @@ class QOpenCVCamera(QVideoCamera):
 
     @pyqtProperty(int)
     def width(self):
-        return self.device.get(self.WIDTH)
+        return int(self.device.get(self.WIDTH))
 
     @width.setter
     def width(self, value):
@@ -92,9 +92,27 @@ class QOpenCVCamera(QVideoCamera):
 
     @pyqtProperty(int)
     def height(self):
-        return self.device.get(self.HEIGHT)
+        return int(self.device.get(self.HEIGHT))
 
     @height.setter
     def height(self, value):
         self.device.set(self.HEIGHT, value)
         self.shapeChanged.emit(self.shape)
+
+    @pyqtProperty(float)
+    def fps(self) -> float:
+        return self.meter.value
+
+
+def main() -> None:
+    from pprint import pprint
+
+    logger.setLevel(logging.ERROR)
+    cam = QOpenCVCamera()
+    print('Settings:')
+    pprint(cam.settings())
+    cam.close()
+
+
+if __name__ == '__main__':
+    main()

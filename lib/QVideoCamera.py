@@ -44,6 +44,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.acquire)
         self.meter = QFPSMeter()
+        self.newFrame.connect(self.meter.tick)
         self._running = False
 
     def _getInterface(self) -> None:
@@ -59,12 +60,10 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def methods(self) -> list[str]:
         return self._methods
 
-    @pyqtProperty(dict)
     def settings(self) -> dict[str, Value]:
         return {p: self.get(p) for p in self.properties()}
 
-    @settings.setter
-    def settings(self, settings: dict[str, Value]) -> None:
+    def setSettings(self, settings: dict[str, Value]) -> None:
         for key, value in settings.items():
             self.set(key, value)
 
@@ -94,11 +93,12 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             logger.error(f'Unknown method: {key}')
 
     @pyqtSlot()
-    def start(self) -> None:
+    def start(self):
         '''Start video acquisition'''
         logger.debug('Starting video acquisition')
         self._running = True
         self.timer.start(1)
+        return self
 
     @pyqtSlot()
     def stop(self) -> None:
@@ -116,7 +116,8 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
 
         This slot should be overridden by subclasses
         '''
-        self.stop()
+        if self._running:
+            self.stop()
         logger.debug('Calling default close() method')
 
     @pyqtSlot()
@@ -126,7 +127,6 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         if ready:
             self.newFrame.emit(frame)
             self._color = frame.ndim == 3
-            self.meter.tick()
             if self._running:
                 self.timer.start(1)
         else:
@@ -148,11 +148,16 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def fps(self) -> float:
         return self.meter.value
 
+    @fps.setter
+    def fps(self, value):
+        '''FIXME: Override to set frame rate on cameras?'''
+        pass
+
     @pyqtProperty(bool)
     def color(self) -> bool:
         return self._color
 
-    @pyqtProperty(int, notify=shapeChanged)
+    @pyqtProperty(int)
     @abstractmethod
     def width(self) -> int:
         pass
@@ -162,7 +167,7 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
     def width(self, value: int) -> None:
         self.shapeChanged.emit(self.shape)
 
-    @pyqtProperty(int, notify=shapeChanged)
+    @pyqtProperty(int)
     @abstractmethod
     def height(self) -> int:
         pass

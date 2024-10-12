@@ -3,7 +3,7 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 from PyQt5.QtWidgets import QHeaderView
 from QVideo.lib.QVideoCamera import QVideoCamera
 from QVideo.lib.QVideoSource import QVideoSource
-from typing import (Tuple, List, Dict, Any)
+from typing import (Optional, Union, Tuple, List, Dict, Any)
 import logging
 
 
@@ -16,13 +16,6 @@ class QCameraTree(ParameterTree):
 
     valueChanged = pyqtSignal(str, object)
 
-    controls = [
-        {'name': 'Shape', 'type': 'group', 'children': [
-            {'name': 'Width', 'type': 'int', 'value': 640},
-            {'name': 'Height', 'type': 'int', 'value': 480}]},
-        {'name': 'FPS', 'type': 'float', 'value': 0., 'readonly': True}
-    ]
-
     @staticmethod
     def _parseDescription(param: Parameter) -> Dict:
         d = dict()
@@ -34,19 +27,40 @@ class QCameraTree(ParameterTree):
         return d
 
     def __init__(self,
-                 camera: QVideoCamera,
-                 controls: List,
+                 camera: Optional[QVideoCamera] = None,
+                 controls: Optional[List] = None,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        controls = [*controls, *QCameraTree.controls]
-        self._setupUi(controls)
+        self._setupUi()
+        self._setupTree(controls or camera)
         self.camera = camera
         self._connectSignals()
+
+    def __del__(self):
+        if isinstance(self.source, QVideoSource):
+            self.source.close()
+
+    def _setupUi(self) -> None:
         self.setMinimumWidth(250)
         self.header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.setColumnWidth(0, 150)
 
-    def _setupUi(self, c) -> None:
+    @staticmethod
+    def _controls(camera: Optional[QVideoCamera]) -> List:
+        if camera is None:
+            clist = list()
+        else:
+            clist = [{'name': key,
+                      'type': value.__class__.__name__,
+                      'value': value}
+                     for key, value in camera.settings().items()
+                     if value is not None]
+        return [{'name': 'Controls',
+                 'type': 'group',
+                 'children': clist}]
+
+    def _setupTree(self, c: Union[List, QVideoCamera]) -> None:
+        c = c if isinstance(c, list) else self._controls(c)
         self._p = Parameter.create(name='params', type='group', children=c)
         self.setParameters(self._p, showTop=False)
         self._parameters = self._parseDescription(self._p)
@@ -69,10 +83,7 @@ class QCameraTree(ParameterTree):
                 self.valueChanged.emit(key, value)
                 logger.debug(f'Change {key}: {value}')
 
-    def set(self,
-            key: str,
-            value: Any,
-            updateCamera: bool = True) -> None:
+    def set(self, key: str, value: Any, updateCamera: bool = True) -> None:
         self._updateCamera = updateCamera
         if key in self._parameters:
             logger.debug(f'set {key}: {value}')
@@ -86,7 +97,7 @@ class QCameraTree(ParameterTree):
         return self._camera
 
     @camera.setter
-    def camera(self, camera: QVideoCamera) -> None:
+    def camera(self, camera: Optional[QVideoCamera]) -> None:
         self._camera = camera
         if camera is None:
             self._source = None
@@ -113,5 +124,4 @@ class QCameraTree(ParameterTree):
 
     @pyqtSlot()
     def close(self) -> None:
-        self.source.close()
-        self.camera = None
+        self.__del__()

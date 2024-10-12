@@ -9,13 +9,22 @@ class QVideoSource(QThread):
         self.camera.moveToThread(self)
         self.started.connect(self.camera.start)
         self.finished.connect(self.camera.close)
-
-    @pyqtSlot()
-    def start(self) -> None:
         super().start(QThread.TimeCriticalPriority)
 
-    @pyqtSlot()
-    def close(self) -> None:
+    def __del__(self):
         self.quit()
         self.wait()
         self.camera = None
+
+    @pyqtSlot()
+    def start(self):
+        self.camera.start()
+        return self
+
+    @pyqtSlot()
+    def stop(self) -> None:
+        self.camera.stop()
+
+    @pyqtSlot()
+    def close(self) -> None:
+        self.__del__()

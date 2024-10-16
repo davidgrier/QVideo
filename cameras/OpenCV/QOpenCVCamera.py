@@ -28,11 +28,13 @@ class QOpenCVCamera(QCamera):
         HEIGHT = cv2.cv.CV_CAP_PROP_FRAME_HEIGHT
         BGR2RGB = cv2.cv.CV_BGR2RGB
         BGR2GRAY = cv2.cv.CV_BGR2GRAY
+        FPS = cv2.cv.CV_CAP_PROP_FPS
     else:
         WIDTH = cv2.CAP_PROP_FRAME_WIDTH
         HEIGHT = cv2.CAP_PROP_FRAME_HEIGHT
         BGR2RGB = cv2.COLOR_BGR2RGB
         BGR2GRAY = cv2.COLOR_BGR2GRAY
+        FPS = cv2.CAP_PROP_FPS
     conversion = {True: BGR2GRAY, False: BGR2RGB}
 
     def Property(ptype, name: str):
@@ -97,6 +99,14 @@ class QOpenCVCamera(QCamera):
     def height(self, value):
         self.device.set(self.HEIGHT, value)
         self.shapeChanged.emit(self.shape)
+
+    @pyqtProperty(float)
+    def fps(self) -> float:
+        return int(self.device.get(self.FPS))
+
+    @fps.setter
+    def fps(self, value):
+        self.device.set(self.FPS, value)
 
 
 def example() -> None:

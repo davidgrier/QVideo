@@ -1,10 +1,13 @@
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Spinnaker import QSpinnakerCamera
+from typing import Optional
 
 
 class QSpinnakerTree(QCameraTree):
 
-    def __init__(self, *args, camera=None, **kwargs):
+    def __init__(self, *args,
+                 camera: Optional[QSpinnakerCamera] = None,
+                 **kwargs) -> None:
         camera = camera or QSpinnakerCamera()
         controls = None # self.get_controls(camera)
         super().__init__(camera, controls, *args, **kwargs)
@@ -25,7 +28,7 @@ class QSpinnakerTree(QCameraTree):
 
 
 
-def example():
+def example() -> None:
     from PyQt5.QtWidgets import QApplication
     import sys
     import logging
@@ -34,7 +37,7 @@ def example():
     logging.getLogger(module).setLevel(logging.ERROR)
 
     app = QApplication(sys.argv)
-    widget = QSpinnakerTree()
+    widget = QSpinnakerTree().start()
     widget.show()
     sys.exit(app.exec())
 

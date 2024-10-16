@@ -1,51 +1,37 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, QMutex, QMutexLocker, QTimer, QSize,
-                          pyqtSignal, pyqtSlot, pyqtProperty)
-from functools import wraps
-from QVideo.lib.QFPSMeter import QFPSMeter
+from PyQt5.QtCore import (QObject, QSize, pyqtSignal, pyqtSlot, pyqtProperty)
 import numpy as np
 import types
-from typing import (TypeAlias, Union, Callable)
+from typing import (TypeAlias, Union)
 import logging
 
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 Value: TypeAlias = Union[bool, int, float, str]
 
 
-class QVideoCameraMeta(type(QObject), ABCMeta):
+class QCameraMeta(type(QObject), ABCMeta):
     pass
 
 
-class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
+class QCamera(QObject, metaclass=QCameraMeta):
     '''Base class for a video camera implementation'''
 
-    newFrame = pyqtSignal(np.ndarray)
     shapeChanged = pyqtSignal(QSize)
-
-    def protected(method: Callable) -> Callable:
-        '''Decorator for preventing clashes in camera operations'''
-        @wraps(method)
-        def wrapper(inst, *args, **kwargs):
-            with QMutexLocker(inst.mutex):
-                result = method(inst, *args, **kwargs)
-            return result
-        return wrapper
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._getInterface()
-        self.mutex = QMutex()
-        self.timer = QTimer(self)
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.acquire)
-        self.meter = QFPSMeter()
-        self.newFrame.connect(self.meter.tick)
-        self._running = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def _getInterface(self) -> None:
         interface = vars(type(self)).items()
@@ -53,6 +39,17 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
                             if isinstance(v, pyqtProperty)]
         self._methods = [k for k, v in interface
                          if isinstance(v, types.FunctionType)]
+
+    @abstractmethod
+    def open(self) -> None:
+        '''Acquire interface to camera so that it is ready to read'''
+        pass
+
+    @pyqtSlot()
+    @abstractmethod
+    def close(self) -> None:
+        '''Perform clean-up operations at closing'''
+        pass
 
     def properties(self) -> list[str]:
         return self._properties
@@ -68,8 +65,9 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
             self.set(key, value)
 
     @pyqtSlot(str, object)
-    def set(self, key: str, value: Value) -> None:
+    def set(self, key: str, value) -> None:
         '''Set named property to value'''
+        logger.debug(f'Setting {key}: {value}')
         if key in self._properties:
             setattr(self, key, value)
         else:
@@ -92,70 +90,18 @@ class QVideoCamera(QObject, metaclass=QVideoCameraMeta):
         else:
             logger.error(f'Unknown method: {key}')
 
-    @pyqtSlot()
-    def start(self):
-        '''Start video acquisition'''
-        logger.debug('Starting video acquisition')
-        self._running = True
-        self.timer.start(1)
-        return self
-
-    @pyqtSlot()
-    def stop(self) -> None:
-        '''Stop video acquisition
-
-        Acquisition can be restarted with a call to start()
-        '''
-        logger.debug('Stopping video acquisition')
-        self.timer.stop()
-        self._running = False
-
-    @pyqtSlot()
-    def close(self) -> None:
-        '''Perform clean-up operations at closing
-
-        This slot should be overridden by subclasses
-        '''
-        if self._running:
-            self.stop()
-        logger.debug('Calling default close() method')
-
-    @pyqtSlot()
-    def acquire(self) -> None:
-        with QMutexLocker(self.mutex):
-            ready, frame = self.read()
-        if ready:
-            self.newFrame.emit(frame)
-            self._color = frame.ndim == 3
-            if self._running:
-                self.timer.start(1)
-        else:
-            logger.warning('Frame acquisition failed')
-
     @abstractmethod
     def read(self) -> tuple[bool, np.ndarray]:
         return False, None
 
-    def is_running(self) -> bool:
-        return self._running
-
     @pyqtProperty(QSize)
-    @protected
     def shape(self) -> QSize:
         return QSize(int(self.width), int(self.height))
 
-    @pyqtProperty(float)
-    def fps(self) -> float:
-        return self.meter.value
-
-    @fps.setter
-    def fps(self, value):
-        '''FIXME: Override to set frame rate on cameras?'''
-        pass
-
     @pyqtProperty(bool)
+    @abstractmethod
     def color(self) -> bool:
-        return self._color
+        return False
 
     @pyqtProperty(int)
     @abstractmethod

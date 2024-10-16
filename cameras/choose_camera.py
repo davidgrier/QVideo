@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-__all__ = ['choose_camera', 'choose_camera_widget']
+__all__ = 'choose_camera choose_camera_widget'.split()
 
 
 def camera_parser(parser=None):

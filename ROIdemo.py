@@ -25,9 +25,9 @@ class ROIdemo(QCamcorder):
     @pyqtSlot(bool)
     def recording(self, active: bool) -> None:
         if active:
-            self.camera.newFrame.connect(self.cropFrame)
+            self.source.newFrame.connect(self.cropFrame)
         else:
-            self.camera.newFrame.disconnect(self.cropFrame)
+            self.source.newFrame.disconnect(self.cropFrame)
 
     @pyqtSlot(np.ndarray)
     def cropFrame(self, frame: np.ndarray) -> None:

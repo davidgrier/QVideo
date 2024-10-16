@@ -1,127 +1,118 @@
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, Qt)
 from PyQt5.QtWidgets import QHeaderView
-from QVideo.lib.QVideoCamera import QVideoCamera
-from QVideo.lib.QVideoSource import QVideoSource
-from typing import (Optional, Union, Tuple, List, Dict, Any)
+from QVideo.lib import (QCamera, QVideoSource)
+from typing import (TypeAlias, Optional, Union, Tuple, List, Dict)
 import logging
 
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
+
+
+Source: TypeAlias = Union[QCamera, QVideoSource]
+Description: TypeAlias = List[Dict[str, str]]
+Value: TypeAlias = Union[bool, int, float, str]
+Change: TypeAlias = Tuple[Parameter, str, Value]
+Changes: TypeAlias = List[Change]
 
 
 class QCameraTree(ParameterTree):
 
-    valueChanged = pyqtSignal(str, object)
+    @staticmethod
+    def _getParameters(parameter: Parameter) -> None:
+        '''Recursively find setters for named Parameters'''
+        parameters = dict()
+        if parameter.hasChildren():
+            for p in parameter.children():
+                parameters.update(QCameraTree._getParameters(p))
+        else:
+            name = parameter.name().lower()
+            parameters.update({name: parameter})
+        return parameters
 
     @staticmethod
-    def _parseDescription(param: Parameter) -> Dict:
-        d = dict()
-        if param.hasChildren():
-            for p in param.children():
-                d.update(QCameraTree._parseDescription(p))
-        else:
-            d.update({param.name().lower(): param})
-        return d
+    def _defaultDescription(camera: QCamera) -> List:
+        settings = camera.settings().items()
+        entries = [{'name': key,
+                    'type': value.__class__.__name__,
+                    'value': value}
+                   for key, value in settings if value is not None]
+        return [{'name': camera.name,
+                 'type': 'group',
+                 'children': entries}]
 
     def __init__(self,
-                 camera: Optional[QVideoCamera] = None,
-                 controls: Optional[List] = None,
+                 source: Source,
+                 description: Optional[Description],
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._setupUi()
-        self._setupTree(controls or camera)
-        self.camera = camera
+        self.setSource(source)
+        self._createTree(description)
         self._connectSignals()
-
-    def __del__(self):
-        if isinstance(self.source, QVideoSource):
-            self.source.close()
+        self._setupUi()
 
     def _setupUi(self) -> None:
         self.setMinimumWidth(250)
         self.header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.setColumnWidth(0, 150)
 
-    @staticmethod
-    def _controls(camera: Optional[QVideoCamera]) -> List:
-        if camera is None:
-            clist = list()
-        else:
-            clist = [{'name': key,
-                      'type': value.__class__.__name__,
-                      'value': value}
-                     for key, value in camera.settings().items()
-                     if value is not None]
-        return [{'name': 'Controls',
-                 'type': 'group',
-                 'children': clist}]
-
-    def _setupTree(self, c: Union[List, QVideoCamera]) -> None:
-        c = c if isinstance(c, list) else self._controls(c)
-        self._p = Parameter.create(name='params', type='group', children=c)
-        self.setParameters(self._p, showTop=False)
-        self._parameters = self._parseDescription(self._p)
+    def _createTree(self, description: Optional[Description]) -> None:
+        if description is None:
+            description = self._defaultDescription(self.camera)
+        self._tree = Parameter.create(name=self.camera.name, type='group',
+                                      children=description)
+        self.setParameters(self._tree, showTop=False)
+        self._parameters = self._getParameters(self._tree)
+        for name, parameter in self._parameters.items():
+            parameter.setValue(self.camera.get(name))
 
     def _connectSignals(self) -> None:
-        self._p.sigTreeStateChanged.connect(self._handleChanges)
-        self.valueChanged.connect(self._camera.set)
-        self._camera.meter.fpsReady.connect(
-            lambda fps: self.set('fps', fps, updateCamera=False))
+        self._tree.sigTreeStateChanged.connect(self._sync)
 
     @pyqtSlot(object, object)
-    def _handleChanges(self,
-                       tree: ParameterTree,
-                       changes: List[Tuple]) -> None:
-        if not self._updateCamera:
-            return
+    def _sync(self, tree: ParameterTree, changes: Changes) -> None:
         for param, change, value in changes:
             if (change == 'value'):
                 key = param.name().lower()
-                self.valueChanged.emit(key, value)
-                logger.debug(f'Change {key}: {value}')
+                logger.debug(f'Syncing {key}: {change}: {value}')
+                self.camera.set(key, value)
 
-    def set(self, key: str, value: Any, updateCamera: bool = True) -> None:
-        self._updateCamera = updateCamera
+    def set(self, key: str, value: Value) -> None:
         if key in self._parameters:
             logger.debug(f'set {key}: {value}')
             self._parameters[key].setValue(value)
         else:
             logger.warning(f'Unsupported property: {key}')
-        self._updateCamera = True
 
-    @pyqtProperty(QVideoCamera)
-    def camera(self) -> QVideoCamera:
-        return self._camera
-
-    @camera.setter
-    def camera(self, camera: Optional[QVideoCamera]) -> None:
-        self._camera = camera
-        if camera is None:
-            self._source = None
-            return
-        if not isinstance(camera, QVideoCamera):
-            logger.error(f'unsupported camera of type {type(camera)}')
-            return
-        for p in camera.properties():
-            self.set(p, camera.get(p), updateCamera=False)
-        self._source = QVideoSource(camera)
+    def setSource(self, source: Source) -> None:
+        if isinstance(source, QVideoSource):
+            self._source = source
+            self._camera = source.camera
+        elif isinstance(source, QCamera):
+            self._camera = source
+            self._source = QVideoSource(self._camera)
+        else:
+            logger.error(f'Unsupported video source: {source}')
 
     @pyqtProperty(QVideoSource)
     def source(self) -> QVideoSource:
         return self._source
 
-    @source.setter
-    def source(self, source: QVideoSource) -> None:
-        self._source = source
-        self._camera = self._source.camera
+    @pyqtProperty(QCamera)
+    def camera(self) -> QCamera:
+        return self._camera
 
+    @pyqtSlot()
     def start(self):
         self.source.start()
         return self
 
     @pyqtSlot()
+    def stop(self) -> None:
+        self.source.stop()
+
+    @pyqtSlot()
     def close(self) -> None:
-        self.__del__()
+        self.stop()

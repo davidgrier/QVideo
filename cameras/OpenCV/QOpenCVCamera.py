@@ -1,16 +1,16 @@
-from QVideo.lib import QVideoCamera
+from QVideo.lib import QCamera
 from PyQt5.QtCore import pyqtProperty
 import cv2
-import time
+from typing import Optional
 import logging
 
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
-class QOpenCVCamera(QVideoCamera):
+class QOpenCVCamera(QCamera):
     '''OpenCV camera
 
     Attributes
@@ -35,10 +35,10 @@ class QOpenCVCamera(QVideoCamera):
         BGR2GRAY = cv2.COLOR_BGR2GRAY
     conversion = {True: BGR2GRAY, False: BGR2RGB}
 
-    def Property(dtype, prop):
-        return pyqtProperty(dtype,
-                            lambda self: getattr(self, f'_{prop}'),
-                            lambda self, v: setattr(self, f'_{prop}', v))
+    def Property(ptype, name: str):
+        return pyqtProperty(ptype,
+                            lambda self: getattr(self, f'_{name}'),
+                            lambda self, v: setattr(self, f'_{name}', v))
 
     mirrored = Property(bool, 'mirrored')
     flipped = Property(bool, 'flipped')
@@ -51,35 +51,34 @@ class QOpenCVCamera(QVideoCamera):
                  gray: bool = False,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.open(cameraID)
-        # camera properties
+        self.cameraID = cameraID
+        self.open()
         self.mirrored = mirrored
         self.flipped = flipped
         self.gray = gray
-        # initialize camera with one frame
-        while True:
-            ready, image = self.read()
+
+    def initialize(self) -> bool:
+        self.device = cv2.VideoCapture(self.cameraID)
+        for n in range(5):
+            ready, _ = self.device.read()
             if ready:
                 break
+        return ready
 
-    def open(self, cameraID:int) -> None:
-        self.device = cv2.VideoCapture(cameraID)
+    def deinitialize(self) -> None:
+        self.device.release()
 
     def read(self):
+        if not self.isOpen():
+            return False, None
         ready, image = self.device.read()
-        if not ready:
-            time.sleep(0.01)
-            return ready, None
-        if image.ndim == 3:
-            image = cv2.cvtColor(image, self.conversion[self.gray])
-        if self.flipped or self.mirrored:
-            image = cv2.flip(image, self.mirrored * (1 - 2 * self.flipped))
+        if ready:
+            if image.ndim == 3:
+                image = cv2.cvtColor(image, self.conversion[self.gray])
+            if self.flipped or self.mirrored:
+                operation = self.mirrored * (1 - 2*self.flipped)
+                image = cv2.flip(image, operation)
         return ready, image
-
-    def close(self):
-        logger.debug('Closing')
-        super().close()
-        self.device.release()
 
     @pyqtProperty(int)
     def width(self):
@@ -99,20 +98,27 @@ class QOpenCVCamera(QVideoCamera):
         self.device.set(self.HEIGHT, value)
         self.shapeChanged.emit(self.shape)
 
-    @pyqtProperty(float)
-    def fps(self) -> float:
-        return self.meter.value
 
-
-def main() -> None:
+def example() -> None:
+    from QVideo.lib import QVideoCamera
     from pprint import pprint
 
     logger.setLevel(logging.ERROR)
-    cam = QOpenCVCamera()
-    print('Settings:')
-    pprint(cam.settings())
-    cam.close()
+
+    camera = QOpenCVCamera()
+    print(camera.name)
+    pprint(camera.settings())
+    with camera:
+        for n in range(5):
+            print('.' if camera.read()[0] else 'x', end='')
+        else:
+            print('done')
+    with camera:
+        for n in range(5):
+            print('.' if camera.read()[0] else 'x', end='')
+        else:
+            print('done')
 
 
 if __name__ == '__main__':
-    main()
+    example()

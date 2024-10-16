@@ -7,7 +7,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 Value: TypeAlias = Union[bool, int, float, str]
@@ -83,12 +83,11 @@ class QSpinnakerCamera(QVideoCamera):
                 logger.error(f'Error getting {name}: {ex}')
             return value
 
-        @QVideoCamera.protected
         def setter(inst, value: Value) -> None:
             logger.debug(f'Setting {name}: {value}')
             try:
                 if (restart := stop and inst._running):
-                    inst.stop()
+                    inst.pause()
                 feature = getattr(inst.device, name)
                 if not (PySpin.IsAvailable(feature) and PySpin.IsWritable(feature)):
                     logger.warning(f'{name} is not writable')
@@ -105,7 +104,7 @@ class QSpinnakerCamera(QVideoCamera):
                             value = clipped
                     feature.SetValue(value)
                 if restart:
-                    inst.start()
+                    inst.resume()
                 inst.propertyChanged.emit(name)
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error setting {name}: {ex}')
@@ -170,34 +169,18 @@ class QSpinnakerCamera(QVideoCamera):
                  gray: bool = True,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        if self.open(cameraID):
-            self._testColor()
-            self._refineProperties()
-            self.setDefaults()
-            self.flipped = flipped
-            self.mirrored = mirrored
-            self.gray = gray
-            self.device.BeginAcquisition()
-            _, frame = self.read()
+        self.open(cameraID)
+        if not self.isOpen():
+            return
+        self._testColor()
+        self._refineProperties()
+        self.setDefaults()
+        self.flipped = flipped
+        self.mirrored = mirrored
+        self.gray = gray
+        _, frame = self.read()
 
-    def __del__(self) -> None:
-        try:
-            if hasattr(self, 'device'):
-                if self.device.IsStreaming():
-                    self.device.EndAcquisition()
-                if self.device.IsInitialized():
-                    self.device.DeInit()
-                del self.device
-            if hasattr(self, '_devices'):
-                self._devices.Clear()
-            if hasattr(self, '_system'):
-                if not self._system.IsInUse():
-                    self._system.ReleaseInstance()
-                    del self._system
-        except PySpin.SpinnakerException as ex:
-            logger.warning(f'Error during del: {ex}')
-
-    def open(self, cameraID: int) -> None:
+    def open(self, cameraID: int) -> bool:
         '''
         Initialize Spinnaker and open specified camera
 
@@ -206,6 +189,7 @@ class QSpinnakerCamera(QVideoCamera):
         cameraID: int
             Index of camera to open. Default: 0
         '''
+        self.device = None
         self._system = PySpin.System.GetInstance()
         self._devices = self._system.GetCameras()
         ncameras = self._devices.GetSize()
@@ -215,28 +199,56 @@ class QSpinnakerCamera(QVideoCamera):
             logger.error(f'Camera {cameraID} not found')
             return False
         if not self.device.IsValid():
-            self.close()
+            logger.error(f'Camera {cameraID} is not valid')
+            return False
         if not self.device.IsInitialized():
             self.device.Init()
+        self.device.BeginAcquisition()
         logger.debug(f'Camera {cameraID} open')
         return True
 
+    def isOpen(self) -> bool:
+        return self.device is not None
+
+    @pyqtSlot()
     def close(self) -> None:
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Closing')
-        self.__del__()
-
-    @pyqtSlot()
-    def start(self) -> None:
-        if hasattr(self, 'device') and not self.device.IsStreaming():
-            self.device.BeginAcquisition()
-        return super().start()
-
-    @pyqtSlot()
-    def stop(self) -> None:
         super().stop()
-        if hasattr(self, 'device') and self.device.IsStreaming():
+        try:
+            if hasattr(self, 'device'):
+                logger.debug('... device')
+                if self.device.IsStreaming():
+                    self.device.EndAcquisition()
+                self.device = None
+                #if self.device.IsInitialized():
+                #    self.device.DeInit()
+                # del self.device
+            if hasattr(self, '_devices'):
+                logger.debug('... device list')
+                self._devices.Clear()
+                self._device = None
+                # del self._devices
+            if hasattr(self, '_system'):
+                if not self._system.IsInUse():
+                    logger.debug('... system')
+                    self._system.ReleaseInstance()
+                    self._system = None
+                    # del self._system
+        except PySpin.SpinnakerException as ex:
+            logger.warning(f'Error during close: {ex}')
+
+    @pyqtSlot()
+    def pause(self) -> None:
+        super().pause()
+        if self.isOpen() and self.device.IsStreaming():
             self.device.EndAcquisition()
+
+    @pyqtSlot()
+    def resume(self) -> None:
+        if self.isOpen() and not self.device.IsStreaming():
+            self.device.BeginAcquisition()
+        super().resume()
 
     def read(self) -> tuple[bool, 'np.ndarray']:
         '''The whole point of the thing: Gimme da piccy'''
@@ -349,12 +361,12 @@ def main() -> None:
     from pprint import pprint
 
     logger.setLevel(logging.ERROR)
-    cam = QSpinnakerCamera()
-    print(cam.cameraname)
-    print(f'Serial number: {cam.deviceserialnumber}')
+    camera = QSpinnakerCamera()
+    print(camera.cameraname)
+    print(f'Serial number: {camera.deviceserialnumber}')
     print('Settings:')
-    pprint(cam.settings())
-    cam.close()
+    pprint(camera.settings())
+    camera.close()
 
 
 if __name__ == '__main__':

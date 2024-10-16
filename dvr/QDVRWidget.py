@@ -6,7 +6,7 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
 from PyQt5.QtWidgets import (QFrame, QFileDialog)
 from pathlib import Path
 from typing import Optional
-from QVideo.lib import (clickable, QVideoCamera)
+from QVideo.lib import (clickable, QVideoSource)
 from .QAVIWriter import QAVIWriter
 from .QHDF5Writer import QHDF5Writer
 from .QAVIPlayer import QAVIPlayer
@@ -29,7 +29,7 @@ class QDVRWidget(QFrame):
 
     Properties
     ----------
-    source: QVideoCamera
+    source: QVideoSource
         Source of video frames to present and record
 
     filename: str
@@ -46,19 +46,16 @@ class QDVRWidget(QFrame):
 
     def __init__(self,
                  *args,
-                 source: Optional[QVideoCamera] = None,
+                 source: Optional[QVideoSource] = None,
                  filename: Optional[str] = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         dir = Path(__file__).parent
         uic.loadUi(dir / 'QDVRWidget.ui', self)
-
         self._writer = None
         self._player = None
         self._framenumber = 0
-
         self.connectSignals()
-
         self.source = source
         self.filename = filename or str(Path.home() / 'default.avi')
 

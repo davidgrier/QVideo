@@ -1,30 +1,84 @@
-from PyQt5.QtCore import (QThread, pyqtSlot)
-from QVideo.lib import QVideoCamera
+from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
+                          pyqtSlot, pyqtSignal, pyqtProperty)
+from QVideo.lib import QCamera
+import numpy as np
+import logging
+
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class QVideoSource(QThread):
-    def __init__(self, camera: QVideoCamera) -> None:
-        super().__init__()
+
+    newFrame = pyqtSignal(np.ndarray)
+
+    def __init__(self, camera: QCamera, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.camera = camera
         self.camera.moveToThread(self)
-        self.started.connect(self.camera.start)
-        self.finished.connect(self.camera.close)
-        super().start(QThread.TimeCriticalPriority)
+        self.mutex = QMutex()
+        self.waitcondition = QWaitCondition()
+        self._running = True
+        self._paused = False
 
-    def __del__(self):
-        self.quit()
-        self.wait()
-        self.camera = None
+    @pyqtSlot()
+    def run(self) -> None:
+        logger.debug('streaming started')
+        self.camera.open()
+        while self._running:
+            with QMutexLocker(self.mutex):
+                if self._paused:
+                    self.waitcondition.wait(self.mutex)
+                    self._paused = False
+                else:
+                    ok, frame = self.camera.read()
+                    if ok:
+                        self.newFrame.emit(frame)
+        self.close()
+        self.finished.emit()
+        logger.debug('streaming finished')
 
     @pyqtSlot()
     def start(self):
-        self.camera.start()
+        logger.debug('starting')
+        super().start()
         return self
 
     @pyqtSlot()
-    def stop(self) -> None:
-        self.camera.stop()
+    def stop(self):
+        self.resume()
+        logger.debug('stopping')
+        with QMutexLocker(self.mutex):
+            if self._running:
+                self._running = False
 
     @pyqtSlot()
-    def close(self) -> None:
-        self.__del__()
+    def close(self):
+        self.stop()
+        logger.debug('closing')
+        self.camera.close()
+        self.camera = None
+
+    @pyqtSlot()
+    def pause(self):
+        if not self._paused:
+            self._paused = True
+
+    @pyqtSlot()
+    def resume(self):
+        if self._paused:
+            logger.debug('resuming')
+            self.waitcondition.wakeAll()
+
+    @pyqtProperty(bool)
+    def paused(self) -> bool:
+        return self._paused
+
+    @paused.setter
+    def paused(self, value: bool) -> None:
+        if value:
+            self.pause()
+        else:
+            self.resume()

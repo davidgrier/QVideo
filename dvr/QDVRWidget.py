@@ -116,7 +116,7 @@ class QDVRWidget(QFrame):
         suffix = Path(self.filename).suffix
         if suffix == '.avi':
             self._writer = QAVIWriter(self.filename,
-                                      fps=self.source.fps,
+                                      fps=self.source.camera.fps,
                                       nframes=self.nframes.value(),
                                       nskip=self.nskip.value())
         elif suffix == '.h5':

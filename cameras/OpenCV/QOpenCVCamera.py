@@ -61,9 +61,8 @@ class QOpenCVCamera(QCamera):
 
     def initialize(self) -> bool:
         self.device = cv2.VideoCapture(self.cameraID)
-        for n in range(5):
-            ready, _ = self.device.read()
-            if ready:
+        for _ in range(5):
+            if (ready := self.device.read()[0]):
                 break
         return ready
 

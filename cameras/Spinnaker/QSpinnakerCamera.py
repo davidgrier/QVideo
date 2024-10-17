@@ -1,4 +1,4 @@
-from QVideo.lib import QVideoCamera
+from QVideo.lib import QCamera
 import PySpin
 from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
 from typing import (TypeAlias, Union, Callable)
@@ -32,7 +32,7 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet splash usbcore.usbfs_memory_mb=1000"
 '''
 
 
-class QSpinnakerCamera(QVideoCamera):
+class QSpinnakerCamera(QCamera):
 
     '''Expose properties of FLiR camera
 
@@ -86,7 +86,7 @@ class QSpinnakerCamera(QVideoCamera):
         def setter(inst, value: Value) -> None:
             logger.debug(f'Setting {name}: {value}')
             try:
-                if (restart := stop and inst._running):
+                if stop:
                     inst.pause()
                 feature = getattr(inst.device, name)
                 if not (PySpin.IsAvailable(feature) and PySpin.IsWritable(feature)):
@@ -103,7 +103,7 @@ class QSpinnakerCamera(QVideoCamera):
                             logger.warning(f'{value} is out of range for {name}')
                             value = clipped
                     feature.SetValue(value)
-                if restart:
+                if stop:
                     inst.resume()
                 inst.propertyChanged.emit(name)
             except PySpin.SpinnakerException as ex:
@@ -169,9 +169,8 @@ class QSpinnakerCamera(QVideoCamera):
                  gray: bool = True,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.open(cameraID)
-        if not self.isOpen():
-            return
+        self.cameraID = cameraID
+        self.open()
         self._testColor()
         self._refineProperties()
         self.setDefaults()
@@ -180,7 +179,7 @@ class QSpinnakerCamera(QVideoCamera):
         self.gray = gray
         _, frame = self.read()
 
-    def open(self, cameraID: int) -> bool:
+    def initialize(self) -> bool:
         '''
         Initialize Spinnaker and open specified camera
 
@@ -193,54 +192,40 @@ class QSpinnakerCamera(QVideoCamera):
         self._system = PySpin.System.GetInstance()
         self._devices = self._system.GetCameras()
         ncameras = self._devices.GetSize()
-        if cameraID in range(ncameras):
-            self.device = self._devices.GetByIndex(cameraID)
+        if self.cameraID in range(ncameras):
+            self.device = self._devices.GetByIndex(self.cameraID)
         else:
-            logger.error(f'Camera {cameraID} not found')
+            logger.error(f'Camera {self.cameraID} not found')
             return False
         if not self.device.IsValid():
-            logger.error(f'Camera {cameraID} is not valid')
+            logger.error(f'Camera {self.cameraID} is not valid')
             return False
         if not self.device.IsInitialized():
             self.device.Init()
         self.device.BeginAcquisition()
-        logger.debug(f'Camera {cameraID} open')
+        logger.debug(f'Camera {self.cameraID} open')
         return True
 
-    def isOpen(self) -> bool:
-        return self.device is not None
-
-    @pyqtSlot()
-    def close(self) -> None:
+    def deinitialize(self) -> None:
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Closing')
-        super().stop()
-        try:
-            if hasattr(self, 'device'):
-                logger.debug('... device')
-                if self.device.IsStreaming():
-                    self.device.EndAcquisition()
-                self.device = None
-                #if self.device.IsInitialized():
-                #    self.device.DeInit()
-                # del self.device
-            if hasattr(self, '_devices'):
-                logger.debug('... device list')
-                self._devices.Clear()
-                self._device = None
-                # del self._devices
-            if hasattr(self, '_system'):
-                if not self._system.IsInUse():
-                    logger.debug('... system')
-                    self._system.ReleaseInstance()
-                    self._system = None
-                    # del self._system
-        except PySpin.SpinnakerException as ex:
-            logger.warning(f'Error during close: {ex}')
+        if hasattr(self, 'device'):
+            logger.debug('... device')
+            if self.device.IsStreaming():
+                self.device.EndAcquisition()
+            self.device = None
+        if hasattr(self, '_devices'):
+            logger.debug('... device list')
+            self._devices.Clear()
+            self._device = None
+        if hasattr(self, '_system'):
+            if not self._system.IsInUse():
+                logger.debug('... system')
+                self._system.ReleaseInstance()
+                self._system = None
 
     @pyqtSlot()
     def pause(self) -> None:
-        super().pause()
         if self.isOpen() and self.device.IsStreaming():
             self.device.EndAcquisition()
 
@@ -248,7 +233,6 @@ class QSpinnakerCamera(QVideoCamera):
     def resume(self) -> None:
         if self.isOpen() and not self.device.IsStreaming():
             self.device.BeginAcquisition()
-        super().resume()
 
     def read(self) -> tuple[bool, 'np.ndarray']:
         '''The whole point of the thing: Gimme da piccy'''

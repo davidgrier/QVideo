@@ -2,6 +2,7 @@ from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
                           pyqtSlot, pyqtSignal, pyqtProperty)
 from QVideo.lib import QCamera
 import numpy as np
+from typing import Optional
 import logging
 
 
@@ -29,13 +30,9 @@ class QVideoSource(QThread):
         self.camera.open()
         while self._running:
             with QMutexLocker(self.mutex):
-                if self._paused:
-                    self.waitcondition.wait(self.mutex)
-                    self._paused = False
-                else:
-                    ok, frame = self.camera.read()
-                    if ok:
-                        self.newFrame.emit(frame)
+                ok, frame = self.camera.read()
+                if ok:
+                    self.newFrame.emit(frame)
         self.close()
         self.finished.emit()
         logger.debug('streaming finished')
@@ -62,9 +59,18 @@ class QVideoSource(QThread):
         self.camera = None
 
     @pyqtSlot()
-    def pause(self):
+    def pause(self, time: Optional[int] = None) -> None:
         if not self._paused:
-            self._paused = True
+            logger.debug('pausing')
+            with QMutexLocker(self.mutex):
+                logger.debug('paused')
+                self._paused = True
+                if time is None:
+                    self.waitcondition.wait(self.mutex)
+                else:
+                    self.waitcondition.wait(self.mutex, time)
+                logger.debug('resumed')
+                self._paused = False
 
     @pyqtSlot()
     def resume(self):

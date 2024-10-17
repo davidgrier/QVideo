@@ -180,12 +180,13 @@ class QSpinnakerCamera(QCamera):
 
     def initialize(self) -> bool:
         '''
-        Initialize Spinnaker and open specified camera
+        Initialize Spinnaker and open camera specified by cameraID
 
-        Keywords
-        --------
-        cameraID: int
-            Index of camera to open. Default: 0
+        Returns
+        -------
+        success: bool
+            True: the camera is open and can read frames
+            False: failure opening camera.
         '''
         self.device = None
         self._system = PySpin.System.GetInstance()

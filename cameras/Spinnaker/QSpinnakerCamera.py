@@ -177,7 +177,6 @@ class QSpinnakerCamera(QCamera):
         self.flipped = flipped
         self.mirrored = mirrored
         self.gray = gray
-        _, frame = self.read()
 
     def initialize(self) -> bool:
         '''
@@ -203,13 +202,16 @@ class QSpinnakerCamera(QCamera):
         if not self.device.IsInitialized():
             self.device.Init()
         self.device.BeginAcquisition()
+        for _ in range(5):
+            if (ready := self.read()[0]):
+                break
         logger.debug(f'Camera {self.cameraID} open')
-        return True
+        return ready
 
     def deinitialize(self) -> None:
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Closing')
-        if hasattr(self, 'device'):
+        if self.device is not None:
             logger.debug('... device')
             if self.device.IsStreaming():
                 self.device.EndAcquisition()
@@ -235,7 +237,6 @@ class QSpinnakerCamera(QCamera):
             self.device.BeginAcquisition()
 
     def read(self) -> tuple[bool, 'np.ndarray']:
-        '''The whole point of the thing: Gimme da piccy'''
         try:
             frame = self.device.GetNextImage()
             return True, frame.GetNDArray()

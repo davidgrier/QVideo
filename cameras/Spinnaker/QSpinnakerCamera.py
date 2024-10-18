@@ -248,16 +248,23 @@ class QSpinnakerCamera(QCamera):
             status = img.GetImageStatus()
             error_msg = img.GetImageStatusDescription(status)
             logger.warning(f'Incomplete Image: {error_msg}')
-            return False, None
+        return False, None
 
-    def getFeature(self, key: str) -> Value:
+    '''FIXME: Move setter functionality here
+    override set() / get() methods from QCamera
+    protect with mutex? perhaps have recursive lock: one for pause and one for set
+    cannot call this set because of name conflict with python set
+    perhaps override __setattr__
+    '''
+    def get(self, key: str) -> Value:
         if hasattr(self.device, key):
             feature = getattr(self.device, key)
             if PySpin.IsAvailable(feature) and PySpin.IsReadable(feature):
                 return feature.GetValue()
         return None
 
-    def setFeature(self, key: str, value: Value) -> bool:
+    @QCamera.protected
+    def set(self, key: str, value: Value, stop: bool = False) -> bool:
         if hasattr(self.device, key):
             feature = getattr(self.device, key)
             if PySpin.IsAvailable(feature) and PySpin.IsReadable(feature):
@@ -267,20 +274,20 @@ class QSpinnakerCamera(QCamera):
 
     @pyqtProperty(int)
     def width(self) -> int:
-        return self.getFeature('Width')
+        return self.get('width')
 
     @width.setter
     def width(self, value: int) -> None:
-        if self.setFeature('Width', value):
+        if self.set('width', value):
             self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int)
     def height(self) -> int:
-       return self.getFeature('Height')
+       return self.getFeature('height')
 
     @height.setter
     def height(self, value: int) -> None:
-        if self.setFeature('Height', value):
+        if self.setFeature('height', value):
             self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(str)

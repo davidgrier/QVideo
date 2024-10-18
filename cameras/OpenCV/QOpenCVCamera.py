@@ -13,14 +13,21 @@ logger.setLevel(logging.DEBUG)
 class QOpenCVCamera(QCamera):
     '''OpenCV camera
 
-    Attributes
+    Uses the VideoCapture interface from the OpenCV project to
+    open a digital camera, set and get its properties, and
+    capture images.
+    .....
+
+    Properties
     ----------
 
     Methods
     -------
-    read():
-        Returns image as numpy.ndarray
-
+    read(): bool, np.ndarray
+        Returns a tuple (success, image):
+        success: bool
+            True if image capture was successful
+        image: numpy.ndarray
     '''
 
     if cv2.__version__.startswith('2.'):
@@ -38,9 +45,14 @@ class QOpenCVCamera(QCamera):
     conversion = {True: BGR2GRAY, False: BGR2RGB}
 
     def Property(ptype, name: str):
-        return pyqtProperty(ptype,
-                            lambda self: getattr(self, f'_{name}'),
-                            lambda self, v: setattr(self, f'_{name}', v))
+
+        def getter(inst) -> ptype:
+            return getattr(inst, f'_{name}')
+
+        def setter(inst, value: ptype):
+            setattr(inst, f'_{name}', value)
+
+        return pyqtProperty(ptype, getter, setter)
 
     mirrored = Property(bool, 'mirrored')
     flipped = Property(bool, 'flipped')
@@ -69,10 +81,11 @@ class QOpenCVCamera(QCamera):
     def deinitialize(self) -> None:
         self.device.release()
 
-    def read(self):
-        if not self.isOpen():
-            return False, None
-        ready, image = self.device.read()
+    def read(self) -> QCamera.CameraData:
+        if self.isOpen():
+            ready, image = self.device.read()
+        else:
+            ready, image = False, None
         if ready:
             if image.ndim == 3:
                 image = cv2.cvtColor(image, self.conversion[self.gray])

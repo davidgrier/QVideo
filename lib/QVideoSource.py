@@ -30,7 +30,7 @@ class QVideoSource(QThread):
         self.camera.open()
         while self._running:
             with QMutexLocker(self.mutex):
-                ok, frame = self.camera.read()
+                ok, frame = self.camera.saferead()
                 if ok:
                     self.newFrame.emit(frame)
         self.close()

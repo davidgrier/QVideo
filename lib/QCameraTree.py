@@ -1,5 +1,5 @@
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, Qt)
+from PyQt5.QtCore import (pyqtSlot, pyqtProperty)
 from PyQt5.QtWidgets import QHeaderView
 from QVideo.lib import (QCamera, QVideoSource)
 from typing import (TypeAlias, Optional, Union, Tuple, List, Dict)
@@ -13,8 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 Source: TypeAlias = Union[QCamera, QVideoSource]
 Description: TypeAlias = List[Dict[str, str]]
-Value: TypeAlias = Union[bool, int, float, str]
-Change: TypeAlias = Tuple[Parameter, str, Value]
+Change: TypeAlias = Tuple[Parameter, str, QCamera.PropertyValue]
 Changes: TypeAlias = List[Change]
 
 
@@ -61,7 +60,8 @@ class QCameraTree(ParameterTree):
     def _createTree(self, description: Optional[Description]) -> None:
         if description is None:
             description = self._defaultDescription(self.camera)
-        self._tree = Parameter.create(name=self.camera.name, type='group',
+        self._tree = Parameter.create(name=self.camera.name,
+                                      type='group',
                                       children=description)
         self.setParameters(self._tree, showTop=False)
         self._parameters = self._getParameters(self._tree)
@@ -79,7 +79,8 @@ class QCameraTree(ParameterTree):
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
 
-    def set(self, key: str, value: Value) -> None:
+    @pyqtSlot(str, object)
+    def set(self, key: str, value: QCamera.PropertyValue) -> None:
         if key in self._parameters:
             logger.debug(f'set {key}: {value}')
             self._parameters[key].setValue(value)

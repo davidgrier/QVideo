@@ -52,6 +52,10 @@ class QCameraTree(ParameterTree):
         self._connectSignals()
         self._setupUi()
 
+    def __del__(self) -> None:
+        logger.debug('__del__ called')
+        self.stop()
+
     def _setupUi(self) -> None:
         self.setMinimumWidth(250)
         self.header().setSectionResizeMode(0, QHeaderView.Fixed)
@@ -87,6 +91,13 @@ class QCameraTree(ParameterTree):
         else:
             logger.warning(f'Unsupported property: {key}')
 
+    def get(self, key) -> Optional[QCamera.PropertyValue]:
+        if key in self._parameters:
+            return self._parameters[key].getValue()
+        else:
+            logger.warning(f'Unsupported property: {key}')
+        return None
+
     def setSource(self, source: Source) -> None:
         if isinstance(source, QVideoSource):
             self._source = source
@@ -113,6 +124,8 @@ class QCameraTree(ParameterTree):
     @pyqtSlot()
     def stop(self) -> None:
         self.source.stop()
+        self.source.quit()
+        self.source.wait()
 
     @pyqtSlot()
     def close(self) -> None:

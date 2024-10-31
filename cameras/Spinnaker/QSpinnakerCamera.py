@@ -218,16 +218,15 @@ class QSpinnakerCamera(QCamera):
             logger.debug('... device')
             if self.device.IsStreaming():
                 self.device.EndAcquisition()
-            self.device = None
+            self.device.DeInit()
+            del self.device
         if hasattr(self, '_devices'):
             logger.debug('... device list')
             self._devices.Clear()
-            self._device = None
         if hasattr(self, '_system'):
             if not self._system.IsInUse():
                 logger.debug('... system')
                 self._system.ReleaseInstance()
-                self._system = None
 
     @pyqtSlot()
     def pause(self) -> None:

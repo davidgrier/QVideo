@@ -69,8 +69,8 @@ class QVideoSource(QThread):
                     self.waitcondition.wait(self.mutex)
                 else:
                     self.waitcondition.wait(self.mutex, time)
-                logger.debug('resumed')
                 self._paused = False
+                logger.debug('resumed')
 
     @pyqtSlot()
     def resume(self):

@@ -35,4 +35,4 @@ def example() -> None:
 
 
 if __name__ == '__main__':
-    example(QOpenCVTree)
+    example()

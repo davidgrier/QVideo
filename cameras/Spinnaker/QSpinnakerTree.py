@@ -27,7 +27,6 @@ class QSpinnakerTree(QCameraTree):
         return [geometry]
 
 
-
 def example() -> None:
     from PyQt5.QtWidgets import QApplication
     import sys

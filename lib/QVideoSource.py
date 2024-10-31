@@ -27,13 +27,12 @@ class QVideoSource(QThread):
     @pyqtSlot()
     def run(self) -> None:
         logger.debug('streaming started')
-        self.camera.open()
-        while self._running:
-            with QMutexLocker(self.mutex):
-                ok, frame = self.camera.saferead()
-                if ok:
-                    self.newFrame.emit(frame)
-        self.close()
+        with self.camera:
+            while self._running:
+                with QMutexLocker(self.mutex):
+                    ok, frame = self.camera.saferead()
+                    if ok:
+                        self.newFrame.emit(frame)
         self.finished.emit()
         logger.debug('streaming finished')
 
@@ -52,25 +51,19 @@ class QVideoSource(QThread):
                 self._running = False
 
     @pyqtSlot()
-    def close(self):
-        self.stop()
-        logger.debug('closing')
-        self.camera.close()
-        self.camera = None
-
-    @pyqtSlot()
     def pause(self, time: Optional[int] = None) -> None:
-        if not self._paused:
-            logger.debug('pausing')
-            with QMutexLocker(self.mutex):
-                logger.debug('paused')
-                self._paused = True
-                if time is None:
-                    self.waitcondition.wait(self.mutex)
-                else:
-                    self.waitcondition.wait(self.mutex, time)
-                self._paused = False
-                logger.debug('resumed')
+        if self._paused:
+            return
+        logger.debug('pausing')
+        with QMutexLocker(self.mutex):
+            logger.debug('paused')
+            self._paused = True
+            if time is None:
+                self.waitcondition.wait(self.mutex)
+            else:
+                self.waitcondition.wait(self.mutex, time)
+            self._paused = False
+            logger.debug('resumed')
 
     @pyqtSlot()
     def resume(self):

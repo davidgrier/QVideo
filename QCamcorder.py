@@ -12,7 +12,6 @@ class QCamcorder(QWidget):
         self.cameraWidget = cameraWidget
         self.camera = self.cameraWidget.camera
         self.source = self.cameraWidget.source
-        self.source.start()
         self.setupUi()
         self.connectSignals()
 
@@ -26,9 +25,6 @@ class QCamcorder(QWidget):
         self.camera.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)
         self.dvr.source = self.source
-
-    def closeEvent(self, event: QEvent) -> None:
-        self.cameraWidget.close()
 
     def updateShape(self) -> None:
         self.screen.updateShape(self.camera.shape)

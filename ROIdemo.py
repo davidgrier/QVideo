@@ -31,9 +31,10 @@ class ROIdemo(QCamcorder):
 
     @pyqtSlot(np.ndarray)
     def cropFrame(self, frame: np.ndarray) -> None:
-        x0, y0 = map(int, self.roi.pos())
-        w, h = map(int, self.roi.size())
-        crop = frame[y0:y0+h, x0:x0+w, ...]
+        # x0, y0 = map(int, self.roi.pos())
+        # w, h = map(int, self.roi.size())
+        # crop = frame[y0:y0+h, x0:x0+w, ...]
+        crop = self.roi.getArrayRegion(frame, self.screen.image)
         self.newFrame.emit(crop)
 
     @pyqtProperty(float)

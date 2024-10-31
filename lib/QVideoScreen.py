@@ -43,17 +43,15 @@ class QVideoScreen(GraphicsLayoutWidget):
         Arguments
         ---------
         camera : QVideoSource
-            New video source.
+            Video source that will provide frames to display
         '''
         assert(isinstance(source, QVideoSource))
         if self._source is not None:
-            # self._source.close()
             self._source = None
         self._source = source
         self.updateShape(self._source.camera.shape)
         self._source.camera.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
-        self.destroyed.connect(self._source.close)
 
     @pyqtSlot()
     def start(self):

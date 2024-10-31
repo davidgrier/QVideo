@@ -3,12 +3,13 @@ from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
 from QVideo.lib import QCamera
 import numpy as np
 from typing import Optional
+from pprint import pprint
 import logging
 
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class QVideoSource(QThread):
@@ -81,3 +82,15 @@ class QVideoSource(QThread):
             self.pause()
         else:
             self.resume()
+
+    @classmethod
+    def example(cls: 'QVideoSource') -> None:
+        source = cls().start()
+        print(source.camera.name)
+        pprint(source.camera.settings())
+        print('pausing ... ', end='')
+        source.pause(1000)
+        print('done')
+        source.stop()
+        source.quit()
+        source.wait()

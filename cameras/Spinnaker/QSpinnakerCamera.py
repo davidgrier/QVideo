@@ -78,7 +78,7 @@ class QSpinnakerCamera(QCamera):
                     else:
                         value = node.GetValue()
                 else:
-                    logger.warning(f'{name} is not readable')
+                    logger.info(f'{name} is not readable')
             except PySpin.SpinnakerException as ex:
                 logger.error(f'Error getting {name}: {ex}')
             return value
@@ -90,7 +90,7 @@ class QSpinnakerCamera(QCamera):
                     inst.pause()
                 node = getattr(inst.device, name)
                 if not (PySpin.IsAvailable(node) and PySpin.IsWritable(node)):
-                    logger.warning(f'{name} is not writable')
+                    logger.info(f'{name} is not writable')
                     return
                 if isinstance(node, PySpin.IEnumeration):
                     node.FromString(value)

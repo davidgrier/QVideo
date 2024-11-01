@@ -54,7 +54,10 @@ class QCameraTree(ParameterTree):
 
     def __del__(self) -> None:
         logger.debug('__del__ called')
-        self.stop()
+        try:
+            self.stop()
+        except Exception as ex:
+            logger.debug(f'__del__: {ex}')
 
     def _setupUi(self) -> None:
         self.setMinimumWidth(250)

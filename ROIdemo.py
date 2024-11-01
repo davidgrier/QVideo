@@ -42,14 +42,19 @@ class ROIdemo(QCamcorder):
         return self.camera.fps
 
 
-def example() -> None:
-    from QVideo.cameras.OpenCV import QOpenCVTree
+def main() -> None:
+    from PyQt5.QtWidgets import QApplication
+    from QVideo.cameras.choose_camera import choose_camera_widget
+    import sys
 
-    pg.mkQApp('DVR')
-    widget = ROIdemo(cameraWidget=QOpenCVTree())
+    CameraWidget = choose_camera_widget()
+
+    app = QApplication([])
+    cameraWidget = CameraWidget().start()
+    widget = ROIdemo(cameraWidget=cameraWidget)
     widget.show()
-    pg.exec()
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    example()
+    main()

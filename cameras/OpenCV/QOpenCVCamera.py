@@ -71,14 +71,14 @@ class QOpenCVCamera(QCamera):
         self.flipped = flipped
         self.gray = gray
 
-    def initialize(self) -> bool:
+    def _initialize(self) -> bool:
         self.device = cv2.VideoCapture(self.cameraID)
         for _ in range(5):
             if (ready := self.device.read()[0]):
                 break
         return ready
 
-    def deinitialize(self) -> None:
+    def _deinitialize(self) -> None:
         self.device.release()
 
     def read(self) -> QCamera.CameraData:

@@ -182,7 +182,7 @@ class QSpinnakerCamera(QCamera):
         self.mirrored = mirrored
         self.gray = gray
 
-    def initialize(self) -> bool:
+    def _initialize(self) -> bool:
         '''
         Initialize Spinnaker and open camera specified by cameraID
 
@@ -197,7 +197,7 @@ class QSpinnakerCamera(QCamera):
         self._devices = self._system.GetCameras()
         ncameras = self._devices.GetSize()
         if self.cameraID in range(ncameras):
-            self.device = self._devices[self.cameraID] # .GetByIndex(self.cameraID)
+            self.device = self._devices[self.cameraID]
         else:
             logger.error(f'Camera {self.cameraID} not found')
             return False
@@ -211,7 +211,7 @@ class QSpinnakerCamera(QCamera):
         logger.debug(f'Camera {self.cameraID} open')
         return True
 
-    def deinitialize(self) -> None:
+    def _deinitialize(self) -> None:
         '''Stop acquisition, close camera and release Spinnaker'''
         logger.debug('Closing')
         if self.device is not None:

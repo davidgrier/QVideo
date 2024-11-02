@@ -1,8 +1,8 @@
 from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
                           pyqtSlot, pyqtSignal, pyqtProperty)
-from QVideo.lib import QCamera
+from QVideo.lib import (QCamera, QReader)
 import numpy as np
-from typing import Optional
+from typing import (TypeAlias, Optional, Union)
 from pprint import pprint
 import logging
 
@@ -14,9 +14,11 @@ logger.setLevel(logging.WARNING)
 
 class QVideoSource(QThread):
 
+    Camera: TypeAlias = Union[QCamera, QReader]
+
     newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, camera: QCamera, *args, **kwargs) -> None:
+    def __init__(self, camera: Camera, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.camera = camera
         self.camera.moveToThread(self)

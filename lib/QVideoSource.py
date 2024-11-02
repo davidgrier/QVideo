@@ -13,6 +13,12 @@ logger.setLevel(logging.WARNING)
 
 
 class QVideoSource(QThread):
+    '''Read frames from a camera as fast as possible
+
+    The camera object is moved to a background thread
+    to prevent interference with the user interface.
+    Video frames are returned with the newFrame() signal.
+    '''
 
     Camera: TypeAlias = Union[QCamera, QReader]
 
@@ -55,6 +61,14 @@ class QVideoSource(QThread):
 
     @pyqtSlot()
     def pause(self, time: Optional[int] = None) -> None:
+        '''Pause video readout
+
+        Arguments
+        ---------
+        time: int
+            Optional: Number of milliseconds to pause video readout.
+            If not provided: readout will pause until resume() is called.
+        '''
         if self._paused:
             return
         logger.debug('pausing')
@@ -70,12 +84,14 @@ class QVideoSource(QThread):
 
     @pyqtSlot()
     def resume(self):
+        '''Resume video readout after pause()'''
         if self._paused:
             logger.debug('resuming')
             self.waitcondition.wakeAll()
 
     @pyqtProperty(bool)
     def paused(self) -> bool:
+        '''True if readout is paused'''
         return self._paused
 
     @paused.setter
@@ -87,6 +103,7 @@ class QVideoSource(QThread):
 
     @classmethod
     def example(cls: 'QVideoSource') -> None:
+        '''Demonstrate basic operation of a threaded video source'''
         source = cls().start()
         print(source.camera.name)
         pprint(source.camera.settings())

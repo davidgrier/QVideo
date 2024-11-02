@@ -8,16 +8,15 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-
-Source: TypeAlias = Union[QCamera, QVideoSource]
-Description: TypeAlias = List[Dict[str, str]]
-Change: TypeAlias = Tuple[Parameter, str, QCamera.PropertyValue]
-Changes: TypeAlias = List[Change]
+logger.setLevel(logging.WARNING)
 
 
 class QCameraTree(ParameterTree):
+
+    Source: TypeAlias = Union[QCamera, QVideoSource]
+    Description: TypeAlias = List[Dict[str, str]]
+    Change: TypeAlias = Tuple[Parameter, str, QCamera.PropertyValue]
+    Changes: TypeAlias = List[Change]
 
     @staticmethod
     def _getParameters(parameter: Parameter) -> None:
@@ -47,7 +46,10 @@ class QCameraTree(ParameterTree):
                  description: Optional[Description],
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.setSource(source)
+        if isinstance(source, QCamera):
+            self.source = QVideoSource(source)
+        else:
+            self.source = source
         self._createTree(description)
         self._connectSignals()
         self._setupUi()
@@ -101,23 +103,17 @@ class QCameraTree(ParameterTree):
             logger.warning(f'Unsupported property: {key}')
         return None
 
-    def setSource(self, source: Source) -> None:
-        if isinstance(source, QVideoSource):
-            self._source = source
-            self._camera = source.camera
-        elif isinstance(source, QCamera):
-            self._camera = source
-            self._source = QVideoSource(self._camera)
-        else:
-            logger.error(f'Unsupported video source: {source}')
-
     @pyqtProperty(QVideoSource)
     def source(self) -> QVideoSource:
         return self._source
 
+    @source.setter
+    def source(self, source: QVideoSource) -> None:
+        self._source = source
+
     @pyqtProperty(QCamera)
     def camera(self) -> QCamera:
-        return self._camera
+        return self.source.camera
 
     @pyqtSlot()
     def start(self):
@@ -133,3 +129,13 @@ class QCameraTree(ParameterTree):
     @pyqtSlot()
     def close(self) -> None:
         self.stop()
+
+    @classmethod
+    def example(cls: 'QCameraTree') -> None:
+        from PyQt5.QtWidgets import QApplication
+        import sys
+
+        app = QApplication(sys.argv)
+        tree = cls().start()
+        tree.show()
+        sys.exit(app.exec())

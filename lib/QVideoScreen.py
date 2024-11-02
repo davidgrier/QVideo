@@ -1,4 +1,4 @@
-from QVideo.lib import (QVideoCamera, QVideoSource)
+from QVideo.lib import QVideoSource
 from PyQt5.QtCore import (QThread, pyqtSlot, QSize)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np

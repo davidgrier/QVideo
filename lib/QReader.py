@@ -2,6 +2,8 @@ from abc import (ABCMeta, abstractmethod)
 from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot, QSize,
                           QMutex, QMutexLocker, QWaitCondition)
 from QVideo.lib import QCamera
+import QVideo
+from pathlib import Path
 import logging
 
 
@@ -63,18 +65,18 @@ class QReader(QObject, metaclass=QReaderMeta):
 
     def saferead(self) -> CameraData:
         with QMutexLocker(self.mutex):
-            data = self.read()
+            ok, frame = self.read()
             self.waitcondition.wait(self.mutex, self.delay)
-        return data
+        return ok, frame
 
     @pyqtProperty(float)
     @abstractmethod
     def fps(self) -> float:
         return 29.97
 
-    @pyqtProperty(float)
-    def delay(self) -> float:
-        return 1000./self.fps
+    @pyqtProperty(int)
+    def delay(self) -> int:
+        return int(1000./self.fps)
 
     @pyqtProperty(QSize)
     def shape(self) -> QSize:
@@ -105,14 +107,16 @@ class QReader(QObject, metaclass=QReaderMeta):
     def rewind(self) -> None:
         self.seek(0)
 
+    @staticmethod
+    def examplevideo() -> str:
+        path = Path(QVideo.__file__).parent / 'docs' / 'diatom3.avi'
+        return str(path)
+
     @classmethod
     def example(cls: 'QReader') -> None:
-        from pathlib import Path
-        import QVideo
-
-        path = Path(QVideo.__file__).parent / 'docs' / 'diatom3.avi'
-        video = cls(str(path))
-        print(str(path))
+        filename = cls.examplevideo()
+        video = cls(filename)
+        print(filename)
         print(f'{video.length = } frames')
         print(f'{video.width = } pixels')
         print(f'{video.height = } pixels')

@@ -54,7 +54,7 @@ class QAVIReader(QReader):
 
     @pyqtProperty(int)
     def framenumber(self) -> int:
-        return self.reader.get(self.FRAMENUMBER)
+        return int(self.reader.get(self.FRAMENUMBER))
 
     @pyqtProperty(int)
     def width(self) -> int:
@@ -65,18 +65,5 @@ class QAVIReader(QReader):
         return self.reader.get(self.HEIGHT)
 
 
-def example() -> None:
-    from pathlib import Path
-    import QVideo
-
-    path = Path(QVideo.__file__).parent / 'docs' / 'diatom3.avi'
-    video = QAVIReader(str(path))
-    print(str(path))
-    print(f'{video.length = } frames')
-    print(f'{video.width = } pixels')
-    print(f'{video.height = } pixels')
-    print(f'{video.fps = } fps')
-
-
 if __name__ == '__main__':
-    example()
+    QAVIReader.example()

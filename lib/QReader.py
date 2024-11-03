@@ -104,3 +104,26 @@ class QReader(QObject, metaclass=QReaderMeta):
     @pyqtSlot()
     def rewind(self) -> None:
         self.seek(0)
+
+    @classmethod
+    def example(cls: 'QReader') -> None:
+        from pathlib import Path
+        import QVideo
+
+        path = Path(QVideo.__file__).parent / 'docs' / 'diatom3.avi'
+        video = cls(str(path))
+        print(str(path))
+        print(f'{video.length = } frames')
+        print(f'{video.width = } pixels')
+        print(f'{video.height = } pixels')
+        print(f'{video.fps = } fps')
+        with video:
+            for _ in range(5):
+                ok, frame = video.read()
+                print(f'{video.framenumber} ', end='')
+            print('done')
+        with video:
+            for _ in range(5):
+                ok, frame = video.read()
+                print(f'{video.framenumber} ', end='')
+            print('done')

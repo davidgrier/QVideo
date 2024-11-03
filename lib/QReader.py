@@ -1,6 +1,6 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot, QSize,
-                          QMutex, QMutexLocker, QWaitCondition)
+from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot, QSize)
+import time
 from QVideo.lib import QCamera
 import QVideo
 from pathlib import Path
@@ -24,8 +24,6 @@ class QReader(QObject, metaclass=QReaderMeta):
     def __init__(self, filename: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.filename = filename
-        self.mutex = QMutex()
-        self.waitcondition = QWaitCondition()
         self._isopen = False
         self.open()
 
@@ -64,9 +62,10 @@ class QReader(QObject, metaclass=QReaderMeta):
         return False, None
 
     def saferead(self) -> CameraData:
-        with QMutexLocker(self.mutex):
-            ok, frame = self.read()
-            self.waitcondition.wait(self.mutex, self.delay)
+        print('reading ', end='')
+        ok, frame = self.read()
+        time.sleep(self.delay)
+        print('done')
         return ok, frame
 
     @pyqtProperty(float)

@@ -160,11 +160,10 @@ class QDVRWidget(QFrame):
     def pause(self) -> None:
         '''Implement functionality of Pause button'''
         if self.isPlaying():
-            source = self._player.source
-            if source.isPaused():
-                source.resume()
+            if self._player.isPaused():
+                self._player.resume()
             else:
-                source.pause()
+                self._player.pause()
 
     @pyqtSlot()
     def rewind(self) -> None:

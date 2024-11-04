@@ -1,5 +1,6 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, QSize, QMutex, QMutexLocker,
+from PyQt5.QtCore import (QObject, QSize,
+                          QMutex, QMutexLocker, QWaitCondition,
                           pyqtSignal, pyqtSlot, pyqtProperty)
 import numpy as np
 import types
@@ -30,7 +31,9 @@ class QCamera(QObject, metaclass=QCameraMeta):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
         self.mutex = QMutex()
+        self.waitcondition = QWaitCondition()
         self._getInterface()
+        self._paused = False
         self._isopen = False
 
     def __enter__(self) -> bool:
@@ -59,6 +62,9 @@ class QCamera(QObject, metaclass=QCameraMeta):
 
     def isOpen(self) -> bool:
         return self._isopen
+
+    def isPaused(self) -> bool:
+        return self._paused
 
     @abstractmethod
     def _initialize(self, *args, **kwargs) -> bool:
@@ -121,7 +127,18 @@ class QCamera(QObject, metaclass=QCameraMeta):
 
     def saferead(self) -> CameraData:
         with QMutexLocker(self.mutex):
+            if self._paused:
+                self.waitcondition.wait(self.mutex)
             return self.read()
+
+    @pyqtSlot()
+    def pause(self) -> None:
+        self._paused = True
+
+    @pyqtSlot()
+    def resume(self) -> None:
+        self._paused = False
+        self.waitcondition.wakeAll()
 
     @pyqtProperty(QSize)
     def shape(self) -> QSize:

@@ -31,8 +31,8 @@ class QVideoSource(QThread):
         self.source.moveToThread(self)
         self.mutex = QMutex()
         self.waitcondition = QWaitCondition()
-        self._running = True
         self._paused = False
+        self._running = True
 
     @pyqtSlot()
     def run(self) -> None:
@@ -40,6 +40,8 @@ class QVideoSource(QThread):
         with self.source:
             while self._running:
                 with QMutexLocker(self.mutex):
+                    if self._paused:
+                        self.waitcondition.wait(self.mutex)
                     ok, frame = self.source.saferead()
                     if ok:
                         self.newFrame.emit(frame)
@@ -61,46 +63,20 @@ class QVideoSource(QThread):
                 self._running = False
 
     @pyqtSlot()
-    def pause(self, time: Optional[int] = None) -> None:
-        '''Pause video readout
-
-        Arguments
-        ---------
-        time: int
-            Optional: Number of milliseconds to pause video readout.
-            If not provided: readout will pause until resume() is called.
-        '''
-        if self._paused:
-            return
-        logger.debug('pausing')
-        with QMutexLocker(self.mutex):
-            logger.debug('paused')
-            self._paused = True
-            if time is None:
-                self.waitcondition.wait(self.mutex)
-            else:
-                self.waitcondition.wait(self.mutex, time)
-            self._paused = False
-            logger.debug('resumed')
+    def pause(self) -> None:
+        '''Pause video readout'''
+        self._paused = True
 
     @pyqtSlot()
-    def resume(self):
+    def resume(self) -> None:
         '''Resume video readout after pause()'''
         if self._paused:
-            logger.debug('resuming')
+            self._paused = False
             self.waitcondition.wakeAll()
 
-    @pyqtProperty(bool)
-    def paused(self) -> bool:
+    def isPaused(self) -> bool:
         '''True if readout is paused'''
         return self._paused
-
-    @paused.setter
-    def paused(self, value: bool) -> None:
-        if value:
-            self.pause()
-        else:
-            self.resume()
 
     @classmethod
     def example(cls: 'QVideoSource') -> None:
@@ -108,9 +84,6 @@ class QVideoSource(QThread):
         source = cls().start()
         print(source.source.name)
         pprint(source.source.settings())
-        print('pausing ... ', end='')
-        source.pause(1000)
-        print('done')
         source.stop()
         source.quit()
         source.wait()

@@ -129,6 +129,7 @@ class QCamera(QObject, metaclass=QCameraMeta):
         with QMutexLocker(self.mutex):
             if self._paused:
                 self.waitcondition.wait(self.mutex)
+                self._paused = False
             return self.read()
 
     @pyqtSlot()
@@ -137,7 +138,6 @@ class QCamera(QObject, metaclass=QCameraMeta):
 
     @pyqtSlot()
     def resume(self) -> None:
-        self._paused = False
         self.waitcondition.wakeAll()
 
     @pyqtProperty(QSize)

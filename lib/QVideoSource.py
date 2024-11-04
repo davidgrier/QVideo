@@ -44,6 +44,7 @@ class QVideoSource(QThread):
                 with QMutexLocker(self.mutex):
                     if self._paused:
                         self.waitcondition.wait(self.mutex)
+                        self._paused = False
                     ok, frame = self.source.saferead()
                     if ok:
                         self.newFrame.emit(frame)
@@ -74,7 +75,6 @@ class QVideoSource(QThread):
     def resume(self) -> None:
         '''Resume video readout after pause()'''
         if self._paused:
-            self._paused = False
             self.waitcondition.wakeAll()
 
     def isPaused(self) -> bool:

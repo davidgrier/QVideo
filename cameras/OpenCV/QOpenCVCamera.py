@@ -122,7 +122,6 @@ class QOpenCVCamera(QCamera):
 
 
 def example() -> None:
-    from QVideo.lib import QVideoCamera
     from pprint import pprint
 
     logger.setLevel(logging.ERROR)

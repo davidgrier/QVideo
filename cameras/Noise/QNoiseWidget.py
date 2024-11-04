@@ -1,8 +1,8 @@
-from QVideo.lib import QCameraWidget
+from QVideo.lib import QCameraTree
 from QVideo.cameras.Noise.QNoiseSource import QNoiseSource
 
 
-class QNoiseWidget(QCameraWidget):
+class QNoiseWidget(QCameraTree):
 
     UIFILE = 'QNoiseWidget.ui'
 

@@ -9,7 +9,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class QCameraMeta(type(QObject), ABCMeta):
@@ -121,8 +121,7 @@ class QCamera(QObject, metaclass=QCameraMeta):
 
     def saferead(self) -> CameraData:
         with QMutexLocker(self.mutex):
-            ready, frame = self.read()
-        return ready, frame
+            return self.read()
 
     @pyqtProperty(QSize)
     def shape(self) -> QSize:

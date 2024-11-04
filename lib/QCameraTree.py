@@ -113,7 +113,7 @@ class QCameraTree(ParameterTree):
 
     @pyqtProperty(QCamera)
     def camera(self) -> QCamera:
-        return self.source.camera
+        return self.source.source
 
     @pyqtSlot()
     def start(self):

@@ -1,5 +1,6 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot, QSize)
+from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot, QSize,
+                          QMutex, QMutexLocker, QWaitCondition)
 import time
 from QVideo.lib import QCamera
 import QVideo
@@ -24,6 +25,9 @@ class QReader(QObject, metaclass=QReaderMeta):
     def __init__(self, filename: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.filename = filename
+        self.mutex = QMutex()
+        self.waitcondition = QWaitCondition()
+        self._paused = False
         self._isopen = False
         self.open()
 
@@ -47,6 +51,9 @@ class QReader(QObject, metaclass=QReaderMeta):
     def isOpen(self) -> bool:
         return self._isopen
 
+    def isPaused(self) -> bool:
+        return self._paused
+
     @abstractmethod
     def _initialize(self, *args, **kwargs) -> bool:
         '''Access video file so that read() will succeed'''
@@ -62,11 +69,21 @@ class QReader(QObject, metaclass=QReaderMeta):
         return False, None
 
     def saferead(self) -> CameraData:
-        print('reading ', end='')
-        ok, frame = self.read()
-        time.sleep(self.delay)
-        print('done')
-        return ok, frame
+        with QMutexLocker(self.mutex):
+            if self._paused:
+                self.waitcondition.wait(self.mutex)
+            else:
+                self.waitcondition.wait(self.mutex, self.delay)
+            return self.read()
+
+    @pyqtSlot()
+    def pause(self) -> None:
+        self._paused = True
+
+    @pyqtSlot()
+    def resume(self) -> None:
+        self._paused = False
+        self.waitcondition.wakeAll()
 
     @pyqtProperty(float)
     @abstractmethod

@@ -49,8 +49,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         if self._source is not None:
             self._source = None
         self._source = source
-        self.updateShape(self._source.camera.shape)
-        self._source.camera.shapeChanged.connect(self.updateShape)
+        self.updateShape(self._source.source.shape)
+        self._source.source.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
 
     @pyqtSlot()

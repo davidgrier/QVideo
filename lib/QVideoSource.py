@@ -20,14 +20,15 @@ class QVideoSource(QThread):
     Video frames are returned with the newFrame() signal.
     '''
 
-    Camera: TypeAlias = Union[QCamera, QReader]
+    Source: TypeAlias = Union[QCamera, QReader]
 
     newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, camera: Camera, *args, **kwargs) -> None:
+    def __init__(self, source: Source, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.camera = camera
-        self.camera.moveToThread(self)
+        self.source = source
+        self.isOpen = self.source.isOpen
+        self.source.moveToThread(self)
         self.mutex = QMutex()
         self.waitcondition = QWaitCondition()
         self._running = True
@@ -36,10 +37,10 @@ class QVideoSource(QThread):
     @pyqtSlot()
     def run(self) -> None:
         logger.debug('streaming started')
-        with self.camera:
+        with self.source:
             while self._running:
                 with QMutexLocker(self.mutex):
-                    ok, frame = self.camera.saferead()
+                    ok, frame = self.source.saferead()
                     if ok:
                         self.newFrame.emit(frame)
         self.finished.emit()
@@ -105,8 +106,8 @@ class QVideoSource(QThread):
     def example(cls: 'QVideoSource') -> None:
         '''Demonstrate basic operation of a threaded video source'''
         source = cls().start()
-        print(source.camera.name)
-        pprint(source.camera.settings())
+        print(source.source.name)
+        pprint(source.source.settings())
         print('pausing ... ', end='')
         source.pause(1000)
         print('done')

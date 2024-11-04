@@ -12,8 +12,8 @@ class QCamcorder(QWidget):
         self.cameraWidget = cameraWidget
         self.camera = self.cameraWidget.camera
         self.source = self.cameraWidget.source
-        self.dvr.source = self.source
         self.setupUi()
+        self.dvr.source = self.source
         self.connectSignals()
 
     def setupUi(self) -> None:

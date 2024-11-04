@@ -2,6 +2,7 @@ from QVideo.lib import (QCamera, QVideoSource)
 from PyQt5.QtCore import pyqtProperty
 import numpy as np
 from typing import Tuple
+import time
 
 
 class QNoiseSource(QVideoSource):
@@ -15,6 +16,7 @@ class QNoiseCamera(QCamera):
         super().__init__(*args, **kwargs)
         self._width = 640
         self._height = 480
+        self._fps = 30.
 
     def _initialize(self):
         self.rng = np.random.default_rng()
@@ -24,6 +26,7 @@ class QNoiseCamera(QCamera):
         pass
 
     def read(self) -> Tuple[bool, np.ndarray]:
+        time.sleep(self.delay())
         shape = (self._height, self._width)
         image = self.rng.integers(0, 255, shape, np.uint8)
         return True, image
@@ -45,3 +48,18 @@ class QNoiseCamera(QCamera):
     def height(self, value: int) -> None:
         self._height = value
         self.shapeChanged.emit(self.shape)
+
+    @pyqtProperty(float)
+    def fps(self) -> float:
+        return self._fps
+
+    @fps.setter
+    def fps(self, fps: float) -> None:
+        self._fps = fps
+
+    def delay(self) -> float:
+        return 1./self.fps
+
+
+if __name__ == '__main__':
+    QNoiseCamera.example()

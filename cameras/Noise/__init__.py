@@ -1,6 +1,5 @@
-from .QNoiseSource import QNoiseSource
-from .QNoiseWidget import QNoiseWidget
+from .QNoiseCamera import (QNoiseCamera, QNoiseSource)
 from .QNoiseTree import QNoiseTree
 
 
-__all__ = ['QNoiseSource', 'QNoiseWidget', 'QNoiseTree']
+__all__ = 'QNoiseCamera QNoiseSource QNoiseTree'.split()

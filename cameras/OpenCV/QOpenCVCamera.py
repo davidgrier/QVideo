@@ -121,25 +121,5 @@ class QOpenCVCamera(QCamera):
         self.device.set(self.FPS, value)
 
 
-def example() -> None:
-    from pprint import pprint
-
-    logger.setLevel(logging.ERROR)
-
-    camera = QOpenCVCamera()
-    print(camera.name)
-    pprint(camera.settings())
-    with camera:
-        for n in range(5):
-            print('.' if camera.read()[0] else 'x', end='')
-        else:
-            print('done')
-    with camera:
-        for n in range(5):
-            print('.' if camera.read()[0] else 'x', end='')
-        else:
-            print('done')
-
-
 if __name__ == '__main__':
-    example()
+    QOpenCVCamera.example()

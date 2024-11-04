@@ -305,18 +305,5 @@ class QSpinnakerCamera(QCamera):
         self.sharpeningauto = 'Off'
 
 
-def example() -> None:
-    from pprint import pprint
-
-    logger.setLevel(logging.ERROR)
-
-    camera = QSpinnakerCamera()
-    print(camera.cameraname)
-    print(f'Serial number: {camera.deviceserialnumber}')
-    print('Settings:')
-    pprint(camera.settings())
-    camera.close()
-
-
 if __name__ == '__main__':
-    example()
+    QSpinnakerCamera.example()

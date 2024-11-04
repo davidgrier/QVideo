@@ -168,3 +168,23 @@ class QCamera(QObject, metaclass=QCameraMeta):
     @abstractmethod
     def height(self, value: int) -> None:
         self.shapeChanged.emit(self.shape)
+
+    @classmethod
+    def example(cls: 'QCamera') -> None:
+        from pprint import pprint
+
+        logger.setLevel(logging.ERROR)
+
+        camera = cls()
+        print(camera.name)
+        pprint(camera.settings())
+        with camera:
+            for n in range(5):
+                print('.' if camera.read()[0] else 'x', end='')
+            else:
+                print('done')
+        with camera:
+            for n in range(5):
+                print('.' if camera.read()[0] else 'x', end='')
+            else:
+                print('done')

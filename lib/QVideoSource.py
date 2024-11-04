@@ -27,12 +27,14 @@ class QVideoSource(QThread):
     def __init__(self, source: Source, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.source = source
-        self.isOpen = self.source.isOpen
         self.source.moveToThread(self)
         self.mutex = QMutex()
         self.waitcondition = QWaitCondition()
         self._paused = False
         self._running = True
+
+    def isOpen(self) -> bool:
+        return self.source.isOpen()
 
     @pyqtSlot()
     def run(self) -> None:
@@ -58,14 +60,15 @@ class QVideoSource(QThread):
     def stop(self):
         self.resume()
         logger.debug('stopping')
-        with QMutexLocker(self.mutex):
-            if self._running:
-                self._running = False
+        if self._running:
+            self._running = False
 
     @pyqtSlot()
     def pause(self) -> None:
         '''Pause video readout'''
-        self._paused = True
+        logger.debug('pausing')
+        if self._running:
+            self._paused = True
 
     @pyqtSlot()
     def resume(self) -> None:

@@ -58,8 +58,8 @@ class QDVRWidget(QFrame):
 
     def connectSignals(self) -> None:
         '''Connect signals to slots for user interaction'''
-        clickable(self.playEdit).connect(self.getPlayFileName)
-        clickable(self.saveEdit).connect(self.getSaveFileName)
+        clickable(self.playEdit).connect(lambda: self.getFileName(False))
+        clickable(self.saveEdit).connect(lambda: self.getFileName(True))
         self.recordButton.clicked.connect(self.record)
         self.stopButton.clicked.connect(self.stop)
         self.rewindButton.clicked.connect(self.rewind)
@@ -73,6 +73,12 @@ class QDVRWidget(QFrame):
     def isPlaying(self) -> bool:
         '''Return True is video is playing'''
         return (self._player is not None)
+
+    def isPaused(self) -> bool:
+        '''Return True if video playback is paused'''
+        if self.isPlaying():
+            return self._player.isPaused()
+        return False
 
     def getFileName(self, save: bool = False) -> str:
         if self.isRecording():
@@ -91,16 +97,6 @@ class QDVRWidget(QFrame):
         return filename
 
     @pyqtSlot()
-    def getPlayFileName(self) -> str:
-        '''Return file name of video to be played'''
-        return self.getFileName()
-
-    @pyqtSlot()
-    def getSaveFileName(self) -> str:
-        '''Return files name of video to be recorded'''
-        return self.getFileName(save=True)
-
-    @pyqtSlot()
     def record(self) -> None:
         '''Implement functionality of Record button'''
         if self.isPlaying():
@@ -108,9 +104,11 @@ class QDVRWidget(QFrame):
         if self.isRecording():
             self.stop()
             return
-        if not (self.filename or self.getSaveFileName()):
+        if self.source is None:
             return
-        logger.debug(f'Starting Recording: {self.filename}')
+        if not (self.filename or self.getFileName(save=True)):
+            return
+        logger.debug(f'Recording: {self.filename}')
         suffix = Path(self.filename).suffix
         if suffix == '.avi':
             self._writer = QAVIWriter(self.filename,
@@ -132,12 +130,12 @@ class QDVRWidget(QFrame):
     @pyqtSlot()
     def play(self) -> None:
         '''Implement functionality of Play buttoon'''
-        if self.isRecording():
+        if self.isPaused():
+            self._player.resume()
             return
-        if self.isPlaying():
-            self._player.source.resume()
+        if self.isRecording() or self.isPlaying():
             return
-        if not (self.playname or self.getPlayFilename()):
+        if not (self.playname or self.getFilename(save=False)):
             return
         self.framenumber = 0
         logger.debug(f'Starting Playback: {self.playname}')
@@ -170,6 +168,7 @@ class QDVRWidget(QFrame):
         '''Implement functionality of Rewind button'''
         if self.isPlaying():
             self._player.source.rewind()
+            self._player.pause()
             self.framenumber = 0
 
     @pyqtSlot()

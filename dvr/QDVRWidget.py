@@ -9,6 +9,8 @@ from typing import Optional
 from QVideo.lib import (clickable, QVideoSource)
 from .QAVIWriter import QAVIWriter
 from .QAVISource import QAVISource
+from .QHDF5Writer import QHDF5Writer
+from .QHDF5Source import QHDF5Source
 from .icons_rc import *
 import logging
 
@@ -89,7 +91,7 @@ class QDVRWidget(QFrame):
             get = QFileDialog.getOpenFileName
         filename, _ = get(self, 'Video File Name',
                           str(self.filename),
-                          'Video files (*.avi)')
+                          'Video files (*.avi);;HDF5 files (*.h5)')
         if filename:
             self.playname = filename
             if save:
@@ -115,6 +117,10 @@ class QDVRWidget(QFrame):
                                       fps=self.source.fps,
                                       nframes=self.nframes.value(),
                                       nskip=self.nskip.value())
+        elif suffix == '.h5':
+            self._writer = QHDF5Writer(self.filename,
+                                       nframes=self.nframes.value(),
+                                       nskip=self.nskip.value())
         else:
             logger.debug(f'unsupported file extension {suffix}')
             return
@@ -142,6 +148,8 @@ class QDVRWidget(QFrame):
         suffix = Path(self.playname).suffix
         if suffix == '.avi':
             self._player = QAVISource(self.playname)
+        elif suffix == '.h5':
+            self._player = QHDF5Source(self.playname)
         else:
             logger.debug(f'unsupported file extension {suffix}')
             return

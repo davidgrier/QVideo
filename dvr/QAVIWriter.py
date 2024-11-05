@@ -43,6 +43,7 @@ class QAVIWriter(QObject):
             self.fourcc = cv2.VideoWriter_fourcc(*codec)
             self.BGR2RGB = cv2.COLOR_BGR2RGB
 
+        self.writer = None
         self.framenumber = 0
         self.shape = None
 
@@ -71,7 +72,7 @@ class QAVIWriter(QObject):
         if (self.framenumber >= self.nframes) or (frame.shape != self.shape):
             self.finished.emit()
             return
-        if len(self.shape) == 3:
+        if frame.ndim == 3:
             frame = cv2.cvtColor(frame, self.BGR2RGB)
         if self.framenumber % self.nskip == 0:
             self.writer.write(frame)
@@ -81,4 +82,5 @@ class QAVIWriter(QObject):
     @pyqtSlot()
     def close(self) -> None:
         '''Closes video file'''
-        self.writer.release()
+        if self.writer is not None:
+            self.writer.release()

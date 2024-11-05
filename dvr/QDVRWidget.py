@@ -112,7 +112,7 @@ class QDVRWidget(QFrame):
         suffix = Path(self.filename).suffix
         if suffix == '.avi':
             self._writer = QAVIWriter(self.filename,
-                                      fps=self.source.camera.fps,
+                                      fps=self.source.fps,
                                       nframes=self.nframes.value(),
                                       nskip=self.nskip.value())
         else:
@@ -200,11 +200,11 @@ class QDVRWidget(QFrame):
         self.framenumber += 1
 
     @pyqtProperty(QObject)
-    def source(self):
+    def source(self) -> QObject:
         return self._source
 
     @source.setter
-    def source(self, source):
+    def source(self, source) -> None:
         self._source = source
         self.recordButton.setDisabled(source is None)
 

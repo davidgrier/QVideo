@@ -1,5 +1,6 @@
 from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
-                          pyqtSlot, pyqtSignal, pyqtProperty)
+                          pyqtSlot, pyqtSignal, pyqtProperty, QVariant,
+                          QSize)
 from QVideo.lib import (QCamera, QReader)
 import numpy as np
 from typing import (TypeAlias, Optional, Union)
@@ -33,8 +34,25 @@ class QVideoSource(QThread):
         self._paused = False
         self._running = True
 
+    @pyqtProperty(QVariant)
+    def source(self) -> Source:
+        return self._source
+
+    @source.setter
+    def source(self, source: Source) -> None:
+        self._source = source
+        self.shapeChanged = source.shapeChanged
+
     def isOpen(self) -> bool:
         return self.source.isOpen()
+
+    @pyqtProperty(float)
+    def fps(self) -> float:
+        return self.source.fps
+
+    @pyqtProperty(QSize)
+    def shape(self) -> QSize:
+        return self.source.shape
 
     @pyqtSlot()
     def run(self) -> None:
@@ -80,6 +98,7 @@ class QVideoSource(QThread):
     def isPaused(self) -> bool:
         '''True if readout is paused'''
         return self._paused
+
 
     @classmethod
     def example(cls: 'QVideoSource') -> None:

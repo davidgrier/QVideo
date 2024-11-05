@@ -10,7 +10,6 @@ class QCamcorder(QWidget):
     def __init__(self, *args, cameraWidget=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
-        self.camera = self.cameraWidget.camera
         self.source = self.cameraWidget.source
         self.setupUi()
         self.dvr.source = self.source
@@ -23,11 +22,11 @@ class QCamcorder(QWidget):
 
     def connectSignals(self) -> None:
         self.source.newFrame.connect(self.screen.setImage)
-        self.camera.shapeChanged.connect(self.updateShape)
+        self.source.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)
 
     def updateShape(self) -> None:
-        self.screen.updateShape(self.camera.shape)
+        self.screen.updateShape(self.source.shape)
 
     @pyqtSlot(bool)
     def dvrPlayback(self, playback: bool) -> None:

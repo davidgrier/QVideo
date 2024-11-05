@@ -1,5 +1,6 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot, QSize,
+from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot,
+                          pyqtSignal, QSize,
                           QMutex, QMutexLocker, QWaitCondition)
 import time
 from QVideo.lib import QCamera
@@ -22,6 +23,8 @@ class QReader(QObject, metaclass=QReaderMeta):
 
     CameraData = QCamera.CameraData
 
+    shapeChanged = pyqtSignal(QSize)
+
     def __init__(self, filename: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.filename = filename
@@ -40,6 +43,8 @@ class QReader(QObject, metaclass=QReaderMeta):
     def open(self, *args, **kwargs):
         if not self._isopen:
             self._isopen = self._initialize(*args, **kwargs)
+            if self._isopen:
+                self.shapeChanged.emit(self.shape)
         return self
 
     @pyqtSlot()

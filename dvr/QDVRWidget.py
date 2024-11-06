@@ -43,6 +43,15 @@ class QDVRWidget(QFrame):
     recording = pyqtSignal(bool)
     playing = pyqtSignal(bool)
 
+    GetFileName = {True: QFileDialog.getSaveFileName,
+                   False: QFileDialog.getOpenFileName}
+
+    Writer = {'.avi': QAVIWriter,
+              '.h5': QHDF5Writer}
+
+    Player = {'.avi': QAVISource,
+              '.h5': QHDF5Source}
+
     def __init__(self,
                  *args,
                  source: Optional[QVideoSource] = None,
@@ -84,11 +93,8 @@ class QDVRWidget(QFrame):
 
     def getFileName(self, save: bool = False) -> str:
         if self.isRecording():
-            return
-        if save:
-            get = QFileDialog.getSaveFileName
-        else:
-            get = QFileDialog.getOpenFileName
+            return ''
+        get = self.GetFileName[save]
         filename, _ = get(self, 'Video File Name',
                           str(self.filename),
                           'Video files (*.avi);;HDF5 files (*.h5)')
@@ -101,29 +107,19 @@ class QDVRWidget(QFrame):
     @pyqtSlot()
     def record(self) -> None:
         '''Implement functionality of Record button'''
-        if self.isPlaying():
+        if (self.source) is None or self.isPlaying():
             return
         if self.isRecording():
             self.stop()
             return
-        if self.source is None:
-            return
         if not (self.filename or self.getFileName(save=True)):
             return
         logger.debug(f'Recording: {self.filename}')
-        suffix = Path(self.filename).suffix
-        if suffix == '.avi':
-            self._writer = QAVIWriter(self.filename,
-                                      fps=self.source.fps,
-                                      nframes=self.nframes.value(),
-                                      nskip=self.nskip.value())
-        elif suffix == '.h5':
-            self._writer = QHDF5Writer(self.filename,
-                                       nframes=self.nframes.value(),
-                                       nskip=self.nskip.value())
-        else:
-            logger.debug(f'unsupported file extension {suffix}')
-            return
+        Writer = self.Writer[Path(self.filename).suffix]
+        self._writer = Writer(self.filename,
+                              fps=self.source.fps,
+                              nframes=self.nframes.value(),
+                              nskip=self.nskip.value())
         self._writer.frameNumber.connect(self.setFrameNumber)
         self._writer.finished.connect(self.stop)
         self._thread = QThread()
@@ -145,14 +141,8 @@ class QDVRWidget(QFrame):
             return
         self.framenumber = 0
         logger.debug(f'Starting Playback: {self.playname}')
-        suffix = Path(self.playname).suffix
-        if suffix == '.avi':
-            self._player = QAVISource(self.playname)
-        elif suffix == '.h5':
-            self._player = QHDF5Source(self.playname)
-        else:
-            logger.debug(f'unsupported file extension {suffix}')
-            return
+        Player = self.Player[Path(self.playname).suffix]
+        self._player = Player(self.playname)
         if self._player.isOpen():
             logger.debug('connecting signals')
             self.newFrame = self._player.newFrame

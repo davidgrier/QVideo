@@ -27,6 +27,7 @@ class QHDF5Writer(QObject):
                  filename: str,
                  nframes: int = 10000,
                  nskip: int = 1,
+                 fps: float = 30.,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         # h5py.get_config().track_order = True

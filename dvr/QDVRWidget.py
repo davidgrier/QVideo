@@ -92,7 +92,7 @@ class QDVRWidget(QFrame):
         return False
 
     def getFileName(self, save: bool = False) -> str:
-        if self.isRecording():
+        if self.isPlaying() or self.isRecording():
             return ''
         get = self.GetFileName[save]
         filename, _ = get(self, 'Video File Name',

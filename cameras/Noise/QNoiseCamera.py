@@ -17,6 +17,7 @@ class QNoiseCamera(QCamera):
         self._width = 640
         self._height = 480
         self._fps = 30.
+        self.open()
 
     def _initialize(self):
         self.rng = np.random.default_rng()

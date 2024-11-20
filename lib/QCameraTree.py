@@ -46,6 +46,9 @@ class QCameraTree(ParameterTree):
                  description: Optional[Description],
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        if not source.isOpen():
+            logger.error('Video source is not open')
+            return
         if isinstance(source, QCamera):
             self.source = QVideoSource(source)
         else:

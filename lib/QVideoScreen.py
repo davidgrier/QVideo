@@ -1,5 +1,5 @@
 from QVideo.lib import QVideoSource
-from PyQt5.QtCore import (QThread, pyqtSlot, QSize)
+from PyQt5.QtCore import (pyqtSlot, QSize)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
 import logging
@@ -75,7 +75,7 @@ def main() -> None:
     from PyQt5.QtWidgets import QApplication
     import sys
 
-    app = QApplication([])
+    app = QApplication(sys.argv)
     widget = QVideoScreen()
     widget.show()
     sys.exit(app.exec())

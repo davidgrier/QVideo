@@ -1,5 +1,4 @@
 from QVideo.lib import QCamera
-import PySpin
 from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
 from typing import (TypeAlias, Union, Callable)
 import logging
@@ -8,6 +7,14 @@ import logging
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
+
+try:
+    import PySpin
+    HAS_SPINNAKER = True
+except ImportError as ex:
+    logger.error(f'Could not import PySpin API: {ex}')
+    HAS_SPINNAKER = False
 
 
 Value: TypeAlias = Union[bool, int, float, str]
@@ -174,13 +181,15 @@ class QSpinnakerCamera(QCamera):
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraID = cameraID
-        self.open()
-        self._refineProperties()
-        self._setDefaults()
-        self._testColor()
-        self.flipped = flipped
-        self.mirrored = mirrored
-        self.gray = gray
+        if self.open():
+            self._refineProperties()
+            self._setDefaults()
+            self._testColor()
+            self.flipped = flipped
+            self.mirrored = mirrored
+            self.gray = gray
+        else:
+            logger
 
     def _initialize(self) -> bool:
         '''
@@ -192,6 +201,8 @@ class QSpinnakerCamera(QCamera):
             True: the camera is open and can read frames
             False: failure opening camera.
         '''
+        if not HAS_SPINNAKER:
+            return False
         self.device = None
         self._system = PySpin.System.GetInstance()
         self._devices = self._system.GetCameras()

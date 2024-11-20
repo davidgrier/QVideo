@@ -8,7 +8,7 @@ class demo(QWidget):
     def __init__(self, CameraWidget, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
-        self.cameraWidget = CameraWidget(self).start()
+        self.cameraWidget = CameraWidget().start()
         self.screen.setSource(self.cameraWidget.source)
         self.setupUi()
 
@@ -25,7 +25,7 @@ def main():
 
     CameraWidget = choose_camera_widget()
 
-    app = QApplication([])
+    app = QApplication(sys.argv)
     widget = demo(CameraWidget)
     widget.show()
     sys.exit(app.exec())

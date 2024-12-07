@@ -280,6 +280,10 @@ class QSpinnakerCamera(QCamera):
         logger.debug(f'PySpin version: {s}')
         return s
 
+    @pyqtProperty(float)
+    def fps(self) -> float:
+        return self.acquisitionframerate
+
     def colorCapable(self) -> bool:
         return self._color_capable
 

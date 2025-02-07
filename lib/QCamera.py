@@ -4,7 +4,7 @@ from PyQt5.QtCore import (QObject, QSize,
                           pyqtSignal, pyqtSlot, pyqtProperty)
 import numpy as np
 import types
-from typing import (TypeAlias, Optional, Union, List, Dict, Tuple)
+from typing import TypeAlias
 import logging
 
 
@@ -20,9 +20,9 @@ class QCameraMeta(type(QObject), ABCMeta):
 class QCamera(QObject, metaclass=QCameraMeta):
     '''Base class for a video camera implementation'''
 
-    PropertyValue: TypeAlias = Union[bool, int, float, str]
-    Settings: TypeAlias = Dict[str, PropertyValue]
-    CameraData: TypeAlias = Tuple[bool, Union[np.ndarray, None]]
+    PropertyValue: TypeAlias = bool | int | float | str
+    Settings: TypeAlias = dict[str, PropertyValue]
+    CameraData: TypeAlias = tuple[bool, np.ndarray | None]
 
     shapeChanged = pyqtSignal(QSize)
     propertyValue = pyqtSignal(str, object)
@@ -76,10 +76,10 @@ class QCamera(QObject, metaclass=QCameraMeta):
         '''Configure device so that either del or open() will succeed'''
         pass
 
-    def properties(self) -> List[str]:
+    def properties(self) -> list[str]:
         return self._properties
 
-    def methods(self) -> List[str]:
+    def methods(self) -> list[str]:
         return self._methods
 
     def settings(self) -> Settings:
@@ -100,7 +100,7 @@ class QCamera(QObject, metaclass=QCameraMeta):
                 logger.error(f'Unknown property: {key}')
 
     @pyqtSlot(str)
-    def get(self, key: str) -> Optional[PropertyValue]:
+    def get(self, key: str) -> PropertyValue | None:
         '''Get named property'''
         with QMutexLocker(self.mutex):
             if key in self._properties:

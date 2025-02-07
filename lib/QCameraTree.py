@@ -26,7 +26,7 @@ class QCameraTree(ParameterTree):
             for p in parameter.children():
                 parameters.update(QCameraTree._getParameters(p))
         else:
-            name = parameter.name() # .lower()
+            name = parameter.name()  # .lower()
             parameters.update({name: parameter})
         return parameters
 
@@ -90,7 +90,7 @@ class QCameraTree(ParameterTree):
     def _sync(self, tree: ParameterTree, changes: Changes) -> None:
         for param, change, value in changes:
             if (change == 'value'):
-                key = param.name().lower()
+                key = param.name()  # .lower()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
 

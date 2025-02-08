@@ -1,7 +1,6 @@
 from QVideo.lib import QCamera
 from PyQt5.QtCore import pyqtProperty
 import cv2
-from typing import Optional
 import logging
 
 

@@ -3,7 +3,7 @@ from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
                           QSize)
 from QVideo.lib import (QCamera, QReader)
 import numpy as np
-from typing import (TypeAlias, Optional, Union)
+from typing import TypeAlias
 from pprint import pprint
 import logging
 
@@ -21,7 +21,7 @@ class QVideoSource(QThread):
     Video frames are returned with the newFrame() signal.
     '''
 
-    Source: TypeAlias = Union[QCamera, QReader]
+    Source: TypeAlias = QCamera | QReader
 
     newFrame = pyqtSignal(np.ndarray)
 
@@ -98,7 +98,6 @@ class QVideoSource(QThread):
     def isPaused(self) -> bool:
         '''True if readout is paused'''
         return self._paused
-
 
     @classmethod
     def example(cls: 'QVideoSource') -> None:

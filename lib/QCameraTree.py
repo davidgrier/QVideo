@@ -2,7 +2,7 @@ from pyqtgraph.parametertree import (Parameter, ParameterTree)
 from PyQt5.QtCore import (pyqtSlot, pyqtProperty)
 from PyQt5.QtWidgets import QHeaderView
 from QVideo.lib import (QCamera, QVideoSource)
-from typing import (TypeAlias, Optional, Union, Tuple, List, Dict)
+from typing import TypeAlias
 import logging
 
 
@@ -13,10 +13,10 @@ logger.setLevel(logging.WARNING)
 
 class QCameraTree(ParameterTree):
 
-    Source: TypeAlias = Union[QCamera, QVideoSource]
-    Description: TypeAlias = List[Dict[str, str]]
-    Change: TypeAlias = Tuple[Parameter, str, QCamera.PropertyValue]
-    Changes: TypeAlias = List[Change]
+    Source: TypeAlias = QCamera | QVideoSource
+    Description: TypeAlias = list[dict[str, str]]
+    Change: TypeAlias = tuple[Parameter, str, QCamera.PropertyValue]
+    Changes: TypeAlias = list[Change]
 
     @staticmethod
     def _getParameters(parameter: Parameter) -> None:
@@ -31,7 +31,7 @@ class QCameraTree(ParameterTree):
         return parameters
 
     @staticmethod
-    def _defaultDescription(camera: QCamera) -> List:
+    def _defaultDescription(camera: QCamera) -> list:
         settings = camera.settings().items()
         entries = [{'name': key,
                     'type': value.__class__.__name__,
@@ -43,7 +43,7 @@ class QCameraTree(ParameterTree):
 
     def __init__(self,
                  source: Source,
-                 description: Optional[Description],
+                 description: Description | None,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         if not source.isOpen():
@@ -69,7 +69,7 @@ class QCameraTree(ParameterTree):
         self.header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.setColumnWidth(0, 150)
 
-    def _createTree(self, description: Optional[Description]) -> None:
+    def _createTree(self, description: Description | None) -> None:
         if description is None:
             description = self._defaultDescription(self.camera)
         self._tree = Parameter.create(name=self.camera.name,
@@ -102,7 +102,7 @@ class QCameraTree(ParameterTree):
         else:
             logger.warning(f'Unsupported property: {key}')
 
-    def get(self, key) -> Optional[QCamera.PropertyValue]:
+    def get(self, key) -> QCamera.PropertyValue | None:
         if key in self._parameters:
             return self._parameters[key].getValue()
         else:

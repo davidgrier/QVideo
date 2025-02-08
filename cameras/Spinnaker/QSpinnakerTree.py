@@ -6,10 +6,10 @@ from typing import Optional
 class QSpinnakerTree(QCameraTree):
 
     def __init__(self, *args,
-                 camera: Optional[QCameraTree.Source] = None,
+                 camera: QCameraTree.Source | None = None,
                  **kwargs) -> None:
         camera = camera or QSpinnakerCamera(*args, **kwargs)
-        controls = None # self.get_controls(camera)
+        controls = None  # self.get_controls(camera)
         super().__init__(camera, controls, *args, **kwargs)
 
     @staticmethod

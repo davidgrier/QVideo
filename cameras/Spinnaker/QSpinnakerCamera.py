@@ -1,6 +1,6 @@
 from QVideo.lib import QCamera
 from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
-from typing import (TypeAlias, Union, Callable)
+from typing import (TypeAlias, Callable)
 import logging
 
 
@@ -15,9 +15,6 @@ try:
 except ImportError as ex:
     logger.error(f'Could not import PySpin API: {ex}')
     HAS_SPINNAKER = False
-
-
-Value: TypeAlias = Union[bool, int, float, str]
 
 
 '''
@@ -74,7 +71,7 @@ class QSpinnakerCamera(QCamera):
 
         logger.debug(f'Registering {name}')
 
-        def getter(inst) -> Value:
+        def getter(inst) -> QCamera.PropertyValue:
             logger.debug(f'Getting {name}')
             value = None
             try:
@@ -90,7 +87,7 @@ class QSpinnakerCamera(QCamera):
                 logger.error(f'Error getting {name}: {ex}')
             return value
 
-        def setter(inst, value: Value) -> None:
+        def setter(inst, value: QCamera.PropertyValue) -> None:
             logger.debug(f'Setting {name}: {value}')
             try:
                 if stop:
@@ -107,7 +104,8 @@ class QSpinnakerCamera(QCamera):
                         vmax = node.GetMax()
                         clipped = min(max(value, vmin), vmax)
                         if clipped != value:
-                            logger.warning(f'{value} is out of range for {name}')
+                            logger.warning(
+                                f'{value} is out of range for {name}')
                             value = clipped
                     node.SetValue(value)
                 inst.valueChanged.emit(name)

@@ -1,6 +1,5 @@
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Noise import QNoiseSource
-from typing import Optional
 
 
 class QNoiseTree(QCameraTree):

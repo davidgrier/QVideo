@@ -5,7 +5,6 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
                           QObject, QThread)
 from PyQt5.QtWidgets import (QFrame, QFileDialog)
 from pathlib import Path
-from typing import Optional
 from QVideo.lib import (clickable, QVideoSource)
 from .QAVIWriter import QAVIWriter
 from .QAVISource import QAVISource
@@ -54,8 +53,8 @@ class QDVRWidget(QFrame):
 
     def __init__(self,
                  *args,
-                 source: Optional[QVideoSource] = None,
-                 filename: Optional[str] = None,
+                 source: QVideoSource | None = None,
+                 filename: str | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         dir = Path(__file__).parent
@@ -82,7 +81,7 @@ class QDVRWidget(QFrame):
         return (self._writer is not None)
 
     def isPlaying(self) -> bool:
-        '''Return True is video is playing'''
+        '''Return True if video is playing'''
         return (self._player is not None)
 
     def isPaused(self) -> bool:
@@ -197,18 +196,17 @@ class QDVRWidget(QFrame):
         '''Increment frame number'''
         self.framenumber += 1
 
-    @pyqtProperty(QObject)
-    def source(self) -> QObject:
+    @pyqtProperty(QVideoSource)
+    def source(self) -> QVideoSource:
         return self._source
 
     @source.setter
-    def source(self, source) -> None:
+    def source(self, source: QVideoSource) -> None:
         self._source = source
         self.recordButton.setDisabled(source is None)
 
     @pyqtProperty(str)
     def filename(self) -> str:
-        '''Current file name from Save widget'''
         return str(self.saveEdit.text())
 
     @filename.setter
@@ -231,7 +229,6 @@ class QDVRWidget(QFrame):
 
     @pyqtProperty(int)
     def framenumber(self) -> int:
-        '''Current frame number'''
         return self._framenumber
 
     @framenumber.setter

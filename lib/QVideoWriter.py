@@ -1,12 +1,6 @@
 from abc import (ABCMeta, abstractmethod)
 from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot)
 import numpy as np
-import logging
-
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class QVideoWriterMeta(type(QObject), ABCMeta):
@@ -14,7 +8,7 @@ class QVideoWriterMeta(type(QObject), ABCMeta):
 
 
 class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
-    '''Base class for saving videos to files'''
+    '''Abstract base class for saving videos to files'''
 
     frameNumber = pyqtSignal(int)
     finished = pyqtSignal()

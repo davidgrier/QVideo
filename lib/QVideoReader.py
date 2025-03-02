@@ -2,16 +2,9 @@ from abc import (ABCMeta, abstractmethod)
 from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot,
                           pyqtSignal, QSize,
                           QMutex, QMutexLocker, QWaitCondition)
-import time
 from QVideo.lib import QCamera
 import QVideo
 from pathlib import Path
-import logging
-
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class QVideoReaderMeta(type(QObject), ABCMeta):
@@ -19,7 +12,7 @@ class QVideoReaderMeta(type(QObject), ABCMeta):
 
 
 class QVideoReader(QObject, metaclass=QVideoReaderMeta):
-    '''Base class for a video-file reader'''
+    '''Abstract base class for a video-file reader'''
 
     CameraData = QCamera.CameraData
 

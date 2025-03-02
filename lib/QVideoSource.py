@@ -1,7 +1,8 @@
 from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
                           pyqtSlot, pyqtSignal, pyqtProperty, QVariant,
                           QSize)
-from QVideo.lib import (QCamera, QReader)
+from QVideo.lib import (QCamera, QVideoReader)
+from .QVideoReader import QVideoReader
 import numpy as np
 from typing import TypeAlias
 from pprint import pprint
@@ -21,7 +22,7 @@ class QVideoSource(QThread):
     Video frames are returned with the newFrame() signal.
     '''
 
-    Source: TypeAlias = QCamera | QReader
+    Source: TypeAlias = QCamera | QVideoReader
 
     newFrame = pyqtSignal(np.ndarray)
 

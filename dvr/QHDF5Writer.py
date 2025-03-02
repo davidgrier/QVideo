@@ -1,67 +1,29 @@
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot)
+from PyQt5.QtCore import pyqtSlot
+from QVideo.lib import QVideoWriter
 import numpy as np
 import h5py
-import time
-import logging
+from time import time
 
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+class QHDF5Writer(QVideoWriter):
 
-
-class QHDF5Writer(QObject):
-    '''Class for saving H5 video files
-
-    Inherits
-    --------
-    PyQt5.QtCore.QObject
-    '''
-
-    frameNumber = pyqtSignal(int)
-    finished = pyqtSignal()
-
-    def __init__(self,
-                 filename: str,
-                 nframes: int = 10000,
-                 nskip: int = 1,
-                 fps: float = 30.,
-                 **kwargs) -> None:
-        super().__init__(**kwargs)
-        # h5py.get_config().track_order = True
-        self.video = self.open(filename)
-        self.framenumber = 0
-        self.nskip = nskip
-        self.target = nframes
-
-    def open(self, filename: str) -> h5py.File:
-        self.file = h5py.File(filename, 'w', libver='latest',
+    def open(self, frame: np.ndarray) -> None:
+        self.file = h5py.File(self.filename, 'w', libver='latest',
                               track_order=True)
-        self.start = time.time()
+        self.start = time()
         self.file.attrs.update({'Timestamp': self.start})
-        return self.file.create_group('images')
+        self._writer = self.file.create_group('images')
 
-    @pyqtSlot(np.ndarray)
-    def write(self, frame: np.ndarray) -> None:
-        '''Writes video frame to video file
+    def isOpen(self) -> bool:
+        return hasattr(self, 'file') and bool(self.file)
 
-        Arguments
-        ---------
-        frame: numpy.ndarray
-            Video deata to write
-        '''
-        if (self.framenumber >= self.target):
-            self.finished.emit()
-            return
-        now = time.time() - self.start
-        if self.framenumber % self.nskip == 0:
-            self.video.create_dataset(str(now), data=frame)
-            self.framenumber += 1
-            self.frameNumber.emit(self.framenumber)
+    def _write(self, frame: np.ndarray) -> None:
+        now = time() - self.start
+        self._writer.create_dataset(str(now), data=frame)
 
     @pyqtSlot()
     def close(self) -> None:
-        '''Closes video file'''
-        self.file.close()
+        if self.isOpen():
+            self.file.close()

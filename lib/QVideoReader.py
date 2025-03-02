@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class QReaderMeta(type(QObject), ABCMeta):
+class QVideoReaderMeta(type(QObject), ABCMeta):
     pass
 
 
-class QReader(QObject, metaclass=QReaderMeta):
+class QVideoReader(QObject, metaclass=QVideoReaderMeta):
     '''Base class for a video-file reader'''
 
     CameraData = QCamera.CameraData
@@ -120,7 +120,7 @@ class QReader(QObject, metaclass=QReaderMeta):
 
     @pyqtSlot(int)
     @abstractmethod
-    def seek(self, framenumber:int) -> None:
+    def seek(self, framenumber: int) -> None:
         '''Set reader to specified frame number'''
         pass
 

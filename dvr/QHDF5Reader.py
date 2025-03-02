@@ -1,16 +1,16 @@
-from QVideo.lib import QReader
+from QVideo.lib import QVideoReader
 from PyQt5.QtCore import (pyqtSlot, pyqtProperty)
 import h5py
-from typing import Optional
 
 
-class QHDF5Reader(QReader):
+class QHDF5Reader(QVideoReader):
     '''Class for playing H5 video files
 
     Inherits
     --------
     PyQt5.QtCore.QObject
     '''
+
     def _initialize(self) -> bool:
         if (file := h5py.File(self.filename, 'r')) is None:
             return False
@@ -25,12 +25,13 @@ class QHDF5Reader(QReader):
     def _deinitialize(self) -> None:
         self.file.close()
 
-    def read(self) -> QReader.CameraData:
+    def read(self) -> QVideoReader.CameraData:
         if self._framenumber >= len(self.keys):
             return False, None
         key = self.keys[self._framenumber]
         self.frame = self.images[key][()]
         self._framenumber += 1
+        return True, self.frame
 
     @pyqtSlot(int)
     def seek(self, framenumber: int) -> None:

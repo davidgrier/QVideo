@@ -77,11 +77,6 @@ class QCameraTree(ParameterTree):
                                       children=description)
         self.setParameters(self._tree, showTop=False)
         self._parameters = self._getParameters(self._tree)
-        '''
-        for name, parameter in self._parameters.items():
-            print(name)
-            parameter.setValue(self.camera.get(name))
-        '''
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)

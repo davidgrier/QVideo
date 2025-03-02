@@ -1,9 +1,9 @@
-from QVideo.lib import QReader
+from QVideo.lib import QVideoReader
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 import cv2
 
 
-class QAVIReader(QReader):
+class QAVIReader(QVideoReader):
     '''Video reader for AVI files
 
     Reads frames from a video file,
@@ -34,7 +34,7 @@ class QAVIReader(QReader):
         self.reader.release()
         self.reader = None
 
-    def read(self) -> QReader.CameraData:
+    def read(self) -> QVideoReader.CameraData:
         ok, frame = self.reader.read()
         if ok and frame.ndim == 3:
             frame = cv2.cvtColor(frame, self.BRG2RGB)
@@ -63,6 +63,7 @@ class QAVIReader(QReader):
     @pyqtProperty(int)
     def height(self) -> int:
         return self.reader.get(self.HEIGHT)
+
 
 if __name__ == '__main__':
     QAVIReader.example()

@@ -1,11 +1,10 @@
 from QVideo.dvr.QAVIReader import QAVIReader
 from QVideo.lib import QVideoSource
-from typing import Union
 
 
 class QAVISource(QVideoSource):
 
-    def __init__(self, reader: Union[str, QAVIReader]) -> None:
+    def __init__(self, reader: str | QAVIReader) -> None:
         if isinstance(reader, str):
             reader = QAVIReader(reader)
         super().__init__(reader)

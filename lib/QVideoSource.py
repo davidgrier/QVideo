@@ -101,9 +101,9 @@ class QVideoSource(QThread):
         return self._paused
 
     @classmethod
-    def example(cls: 'QVideoSource') -> None:
+    def example(cls: 'QVideoSource', *args) -> None:
         '''Demonstrate basic operation of a threaded video source'''
-        source = cls().start()
+        source = cls(*args).start()
         print(source.source.name)
         pprint(source.source.settings())
         source.stop()

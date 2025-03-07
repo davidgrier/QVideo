@@ -97,7 +97,7 @@ class QCameraTree(ParameterTree):
         else:
             logger.warning(f'Unsupported property: {key}')
 
-    def get(self, key) -> QCamera.PropertyValue | None:
+    def get(self, key: str) -> QCamera.PropertyValue | None:
         if key in self._parameters:
             return self._parameters[key].getValue()
         else:

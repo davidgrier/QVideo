@@ -64,11 +64,6 @@ class QCameraTree(ParameterTree):
         except Exception as ex:
             logger.debug(f'__del__: {ex}')
 
-    def _setupUi(self) -> None:
-        self.setMinimumWidth(250)
-        self.header().setSectionResizeMode(0, QHeaderView.Fixed)
-        self.setColumnWidth(0, 150)
-
     def _createTree(self, description: Description | None) -> None:
         if description is None:
             description = self._defaultDescription(self.camera)
@@ -80,6 +75,14 @@ class QCameraTree(ParameterTree):
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
+
+    def _setupUi(self) -> None:
+        '''
+        FIXME: Resize to fit contents?
+        '''
+        self.setMinimumWidth(250)
+        self.header().setSectionResizeMode(QHeaderView.Interactive)
+        self.setColumnWidth(0, 200)
 
     @pyqtSlot(object, object)
     def _sync(self, tree: ParameterTree, changes: Changes) -> None:

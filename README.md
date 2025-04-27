@@ -1,7 +1,7 @@
-# **QVideo:** PyQt5 support for video cameras
+# **QVideo:** PyQt support for video cameras
 
 **QVideo** is a framework for integrating
-video cameras into PyQt5 projects for scientific research.
+video cameras into PyQt projects for scientific research.
 It simplifies development of hardware interfaces 
 that are compatible with Qt and automates developing
 widgets that control cameras' properties and operation.

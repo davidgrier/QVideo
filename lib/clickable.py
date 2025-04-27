@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import (QObject, pyqtSignal, QEvent)
-from PyQt5.QtWidgets import QWidget
+from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, QEvent)
+from pyqtgraph.Qt.QtWidgets import QWidget
 
 
 def clickable(widget: QWidget) -> pyqtSignal:
@@ -28,7 +28,7 @@ def clickable(widget: QWidget) -> pyqtSignal:
 
         def eventFilter(self, obj: QObject, event: QEvent) -> bool:
             if obj == widget:
-                if event.type() == QEvent.MouseButtonRelease:
+                if event.type() == QEvent.Type.MouseButtonRelease:
                     if obj.rect().contains(event.pos()):
                         self.clicked.emit()
                         return True

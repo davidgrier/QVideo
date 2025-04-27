@@ -11,7 +11,7 @@ class QNoiseTree(QCameraTree):
 
 
 def example() -> None:
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

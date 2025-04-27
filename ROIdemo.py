@@ -1,5 +1,6 @@
 from QCamcorder import QCamcorder
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QObject)
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot,
+                                 pyqtProperty, QObject)
 import pyqtgraph as pg
 import numpy as np
 
@@ -49,7 +50,7 @@ class ROIdemo(QCamcorder):
 
 
 def main() -> None:
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     from QVideo.cameras.choose_camera import choose_camera_widget
     import sys
 

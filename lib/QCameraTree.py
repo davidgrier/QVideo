@@ -1,6 +1,6 @@
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from PyQt5.QtCore import (pyqtSlot, pyqtProperty)
-from PyQt5.QtWidgets import QHeaderView
+from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtWidgets import QHeaderView
 from QVideo.lib import (QCamera, QVideoSource)
 from typing import TypeAlias
 import logging
@@ -81,7 +81,7 @@ class QCameraTree(ParameterTree):
         FIXME: Resize to fit contents?
         '''
         self.setMinimumWidth(250)
-        self.header().setSectionResizeMode(QHeaderView.Interactive)
+        self.header().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.setColumnWidth(0, 200)
 
     @pyqtSlot(object, object)
@@ -136,7 +136,7 @@ class QCameraTree(ParameterTree):
 
     @classmethod
     def example(cls: 'QCameraTree') -> None:
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
         import sys
 
         app = QApplication(sys.argv)

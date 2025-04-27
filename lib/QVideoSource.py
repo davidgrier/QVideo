@@ -1,6 +1,6 @@
-from PyQt5.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
-                          pyqtSlot, pyqtSignal, pyqtProperty, QVariant,
-                          QSize)
+from pyqtgraph.Qt.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
+                                 pyqtSlot, pyqtSignal, pyqtProperty, QVariant,
+                                 QSize)
 from QVideo.lib import (QCamera, QVideoReader)
 from .QVideoReader import QVideoReader
 import numpy as np

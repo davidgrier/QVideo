@@ -1,5 +1,5 @@
 from QVideo.lib import (QCamera, QVideoSource)
-from PyQt5.QtCore import pyqtProperty
+from pyqtgraph.Qt.QtCore import pyqtProperty
 import numpy as np
 import time
 

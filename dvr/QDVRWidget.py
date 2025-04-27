@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from PyQt5 import uic
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
+from PyQt6 import uic
+from PyQt6.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
                           QObject, QThread)
-from PyQt5.QtWidgets import (QFrame, QFileDialog)
+from PyQt6.QtWidgets import (QFrame, QFileDialog)
 from pathlib import Path
 from QVideo.lib import (clickable, QVideoSource)
 from .QAVIWriter import QAVIWriter

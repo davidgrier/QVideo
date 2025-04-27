@@ -1,4 +1,4 @@
-from PyQt5.QtCore import pyqtProperty
+from pyqtgraph.Qt.QtCore import pyqtProperty
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import EVisibility

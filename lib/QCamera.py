@@ -1,7 +1,7 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, QSize,
-                          QMutex, QMutexLocker, QWaitCondition,
-                          pyqtSignal, pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtCore import (QObject, QSize,
+                                 QMutex, QMutexLocker, QWaitCondition,
+                                 pyqtSignal, pyqtSlot, pyqtProperty)
 import numpy as np
 import types
 from typing import TypeAlias

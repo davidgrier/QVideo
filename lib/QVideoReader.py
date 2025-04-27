@@ -1,7 +1,7 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, pyqtProperty, pyqtSlot,
-                          pyqtSignal, QSize,
-                          QMutex, QMutexLocker, QWaitCondition)
+from pyqtgraph.Qt.QtCore import (QObject, pyqtProperty, pyqtSlot,
+                                 pyqtSignal, QSize,
+                                 QMutex, QMutexLocker, QWaitCondition)
 from QVideo.lib import QCamera
 import QVideo
 from pathlib import Path

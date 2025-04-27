@@ -1,5 +1,5 @@
 from QVideo.lib import QVideoSource
-from PyQt5.QtCore import (pyqtSlot, QSize)
+from pyqtgraph.Qt.QtCore import (pyqtSlot, QSize)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
 import logging
@@ -45,7 +45,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         camera : QVideoSource
             Video source that will provide frames to display
         '''
-        assert(isinstance(source, QVideoSource))
+        assert (isinstance(source, QVideoSource))
         if self._source is not None:
             self._source = None
         self._source = source
@@ -72,7 +72,7 @@ class QVideoScreen(GraphicsLayoutWidget):
 
 
 def main() -> None:
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

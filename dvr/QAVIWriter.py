@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from QVideo.lib import QVideoWriter
-from PyQt5.QtCore import pyqtSlot
+from PyQt6.QtCore import pyqtSlot
 import numpy as np
 import cv2
 

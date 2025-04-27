@@ -1,5 +1,5 @@
 from QVideo.lib import QCamera
-from PyQt5.QtCore import (pyqtProperty, pyqtSlot, QMutexLocker)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QMutexLocker)
 from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
                             IBoolean, IInteger, IFloat, IString)
@@ -270,7 +270,7 @@ def example():
 
 
 def showtree():
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     import sys
     from pyqtgraph.parametertree import (Parameter, ParameterTree)
 

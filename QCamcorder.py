@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QWidget
-from PyQt5 import uic
-from PyQt5.QtCore import (pyqtSlot, QEvent)
+from pyqtgraph.Qt.QtWidgets import QWidget
+from pyqtgraph.Qt import uic
+from pyqtgraph.Qt.QtCore import (pyqtSlot, QEvent)
 
 
 class QCamcorder(QWidget):
@@ -39,7 +39,7 @@ class QCamcorder(QWidget):
 
 
 def main() -> None:
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     from QVideo.cameras.choose_camera import choose_camera_widget
     import sys
 

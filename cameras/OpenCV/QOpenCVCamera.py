@@ -1,5 +1,5 @@
 from QVideo.lib import QCamera
-from PyQt5.QtCore import pyqtProperty
+from pyqtgraph.Qt.QtCore import pyqtProperty
 import cv2
 import logging
 

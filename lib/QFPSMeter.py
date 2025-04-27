@@ -1,4 +1,5 @@
-from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot,
+                                 pyqtProperty)
 import time
 
 

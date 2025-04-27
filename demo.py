@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import (QWidget, QHBoxLayout)
-from PyQt5.QtCore import QEvent
 from QVideo.lib import QVideoScreen
+from pyqtgraph.Qt.QtCore import QEvent
+from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout)
 
 
 class demo(QWidget):
@@ -19,7 +19,7 @@ class demo(QWidget):
 
 
 def main():
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     from QVideo.cameras.choose_camera import choose_camera_widget
     import sys
 

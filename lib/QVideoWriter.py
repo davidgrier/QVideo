@@ -1,5 +1,5 @@
 from abc import (ABCMeta, abstractmethod)
-from PyQt5.QtCore import (QObject, pyqtSignal, pyqtSlot)
+from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot)
 import numpy as np
 
 

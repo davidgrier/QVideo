@@ -1,5 +1,5 @@
 from QVideo.lib import QCamera
-from PyQt5.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtProperty, pyqtSlot)
 from typing import (TypeAlias, Callable)
 import logging
 

@@ -1,14 +1,10 @@
 from QVideo.lib import QVideoReader
-from PyQt5.QtCore import (pyqtSlot, pyqtProperty)
+from PyQt6.QtCore import (pyqtSlot, pyqtProperty)
 import h5py
 
 
 class QHDF5Reader(QVideoReader):
     '''Class for playing H5 video files
-
-    Inherits
-    --------
-    PyQt5.QtCore.QObject
     '''
 
     def _initialize(self) -> bool:

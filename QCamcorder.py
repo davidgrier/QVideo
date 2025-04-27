@@ -1,11 +1,6 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5 import uic
 from PyQt5.QtCore import (pyqtSlot, QEvent)
-import logging
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class QCamcorder(QWidget):
@@ -15,8 +10,9 @@ class QCamcorder(QWidget):
     def __init__(self, *args, cameraWidget=None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
-        self.camera = self.cameraWidget.camera
+        self.source = self.cameraWidget.source
         self.setupUi()
+        self.dvr.source = self.source
         self.connectSignals()
 
     def setupUi(self) -> None:
@@ -25,66 +21,35 @@ class QCamcorder(QWidget):
         self.updateShape()
 
     def connectSignals(self) -> None:
-        self.camera.newFrame.connect(self.screen.setImage)
-        self.camera.shapeChanged.connect(self.updateShape)
+        self.source.newFrame.connect(self.screen.setImage)
+        self.source.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)
-        self.dvr.source = self.camera
-
-    def closeEvent(self, event: QEvent) -> None:
-        self.cameraWidget.close()
 
     def updateShape(self) -> None:
-        self.screen.updateShape(self.camera.shape)
+        self.screen.updateShape(self.source.shape)
 
     @pyqtSlot(bool)
     def dvrPlayback(self, playback: bool) -> None:
         if playback:
-            self.camera.newFrame.disconnect(self.screen.setImage)
+            self.source.newFrame.disconnect(self.screen.setImage)
             self.dvr.newFrame.connect(self.screen.setImage)
         else:
-            self.camera.newFrame.connect(self.screen.setImage)
+            self.source.newFrame.connect(self.screen.setImage)
         self.cameraWidget.setDisabled(playback)
-
-
-def parse_command_line():
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    opt = dict(action='store_true')
-    arg = parser.add_argument
-    arg('-c', dest='opencv', help='OpenCV camera', **opt)
-    arg('-s', dest='spinnaker', help='Spinnaker camera', **opt)
-    return parser.parse_known_args()
-
-
-def choose_camera(args):
-    if args.opencv:
-        try:
-            from QVideo.cameras.OpenCV import QOpenCVTree as QOpenCVWidget
-            return QOpenCVWidget
-        except ImportError as ex:
-            logger.warning(f'Could not import OpenCV camera: {ex}')
-    if args.spinnaker:
-        try:
-            from QVideo.cameras.Spinnaker import QSpinnakerWidget
-            return QSpinnakerWidget
-        except ImportError as ex:
-            logger.warning(f'Could not import Spinnaker camera: {ex}')
-    from QVideo.cameras.Noise import QNoiseTree as QNoiseWidget
-    return QNoiseWidget
 
 
 def main() -> None:
     from PyQt5.QtWidgets import QApplication
+    from QVideo.cameras.choose_camera import choose_camera_widget
     import sys
 
-    args, qtargs = parse_command_line()
-    CameraWidget = choose_camera(args)
+    CameraWidget = choose_camera_widget()
 
-    app = QApplication(qtargs)
-    widget = QCamcorder(cameraWidget=CameraWidget())
+    app = QApplication([])
+    cameraWidget = CameraWidget().start()
+    widget = QCamcorder(cameraWidget=cameraWidget)
     widget.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

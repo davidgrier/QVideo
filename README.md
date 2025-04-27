@@ -19,5 +19,10 @@ annotations, regions of interest and general user interaction.
 ## Acknowledgements
 Work on this project at New York University is supported by
 the National Science Foundation of the United States under
+<<<<<<< HEAD
 award number DMR-2104837 and by an award from the TAC Program of
 New York University.
+=======
+award number DMR-2104837 and by an award from the TAC Program
+of New York University.
+>>>>>>> development

@@ -1,27 +1,31 @@
-from QVideo.lib import QCameraTree
+from QVideo.lib import (QCameraTree, QVideoSource)
 from QVideo.cameras.Spinnaker import QSpinnakerCamera
+from typing import Optional
 
 
 class QSpinnakerTree(QCameraTree):
 
-    def __init__(self, *args, camera=None, **kwargs):
-        camera = camera or QSpinnakerCamera()
-        controls = [
-            {'name': 'Modifications', 'type': 'group', 'children': [
-                {'name': 'Flipped', 'type': 'bool', 'value': False},
-                {'name': 'Mirrored', 'type': 'bool', 'value': False},
-                {'name': 'Gray', 'type': 'bool', 'value': False}]}
-        ]
+    def __init__(self, *args,
+                 camera: QCameraTree.Source | None = None,
+                 **kwargs) -> None:
+        camera = camera or QSpinnakerCamera(*args, **kwargs)
+        controls = None  # self.get_controls(camera)
         super().__init__(camera, controls, *args, **kwargs)
+
+    @staticmethod
+    def get_controls(camera):
+        def get_control(camera, key):
+            value = getattr(camera, key)
+            vtype = value.__class__.__name__
+            return {'name': key, 'type': vtype, 'value': value}
+
+        geometry = {'name': 'Geometry',
+                    'type': 'group',
+                    'children': [
+                        get_control(camera, 'width'),
+                        get_control(camera, 'height')]}
+        return [geometry]
 
 
 if __name__ == '__main__':
-    from PyQt5.QtWidgets import QApplication
-    import sys
-
-    app = QApplication(sys.argv)
-
-    widget = QSpinnakerTree()
-    widget.show()
-
-    sys.exit(app.exec())
+    QSpinnakerTree.example()

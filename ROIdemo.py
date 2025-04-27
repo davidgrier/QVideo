@@ -1,12 +1,31 @@
 from QCamcorder import QCamcorder
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QObject)
 import pyqtgraph as pg
 import numpy as np
 
 
-class ROIdemo(QCamcorder):
+class ROIFilter(QObject):
 
     newFrame = pyqtSignal(np.ndarray)
+
+    def __init__(self, parent) -> None:
+        super().__init__(parent)
+        self.fps = parent.source.fps
+        self.roi = parent.roi
+        self.image = parent.screen.image
+
+    @pyqtSlot(np.ndarray)
+    def crop(self, frame: np.ndarray) -> None:
+        crop = self.roi.getArrayRegion(frame, self.image).astype(np.uint8)
+        self.newFrame.emit(crop)
+
+
+class ROIdemo(QCamcorder):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.filter = ROIFilter(self)
+        self.dvr.source = self.filter
 
     def setupUi(self) -> None:
         super().setupUi()
@@ -19,36 +38,29 @@ class ROIdemo(QCamcorder):
 
     def connectSignals(self) -> None:
         super().connectSignals()
-        self.dvr.source = self
         self.dvr.recording.connect(self.recording)
 
     @pyqtSlot(bool)
     def recording(self, active: bool) -> None:
         if active:
-            self.camera.newFrame.connect(self.cropFrame)
+            self.source.newFrame.connect(self.filter.crop)
         else:
-            self.camera.newFrame.disconnect(self.cropFrame)
-
-    @pyqtSlot(np.ndarray)
-    def cropFrame(self, frame: np.ndarray) -> None:
-        x0, y0 = map(int, self.roi.pos())
-        w, h = map(int, self.roi.size())
-        crop = frame[y0:y0+h, x0:x0+w, ...]
-        self.newFrame.emit(crop)
-
-    @pyqtProperty(float)
-    def fps(self) -> float:
-        return self.camera.fps
+            self.source.newFrame.disconnect(self.filter.crop)
 
 
-def example() -> None:
-    from QVideo.cameras.OpenCV import QOpenCVTree
+def main() -> None:
+    from PyQt5.QtWidgets import QApplication
+    from QVideo.cameras.choose_camera import choose_camera_widget
+    import sys
 
-    pg.mkQApp('DVR')
-    widget = ROIdemo(cameraWidget=QOpenCVTree())
+    CameraWidget = choose_camera_widget()
+
+    app = QApplication(sys.argv)
+    cameraWidget = CameraWidget().start()
+    widget = ROIdemo(cameraWidget=cameraWidget)
     widget.show()
-    pg.exec()
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    example()
+    main()

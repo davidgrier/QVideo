@@ -1,0 +1,25 @@
+from QVideo.cameras.Genicam import QGenicamCamera
+from pathlib import Path
+
+
+class QFlirCamera(QGenicamCamera):
+
+    def __init__(self, *args, **kwargs) -> None:
+        path = Path(__file__).parent
+        producer = str(path / 'Spinnaker_GenTL.cti')
+        super().__init__(producer, *args, **kwargs)
+
+    def _setDefaults(self) -> None:
+        self.set('AcquisitionFrameRateEnable', True)
+        self.set('BlackLevelSelector', 'All')
+        self.set('GammaEnable', True)
+        self.set('Gamma', 1.)
+        self.set('AutoExpsureControlPriority', 'Gain')
+        self.set('ExposureAuto', 'Off')
+        self.set('ExposureMode', 'Timed')
+        self.set('ExposureTimeMode', 'Common')
+        self.set('GainAuto', 'Off')
+
+
+if __name__ == '__main__':
+    QFlirCamera.example()

@@ -1,6 +1,6 @@
 from pyqtgraph.Qt.QtWidgets import QWidget
 from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtSlot, QEvent)
+from pyqtgraph.Qt.QtCore import pyqtSlot
 
 
 class QCamcorder(QWidget):

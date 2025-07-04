@@ -1,16 +1,19 @@
 from QVideo.lib import QCamera
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QMutexLocker)
-from genicam.genapi import (IValue, EAccessMode, EVisibility,
-                            ICategory, ICommand, IEnumeration,
-                            IBoolean, IInteger, IFloat, IString)
-from genicam.gentl import TimeoutException
-from harvesters.core import Harvester
+import numpy as np
 import logging
+try:
+    from harvesters.core import Harvester
+    from genicam.genapi import (IValue, EAccessMode, EVisibility,
+                                ICategory, ICommand, IEnumeration,
+                                IBoolean, IInteger, IFloat, IString)
+    from genicam.gentl import TimeoutException
+except (ImportError, ModuleNotFoundError) as error:
+    Harvester = None
 
 
-logging.basicConfig()
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 READABLE = (EAccessMode.RO, EAccessMode.RW)
@@ -82,7 +85,7 @@ def _properties(feature: IValue) -> list[str]:
         for f in feature.features:
             this.extend(_properties(f))
     elif isinstance(feature, (IEnumeration, IBoolean, IInteger, IFloat)):
-        if feature.node.get_access_mode() == EAccessMode.RW:
+        if feature.node.get_access_mode() in READABLE:
             this = [feature.node.name]
     return this
 
@@ -111,7 +114,7 @@ def _modes(feature: IValue) -> dict[str, int]:
     return modes
 
 
-def _set(feature: IValue, value: bool | int | float | str):
+def _set(feature: IValue, value: QCamera.PropertyValue):
     '''Set the value of a feature'''
     mode = feature.node.get_access_mode()
     if mode not in WRITEABLE:
@@ -119,12 +122,23 @@ def _set(feature: IValue, value: bool | int | float | str):
         return
     logger.debug(f'Setting {feature.node.name}: {value}')
     if isinstance(feature, IEnumeration):
-        feature.from_string(value)
-    else:
-        feature.value = value
+        if value in [v.symbolic for v in feature.entries]:
+            feature.from_string(value)
+        else:
+            logger.warning(f'{value} is not in {feature.name}')
+    elif isinstance(feature, IBoolean):
+        feature.value = bool(value)
+    elif isinstance(feature, IInteger):
+        value = np.clip(value, feature.min, feature.max)
+        value = (value - feature.min) // feature.inc
+        feature.value = int(value * feature.inc + feature.min)
+    elif isinstance(feature, IFloat):
+        feature.value = float(np.clip(value, feature.min, feature.max))
+    elif isinstance(feature, IString):
+        feature.value = str(value)
 
 
-def _get(feature: IValue) -> bool | int | float | str | None:
+def _get(feature: IValue) -> QCamera.PropertyValue | None:
     '''Return the value of a feature'''
     mode = feature.node.get_access_mode()
     if mode not in READABLE:
@@ -141,13 +155,23 @@ class QGenicamCamera(QCamera):
 
     def __init__(self, producer: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.harvester = Harvester()
-        self.harvester.add_file(producer)
-        self.harvester.update()
+        self.producer = producer
         self.open()
 
     def _initialize(self) -> bool:
-        self.device = self.harvester.create()
+        if Harvester is None:
+            logger.warning('''
+            Could not import harvesters library:
+            Genicam camera support is not available''')
+            return False
+        self.harvester = Harvester()
+        self.harvester.add_file(self.producer)
+        self.harvester.update()
+        try:
+            self.device = self.harvester.create()
+        except ValueError:
+            logger.warning('No camera was found')
+            return False
         try:
             self.node_map = self.device.remote_device.node_map
             self.name = self.node_map.DeviceModelName.value
@@ -160,13 +184,11 @@ class QGenicamCamera(QCamera):
             self.protected = [k for k, v in ma.items() if mb[k] != v]
         finally:
             return self.device.is_valid()
-        '''
-        FIXME: Handle exceptions
-        '''
 
     def _deinitialize(self) -> None:
         self.device.stop()
         self.device.destroy()
+        self.harvester.reset()
 
     def read(self) -> QCamera.CameraData:
         frame = None
@@ -186,24 +208,30 @@ class QGenicamCamera(QCamera):
         if self.node_map.has_node(name):
             return self.node_map.get_node(name)
         else:
+            logger.debug(f'node {name} is unknown')
             return None
 
+    def hasaccessmode(self, name: str, modes: tuple) -> bool:
+        if (node := self.node(name)) is None:
+            return False
+        return node.get_access_mode in modes
+
     def readable(self, name: str) -> bool:
-        return self.node(name).get_access_mode() in READABLE
+        return self.hasaccessmode(name, READABLE)
 
     def writeable(self, name: str) -> bool:
-        return self.node(name).get_access_mode() in WRITEABLE
+        return self.hasaccessmode(name, WRITEABLE)
 
-    def accessible(self, name: str) -> bool:
-        return self.node(name).get_access_mode() == EAccessMode.RW
+    def readwrite(self, name: str) -> bool:
+        return self.hasaccessmode(name, (EAccessMode.RW,))
 
     def readonly(self, name: str) -> bool:
-        return self.node(name).get_access_mode() == EAccessMode.RO
+        return self.hasaccessmode(name, (EAccessMode.RO,))
 
     @pyqtSlot(str, object)
     def set(self, key: str, value) -> None:
         '''Set named property'''
-        if (feature := self.node(key)):
+        if (feature := self.node(key)) is not None:
             restart = key in self.protected and self.device.is_acquiring()
             with QMutexLocker(self.mutex):
                 logger.debug(f'setting {key}: {value} ({restart})')
@@ -234,11 +262,19 @@ class QGenicamCamera(QCamera):
 
     @pyqtProperty(int)
     def width(self) -> int:
-        return int(self.node_map.Width.value)
+        return self.get('Width')
+
+    @width.setter
+    def width(self, width: int) -> None:
+        self.set('Width', width)
 
     @pyqtProperty(int)
     def height(self) -> int:
-        return int(self.node_map.Height.value)
+        return self.get('Height')
+
+    @height.setter
+    def height(self, height: int) -> None:
+        self.set('Height', height)
 
     def properties(self) -> list[str]:
         return self._properties

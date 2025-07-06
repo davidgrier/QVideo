@@ -12,70 +12,8 @@ except (ImportError, ModuleNotFoundError) as error:
     Harvester = None
 
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-
-READABLE = (EAccessMode.RO, EAccessMode.RW)
-WRITEABLE = (EAccessMode.WO, EAccessMode.RW)
-
-
-def _todict(feature: IValue) -> dict:
-    '''Return a dictionary describing the node map'''
-    this = dict(name=feature.node.name,
-                title=feature.node.display_name,
-                visibility=feature.node.visibility)
-    mode = feature.node.get_access_mode()
-    if mode == EAccessMode.NI:
-        return this
-    if isinstance(feature, ICategory):
-        this['type'] = 'group'
-        this['children'] = [_todict(f) for f in feature.features]
-        return this
-    if isinstance(feature, ICommand):
-        this['type'] = 'action'
-        return this
-    if mode not in READABLE:
-        return this
-    if isinstance(feature, IEnumeration):
-        this['type'] = 'list'
-        this['value'] = this['default'] = feature.to_string()
-        this['limits'] = [v.symbolic for v in feature.entries]
-    elif isinstance(feature, IBoolean):
-        this['type'] = 'bool'
-        this['value'] = this['default'] = feature.value
-    elif isinstance(feature, IInteger):
-        this['type'] = 'int'
-        this['value'] = this['default'] = feature.value
-        this['min'] = feature.min
-        this['max'] = feature.max
-        this['step'] = feature.inc
-    elif isinstance(feature, IFloat):
-        this['type'] = 'float'
-        this['value'] = this['default'] = feature.value
-        this['min'] = feature.min
-        this['max'] = feature.max
-        this['units'] = feature.unit
-        if feature.has_inc():
-            this['step'] = feature.inc
-    elif isinstance(feature, IString):
-        this['type'] = 'str'
-        this['value'] = this['default'] = feature.value
-    else:
-        '''FIXME: Support for IRegister nodes'''
-        logger.debug(
-            f'Unsupported node type: {feature.node.name}: {type(feature)}')
-    return this
-
-
-def _flatten(d: dict) -> list[dict]:
-    this = []
-    if d.get('type', None) == 'group':
-        for c in d['children']:
-            this.extend(_flatten(c))
-    else:
-        this.extend([d])
-    return this
 
 
 def _properties(feature: IValue) -> list[str]:
@@ -85,7 +23,8 @@ def _properties(feature: IValue) -> list[str]:
         for f in feature.features:
             this.extend(_properties(f))
     elif isinstance(feature, (IEnumeration, IBoolean, IInteger, IFloat)):
-        if feature.node.get_access_mode() in READABLE:
+        accessmode = feature.node.get_access_mode()
+        if accessmode in (EAccessMode.RO, EAccessMode.RW):
             this = [feature.node.name]
     return this
 
@@ -117,7 +56,7 @@ def _modes(feature: IValue) -> dict[str, int]:
 def _set(feature: IValue, value: QCamera.PropertyValue):
     '''Set the value of a feature'''
     mode = feature.node.get_access_mode()
-    if mode not in WRITEABLE:
+    if mode not in (EAccessMode.RW, EAccessMode.WO):
         logger.info(f'{feature.node.name} is not writeable')
         return
     logger.debug(f'Setting {feature.node.name}: {value}')
@@ -140,8 +79,8 @@ def _set(feature: IValue, value: QCamera.PropertyValue):
 
 def _get(feature: IValue) -> QCamera.PropertyValue | None:
     '''Return the value of a feature'''
-    mode = feature.node.get_access_mode()
-    if mode not in READABLE:
+    accessmode = feature.node.get_access_mode()
+    if accessmode not in (EAccessMode.RW, EAccessMode.RO):
         logger.info('f{feature.node.name} is not readable')
         return None
     logger.debug(f'Getting {feature.node.name}')
@@ -211,23 +150,6 @@ class QGenicamCamera(QCamera):
             logger.debug(f'node {name} is unknown')
             return None
 
-    def hasaccessmode(self, name: str, modes: tuple) -> bool:
-        if (node := self.node(name)) is None:
-            return False
-        return node.get_access_mode in modes
-
-    def readable(self, name: str) -> bool:
-        return self.hasaccessmode(name, READABLE)
-
-    def writeable(self, name: str) -> bool:
-        return self.hasaccessmode(name, WRITEABLE)
-
-    def readwrite(self, name: str) -> bool:
-        return self.hasaccessmode(name, (EAccessMode.RW,))
-
-    def readonly(self, name: str) -> bool:
-        return self.hasaccessmode(name, (EAccessMode.RO,))
-
     @pyqtSlot(str, object)
     def set(self, key: str, value) -> None:
         '''Set named property'''
@@ -260,6 +182,10 @@ class QGenicamCamera(QCamera):
                 logger.debug(f'executing {feature}')
                 feature.execute()
 
+    def is_readwrite(self, feature: str) -> bool:
+        mode = self.node(feature).node.get_access_mode()
+        return (mode == EAccessMode.RW) or (feature in self.protected)
+
     @pyqtProperty(int)
     def width(self) -> int:
         return self.get('Width')
@@ -282,16 +208,6 @@ class QGenicamCamera(QCamera):
     def methods(self) -> list[str]:
         return self._methods
 
-    def description(self,
-                    root: str = 'Root',
-                    controls: list[str] | None = None,
-                    flatten: bool = False) -> list[dict]:
-        # print(name=self.get('DeviceModelName'))
-        root = _todict(self.node(root))
-        if controls is not None:
-            return [c for c in _flatten(root) if c['name'] in controls]
-        return _flatten(root) if flatten else root['children']
-
 
 def example():
     # QGenicamCamera.example()
@@ -305,23 +221,5 @@ def example():
     print(f"ReverseY: {cam.get('ReverseY')}")
 
 
-def showtree():
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    import sys
-    from pyqtgraph.parametertree import (Parameter, ParameterTree)
-
-    cam = QGenicamCamera()
-    params = cam.description()['children']
-    name = cam.name
-
-    app = QApplication(sys.argv)
-    tree = ParameterTree()
-    params = Parameter.create(name=name, type='group', children=params)
-    tree.setParameters(params)
-    tree.show()
-    sys.exit(app.exec())
-
-
 if __name__ == '__main__':
-    # showtree()
     example()

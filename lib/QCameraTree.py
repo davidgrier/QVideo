@@ -75,6 +75,7 @@ class QCameraTree(ParameterTree):
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
+        self._ignoresync = False
 
     def _setupUi(self) -> None:
         '''
@@ -86,11 +87,17 @@ class QCameraTree(ParameterTree):
 
     @pyqtSlot(object, object)
     def _sync(self, tree: ParameterTree, changes: Changes) -> None:
+        if self._ignoresync:
+            return
         for param, change, value in changes:
             if (change == 'value'):
                 key = param.name()  # .lower()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
+        self._ignoresync = True
+        for key, value in self.camera.settings().items():
+            self.set(key, value)
+        self._ignoresync = False
 
     @pyqtSlot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
@@ -136,7 +143,7 @@ class QCameraTree(ParameterTree):
 
     @classmethod
     def example(cls: 'QCameraTree') -> None:
-        from PyQt6.QtWidgets import QApplication
+        from pyqtgraph.Qt.QtWidgets import QApplication
         import sys
 
         app = QApplication(sys.argv)

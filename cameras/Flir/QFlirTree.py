@@ -5,8 +5,11 @@ from genicam.genapi import EVisibility
 
 class QFlirTree(QGenicamTree):
 
-    def __init__(self, *args, **kwargs) -> None:
-        camera = QFlirCamera()
+    def __init__(self, *args,
+                 camera: QGenicamTree.Source | None = None,
+                 controls: list[str] | None = None,
+                 **kwargs) -> None:
+        camera = camera or QFlirCamera()
         camera.setSettings(self._defaultSettings())
         controls = self._defaultControls()
         super().__init__(camera=camera,
@@ -18,13 +21,16 @@ class QFlirTree(QGenicamTree):
         return ['ReverseX',
                 'ReverseY',
                 'AcquisitionFrameRate',
+                'AcquisitionResultingFrameRate',
                 'ExposureTime',
                 'ExposureAuto',
                 'Gain',
                 'GainAuto',
                 'Gamma',
                 'Width',
-                'Height']
+                'Height',
+                'OffsetX',
+                'OffsetY']
 
     def _defaultSettings(self) -> QFlirCamera.Settings:
         return dict(AcquisitionFrameRateEnable=True,

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from PyQt6.QtCore import pyqtSlot
+from pyqtgraph.Qt.QtCore import pyqtSlot
 from QVideo.lib import QVideoWriter
 import numpy as np
 import h5py
@@ -10,7 +10,8 @@ from time import time
 class QHDF5Writer(QVideoWriter):
 
     def open(self, frame: np.ndarray) -> None:
-        self.file = h5py.File(self.filename, 'w', libver='latest',
+        self.file = h5py.File(self.filename, 'w',
+                              libver='latest',
                               track_order=True)
         self.start = time()
         self.file.attrs.update({'Timestamp': self.start})

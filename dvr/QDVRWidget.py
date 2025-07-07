@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from PyQt6 import uic
-from PyQt6.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
-                          QObject, QThread)
-from PyQt6.QtWidgets import (QFrame, QFileDialog)
+from pyqtgraph.Qt import uic
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty,
+                                 QObject, QThread)
+from pyqtgraph.Qt.QtWidgets import (QFrame, QFileDialog)
 from pathlib import Path
 from QVideo.lib import (clickable, QVideoSource)
 from .QAVIWriter import QAVIWriter
@@ -24,7 +24,7 @@ class QDVRWidget(QFrame):
 
     Inherits
     --------
-    PyQt5.QtWidgets.QFrame
+    PyQt.QtWidgets.QFrame
 
     Properties
     ----------

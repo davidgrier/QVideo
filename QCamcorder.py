@@ -11,16 +11,16 @@ class QCamcorder(QWidget):
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
         self.source = self.cameraWidget.source
-        self.setupUi()
+        self._setupUi()
         self.dvr.source = self.source
-        self.connectSignals()
+        self._connectSignals()
 
-    def setupUi(self) -> None:
+    def _setupUi(self) -> None:
         uic.loadUi(self.UIFILE, self)
         self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
 
-    def connectSignals(self) -> None:
+    def _connectSignals(self) -> None:
         self.source.newFrame.connect(self.screen.setImage)
         self.source.shapeChanged.connect(self.updateShape)
         self.dvr.playing.connect(self.dvrPlayback)

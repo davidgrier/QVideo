@@ -1,5 +1,5 @@
 from QVideo.lib import QVideoReader
-from PyQt6.QtCore import (pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
 import h5py
 
 

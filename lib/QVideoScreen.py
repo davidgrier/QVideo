@@ -72,7 +72,7 @@ class QVideoScreen(GraphicsLayoutWidget):
 
 
 def main() -> None:
-    from PyQt6.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     import sys
 
     app = QApplication(sys.argv)

@@ -1,5 +1,5 @@
 from QVideo.lib import QVideoReader
-from PyQt6.QtCore import (pyqtProperty, pyqtSlot)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)
 import cv2
 
 

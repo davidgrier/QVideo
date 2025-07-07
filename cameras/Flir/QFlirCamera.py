@@ -1,6 +1,12 @@
 from QVideo.cameras.Genicam import QGenicamCamera
 from pathlib import Path
 import platform
+import logging
+
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 class QFlirCamera(QGenicamCamera):
@@ -9,14 +15,19 @@ class QFlirCamera(QGenicamCamera):
                  producer: str | None = None,
                  **kwargs) -> None:
         producer = producer or self.producer()
-        print(producer)
         super().__init__(producer, *args, **kwargs)
 
     def producer(self) -> str:
-        path = Path(__file__).parent
+        pname = 'Spinnaker_GenTL.cti'
+        root = Path(__file__).parent
         os = platform.system()
         pythonversion = '.'.join(platform.python_version_tuple()[0:2])
-        return str(path / os / pythonversion / 'Spinnaker_GenTL.cti')
+        path = root / 'producer' / os / pythonversion / pname
+        if not path.exists():
+            logger.warning(f'{pname} not available '
+                           f'for python {pythonversion} on {os}')
+            return ''
+        return str(path)
 
 
 if __name__ == '__main__':

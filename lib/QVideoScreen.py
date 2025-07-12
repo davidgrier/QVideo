@@ -15,10 +15,10 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.setupUi()
+        self._setupUi()
         self._source = None
 
-    def setupUi(self) -> None:
+    def _setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.view = self.addViewBox(invertY=True,
                                     lockAspect=True,

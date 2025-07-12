@@ -14,10 +14,11 @@ class QAVIWriter(QVideoWriter):
         super().__init__(*args, **kwargs)
         # NOTE: libavcodec appears to seg fault when
         # recording with the lossless FFV1 codec
-        # self.codec = 'FFV1'
+        # codec = codec or 'FFV1'
         # HuffyYUV 'HFYU' appears to work on both
         # Ubuntu and Macports
         codec = codec or 'HFYU'
+        # codec = codec or 'XVID'
         if cv2.__version__.startswith('2.'):
             self.fourcc = cv2.cv.CV_FOURCC(*codec)
             self.BGR2RGB = cv2.cv.CV_COLOR_BGR2RGB
@@ -27,12 +28,13 @@ class QAVIWriter(QVideoWriter):
         self._writer = None
         self._shape = None
 
-    def open(self, frame: np.ndarray) -> None:
+    def open(self, frame: np.ndarray) -> bool:
         self._shape = frame.shape
         h, w = self._shape[:2]
-        color = len(self._shape) > 2
+        color = (frame.ndim == 3)
         args = [self.filename, self.fourcc, self.fps, (w, h), color]
         self._writer = cv2.VideoWriter(*args)
+        return self._writer.isOpened()
 
     def isOpen(self) -> bool:
         return (self._writer is not None) and self._writer.isOpened()

@@ -91,6 +91,25 @@ def _get(feature: IValue) -> QCamera.PropertyValue | None:
 
 
 class QGenicamCamera(QCamera):
+    '''Base class for cameras implementing the GenICam standard
+
+    GenICam is a standardized machine-vision interface maintained
+    by the European Machine Vision Association
+    https://www.emva.org/standards-technology/genicam/
+
+    Requirements
+    ------------
+    > pip install genicam
+    > pip install harvesters
+
+    Connecting to a specific GenICam camera requires a "GenTL producer",
+    which is a binary file that implements communications between
+    the host computer and the camera. The producer typically is
+    provided by the manufacturer of the camera is is a file with
+    a ".cti" extension. Manufacturers may provide different versions
+    of the cti file for different operating systems and for different
+    versions of python.
+    '''
 
     def __init__(self, producer: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -193,6 +212,7 @@ class QGenicamCamera(QCamera):
     @width.setter
     def width(self, width: int) -> None:
         self.set('Width', width)
+        self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int)
     def height(self) -> int:
@@ -201,6 +221,15 @@ class QGenicamCamera(QCamera):
     @height.setter
     def height(self, height: int) -> None:
         self.set('Height', height)
+        self.shapeChanged.emit(self.shape)
+
+    @pyqtProperty(float)
+    def fps(self) -> float:
+        return self.get('AcquistionResultingFrameRate')
+
+    @fps.setter
+    def fps(self, fps: float) -> None:
+        self.set('AcquisitionFrameRate', fps)
 
     def properties(self) -> list[str]:
         return self._properties

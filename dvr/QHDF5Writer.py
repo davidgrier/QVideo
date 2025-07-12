@@ -9,13 +9,14 @@ from time import time
 
 class QHDF5Writer(QVideoWriter):
 
-    def open(self, frame: np.ndarray) -> None:
+    def open(self, frame: np.ndarray) -> bool:
         self.file = h5py.File(self.filename, 'w',
                               libver='latest',
                               track_order=True)
         self.start = time()
         self.file.attrs.update({'Timestamp': self.start})
         self._writer = self.file.create_group('images')
+        return True
 
     def isOpen(self) -> bool:
         return hasattr(self, 'file') and bool(self.file)

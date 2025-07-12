@@ -1,11 +1,11 @@
-from pyqtgraph.Qt.QtCore import (QThread, QMutex, QMutexLocker, QWaitCondition,
-                                 pyqtSlot, pyqtSignal, pyqtProperty, QVariant,
-                                 QSize)
+from pyqtgraph.Qt.QtCore import (QThread,
+                                 QMutex, QMutexLocker, QWaitCondition,
+                                 pyqtSlot, pyqtSignal, pyqtProperty,
+                                 QVariant, QSize)
 from QVideo.lib import (QCamera, QVideoReader)
 from .QVideoReader import QVideoReader
 import numpy as np
 from typing import TypeAlias
-from pprint import pprint
 import logging
 
 
@@ -17,9 +17,9 @@ logger.setLevel(logging.WARNING)
 class QVideoSource(QThread):
     '''Read frames from a camera as fast as possible
 
-    The camera object is moved to a background thread
+    Moves camera object to a background thread
     to prevent interference with the user interface.
-    Video frames are returned with the newFrame() signal.
+    Returns video frames with the newFrame() signal.
     '''
 
     Source: TypeAlias = QCamera | QVideoReader
@@ -103,6 +103,9 @@ class QVideoSource(QThread):
     @classmethod
     def example(cls: 'QVideoSource', *args) -> None:
         '''Demonstrate basic operation of a threaded video source'''
+
+        from pprint import pprint
+
         source = cls(*args).start()
         print(source.source.name)
         pprint(source.source.settings())

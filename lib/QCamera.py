@@ -169,6 +169,16 @@ class QCamera(QObject, metaclass=QCameraMeta):
     def height(self, value: int) -> None:
         self.shapeChanged.emit(self.shape)
 
+    @pyqtProperty(float)
+    @abstractmethod
+    def fps(self) -> float:
+        pass
+
+    @fps.setter
+    @abstractmethod
+    def fps(self, fps: float) -> None:
+        pass
+
     @classmethod
     def example(cls: 'QCamera') -> None:
         from pprint import pprint

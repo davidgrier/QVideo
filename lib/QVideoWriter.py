@@ -1,6 +1,12 @@
 from abc import (ABCMeta, abstractmethod)
 from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot)
 import numpy as np
+import logging
+
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 class QVideoWriterMeta(type(QObject), ABCMeta):
@@ -28,7 +34,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
         self.blank = False
 
     @abstractmethod
-    def open(self, frame: np.ndarray) -> None:
+    def open(self, frame: np.ndarray) -> bool:
         pass
 
     @abstractmethod
@@ -38,7 +44,9 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
     @pyqtSlot(np.ndarray)
     def write(self, frame: np.ndarray) -> None:
         if not self.isOpen():
-            self.open(frame)
+            if not self.open(frame):
+                logger.warning(f'Could not write to {self.filename}')
+                self.finished.emit()
             return
         if (self.framenumber >= self.target):
             self.finished.emit()

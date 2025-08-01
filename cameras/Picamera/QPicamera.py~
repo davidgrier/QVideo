@@ -1,0 +1,16 @@
+from Qvideo.lib import QCamera
+from pyqtgraph.Qt.QtCore import pyqtProperty
+from picamera2 import Picamera2
+
+
+class QPicamera(QCamera):
+    '''Picamera2 camera
+
+    '''
+
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    def _initialize(self) -> bool:
+        self.device =
+        self.device.start()

@@ -5,7 +5,6 @@ from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
                             IBoolean, IInteger, IFloat, IString)
 import logging
-from pprint import pprint
 
 
 logging.basicConfig()

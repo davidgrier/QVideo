@@ -19,14 +19,14 @@ class QCameraTree(ParameterTree):
     Changes: TypeAlias = list[Change]
 
     @staticmethod
-    def _getParameters(parameter: Parameter) -> None:
+    def _getParameters(parameter: Parameter) -> dict[str, object]:
         '''Recursively find setters for named Parameters'''
         parameters = dict()
         if parameter.hasChildren():
             for p in parameter.children():
                 parameters.update(QCameraTree._getParameters(p))
         else:
-            name = parameter.name()  # .lower()
+            name = parameter.name()
             parameters.update({name: parameter})
         return parameters
 
@@ -37,9 +37,7 @@ class QCameraTree(ParameterTree):
                     'type': value.__class__.__name__,
                     'value': value}
                    for key, value in settings if value is not None]
-        return [{'name': camera.name,
-                 'type': 'group',
-                 'children': entries}]
+        return entries
 
     def __init__(self,
                  source: Source,
@@ -70,7 +68,7 @@ class QCameraTree(ParameterTree):
         self._tree = Parameter.create(name=self.camera.name,
                                       type='group',
                                       children=description)
-        self.setParameters(self._tree, showTop=False)
+        self.setParameters(self._tree)
         self._parameters = self._getParameters(self._tree)
 
     def _connectSignals(self) -> None:

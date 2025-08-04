@@ -28,8 +28,8 @@ class ROIdemo(QCamcorder):
         self.filter = ROIFilter(self)
         self.dvr.source = self.filter
 
-    def setupUi(self) -> None:
-        super().setupUi()
+    def _setupUi(self) -> None:
+        super()._setupUi()
         self.roi = pg.RectROI([100, 100], [400, 400],
                               snapSize=8,
                               scaleSnap=True,

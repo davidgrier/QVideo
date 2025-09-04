@@ -50,17 +50,15 @@ class ROIdemo(QCamcorder):
 
 
 def main() -> None:
-    from pyqtgraph.Qt.QtWidgets import QApplication
     from QVideo.cameras.choose_camera import choose_camera_widget
-    import sys
 
     CameraWidget = choose_camera_widget()
 
-    app = QApplication(sys.argv)
+    app = pg.mkQApp()
     cameraWidget = CameraWidget().start()
     widget = ROIdemo(cameraWidget=cameraWidget)
     widget.show()
-    sys.exit(app.exec())
+    app.exec()
 
 
 if __name__ == '__main__':

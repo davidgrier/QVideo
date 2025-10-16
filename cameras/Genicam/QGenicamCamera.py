@@ -111,9 +111,13 @@ class QGenicamCamera(QCamera):
     versions of python.
     '''
 
-    def __init__(self, producer: str, *args, **kwargs) -> None:
+    def __init__(self, producer: str,
+                 *args,
+                 cameraID: int = 0,
+                 **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.producer = producer
+        self.cameraID = cameraID
         self.open()
 
     def _initialize(self) -> bool:
@@ -126,7 +130,7 @@ class QGenicamCamera(QCamera):
         self.harvester.add_file(self.producer)
         self.harvester.update()
         try:
-            self.device = self.harvester.create()
+            self.device = self.harvester.create(self.cameraID)
         except ValueError:
             logger.warning('No camera was found')
             return False

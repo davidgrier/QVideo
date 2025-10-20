@@ -98,7 +98,7 @@ class QOpenCVCamera(QCamera):
         return int(self.device.get(self.WIDTH))
 
     @width.setter
-    def width(self, value; int) -> None:
+    def width(self, value: int) -> None:
         self.device.set(self.WIDTH, value)
         self.shapeChanged.emit(self.shape)
 

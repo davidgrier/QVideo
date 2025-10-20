@@ -7,8 +7,10 @@ class QSpinnakerTree(QCameraTree):
 
     def __init__(self, *args,
                  camera: QCameraTree.Source | None = None,
+                 cameraID: int = 0,
                  **kwargs) -> None:
-        camera = camera or QSpinnakerCamera(*args, **kwargs)
+        camera = camera or QSpinnakerCamera(*args,
+                                            cameraID=cameraID, **kwargs)
         controls = None  # self.get_controls(camera)
         super().__init__(camera, controls, *args, **kwargs)
 

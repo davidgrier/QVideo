@@ -52,10 +52,10 @@ class ROIdemo(QCamcorder):
 def main() -> None:
     from QVideo.cameras.choose_camera import choose_camera_widget
 
-    CameraWidget = choose_camera_widget()
+    CameraWidget, cameraID = choose_camera_widget()
 
     app = pg.mkQApp()
-    cameraWidget = CameraWidget().start()
+    cameraWidget = CameraWidget(cameraID=cameraID).start()
     widget = ROIdemo(cameraWidget=cameraWidget)
     widget.show()
     app.exec()

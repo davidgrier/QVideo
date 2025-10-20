@@ -16,10 +16,12 @@ class QGenicamTree(QCameraTree):
 
     def __init__(self, *args,
                  camera: QCameraTree.Source | None = None,
+                 cameraID: int = 0,
                  visibility: EVisibility = EVisibility.Guru,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
-        camera = camera or QGenicamCamera(*args, **kwargs)
+        camera = camera or QGenicamCamera(*args, cameraID=cameraID,
+                                          **kwargs)
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
         self.controls = controls

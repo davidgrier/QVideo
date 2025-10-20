@@ -94,20 +94,20 @@ class QOpenCVCamera(QCamera):
         return ready, image
 
     @pyqtProperty(int)
-    def width(self):
+    def width(self) -> int:
         return int(self.device.get(self.WIDTH))
 
     @width.setter
-    def width(self, value):
+    def width(self, value; int) -> None:
         self.device.set(self.WIDTH, value)
         self.shapeChanged.emit(self.shape)
 
     @pyqtProperty(int)
-    def height(self):
+    def height(self) -> int:
         return int(self.device.get(self.HEIGHT))
 
     @height.setter
-    def height(self, value):
+    def height(self, value: int) -> None:
         self.device.set(self.HEIGHT, value)
         self.shapeChanged.emit(self.shape)
 
@@ -116,7 +116,7 @@ class QOpenCVCamera(QCamera):
         return int(self.device.get(self.FPS))
 
     @fps.setter
-    def fps(self, value):
+    def fps(self, value: float) -> None:
         self.device.set(self.FPS, value)
 
 

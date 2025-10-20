@@ -5,10 +5,10 @@ from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout)
 
 class demo(QWidget):
 
-    def __init__(self, CameraWidget, *args, **kwargs) -> None:
+    def __init__(self, CameraWidget, cameraID, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.screen = QVideoScreen(self)
-        self.cameraWidget = CameraWidget().start()
+        self.cameraWidget = CameraWidget(cameraID=cameraID).start()
         self.screen.setSource(self.cameraWidget.source)
         self.setupUi()
 
@@ -23,10 +23,10 @@ def main():
     from QVideo.cameras.choose_camera import choose_camera_widget
     import sys
 
-    CameraWidget = choose_camera_widget()
+    CameraWidget, cameraID = choose_camera_widget()
 
     app = QApplication(sys.argv)
-    widget = demo(CameraWidget)
+    widget = demo(CameraWidget, cameraID)
     widget.show()
     sys.exit(app.exec())
 

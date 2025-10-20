@@ -7,9 +7,10 @@ class QFlirTree(QGenicamTree):
 
     def __init__(self, *args,
                  camera: QGenicamTree.Source | None = None,
+                 cameraID: int = 0,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
-        camera = camera or QFlirCamera()
+        camera = camera or QFlirCamera(cameraID=cameraID)
         camera.setSettings(self._defaultSettings())
         controls = self._defaultControls()
         super().__init__(camera=camera,

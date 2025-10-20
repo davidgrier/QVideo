@@ -43,10 +43,10 @@ def main() -> None:
     from QVideo.cameras.choose_camera import choose_camera_widget
     import sys
 
-    CameraWidget = choose_camera_widget()
+    CameraWidget, cameraID = choose_camera_widget()
 
     app = QApplication([])
-    cameraWidget = CameraWidget().start()
+    cameraWidget = CameraWidget(cameraID=cameraID).start()
     widget = QCamcorder(cameraWidget=cameraWidget)
     widget.show()
     sys.exit(app.exec())

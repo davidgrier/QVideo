@@ -7,8 +7,8 @@ class QCamcorder(QWidget):
 
     UIFILE = 'QCamcorder.ui'
 
-    def __init__(self, *args, cameraWidget=None, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, cameraWidget, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.cameraWidget = cameraWidget
         self.source = self.cameraWidget.source
         self._setupUi()
@@ -40,14 +40,11 @@ class QCamcorder(QWidget):
 
 def main() -> None:
     from pyqtgraph.Qt.QtWidgets import QApplication
-    from QVideo.cameras.choose_camera import choose_camera_widget
+    from QVideo.cameras.choose_camera import choose_qcamera
     import sys
 
-    CameraWidget, cameraID = choose_camera_widget()
-
     app = QApplication([])
-    cameraWidget = CameraWidget(cameraID=cameraID).start()
-    widget = QCamcorder(cameraWidget=cameraWidget)
+    widget = QCamcorder(choose_qcamera())
     widget.show()
     sys.exit(app.exec())
 

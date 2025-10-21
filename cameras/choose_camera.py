@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-__all__ = 'choose_camera choose_camera_widget'.split()
+__all__ = 'choose_camera choose_camera_widget, choose_qcamera'.split()
 
 
 def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
@@ -20,7 +20,7 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     return parser
 
 
-def choose_camera(parser: ArgumentParser | None = None) -> ArgumentParser:
+def choose_camera(parser: ArgumentParser | None = None):
     args, _ = camera_parser(parser).parse_known_args()
     if args.opencv:
         try:
@@ -47,7 +47,7 @@ def choose_camera(parser: ArgumentParser | None = None) -> ArgumentParser:
     return QNoiseSource, args.cameraID
 
 
-def choose_camera_widget(parser: ArgumentParser | None = None) -> ArgumentParser:
+def choose_camera_widget(parser: ArgumentParser | None = None):
     args, _ = camera_parser(parser).parse_known_args()
     if args.opencv:
         try:
@@ -72,6 +72,11 @@ def choose_camera_widget(parser: ArgumentParser | None = None) -> ArgumentParser
 
     from QVideo.cameras.Noise import QNoiseTree
     return QNoiseTree, args.cameraID
+
+
+def choose_qcamera(parser: ArgumentParser | None = None):
+    CameraWidget, id = choose_camera_widget(parser)
+    return CameraWidget(cameraID=id).start()
 
 
 if __name__ == '__main__':

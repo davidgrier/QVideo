@@ -1,5 +1,4 @@
 from QVideo.lib import (QVideoScreen, QCameraTree)
-from pyqtgraph.Qt.QtCore import QEvent
 from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout)
 
 
@@ -10,23 +9,23 @@ class demo(QWidget):
         self.screen = QVideoScreen(self)
         self.cameraWidget = cameraWidget
         self.screen.setSource(self.cameraWidget.source)
-        self.setupUi()
+        self._setupUi()
 
-    def setupUi(self) -> None:
+    def _setupUi(self) -> None:
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.cameraWidget)
 
 
-def main():
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    from QVideo.cameras.choose_camera import choose_qcamera
-    import sys
+def main() -> None:
+    import pyqtgraph as pg
+    from QVideo.lib import choose_camera
 
-    app = QApplication(sys.argv)
-    widget = demo(choose_qcamera())
+    app = pg.mkQApp()
+    camera = choose_camera().start()
+    widget = demo(camera)
     widget.show()
-    sys.exit(app.exec())
+    pg.exec()
 
 
 if __name__ == '__main__':

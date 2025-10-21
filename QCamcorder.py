@@ -39,14 +39,14 @@ class QCamcorder(QWidget):
 
 
 def main() -> None:
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    from QVideo.cameras.choose_camera import choose_qcamera
-    import sys
+    import pyqtgraph as pg
+    from QVideo.lib import choose_camera
 
-    app = QApplication([])
-    widget = QCamcorder(choose_qcamera())
+    app = pg.mkQApp()
+    camera = choose_camera().start()
+    widget = QCamcorder(camera)
     widget.show()
-    sys.exit(app.exec())
+    pg.exec()
 
 
 if __name__ == '__main__':

@@ -1,11 +1,11 @@
-from QVideo.lib import QVideoScreen
+from QVideo.lib import (QVideoScreen, QCameraTree)
 from pyqtgraph.Qt.QtCore import QEvent
 from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout)
 
 
 class demo(QWidget):
 
-    def __init__(self, cameraWidget, **kwargs) -> None:
+    def __init__(self, cameraWidget: QCameraTree, **kwargs) -> None:
         super().__init__(**kwargs)
         self.screen = QVideoScreen(self)
         self.cameraWidget = cameraWidget

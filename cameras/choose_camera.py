@@ -1,3 +1,4 @@
+from QVideo.lib import (QCamera, QCameraTree)
 from argparse import ArgumentParser
 import logging
 
@@ -9,8 +10,10 @@ logger.setLevel(logging.WARNING)
 
 __all__ = 'choose_camera choose_camera_widget, choose_qcamera'.split()
 
+Parser = ArgumentParser | None
 
-def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
+
+def camera_parser(parser: Parser = None) -> ArgumentParser:
     parser = parser or ArgumentParser()
     arg = parser.add_argument
     arg('-c', dest='opencv', help='OpenCV camera', action='store_true')
@@ -20,7 +23,7 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     return parser
 
 
-def choose_camera(parser: ArgumentParser | None = None):
+def choose_camera(parser: Parser = None) -> tuple[type[QCamera], int]:
     args, _ = camera_parser(parser).parse_known_args()
     if args.opencv:
         try:
@@ -47,7 +50,7 @@ def choose_camera(parser: ArgumentParser | None = None):
     return QNoiseSource, args.cameraID
 
 
-def choose_camera_widget(parser: ArgumentParser | None = None):
+def choose_camera_widget(parser: Parser = None) -> tuple[type[QCameraTree], int]:
     args, _ = camera_parser(parser).parse_known_args()
     if args.opencv:
         try:
@@ -74,7 +77,7 @@ def choose_camera_widget(parser: ArgumentParser | None = None):
     return QNoiseTree, args.cameraID
 
 
-def choose_qcamera(parser: ArgumentParser | None = None):
+def choose_qcamera(parser: ArgumentParser | None = None) -> QCameraTree:
     CameraWidget, id = choose_camera_widget(parser)
     return CameraWidget(cameraID=id).start()
 

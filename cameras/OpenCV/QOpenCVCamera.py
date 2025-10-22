@@ -1,6 +1,7 @@
 from QVideo.lib import QCamera
 from pyqtgraph.Qt.QtCore import pyqtProperty
 import cv2
+import platform
 import logging
 
 
@@ -71,7 +72,12 @@ class QOpenCVCamera(QCamera):
         self.gray = gray
 
     def _initialize(self) -> bool:
-        self.device = cv2.VideoCapture(self.cameraID)
+        system = platform.system()
+        if system == 'Linux':
+            api = cv2.CAP_V4L2
+        else:
+            api = cv2.CAP_ANY
+        self.device = cv2.VideoCapture(self.cameraID, api)
         for _ in range(5):
             if (ready := self.device.read()[0]):
                 break

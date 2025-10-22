@@ -2,6 +2,7 @@ from QVideo.QCamcorder import QCamcorder
 from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 import pyqtgraph as pg
 import numpy as np
+from pathlib import Path
 
 
 class ROIFilter(pg.RectROI):
@@ -29,7 +30,7 @@ class ROIdemo(QCamcorder):
                              sideScalers=True,
                              rotatable=False)
         self.screen.view.addItem(self.roi)
-        self.dvr.filename = 'crop.avi'
+        self.dvr.filename = str(Path.home() / 'crop.avi')
 
     def _connectSignals(self) -> None:
         super()._connectSignals()

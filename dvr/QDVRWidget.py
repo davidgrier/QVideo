@@ -42,6 +42,9 @@ class QDVRWidget(QFrame):
     recording = pyqtSignal(bool)
     playing = pyqtSignal(bool)
 
+    UIFILE = Path(__file__).parent / 'QDVRWidget.ui'
+    FILENAME = 'default.avi'
+
     GetFileName = {True: QFileDialog.getSaveFileName,
                    False: QFileDialog.getOpenFileName}
 
@@ -57,16 +60,18 @@ class QDVRWidget(QFrame):
                  filename: str | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        dir = Path(__file__).parent
-        uic.loadUi(dir / 'QDVRWidget.ui', self)
         self._writer = None
         self._player = None
-        self._framenumber = 0
-        self.connectSignals()
+        self._setupUi()
+        self._connectSignals()
         self.source = source
-        self.filename = filename or str(Path.home() / 'default.avi')
+        self.filename = filename or str(Path.home() / self.FILENAME)
 
-    def connectSignals(self) -> None:
+    def _setupUi(self):
+        uic.loadUi(self.UIFILE, self)
+        self._framenumber = 0
+
+    def _connectSignals(self) -> None:
         '''Connect signals to slots for user interaction'''
         clickable(self.playEdit).connect(lambda: self.getFileName(False))
         clickable(self.saveEdit).connect(lambda: self.getFileName(True))
@@ -201,7 +206,8 @@ class QDVRWidget(QFrame):
         return self._source
 
     @source.setter
-    def source(self, source: QVideoSource) -> None:
+    def source(self, source: QVideoSource | None) -> None:
+        logger.debug(f'Setting source {type(source)}')
         self._source = source
         self.recordButton.setDisabled(source is None)
 
@@ -210,7 +216,7 @@ class QDVRWidget(QFrame):
         return str(self.saveEdit.text())
 
     @filename.setter
-    def filename(self, filename: str) -> None:
+    def filename(self, filename: str | None) -> None:
         if filename is None:
             return
         if not (self.isRecording() or self.isPlaying()):

@@ -12,7 +12,6 @@ class QCamcorder(QWidget):
         self.cameraWidget = cameraWidget
         self.source = self.cameraWidget.source
         self._setupUi()
-        self.dvr.source = self.source
         self._connectSignals()
 
     def _setupUi(self) -> None:
@@ -23,6 +22,7 @@ class QCamcorder(QWidget):
     def _connectSignals(self) -> None:
         self.source.newFrame.connect(self.screen.setImage)
         self.source.shapeChanged.connect(self.updateShape)
+        self.dvr.source = self.source
         self.dvr.playing.connect(self.dvrPlayback)
 
     def updateShape(self) -> None:
@@ -43,8 +43,8 @@ def main() -> None:
     from QVideo.lib import choose_camera
 
     app = pg.mkQApp()
-    camera = choose_camera().start()
-    widget = QCamcorder(camera)
+    camera = choose_camera()
+    widget = QCamcorder(camera.start())
     widget.show()
     pg.exec()
 

@@ -15,6 +15,16 @@ class demo(QWidget):
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.cameraWidget)
+        self._updateShape()
+
+    def _connectSignals(self) -> None:
+        source = self.cameraWidget.source
+        source.newFrame.connect(self.screen.setImage)
+        source.shapeChanged.connect(self._updateShape)
+
+    def _updateShape(self) -> None:
+        source = self.cameraWidget.source
+        self.screen.updateShape(source.shape)
 
 
 def main() -> None:

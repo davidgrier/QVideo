@@ -1,53 +1,47 @@
 from QVideo.QCamcorder import QCamcorder
-from QVideo.lib import QCamera
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot,
-                                 pyqtProperty, QObject)
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 import pyqtgraph as pg
 import numpy as np
 
 
-class ROIFilter(QObject):
+class ROIFilter(pg.RectROI):
 
     newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, parent: QCamcorder) -> None:
-        super().__init__(parent)
+    def __init__(self, parent, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.fps = parent.source.fps
-        self.roi = parent.roi
         self.image = parent.screen.image
 
     @pyqtSlot(np.ndarray)
-    def crop(self, frame: QCamera.Image) -> None:
-        crop = self.roi.getArrayRegion(frame, self.image).astype(np.uint8)
+    def crop(self, frame: np.ndarray) -> None:
+        crop = self.getArrayRegion(frame, self.image).astype(np.uint8)
         self.newFrame.emit(crop)
 
 
 class ROIdemo(QCamcorder):
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.filter = ROIFilter(self)
-        self.dvr.source = self.filter
-
     def _setupUi(self) -> None:
         super()._setupUi()
-        self.roi = pg.RectROI([100, 100], [400, 400],
-                              snapSize=8,
-                              scaleSnap=True,
-                              sideScalers=True,
-                              rotatable=False)
+        self.roi = ROIFilter(self, [100, 100], [400, 400],
+                             snapSize=8,
+                             scaleSnap=True,
+                             sideScalers=True,
+                             rotatable=False)
         self.screen.view.addItem(self.roi)
+        self.dvr.filename = 'crop.avi'
 
-    def connectSignals(self) -> None:
-        super().connectSignals()
+    def _connectSignals(self) -> None:
+        super()._connectSignals()
+        self.dvr.source = self.roi
         self.dvr.recording.connect(self.recording)
 
     @pyqtSlot(bool)
-    def recording(self, active: bool) -> None:
-        if active:
-            self.source.newFrame.connect(self.filter.crop)
+    def recording(self, recording: bool) -> None:
+        if recording:
+            self.source.newFrame.connect(self.roi.crop)
         else:
-            self.source.newFrame.disconnect(self.filter.crop)
+            self.source.newFrame.disconnect(self.roi.crop)
 
 
 def main() -> None:

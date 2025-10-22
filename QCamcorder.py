@@ -1,6 +1,7 @@
 from pyqtgraph.Qt.QtWidgets import QWidget
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import pyqtSlot
+from pathlib import Path
 
 
 class QCamcorder(QWidget):
@@ -15,7 +16,8 @@ class QCamcorder(QWidget):
         self._connectSignals()
 
     def _setupUi(self) -> None:
-        uic.loadUi(self.UIFILE, self)
+        uifile = str(Path(__file__).parent / self.UIFILE)
+        uic.loadUi(uifile, self)
         self.controls.layout().addWidget(self.cameraWidget)
         self.updateShape()
 

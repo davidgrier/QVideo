@@ -8,15 +8,15 @@ import numpy as np
 
 class ROIFilter(QObject):
 
-    newFrame = pyqtSignal(QCamera.Image)
+    newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, parent) -> None:
+    def __init__(self, parent: QCamcorder) -> None:
         super().__init__(parent)
         self.fps = parent.source.fps
         self.roi = parent.roi
         self.image = parent.screen.image
 
-    @pyqtSlot(QCamera.Image)
+    @pyqtSlot(np.ndarray)
     def crop(self, frame: QCamera.Image) -> None:
         crop = self.roi.getArrayRegion(frame, self.image).astype(np.uint8)
         self.newFrame.emit(crop)
@@ -51,13 +51,11 @@ class ROIdemo(QCamcorder):
 
 
 def main() -> None:
-    from QVideo.cameras.choose_camera import choose_camera_widget
-
-    CameraWidget, cameraID = choose_camera_widget()
+    from QVideo.lib import choose_camera
 
     app = pg.mkQApp()
-    cameraWidget = CameraWidget(cameraID=cameraID).start()
-    widget = ROIdemo(cameraWidget=cameraWidget)
+    camera = choose_camera().start()
+    widget = ROIdemo(camera)
     widget.show()
     app.exec()
 

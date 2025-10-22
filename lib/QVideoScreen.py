@@ -1,4 +1,4 @@
-from QVideo.lib import QVideoSource
+from QVideo.lib import (QCamera, QVideoSource)
 from pyqtgraph.Qt.QtCore import (pyqtSlot, QSize)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
@@ -19,11 +19,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._source = None
 
     def _setupUi(self) -> None:
+        self._size = QSize(100, 100)
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
-        self.view = self.addViewBox(invertY=True,
-                                    lockAspect=True,
-                                    enableMenu=False,
+        self.view = self.addViewBox(enableMenu=False,
                                     enableMouse=False)
+        self.view.invertY(True)
+        self.view.setAspectLocked(True)
         self.view.setDefaultPadding(0)
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
@@ -50,7 +51,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             self._source = None
         self._source = source
         self.updateShape(self._source.source.shape)
-        self._source.source.shapeChanged.connect(self.updateShape)
+        self._source.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
 
     @pyqtSlot()
@@ -58,7 +59,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._source.start()
 
     @pyqtSlot(np.ndarray)
-    def setImage(self, image: np.ndarray) -> None:
+    def setImage(self, image: QCamera.Image) -> None:
         self.image.setImage(image, autoLevels=False)
 
     @pyqtSlot(QSize)
@@ -72,13 +73,12 @@ class QVideoScreen(GraphicsLayoutWidget):
 
 
 def main() -> None:
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    import sys
+    import pyqtgraph as pg
 
-    app = QApplication(sys.argv)
+    app = pg.mkQApp()
     widget = QVideoScreen()
     widget.show()
-    sys.exit(app.exec())
+    pg.exec()
 
 
 if __name__ == '__main__':

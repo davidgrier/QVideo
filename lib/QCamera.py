@@ -3,8 +3,9 @@ from pyqtgraph.Qt.QtCore import (QObject, QSize,
                                  QMutex, QMutexLocker, QWaitCondition,
                                  pyqtSignal, pyqtSlot, pyqtProperty)
 import numpy as np
-import types
+from numpy.typing import NDArray
 from typing import TypeAlias
+import types
 import logging
 
 
@@ -22,7 +23,8 @@ class QCamera(QObject, metaclass=QCameraMeta):
 
     PropertyValue: TypeAlias = bool | int | float | str
     Settings: TypeAlias = dict[str, PropertyValue]
-    CameraData: TypeAlias = tuple[bool, np.ndarray | None]
+    Image: TypeAlias = NDArray[np.uint8]
+    CameraData: TypeAlias = tuple[bool, Image | None]
 
     shapeChanged = pyqtSignal(QSize)
     propertyValue = pyqtSignal(str, object)

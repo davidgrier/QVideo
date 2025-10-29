@@ -30,7 +30,7 @@ class QVideoReader(QObject, metaclass=QVideoReaderMeta):
     def __enter__(self):
         return self.open()
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type, value, traceback) -> None:
         self.close()
 
     def open(self, *args, **kwargs):

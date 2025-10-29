@@ -11,23 +11,37 @@ logger.setLevel(logging.WARNING)
 
 
 class QOpenCVCamera(QCamera):
-    '''OpenCV camera
+    '''
+    Camera class that uses OpenCV to access a camera device.
 
-    Uses the VideoCapture interface from the OpenCV project to
-    open a digital camera, set and get its properties, and
-    capture images.
-    .....
+    Inherits
+    -------
+    QVideo.lib.QCamera
 
-    Properties
+    Parameters
     ----------
+    cameraID : int
+        ID of the camera device (default is 0).
+    mirrored : bool
+        If True, the image is mirrored horizontally.
+    flipped : bool
+        If True, the image is flipped vertically.
+    gray : bool
+        If True, the image is converted to grayscale.
+
+    Attributes
+    ----------
+    width : int
+        Width of the camera frame.
+    height : int
+        Height of the camera frame.
+    fps : float
+        Frames per second of the camera.
 
     Methods
     -------
-    read(): bool, np.ndarray
-        Returns a tuple (success, image):
-        success: bool
-            True if image capture was successful
-        image: numpy.ndarray
+    read() -> QCamera.CameraData
+        Reads a frame from the camera and applies transformations.
     '''
 
     if cv2.__version__.startswith('2.'):

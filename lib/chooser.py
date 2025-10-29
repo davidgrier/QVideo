@@ -15,7 +15,20 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
 
 
 def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
-    '''Returns a PyQt camera widget based on command-line arguments'''
+    '''Chooses and returns a camera based on command-line arguments.
+
+    Parameters
+    ----------
+    parser : ArgumentParser | None
+        An optional ArgumentParser to parse command-line arguments.
+        If provided, camera options will be added to it.
+        If None, a new ArgumentParser is created.
+
+    Returns
+    -------
+    QCameraTree
+        The chosen camera object.
+    '''
     args, _ = camera_parser(parser).parse_known_args()
     if args.opencv:
         try:

@@ -13,6 +13,48 @@ logger.setLevel(logging.WARNING)
 
 class QCameraTree(ParameterTree):
 
+    '''A parameter tree widget for controlling QCamera properties.
+
+    Parameters
+    ----------
+    source : QCamera | QVideoSource
+        The video source to control.
+    description : list[dict[str, str]] | None
+        Optional description of camera properties to display
+        in the parameter tree. If None, a default description
+        is generated from the camera settings.
+    args : list
+        Additional positional arguments to pass to the ParameterTree constructor.
+    kwargs : dict
+        Additional keyword arguments to pass to the ParameterTree constructor.
+    Returns
+    -------
+    QCameraTree : ParameterTree
+        The camera control tree widget.
+
+    Properties
+    ----------
+    source : QVideoSource
+        The video source object.
+    camera : QCamera
+        The camera object.
+
+    Methods
+    -------
+    start() -> QCameraTree
+        Start the video source.
+    stop() -> None
+        Stop the video source.
+    close() -> None
+        Close the video source.
+    set(key: str, value: QCamera.PropertyValue) -> None
+        Set a camera property value.
+    get(key: str) -> QCamera.PropertyValue | None
+        Get a camera property value.
+    example() -> None
+        Run an example of the QCameraTree widget.
+    '''
+
     Source: TypeAlias = QCamera | QVideoSource
     Description: TypeAlias = list[dict[str, str]]
     Change: TypeAlias = tuple[Parameter, str, QCamera.PropertyValue]

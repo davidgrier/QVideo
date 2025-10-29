@@ -1,15 +1,35 @@
 from QVideo.QCamcorder import QCamcorder
 from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import QWidget
 import pyqtgraph as pg
 import numpy as np
 from pathlib import Path
 
 
 class ROIFilter(pg.RectROI):
+    '''A rectangular region of interest (ROI) filter that crops frames
+    to the defined ROI area.
+
+    Parameters
+    ----------
+    parent : QWidget
+        The parent widget that contains the source and screen attributes.
+    *args : list
+        Additional positional arguments to pass to the Rect
+        ROI constructor.
+    **kwargs : dict
+        Additional keyword arguments to pass to the Rect
+        ROI constructor.
+
+    Returns
+    -------
+    ROIFilter : pg.RectROI
+        The ROI filter that emits cropped frames.
+    '''
 
     newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, parent, *args, **kwargs) -> None:
+    def __init__(self, parent: QWidget, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fps = parent.source.fps
         self.image = parent.screen.image
@@ -21,6 +41,22 @@ class ROIFilter(pg.RectROI):
 
 
 class ROIdemo(QCamcorder):
+    '''A demo widget that displays a video feed with an ROI filter
+    for cropping the video frames.
+
+    Parameters
+    ----------
+    cameraWidget : QCameraTree
+        The camera control tree widget to display alongside the video feed.
+    kwargs : dict
+        Additional keyword arguments to pass to the QWidget constructor.
+
+    Returns
+    -------
+    ROIdemo : QCamcorder
+        The demo widget containing the video feed with ROI cropping
+        functionality.
+    '''
 
     def _setupUi(self) -> None:
         super()._setupUi()

@@ -15,11 +15,54 @@ logger.setLevel(logging.WARNING)
 
 
 class QVideoSource(QThread):
-    '''Read frames from a camera as fast as possible
 
-    Moves camera object to a background thread
-    to prevent interference with the user interface.
-    Returns video frames with the newFrame() signal.
+    '''A threaded video source that reads frames from a camera
+    or video file in a separate thread.
+
+    Parameters
+    ----------
+    source : QCamera | QVideoReader
+        The video source to read frames from.
+    args : list
+        Additional positional arguments to pass to the QThread constructor.
+    kwargs : dict
+        Additional keyword arguments to pass to the QThread constructor.
+
+    Returns
+    -------
+    QVideoSource : QThread
+        The threaded video source object.
+
+    Signals
+    -------
+    newFrame(np.ndarray)
+        Emitted when a new video frame is available.
+
+    Properties
+    ----------
+    source : QCamera | QVideoReader
+        The video source object.
+    fps : float
+        The frames per second of the video source.
+    shape : QSize
+        The shape of the video frames (width, height).
+
+    Methods
+    -------
+    isOpen() -> bool
+        Check if the video source is open.
+    start() -> QVideoSource
+        Start the video source thread.
+    stop() -> None
+        Stop the video source thread.
+    pause() -> None
+        Pause video readout.
+    resume() -> None
+        Resume video readout after pause().
+    isPaused() -> bool
+        Check if video readout is paused.
+    example(*args) -> None
+        Demonstrate basic operation of a threaded video source.
     '''
 
     Source: TypeAlias = QCamera | QVideoReader

@@ -10,7 +10,6 @@ def clickable(widget: QWidget) -> pyqtSignal:
 
     Example:
     -------
-
     myWidget = QWidget()
     widgetClicked = clickable(myWidget)
     widgetClicked.connect(lambda: print("clicked"))

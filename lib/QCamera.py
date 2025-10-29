@@ -19,7 +19,99 @@ class QCameraMeta(type(QObject), ABCMeta):
 
 
 class QCamera(QObject, metaclass=QCameraMeta):
-    '''Base class for a video camera implementation'''
+
+    '''An abstract base class for camera devices
+    providing a common interface for camera control and image acquisition.
+
+    Parameters
+    ----------
+    args : list
+        Positional arguments to pass to the QObject constructor.
+    kwargs : dict
+        Keyword arguments to pass to the QObject constructor.
+
+    Returns
+    -------
+    QCamera : QObject
+        The camera device object.
+
+    Signals
+    -------
+    shapeChanged(QSize)
+        Emitted when the camera shape changes.
+    propertyValue(str, object)
+        Emitted when a property value is retrieved.
+
+    Properties
+    ----------
+    shape : QSize
+        The shape of the camera image (width, height).
+    color : bool
+        Whether the camera captures color images.
+    width : int
+        The width of the camera image.
+    height : int
+        The height of the camera image.
+    fps : float
+        The frames per second of the camera.
+
+    Methods
+    -------
+    open(*args, **kwargs) -> QCamera
+        Open the camera device with optional configuration parameters.
+    close() -> None
+        Close the camera device.
+    isOpen() -> bool
+        Check if the camera device is open.
+    isPaused() -> bool
+        Check if the camera device is paused.
+    read() -> tuple[bool, Image | None]
+        Read a frame from the camera device.
+    saferead() -> tuple[bool, Image | None]
+        Safely read a frame from the camera device, handling pause state.
+    set(key: str, value: PropertyValue) -> None
+        Set a named property to a specified value.
+    get(key: str) -> PropertyValue | None
+        Get the value of a named property.
+    execute(key: str) -> None
+        Execute a named method.
+
+    TypeAliases
+    -----------
+    PropertyValue : bool | int | float | str
+        A type alias for valid property values.
+    Settings : dict[str, PropertyValue]
+        A type alias for camera settings.
+    Image : NDArray[np.uint8]
+        A type alias for image data.
+    CameraData : tuple[bool, Image | None]
+        A type alias for camera read data.
+
+    Class Methods
+    -------------
+    example() -> None
+        Run an example demonstrating the camera functionality.
+
+    Abstract Methods
+    ----------------
+    _initialize(*args, **kwargs) -> bool
+        Configure the camera device for operation.
+    _deinitialize() -> None
+        Deconfigure the camera device.
+    read() -> CameraData
+        Read a frame from the camera device.
+
+    Abstract Properties
+    -------------------
+    color : bool
+        Whether the camera captures color images.
+    width : int
+        The width of the camera image.
+    height : int
+        The height of the camera image.
+    fps : float
+        The frames per second of the camera.
+    '''
 
     PropertyValue: TypeAlias = bool | int | float | str
     Settings: TypeAlias = dict[str, PropertyValue]

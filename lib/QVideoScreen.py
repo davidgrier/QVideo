@@ -11,7 +11,39 @@ logger.setLevel(logging.WARNING)
 
 
 class QVideoScreen(GraphicsLayoutWidget):
-    '''Video screen widget'''
+
+    '''A video display widget for showing frames from a QVideoSource.
+
+    Parameters
+    ----------
+    args : list
+        Additional positional arguments to pass to the
+        GraphicsLayoutWidget constructor.
+    kwargs : dict
+        Additional keyword arguments to pass to the
+        GraphicsLayoutWidget constructor.
+
+    Returns
+    -------
+    QVideoScreen : GraphicsLayoutWidget
+        The video display widget.
+
+    Properties
+    ----------
+    source : QVideoSource
+        The video source object.
+
+    Methods
+    -------
+    setSource(source: QVideoSource) -> None
+        Connect video source to view screen.
+    start() -> None
+        Start the video source.
+    setImage(image: np.ndarray) -> None
+        Update the displayed image with a new frame.
+    updateShape(shape: QSize) -> None
+        Update the display shape based on the video source shape.
+    '''
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -41,10 +73,10 @@ class QVideoScreen(GraphicsLayoutWidget):
     def setSource(self, source: QVideoSource) -> None:
         '''Connect video source to view screen
 
-        Arguments
-        ---------
-        camera : QVideoSource
-            Video source that will provide frames to display
+        Parameters
+        ----------
+        camera: QVideoSource
+            Video source that provides frames to display
         '''
         assert (isinstance(source, QVideoSource))
         if self._source is not None:

@@ -13,6 +13,19 @@ PRODUCER = 'Spinnaker_GenTL.cti'
 
 
 class QFlirCamera(QGenicamCamera):
+    '''Camera class that uses the FLIR Genicam producer
+    to access FLIR cameras.
+
+    Inherits
+    --------
+    QVideo.lib.QGenicamCamera
+
+    Parameters
+    ----------
+    producer : str | None
+        Path to the Genicam producer. If None, the default path for the
+        present operating system and python version is used.
+    '''
 
     def __init__(self, *args,
                  producer: str | None = None,

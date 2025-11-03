@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 class QCamcorder(QWidget):
-    """A widget that combines a video screen with camera controls
+    '''A widget that combines a video screen with camera controls
     and DVR functionality.
 
     Parameters
@@ -28,7 +28,7 @@ class QCamcorder(QWidget):
     newFrame signal to update the video screen and adjusts the screen shape
     when the camera source's shape changes. It also manages playback state
     for the DVR.
-    """
+    '''
 
     UIFILE = 'QCamcorder.ui'
 

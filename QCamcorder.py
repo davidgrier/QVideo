@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pyqtgraph.Qt.QtWidgets import QWidget
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import pyqtSlot

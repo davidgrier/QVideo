@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from QVideo.lib import (QVideoScreen, QCameraTree)
 from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout)
 

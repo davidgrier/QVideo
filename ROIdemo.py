@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from QVideo.QCamcorder import QCamcorder
 from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 from pyqtgraph.Qt.QtWidgets import QWidget

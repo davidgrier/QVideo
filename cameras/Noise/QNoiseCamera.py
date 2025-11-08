@@ -4,10 +4,7 @@ import numpy as np
 import time
 
 
-class QNoiseSource(QVideoSource):
-    def __init__(self, *args, **kwargs) -> None:
-        camera = QNoiseCamera(*args, **kwargs)
-        super().__init__(camera, *args, **kwargs)
+__all__ = ['QNoiseCamera', 'QNoiseSource']
 
 
 class QNoiseCamera(QCamera):
@@ -87,6 +84,28 @@ class QNoiseCamera(QCamera):
     @fps.setter
     def fps(self, fps: float) -> None:
         self._fps = fps
+
+
+class QNoiseSource(QVideoSource):
+
+    '''Threaded video source that generates random noise images.
+
+    Inherits
+    --------
+    QVideoSource
+        Base video source class providing threading and frame delivery.
+
+    Parameters
+    ----------
+    camera : QNoiseCamera | None
+        An instance of QNoiseCamera. If None, a new instance is created.
+    '''
+
+    def __init__(self, *args,
+                 camera: QNoiseCamera | None = None,
+                 **kwargs) -> None:
+        camera = camera or QNoiseCamera(*args, **kwargs)
+        super().__init__(camera, *args, **kwargs)
 
 
 if __name__ == '__main__':

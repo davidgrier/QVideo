@@ -1,4 +1,4 @@
-from QVideo.lib import QCamera
+from QVideo.lib import (QCamera, QVideoSource)
 from pyqtgraph.Qt.QtCore import pyqtProperty
 import cv2
 import platform
@@ -10,9 +10,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
+__all__ = ['QOpenCVCamera', 'QOpenCVSource']
+
+
 class QOpenCVCamera(QCamera):
-    '''
-    Camera class that uses OpenCV to access a camera device.
+
+    '''Camera class that uses OpenCV to access a camera device.
 
     Inherits
     -------
@@ -138,6 +141,28 @@ class QOpenCVCamera(QCamera):
     @fps.setter
     def fps(self, value: float) -> None:
         self.device.set(self.FPS, value)
+
+
+class QOpenCVSource(QVideoSource):
+
+    '''Threaded video source that uses OpenCV to access a camera device.
+
+    Inherits
+    --------
+    QVideo.lib.QVideoSource
+
+    Parameters
+    ----------
+    camera : QOpenCVCamera | None
+        An instance of QOpenCVCamera. If None, a new instance is created.
+    Other parameters are passed to QOpenCVCamera if camera is None.
+    '''
+
+    def __init__(self, *args,
+                 camera: QOpenCVCamera | None = None,
+                 **kwargs) -> None:
+        camera = camera or QOpenCVCamera(*args, **kwargs)
+        super().__init__(camera, *args, **kwargs)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,4 @@
-from .QOpenCVCamera import QOpenCVCamera
-from .QOpenCVSource import QOpenCVSource
+from .QOpenCVCamera import (QOpenCVCamera, QOpenCVSource)
 from .QOpenCVTree import QOpenCVTree
 
 

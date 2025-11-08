@@ -1,5 +1,4 @@
-from .QFlirCamera import QFlirCamera
-from .QFlirSource import QFlirSource
+from .QFlirCamera import (QFlirCamera, QFlirSource)
 from .QFlirTree import QFlirTree
 
 

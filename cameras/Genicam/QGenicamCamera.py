@@ -1,4 +1,4 @@
-from QVideo.lib import QCamera
+from QVideo.lib import (QCamera, QVideoSource)
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QMutexLocker)
 import numpy as np
 import logging

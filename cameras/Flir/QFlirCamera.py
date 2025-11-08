@@ -1,4 +1,5 @@
 from QVideo.cameras.Genicam import QGenicamCamera
+from QVideo.lib import QVideoSource
 from pathlib import Path
 import platform
 import logging
@@ -7,6 +8,9 @@ import logging
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
+
+__all__ = ['QFlirCamera', 'QFlirSource']
 
 
 PRODUCER = 'Spinnaker_GenTL.cti'
@@ -46,6 +50,22 @@ class QFlirCamera(QGenicamCamera):
                            f'for python {pythonversion} on {os}')
             return ''
         return str(path)
+
+
+class QFlirSource(QVideoSource):
+
+    '''Video source class that uses FLIR cameras.
+
+    Inherits
+    --------
+    QVideo.lib.QVideoSource
+    '''
+
+    def __init__(self, *args,
+                 camera: QFlirCamera | None = None,
+                 **kwargs) -> None:
+        camera = camera or FlirCamera(*args, **kwargs)
+        super().__init__(camera, *args, **kwargs)
 
 
 if __name__ == '__main__':

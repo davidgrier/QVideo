@@ -11,6 +11,37 @@ class QNoiseSource(QVideoSource):
 
 
 class QNoiseCamera(QCamera):
+    '''A camera that generates random noise images.
+
+    Emits frames of random noise at a specified resolution and frame rate.
+
+    Inherits
+    --------
+    QCamera
+        Base camera class providing camera functionality.
+
+    Properties
+    ----------
+    width : int
+        The width of the generated images in pixels.
+    height : int
+        The height of the generated images in pixels.
+    fps : float
+        The frame rate at which images are generated.
+    shape : tuple
+        The shape of the generated images as (height, width).
+
+    Methods
+    -------
+    read() -> QCamera.CameraData
+        Generates and returns a frame of random noise.
+
+    Signals
+    -------
+    shapeChanged
+        Emitted when the shape of the generated images changes.
+    '''
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._width = 640
@@ -19,16 +50,16 @@ class QNoiseCamera(QCamera):
         self.open()
 
     def _initialize(self):
-        self.rng = np.random.default_rng()
+        self._rng = np.random.default_rng()
         return True
 
     def _deinitialize(self):
         pass
 
     def read(self) -> QCamera.CameraData:
-        time.sleep(self.delay())
+        time.sleep(1./self.fps)
         shape = (self._height, self._width)
-        image = self.rng.integers(0, 255, shape, np.uint8)
+        image = self._rng.integers(0, 255, shape, np.uint8)
         return True, image
 
     @pyqtProperty(int)
@@ -56,9 +87,6 @@ class QNoiseCamera(QCamera):
     @fps.setter
     def fps(self, fps: float) -> None:
         self._fps = fps
-
-    def delay(self) -> float:
-        return 1./self.fps
 
 
 if __name__ == '__main__':

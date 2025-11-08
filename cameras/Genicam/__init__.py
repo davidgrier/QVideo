@@ -1,5 +1,4 @@
-from .QGenicamCamera import QGenicamCamera
-from .QGenicamSource import QGenicamSource
+from .QGenicamCamera import (QGenicamCamera, QGenicamSource)
 from .QGenicamTree import QGenicamTree
 
 

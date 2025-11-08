@@ -12,8 +12,12 @@ except (ImportError, ModuleNotFoundError) as error:
     Harvester = None
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+__all__ = ['QGenicamCamera', 'QGenicamSource']
 
 
 def _properties(feature: IValue) -> list[str]:
@@ -109,6 +113,17 @@ class QGenicamCamera(QCamera):
     a ".cti" extension. Manufacturers may provide different versions
     of the cti file for different operating systems and for different
     versions of python.
+
+    Inherits
+    --------
+    QVideo.lib.QCamera
+
+    Properties
+    ----------
+    producer : str
+        Path to GenTL producer file
+    cameraID : int
+        Index of camera to use (default 0)
     '''
 
     def __init__(self, producer: str,
@@ -240,6 +255,22 @@ class QGenicamCamera(QCamera):
 
     def methods(self) -> list[str]:
         return self._methods
+
+
+class QGenicamSource(QVideoSource):
+
+    '''Base class for video sources using GenICam cameras
+
+    Inherits
+    --------
+    QVideo.lib.QVideoSource
+    '''
+
+    def __init__(self, *args,
+                 camera: QGenicamCamera | None = None,
+                 **kwargs) -> None:
+        camera = camera or QGenicamCamera(*args, **kwargs)
+        super().__init__(camera, *args, **kwargs)
 
 
 def example():

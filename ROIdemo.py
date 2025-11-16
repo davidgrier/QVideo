@@ -38,7 +38,17 @@ class ROIFilter(pg.RectROI):
 
     @pyqtSlot(np.ndarray)
     def crop(self, frame: np.ndarray) -> None:
-        crop = self.getArrayRegion(frame, self.image).astype(np.uint8)
+        '''Crops the input frame to the defined ROI area and emits
+        the cropped frame.
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            The input video frame to be cropped.
+        '''
+        x, y = self.pos()
+        w, h = self.size()
+        crop = frame[int(y):int(y + h), int(x):int(x + w)]
         self.newFrame.emit(crop)
 
 

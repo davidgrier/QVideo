@@ -1,12 +1,24 @@
-from QVideo.lib import QVideoReader
+from QVideo.lib import (QVideoReader, QVideoSource)
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)
 import cv2
+
+
+__all__ = ['QAVIReader', 'QAVISource']
 
 
 class QAVIReader(QVideoReader):
     '''Video reader for AVI files
 
     Reads frames from a video file,
+
+    Inherits
+    --------
+    QVideo.lib.QVideoReader
+
+    Parameters
+    ----------
+    filename : str
+        Path to the AVI video file to read.
     '''
 
     if cv2.__version__.startswith('2.'):
@@ -63,6 +75,22 @@ class QAVIReader(QVideoReader):
     @pyqtProperty(int)
     def height(self) -> int:
         return self.reader.get(self.HEIGHT)
+
+
+class QAVISource(QVideoSource):
+
+    '''Video source for AVI files
+
+    Parameters
+    ----------
+    reader : str | QAVIReader
+        Path to the AVI video file to read or an instance of QAVIReader.
+    '''
+
+    def __init__(self, reader: str | QAVIReader) -> None:
+        if isinstance(reader, str):
+            reader = QAVIReader(reader)
+        super().__init__(reader)
 
 
 if __name__ == '__main__':

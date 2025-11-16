@@ -1,10 +1,25 @@
-from QVideo.lib import QVideoReader
+from QVideo.lib import (QVideoReader, QVideoSource)
 from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
 import h5py
 
 
+__all__ = ['QHDF5Reader', 'QHDF5Source']
+
+
 class QHDF5Reader(QVideoReader):
-    '''Class for playing H5 video files
+
+    '''Video reader for HDF5 files
+
+    Reads frames from an HDF5 file containing image datasets.
+
+    Inherits
+    --------
+    QVideo.lib.QVideoReader
+
+    Parameters
+    ----------
+    filename : str
+        Path to the HDF5 file to read.
     '''
 
     def _initialize(self) -> bool:
@@ -54,3 +69,23 @@ class QHDF5Reader(QVideoReader):
     @pyqtProperty(int)
     def height(self) -> int:
         return self._height
+
+
+class QHDF5Source(QVideoSource):
+
+    '''Video source for HDF5 files
+
+    Inherits
+    --------
+    QVideo.lib.QVideoSource
+
+    Parameters
+    ----------
+    reader : str | QHDF5Reader
+        Path to the HDF5 file to read or an instance of QHDF5Reader.
+    '''
+
+    def __init__(self, reader: str | QHDF5Reader) -> None:
+        if isinstance(reader, str):
+            reader = QHDF5Reader(reader)
+        super().__init__(reader)

@@ -7,9 +7,9 @@ from pyqtgraph.Qt.QtWidgets import (QFrame, QFileDialog)
 from pathlib import Path
 from QVideo.lib import (clickable, QVideoSource)
 from .QAVIWriter import QAVIWriter
-from .QAVISource import QAVISource
+from .QAVIReader import QAVISource
 from .QHDF5Writer import QHDF5Writer
-from .QHDF5Source import QHDF5Source
+from .QHDF5Reader import QHDF5Source
 from .icons_rc import *
 import logging
 

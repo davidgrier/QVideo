@@ -14,6 +14,11 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     '''A video display widget for showing frames from a QVideoSource.
 
+    Inherits
+    --------
+    pyqtgraph.GraphicsLayoutWidget
+        A graphics layout widget for displaying graphics items.
+
     Parameters
     ----------
     args : list

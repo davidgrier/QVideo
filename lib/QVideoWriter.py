@@ -14,7 +14,63 @@ class QVideoWriterMeta(type(QObject), ABCMeta):
 
 
 class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
-    '''Abstract base class for saving videos to files'''
+    '''Abstract base class for saving videos to files
+
+    Parameters
+    ----------
+    filename : str
+        The output video filename.
+    fps : int
+        The frame rate of the output video [frames per second].
+    nframes : int
+        The maximum number of frames to write.
+    nskip : int
+        The number of frames to skip between writes.
+    kwargs : dict
+        Additional keyword arguments to pass to the QObject constructor.
+
+    Returns
+    -------
+    QVideoWriter : QObject
+        The video writer object.
+
+    Signals
+    -------
+    frameNumber(int)
+        Emitted when a new frame is written, providing the
+        current frame number.
+    finished()
+        Emitted when the video writing is finished.
+
+    Slots
+    -----
+    write(frame: np.ndarray) -> None
+        Write a video frame to the file.
+    close() -> None
+        Close the video file.
+
+    Properties
+    ----------
+    filename : str
+        The output video filename.
+    fps : int
+        The frame rate of the output video [frames per second].
+    nskip : int
+        The number of frames to skip between writes.
+    nframes : int
+        The maximum number of frames to write.
+
+    Abstract Methods
+    ----------------
+    open(frame: np.ndarray) -> bool
+        Open the video file for writing.
+    isOpen() -> bool
+        Check if the video file is open.
+    _write(frame: np.ndarray) -> None
+        Write a video frame to the file.
+    close() -> None
+        Close the video file.
+    '''
 
     frameNumber = pyqtSignal(int)
     finished = pyqtSignal()

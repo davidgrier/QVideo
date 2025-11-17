@@ -106,11 +106,11 @@ class QCamera(QObject, metaclass=QCameraMeta):
     color : bool
         Whether the camera captures color images.
     width : int
-        The width of the camera image.
+        The width of the camera image [pixels].
     height : int
-        The height of the camera image.
+        The height of the camera image [pixels].
     fps : float
-        The frames per second of the camera.
+        The frame rate of the camera [frames per second].
     '''
 
     PropertyValue: TypeAlias = bool | int | float | str

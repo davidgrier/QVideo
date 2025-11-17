@@ -15,6 +15,11 @@ class QCameraTree(ParameterTree):
 
     '''A parameter tree widget for controlling QCamera properties.
 
+    Inherits
+    --------
+    ParameterTree
+        A tree widget for displaying and editing parameters.
+
     Parameters
     ----------
     source : QCamera | QVideoSource
@@ -24,9 +29,12 @@ class QCameraTree(ParameterTree):
         in the parameter tree. If None, a default description
         is generated from the camera settings.
     args : list
-        Additional positional arguments to pass to the ParameterTree constructor.
+        Additional positional arguments to pass to the
+        ParameterTree constructor.
     kwargs : dict
-        Additional keyword arguments to pass to the ParameterTree constructor.
+        Additional keyword arguments to pass to the
+        ParameterTree constructor.
+
     Returns
     -------
     QCameraTree : ParameterTree

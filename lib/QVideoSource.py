@@ -2,7 +2,7 @@ from pyqtgraph.Qt.QtCore import (QThread,
                                  QMutex, QMutexLocker, QWaitCondition,
                                  pyqtSlot, pyqtSignal, pyqtProperty,
                                  QVariant, QSize)
-from QVideo.lib import (QCamera, QVideoReader)
+from .QCamera import QCamera
 from .QVideoReader import QVideoReader
 import numpy as np
 from typing import TypeAlias
@@ -43,7 +43,7 @@ class QVideoSource(QThread):
     source : QCamera | QVideoReader
         The video source object.
     fps : float
-        The frames per second of the video source.
+        frame rate of the video source [frames per second].
     shape : QSize
         The shape of the video frames (width, height).
 

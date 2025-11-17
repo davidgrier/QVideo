@@ -14,14 +14,26 @@ class ROIFilter(pg.RectROI):
 
     Parameters
     ----------
-    parent : QWidget
-        The parent widget that contains the source and screen attributes.
+    fps : float
+        Frame rate of the video source [frames per second].
+        This property is required for QVideoWriter compatibility.
     *args : list
         Additional positional arguments to pass to the Rect
         ROI constructor.
     **kwargs : dict
         Additional keyword arguments to pass to the Rect
         ROI constructor.
+
+    Signals
+    -------
+    newFrame(np.ndarray)
+        Emitted when a new cropped frame is available.
+
+    Slots
+    -----
+    crop(frame: np.ndarray) -> None
+        Crops the input frame to the defined ROI area and emits
+        the cropped frame via the newFrame signal.
 
     Returns
     -------
@@ -31,21 +43,12 @@ class ROIFilter(pg.RectROI):
 
     newFrame = pyqtSignal(np.ndarray)
 
-    def __init__(self, parent: QWidget, *args, **kwargs) -> None:
+    def __init__(self, fps: float, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.fps = parent.source.fps
-        self.image = parent.screen.image
+        self.fps = fps
 
     @pyqtSlot(np.ndarray)
     def crop(self, frame: np.ndarray) -> None:
-        '''Crops the input frame to the defined ROI area and emits
-        the cropped frame.
-
-        Parameters
-        ----------
-        frame : np.ndarray
-            The input video frame to be cropped.
-        '''
         x, y = self.pos()
         w, h = self.size()
         crop = frame[int(y):int(y + h), int(x):int(x + w)]
@@ -72,13 +75,17 @@ class ROIdemo(QCamcorder):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self.roi = ROIFilter(self, [100, 100], [400, 400],
+        self.roi = ROIFilter(self.source.fps,
+                             [100, 100], [400, 400],
                              snapSize=8,
                              scaleSnap=True,
                              sideScalers=True,
-                             rotatable=False)
+                             movable=True,
+                             invertible=False,
+                             rotatable=False,
+                             removable=False)
         self.screen.view.addItem(self.roi)
-        self.dvr.filename = str(Path.home() / 'crop.avi')
+        self.dvr.filename = str(Path.home() / 'roidemo.avi')
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
@@ -88,8 +95,10 @@ class ROIdemo(QCamcorder):
     @pyqtSlot(bool)
     def recording(self, recording: bool) -> None:
         if recording:
+            self.roi.movable = False
             self.source.newFrame.connect(self.roi.crop)
         else:
+            self.roi.movable = True
             self.source.newFrame.disconnect(self.roi.crop)
 
 

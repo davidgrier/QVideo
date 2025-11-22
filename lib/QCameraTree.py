@@ -98,9 +98,9 @@ class QCameraTree(ParameterTree):
             logger.error('Video source is not open')
             return
         if isinstance(source, QCamera):
-            self.source = QVideoSource(source)
+            self._source = QVideoSource(source)
         else:
-            self.source = source
+            self._source = source
         self._createTree(description)
         self._connectSignals()
         self._setupUi()
@@ -165,10 +165,6 @@ class QCameraTree(ParameterTree):
     @pyqtProperty(QVideoSource)
     def source(self) -> QVideoSource:
         return self._source
-
-    @source.setter
-    def source(self, source: QVideoSource) -> None:
-        self._source = source
 
     @pyqtProperty(QCamera)
     def camera(self) -> QCamera:

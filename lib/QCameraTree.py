@@ -1,6 +1,5 @@
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
-from pyqtgraph.Qt.QtWidgets import QHeaderView
+from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty, Qt)
 from QVideo.lib import (QCamera, QVideoSource)
 from typing import TypeAlias
 import logging
@@ -126,12 +125,14 @@ class QCameraTree(ParameterTree):
         self._ignoresync = False
 
     def _setupUi(self) -> None:
-        '''
-        FIXME: Resize to fit contents?
-        '''
-        self.setMinimumWidth(250)
-        self.header().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.setColumnWidth(0, 200)
+        header = self.header()
+        self.setTextElideMode(Qt.TextElideMode.ElideRight)
+        policy = header.ResizeMode.Interactive
+        header.setSectionResizeMode(policy)
+        header.setStretchLastSection(False)
+        for n in range(self.columnCount()):
+            hint = self.sizeHintForColumn(n)
+            header.resizeSection(n, hint + 20)
 
     @pyqtSlot(object, object)
     def _sync(self, tree: ParameterTree, changes: Changes) -> None:

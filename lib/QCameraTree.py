@@ -188,10 +188,9 @@ class QCameraTree(ParameterTree):
 
     @classmethod
     def example(cls: 'QCameraTree') -> None:
-        from pyqtgraph.Qt.QtWidgets import QApplication
-        import sys
+        import pyqtgraph as pg
 
-        app = QApplication(sys.argv)
+        app = pg.mkQApp(f'{cls.__name__} Example')
         tree = cls().start()
         tree.show()
-        sys.exit(app.exec())
+        app.exec()

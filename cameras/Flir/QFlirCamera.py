@@ -37,7 +37,8 @@ class QFlirCamera(QGenicamCamera):
         producer = producer or self.producer()
         super().__init__(producer, *args, **kwargs)
 
-    def producer(self) -> str:
+    @staticmethod
+    def producer() -> str:
         '''Returns the path to the Genicam producer
         for the present operating system and python version
         '''

@@ -32,23 +32,23 @@ class demo(QWidget):
         super().__init__(**kwargs)
         self.screen = QVideoScreen(self)
         self.cameraWidget = cameraWidget
-        self.screen.setSource(self.cameraWidget.source)
         self._setupUi()
+        self._connectSignals()
 
     def _setupUi(self) -> None:
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.screen)
         self.layout.addWidget(self.cameraWidget)
-        self._updateShape()
+        self.screen.source = self.cameraWidget.source
+        self.updateShape()
 
     def _connectSignals(self) -> None:
         source = self.cameraWidget.source
-        source.newFrame.connect(self.screen.setImage)
-        source.shapeChanged.connect(self._updateShape)
+        source.shapeChanged.connect(self.updateShape)
 
-    def _updateShape(self) -> None:
-        source = self.cameraWidget.source
-        self.screen.updateShape(source.shape)
+    def updateShape(self) -> None:
+        shape = self.cameraWidget.source.shape
+        self.screen.updateShape(shape)
 
 
 def main() -> None:

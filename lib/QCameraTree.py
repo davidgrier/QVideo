@@ -1,5 +1,5 @@
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty, Qt)
+from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty, Qt, QSize)
 from QVideo.lib import (QCamera, QVideoSource)
 from typing import TypeAlias
 import logging
@@ -133,6 +133,8 @@ class QCameraTree(ParameterTree):
         for n in range(self.columnCount()):
             hint = self.sizeHintForColumn(n)
             header.resizeSection(n, hint + 20)
+        self.adjustSize()
+        self.setMinimumWidth(self.width())
 
     @pyqtSlot(object, object)
     def _sync(self, tree: ParameterTree, changes: Changes) -> None:

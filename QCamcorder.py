@@ -48,7 +48,7 @@ class QCamcorder(QWidget):
         self.updateShape()
 
     def _connectSignals(self) -> None:
-        self.source.newFrame.connect(self.screen.setImage)
+        self.screen.source = self.source
         self.source.shapeChanged.connect(self.updateShape)
         self.dvr.source = self.source
         self.dvr.playing.connect(self.dvrPlayback)

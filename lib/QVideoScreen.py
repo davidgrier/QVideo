@@ -1,5 +1,5 @@
 from QVideo.lib import (QCamera, QVideoSource)
-from pyqtgraph.Qt.QtCore import (pyqtSlot, QSize)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QSize)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
 import logging
@@ -40,8 +40,6 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     Methods
     -------
-    setSource(source: QVideoSource) -> None
-        Connect video source to view screen.
     start() -> None
         Start the video source.
     setImage(image: np.ndarray) -> None
@@ -50,44 +48,32 @@ class QVideoScreen(GraphicsLayoutWidget):
         Update the display shape based on the video source shape.
     '''
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args,
+                 size: tuple[int] = (640, 480),
+                 **kwargs) -> None:
+        super().__init__(*args, size=size, **kwargs)
         self._setupUi()
         self._source = None
 
     def _setupUi(self) -> None:
-        self._size = QSize(100, 100)
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.view = self.addViewBox(enableMenu=False,
                                     enableMouse=False)
         self.view.invertY(True)
         self.view.setAspectLocked(True)
         self.view.setDefaultPadding(0)
+        self.updateShape(self.size())
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
 
-    def sizeHint(self) -> QSize:
-        return self._size
-
-    def minimumSizeHint(self) -> QSize:
-        return self._size / 2
-
+    @pyqtProperty(QVideoSource)
     def source(self) -> QVideoSource:
         return self._source
 
-    def setSource(self, source: QVideoSource) -> None:
-        '''Connect video source to view screen
-
-        Parameters
-        ----------
-        camera: QVideoSource
-            Video source that provides frames to display
-        '''
-        assert (isinstance(source, QVideoSource))
-        if self._source is not None:
-            self._source = None
+    @source.setter
+    def source(self, source: QVideoSource) -> None:
         self._source = source
-        self.updateShape(self._source.source.shape)
+        self.updateShape(source.source.shape)
         self._source.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
 
@@ -105,8 +91,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
                            padding=0, update=True)
-        self.resize(shape.width(), shape.height())
-        self._size = shape
+        self.resize(shape)
+        self.setMinimumSize(shape / 2)
 
 
 def main() -> None:

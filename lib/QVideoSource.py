@@ -70,7 +70,7 @@ class QVideoSource(QThread):
     newFrame = pyqtSignal(np.ndarray)
 
     def __init__(self, source: Source, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__()
         self.source = source
         self.source.moveToThread(self)
         self.mutex = QMutex()

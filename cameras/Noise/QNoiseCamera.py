@@ -39,8 +39,13 @@ class QNoiseCamera(QCamera):
         Emitted when the shape of the generated images changes.
     '''
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args,
+                 blackLevel: int = 0,
+                 whiteLevel: int = 255,
+                 **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.blackLevel = blackLevel
+        self.whiteLevel = whiteLevel
         self._width = 640
         self._height = 480
         self._fps = 30.
@@ -56,7 +61,9 @@ class QNoiseCamera(QCamera):
     def read(self) -> QCamera.CameraData:
         time.sleep(1./self.fps)
         shape = (self._height, self._width)
-        image = self._rng.integers(0, 255, shape, np.uint8)
+        image = self._rng.integers(self.blackLevel,
+                                   self.whiteLevel,
+                                   shape, np.uint8)
         return True, image
 
     @pyqtProperty(int)
@@ -84,6 +91,22 @@ class QNoiseCamera(QCamera):
     @fps.setter
     def fps(self, fps: float) -> None:
         self._fps = fps
+
+    @pyqtProperty(int)
+    def blackLevel(self) -> int:
+        return self._blackLevel
+
+    @blackLevel.setter
+    def blackLevel(self, level: int) -> None:
+        self._blackLevel = np.clip(level, 0, 254)
+
+    @pyqtProperty(int)
+    def whiteLevel(self) -> int:
+        return self._whiteLevel
+
+    @whiteLevel.setter
+    def whiteLevel(self, level: int) -> None:
+        self._whiteLevel = np.clip(level, 1, 255)
 
 
 class QNoiseSource(QVideoSource):

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from pyqtgraph.Qt.QtWidgets import QWidget
-from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import pyqtSlot
+from pyqtgraph.Qt import uic
+from QVideo.lib import QCameraTree
 from pathlib import Path
 
 
@@ -13,7 +14,9 @@ class QCamcorder(QWidget):
     Parameters
     ----------
     cameraWidget : QCameraTree
-        The camera control tree widget to display alongside the video feed.
+        The camera control widget to display alongside the video feed.
+    args : tuple
+        Additional parameters to pass to the QWidget constructor.
     kwargs : dict
         Additional keyword arguments to pass to the QWidget constructor.
 
@@ -34,27 +37,24 @@ class QCamcorder(QWidget):
 
     UIFILE = 'QCamcorder.ui'
 
-    def __init__(self, cameraWidget, **kwargs) -> None:
-        super().__init__(**kwargs)
+    def __init__(self,
+                 cameraWidget: QCameraTree,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
         self.source = self.cameraWidget.source
         self._setupUi()
         self._connectSignals()
+        self.screen.source = self.source
 
     def _setupUi(self) -> None:
         uifile = str(Path(__file__).parent / self.UIFILE)
         uic.loadUi(uifile, self)
         self.controls.layout().addWidget(self.cameraWidget)
-        self.updateShape()
 
     def _connectSignals(self) -> None:
-        self.screen.source = self.source
-        self.source.shapeChanged.connect(self.updateShape)
         self.dvr.source = self.source
         self.dvr.playing.connect(self.dvrPlayback)
-
-    def updateShape(self) -> None:
-        self.screen.updateShape(self.source.shape)
 
     @pyqtSlot(bool)
     def dvrPlayback(self, playback: bool) -> None:

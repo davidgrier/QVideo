@@ -49,7 +49,7 @@ class QVideoScreen(GraphicsLayoutWidget):
     '''
 
     def __init__(self, *args,
-                 size: tuple[int] = (640, 480),
+                 size: tuple[int, int] = (640, 480),
                  **kwargs) -> None:
         super().__init__(*args, size=size, **kwargs)
         self._setupUi()
@@ -91,7 +91,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
                            padding=0, update=True)
-        self.resize(shape)
         self.setMinimumSize(shape / 2)
 
 

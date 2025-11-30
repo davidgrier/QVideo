@@ -40,12 +40,12 @@ class QNoiseCamera(QCamera):
     '''
 
     def __init__(self, *args,
-                 blackLevel: int = 0,
-                 whiteLevel: int = 255,
+                 blacklevel: int = 0,
+                 whitelevel: int = 255,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.blackLevel = blackLevel
-        self.whiteLevel = whiteLevel
+        self.blacklevel = blacklevel
+        self.whitelevel = whitelevel
         self._width = 640
         self._height = 480
         self._fps = 30.
@@ -61,8 +61,8 @@ class QNoiseCamera(QCamera):
     def read(self) -> QCamera.CameraData:
         time.sleep(1./self.fps)
         shape = (self._height, self._width)
-        image = self._rng.integers(self.blackLevel,
-                                   self.whiteLevel,
+        image = self._rng.integers(self.blacklevel,
+                                   self.whitelevel,
                                    shape, np.uint8)
         return True, image
 
@@ -93,20 +93,20 @@ class QNoiseCamera(QCamera):
         self._fps = fps
 
     @pyqtProperty(int)
-    def blackLevel(self) -> int:
-        return self._blackLevel
+    def blacklevel(self) -> int:
+        return self._blacklevel
 
-    @blackLevel.setter
-    def blackLevel(self, level: int) -> None:
-        self._blackLevel = np.clip(level, 0, 254)
+    @blacklevel.setter
+    def blacklevel(self, level: int) -> None:
+        self._blacklevel = int(np.clip(level, 0, 254))
 
     @pyqtProperty(int)
-    def whiteLevel(self) -> int:
-        return self._whiteLevel
+    def whitelevel(self) -> int:
+        return self._whitelevel
 
-    @whiteLevel.setter
-    def whiteLevel(self, level: int) -> None:
-        self._whiteLevel = np.clip(level, 1, 255)
+    @whitelevel.setter
+    def whitelevel(self, level: int) -> None:
+        self._whitelevel = int(np.clip(level, 1, 255))
 
 
 class QNoiseSource(QVideoSource):

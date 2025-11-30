@@ -12,17 +12,5 @@ class QNoiseTree(QCameraTree):
         super().__init__(camera, controls, *args, **kwargs)
 
 
-def example() -> None:
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    import sys
-
-    app = QApplication(sys.argv)
-
-    widget = QNoiseTree()
-    widget.show()
-
-    sys.exit(app.exec())
-
-
 if __name__ == '__main__':
-    example()
+    QNoiseTree.example()

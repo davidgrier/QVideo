@@ -273,17 +273,5 @@ class QGenicamSource(QVideoSource):
         super().__init__(camera, *args, **kwargs)
 
 
-def example():
-    # QGenicamCamera.example()
-    # from pprint import pprint
-
-    cam = QGenicamCamera()
-    cam.set('Gamma', 0.8)
-    print(f"Gamma: {cam.get('Gamma')}")
-    flip = cam.get('ReverseY')
-    cam.set('ReverseY', not flip)
-    print(f"ReverseY: {cam.get('ReverseY')}")
-
-
 if __name__ == '__main__':
-    example()
+    QGenicamCamera.example()

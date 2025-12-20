@@ -1,5 +1,5 @@
 from QVideo.lib import (QCamera, QVideoSource)
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QSize)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QSize, QTimer)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 import numpy as np
 import logging
@@ -17,13 +17,18 @@ class QVideoScreen(GraphicsLayoutWidget):
     Inherits
     --------
     pyqtgraph.GraphicsLayoutWidget
-        A graphics layout widget for displaying graphics items.
 
     Parameters
     ----------
     args : list
         Additional positional arguments to pass to the
         GraphicsLayoutWidget constructor.
+    size : tuple(int, int)
+        Starting dimensions of the VideoScreen.
+        Default: (640, 480)
+    frameinterval : int
+        Time interval between displayed images [ms]
+        Default: 0 -- no delay
     kwargs : dict
         Additional keyword arguments to pass to the
         GraphicsLayoutWidget constructor.
@@ -36,7 +41,7 @@ class QVideoScreen(GraphicsLayoutWidget):
     Properties
     ----------
     source : QVideoSource
-        The video source object.
+        video source object.
 
     Methods
     -------
@@ -50,8 +55,11 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
+                 frameinterval: int = 0,
                  **kwargs) -> None:
         super().__init__(*args, size=size, **kwargs)
+        self.frameinterval = frameinterval
+        self._ready = True
         self._setupUi()
         self._source = None
 
@@ -65,6 +73,10 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.updateShape(self.size())
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
+        self.timer = QTimer()
+
+    def _setready(self) -> None:
+        self._ready = True
 
     @pyqtProperty(QVideoSource)
     def source(self) -> QVideoSource:
@@ -83,7 +95,10 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @pyqtSlot(np.ndarray)
     def setImage(self, image: QCamera.Image) -> None:
-        self.image.setImage(image, autoLevels=False)
+        if self._ready:
+            self.image.setImage(image, autoLevels=False)
+            self._ready = False
+            self.timer.singleShot(self.frameinterval, self._setready)
 
     @pyqtSlot(QSize)
     def updateShape(self, shape: QSize) -> None:

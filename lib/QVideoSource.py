@@ -2,8 +2,8 @@ from pyqtgraph.Qt.QtCore import (QThread,
                                  QMutex, QMutexLocker, QWaitCondition,
                                  pyqtSlot, pyqtSignal, pyqtProperty,
                                  QVariant, QSize)
-from .QCamera import QCamera
-from .QVideoReader import QVideoReader
+from QVideo.lib.QCamera import QCamera
+from QVideo.lib.QVideoReader import QVideoReader
 import numpy as np
 from typing import TypeAlias
 import logging

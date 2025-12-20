@@ -26,9 +26,9 @@ class QVideoScreen(GraphicsLayoutWidget):
     size : tuple(int, int)
         Starting dimensions of the VideoScreen.
         Default: (640, 480)
-    frameinterval : int
-        Time interval between displayed images [ms]
-        Default: 0 -- no delay
+    framerate : int | None
+        Maximum frames per second
+        Default: None -- no delay
     kwargs : dict
         Additional keyword arguments to pass to the
         GraphicsLayoutWidget constructor.
@@ -55,10 +55,10 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
-                 frameinterval: int = 0,
+                 framerate: int | None = None,
                  **kwargs) -> None:
         super().__init__(*args, size=size, **kwargs)
-        self.frameinterval = frameinterval
+        self.framerate = framerate
         self._ready = True
         self._setupUi()
         self._source = None
@@ -74,6 +74,15 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
         self.timer = QTimer()
+
+    @pyqtProperty(int)
+    def framerate(self) -> int | None:
+        return self._framerate
+
+    @framerate.setter
+    def framerate(self, framerate: int | None) -> None:
+        self._framerate = framerate
+        self._interval = 0 if framerate is None else int(1000/framerate)
 
     def _setready(self) -> None:
         self._ready = True
@@ -98,7 +107,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         if self._ready:
             self.image.setImage(image, autoLevels=False)
             self._ready = False
-            self.timer.singleShot(self.frameinterval, self._setready)
+            self.timer.singleShot(self._interval, self._setready)
 
     @pyqtSlot(QSize)
     def updateShape(self, shape: QSize) -> None:

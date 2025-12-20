@@ -108,15 +108,18 @@ class QVideoScreen(GraphicsLayoutWidget):
                            padding=0, update=True)
         self.setMinimumSize(shape / 2)
 
+    @classmethod
+    def example(cls: 'QVideoScreen') -> None:
+        import pyqtgraph as pg
+        from QVideo.cameras.Noise import QNoiseSource
 
-def main() -> None:
-    import pyqtgraph as pg
-
-    app = pg.mkQApp()
-    widget = QVideoScreen()
-    widget.show()
-    pg.exec()
+        app = pg.mkQApp()
+        screen = cls()
+        source = QNoiseSource(blacklevel=48, whitelevel=128)
+        screen.source = source.start()
+        screen.show()
+        pg.exec()
 
 
 if __name__ == '__main__':
-    main()
+    QVideoScreen.example()

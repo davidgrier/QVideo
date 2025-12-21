@@ -243,7 +243,7 @@ class QCamera(QObject, metaclass=QCameraMeta):
     def color(self) -> bool:
         return False
 
-    @pyqtProperty(int)
+    @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
     def width(self) -> int:
         pass
@@ -253,7 +253,7 @@ class QCamera(QObject, metaclass=QCameraMeta):
     def width(self, value: int) -> None:
         self.shapeChanged.emit(self.shape)
 
-    @pyqtProperty(int)
+    @pyqtProperty(int, notify=shapeChanged)
     @abstractmethod
     def height(self) -> int:
         pass

@@ -14,84 +14,13 @@ except (ImportError, ModuleNotFoundError) as error:
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 __all__ = ['QGenicamCamera', 'QGenicamSource']
 
 
-def _properties(feature: IValue) -> list[str]:
-    '''Return names of accessible properties'''
-    this = []
-    if isinstance(feature, ICategory):
-        for f in feature.features:
-            this.extend(_properties(f))
-    elif isinstance(feature, (IEnumeration, IBoolean, IInteger, IFloat)):
-        accessmode = feature.node.get_access_mode()
-        if accessmode in (EAccessMode.RO, EAccessMode.RW):
-            this = [feature.node.name]
-    return this
-
-
-def _methods(feature: IValue) -> list[str]:
-    '''Return names of executable methods'''
-    this = []
-    if isinstance(feature, ICategory):
-        for f in feature.features:
-            this.extend(_methods(f))
-    elif isinstance(feature, ICommand):
-        this = [feature.node.name]
-    return this
-
-
-def _modes(feature: IValue) -> dict[str, int]:
-    '''Return access modes of all camera settings'''
-    modes = dict()
-    if isinstance(feature, ICategory):
-        for f in feature.features:
-            modes.update(_modes(f))
-    elif isinstance(feature, (IEnumeration, IBoolean, IInteger, IFloat)):
-        name = feature.node.name
-        mode = feature.node.get_access_mode()
-        modes[name] = mode
-    return modes
-
-
-def _set(feature: IValue, value: QCamera.PropertyValue):
-    '''Set the value of a feature'''
-    mode = feature.node.get_access_mode()
-    if mode not in (EAccessMode.RW, EAccessMode.WO):
-        logger.info(f'{feature.node.name} is not writeable')
-        return
-    logger.debug(f'Setting {feature.node.name}: {value}')
-    if isinstance(feature, IEnumeration):
-        if value in [v.symbolic for v in feature.entries]:
-            feature.from_string(value)
-        else:
-            logger.warning(f'{value} is not in {feature.name}')
-    elif isinstance(feature, IBoolean):
-        feature.value = bool(value)
-    elif isinstance(feature, IInteger):
-        value = np.clip(value, feature.min, feature.max)
-        value = (value - feature.min) // feature.inc
-        feature.value = int(value * feature.inc + feature.min)
-    elif isinstance(feature, IFloat):
-        feature.value = float(np.clip(value, feature.min, feature.max))
-    elif isinstance(feature, IString):
-        feature.value = str(value)
-
-
-def _get(feature: IValue) -> QCamera.PropertyValue | None:
-    '''Return the value of a feature'''
-    accessmode = feature.node.get_access_mode()
-    if accessmode not in (EAccessMode.RW, EAccessMode.RO):
-        logger.info('f{feature.node.name} is not readable')
-        return None
-    logger.debug(f'Getting {feature.node.name}')
-    if isinstance(feature, IEnumeration):
-        return feature.to_string()
-    else:
-        return feature.value
+IProperty = (IEnumeration, IBoolean, IInteger, IFloat)
 
 
 class QGenicamCamera(QCamera):
@@ -126,6 +55,80 @@ class QGenicamCamera(QCamera):
         Index of camera to use (default 0)
     '''
 
+    @staticmethod
+    def __properties(feature: IValue) -> list[str]:
+        '''Returns a list of names of accessible properties'''
+        properties = []
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                properties.extend(QGenicamCamera.__properties(f))
+        elif isinstance(feature, IProperty):
+            accessmode = feature.node.get_access_mode()
+            if accessmode in (EAccessMode.RO, EAccessMode.RW):
+                properties = [feature.node.name]
+        return properties
+
+    @staticmethod
+    def __methods(feature: IValue) -> list[str]:
+        '''Returns list of names of executable methods'''
+        methods = []
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                methods.extend(QGenicamCamera.__methods(f))
+        elif isinstance(feature, ICommand):
+            methods = [feature.node.name]
+        return methods
+
+    @staticmethod
+    def __modes(feature: IValue) -> dict[str, int]:
+        '''Returns a dictionary of access modes of all camera settings'''
+        modes = dict()
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                modes.update(QGenicamCamera.__modes(f))
+        elif isinstance(feature, IProperty):
+            name = feature.node.name
+            mode = feature.node.get_access_mode()
+            modes[name] = mode
+        return modes
+
+    @staticmethod
+    def __set(feature: IValue, value: QCamera.PropertyValue):
+        '''Sets the value of a feature'''
+        mode = feature.node.get_access_mode()
+        if mode not in (EAccessMode.RW, EAccessMode.WO):
+            logger.info(f'{feature.node.name} is not writeable')
+            return
+        logger.debug(f'Setting {feature.node.name}: {value}')
+        if isinstance(feature, IEnumeration):
+            if value in [v.symbolic for v in feature.entries]:
+                feature.from_string(value)
+            else:
+                logger.warning(f'{value} is not in {feature.name}')
+        elif isinstance(feature, IBoolean):
+            feature.value = bool(value)
+        elif isinstance(feature, IInteger):
+            value = np.clip(value, feature.min, feature.max)
+            value = (value - feature.min) // feature.inc
+            feature.value = int(value * feature.inc + feature.min)
+        elif isinstance(feature, IFloat):
+            feature.value = float(np.clip(value, feature.min, feature.max))
+        elif isinstance(feature, IString):
+            feature.value = str(value)
+
+    @staticmethod
+    def __get(feature: IValue) -> QCamera.PropertyValue | None:
+        '''Returns the value of a feature'''
+        accessmode = feature.node.get_access_mode()
+        if accessmode not in (EAccessMode.RW, EAccessMode.RO):
+            logger.info('f{feature.node.name} is not readable')
+            return None
+        logger.debug(f'Getting {feature.node.name}')
+        if isinstance(feature, IEnumeration):
+            return feature.to_string()
+        else:
+            return feature.value
+
     def __init__(self, producer: str,
                  *args,
                  cameraID: int = 0,
@@ -153,11 +156,11 @@ class QGenicamCamera(QCamera):
             self.node_map = self.device.remote_device.node_map
             self.name = self.node_map.DeviceModelName.value
             root = self.node()
-            self._properties = _properties(root)
-            self._methods = _methods(root)
-            ma = _modes(root)
+            self._properties = self.__properties(root)
+            self._methods = self.__methods(root)
+            ma = self.__modes(root)
             self.device.start()
-            mb = _modes(root)
+            mb = self.__modes(root)
             self.protected = [k for k, v in ma.items() if mb[k] != v]
         finally:
             return self.device.is_valid()
@@ -185,7 +188,7 @@ class QGenicamCamera(QCamera):
         if self.node_map.has_node(name):
             return self.node_map.get_node(name)
         else:
-            logger.debug(f'node {name} is unknown')
+            logger.warning(f'node {name} is unknown')
             return None
 
     @pyqtSlot(str, object)
@@ -197,7 +200,7 @@ class QGenicamCamera(QCamera):
                 logger.debug(f'setting {key}: {value} ({restart})')
                 if restart:
                     self.device.stop()
-                _set(feature, value)
+                self.__set(feature, value)
                 if restart:
                     self.device.start()
 
@@ -207,7 +210,7 @@ class QGenicamCamera(QCamera):
         value = None
         if (feature := self.node(key)):
             with QMutexLocker(self.mutex):
-                value = _get(feature)
+                value = self.__get(feature)
                 logger.debug(f'getting {key}: {value}')
                 self.propertyValue.emit(key, value)
         return value

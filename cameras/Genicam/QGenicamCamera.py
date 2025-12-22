@@ -20,7 +20,7 @@ logger.setLevel(logging.WARNING)
 __all__ = ['QGenicamCamera', 'QGenicamSource']
 
 
-IProperty = (IEnumeration, IBoolean, IInteger, IFloat)
+IProperty = IEnumeration | IBoolean | IInteger | IFloat
 
 
 class QGenicamCamera(QCamera):

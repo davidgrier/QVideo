@@ -56,6 +56,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         Update the display shape based on the video source shape.
     '''
 
+    announce = pyqtSignal(str)
+
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
                  framerate: int | None = None,
@@ -118,6 +120,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = Path.home() / f'pyfab_{ts}.png'
         exporter.export(str(filename))
+        self.announce.emit(f'Saved image to {filename}')
         logger.info(f'Saved {filename}')
 
     @pyqtSlot(QSize)

@@ -116,8 +116,8 @@ class QVideoScreen(GraphicsLayoutWidget):
     def saveImage(self) -> None:
         exporter = ImageExporter(self.image)
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = Path.home() / f'pyfab._{ts}.png'
-        exporter.export(filename)
+        filename = Path.home() / f'pyfab_{ts}.png'
+        exporter.export(str(filename))
         logger.info(f'Saved {filename}')
 
     @pyqtSlot(QSize)

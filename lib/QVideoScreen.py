@@ -1,9 +1,10 @@
 from QVideo.lib import (QCamera, QVideoSource)
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QSize, QTimer)
-from pyqtgraph import (GraphicsLayoutWidget, ImageItem, FileDialog)
+from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 from pyqtgraph.exporters import ImageExporter
 import numpy as np
 from pathlib import Path
+from datetime import datetime
 import logging
 
 
@@ -113,14 +114,11 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @pyqtSlot()
     def saveImage(self) -> None:
-        getname = FileDialog.getSaveFileName
-        default = Path.home() / 'pyfab.png'
-        filename, _ = getname(self, 'Save Image', str(default),
-                              'PNG Files (*.png)')
-        if filename is not None:
-            exporter = ImageExporter(self.image)
-            exporter.export(filename)
-            logger.info('Saved screenshot.png')
+        exporter = ImageExporter(self.image)
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = Path.home() / f'pyfab._{ts}.png'
+        exporter.export(filename)
+        logger.info(f'Saved {filename}')
 
     @pyqtSlot(QSize)
     def updateShape(self, shape: QSize) -> None:

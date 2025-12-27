@@ -46,6 +46,7 @@ class QCamcorder(QWidget):
         self._setupUi()
         self._connectSignals()
         self.screen.source = self.source
+        self.dvr.source = self.source
 
     def _setupUi(self) -> None:
         uifile = str(Path(__file__).parent / self.UIFILE)
@@ -53,7 +54,6 @@ class QCamcorder(QWidget):
         self.controls.layout().addWidget(self.cameraWidget)
 
     def _connectSignals(self) -> None:
-        self.dvr.source = self.source
         self.dvr.playing.connect(self.dvrPlayback)
 
     @pyqtSlot(bool)

@@ -1,7 +1,9 @@
 from QVideo.lib import (QCamera, QVideoSource)
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QSize, QTimer)
-from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
+from pyqtgraph import (GraphicsLayoutWidget, ImageItem, FileDialog)
+from pyqtgraph.exporters import ImageExporter
 import numpy as np
+from pathlib import Path
 import logging
 
 
@@ -12,7 +14,7 @@ logger.setLevel(logging.WARNING)
 
 class QVideoScreen(GraphicsLayoutWidget):
 
-    '''A video display widget for showing frames from a QVideoSource.
+    '''Video display widget.
 
     Inherits
     --------
@@ -108,6 +110,17 @@ class QVideoScreen(GraphicsLayoutWidget):
             self.image.setImage(image, autoLevels=False)
             self._ready = False
             self.timer.singleShot(self._interval, self._setready)
+
+    @pyqtSlot()
+    def saveImage(self) -> None:
+        getname = FileDialog.getSaveFileName
+        default = Path.home() / 'pyfab.png'
+        filename, _ = getname(self, 'Save Image', str(default),
+                              'PNG Files (*.png)')
+        if filename is not None:
+            exporter = ImageExporter(self.image)
+            exporter.export(filename)
+            logger.info('Saved screenshot.png')
 
     @pyqtSlot(QSize)
     def updateShape(self, shape: QSize) -> None:

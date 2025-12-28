@@ -1,5 +1,6 @@
 from QVideo.lib import (QCamera, QVideoSource)
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QSize, QTimer)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
+                                 QSize, QTimer)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
 from pyqtgraph.exporters import ImageExporter
 import numpy as np
@@ -56,7 +57,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         Update the display shape based on the video source shape.
     '''
 
-    announce = pyqtSignal(str)
+    status = pyqtSignal(str)
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
@@ -118,10 +119,11 @@ class QVideoScreen(GraphicsLayoutWidget):
     def saveImage(self) -> None:
         exporter = ImageExporter(self.image)
         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = Path.home() / f'pyfab_{ts}.png'
-        exporter.export(str(filename))
-        self.announce.emit(f'Saved image to {filename}')
-        logger.info(f'Saved {filename}')
+        filename = str(Path.home() / f'pyfab_{ts}.png')
+        exporter.export(filename)
+        message = f'Saved image to {filename}'
+        self.status.emit(message)
+        logger.info(message)
 
     @pyqtSlot(QSize)
     def updateShape(self, shape: QSize) -> None:

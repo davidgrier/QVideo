@@ -1,14 +1,13 @@
-from PyQt5.QtCore import QObject
+from pyqtgraph.Qt.QtCore import QObject
 from QVideo.lib.VideoFilter import VideoFilter
 import numpy as np
 
 
-class FilterBank(QObject):
+class QFilterBank(QObject):
 
-    def __init__(self, interval: float = 0.03) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.filters = []
-        self.interval = interval
 
     def __call__(self, data: np.ndarray) -> None:
         for filter in self.filters:

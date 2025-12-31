@@ -71,12 +71,11 @@ class QCameraTree(ParameterTree):
     def _getParameters(parameter: Parameter) -> dict[str, object]:
         '''Recursively find setters for named Parameters'''
         parameters = dict()
-        if parameter.hasChildren():
-            for p in parameter.children():
-                parameters.update(QCameraTree._getParameters(p))
-        else:
-            name = parameter.name()
-            parameters.update({name: parameter})
+        for child in parameter.children():
+            if child.hasChildren():
+                parameters.update(QCameraTree._getParameters(child))
+            else:
+                parameters.update({child.name(): child})
         return parameters
 
     @staticmethod

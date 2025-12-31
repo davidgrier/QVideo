@@ -1,6 +1,5 @@
 from QVideo.lib.VideoFilter import VideoFilter
 import numpy as np
-from typing import Optional
 
 
 class MoMedian(VideoFilter):
@@ -9,11 +8,11 @@ class MoMedian(VideoFilter):
 
     def __init__(self,
                  order: int = 1,
-                 data: Optional[np.ndarray] = None) -> None:
+                 data: np.ndarray | None = None) -> None:
         self._order = order
         self._initialize(data)
 
-    def _initialize(self, data: Optional[np.ndarray] = None) -> None:
+    def _initialize(self, data: np.ndarray | None = None) -> None:
         self._index = 0
         if data is None:
             self.shape = None
@@ -40,7 +39,7 @@ class MoMedian(VideoFilter):
         self._buffer[self._index] = data
         self._index = (self._index + 1) % 2
 
-    def get(self) -> Optional[np.ndarray]:
+    def get(self) -> np.ndarray | None:
         '''Returns the most recent median estimate'''
         return self._result
 

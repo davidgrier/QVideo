@@ -55,8 +55,8 @@ def Normalize_Factory(base_class):
             bg = super().get()
             result = np.divide(self._fg, bg, where=(bg != 0))
             if self.scale:
-                result = (self.mean * result).astype(np.uint8)
-            return result
+                result = self.mean * result
+            return result.astype(np.uint8)
 
     return Normalize
 

@@ -1,4 +1,4 @@
-from QVideo.lib import (QCamera, QVideoSource)
+from QVideo.lib import (QCamera, QVideoSource, QFilterBank)
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
                                  QSize, QTimer)
 from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
@@ -68,6 +68,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._ready = True
         self._setupUi()
         self._source = None
+        self.filter = QFilterBank()
 
     def _setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -111,7 +112,7 @@ class QVideoScreen(GraphicsLayoutWidget):
     @pyqtSlot(np.ndarray)
     def setImage(self, image: QCamera.Image) -> None:
         if self._ready:
-            self.image.setImage(image, autoLevels=False)
+            self.image.setImage(self.filter(image), autoLevels=False)
             self._ready = False
             self.timer.singleShot(self._interval, self._setready)
 

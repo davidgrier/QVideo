@@ -1,4 +1,5 @@
-from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout, QRadioButton)
+from pyqtgraph.Qt.QtWidgets import (
+    QWidget, QGroupBox, QHBoxLayout, QRadioButton)
 from pyqtgraph.Qt.QtCore import pyqtSlot
 from QVideo.lib.VideoFilter import VideoFilter
 import numpy as np
@@ -7,24 +8,27 @@ import numpy as np
 __all__ = ['QRGBFilter', 'RGBFilter']
 
 
-class QRGBFilter(QWidget):
+class QRGBFilter(QGroupBox):
+
+    '''GUI widget for RGBFilter
+    '''
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        super().__init__('Color Channel', parent)
         self.filter = RGBFilter()
         self._setupUi()
 
-    def __call__(self, image: np.ndarray) -> RGBFilter:
+    def __call__(self, image: np.ndarray) -> np.ndarray:
         return self.filter(image)
 
     def _setupUi(self) -> None:
         layout = QHBoxLayout(self)
         labels = 'Red Green Blue All'.split()
         buttons = [QRadioButton(t) for t in labels]
-        buttons[3].setChecked(True)
         for n, button in enumerate(buttons):
             layout.addWidget(button)
             button.toggled.connect(lambda c, n=n: self.setChannel(c, n))
+        buttons[3].setChecked(True)
 
     @pyqtSlot(bool, int)
     def setChannel(self, checked: bool, channel: int) -> None:

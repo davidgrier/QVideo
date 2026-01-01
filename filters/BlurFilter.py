@@ -1,8 +1,7 @@
-from pyqtgraph.Qt.QtWidgets import (
-    QWidget, QGroupBox, QHBoxLayout, QCheckBox)
+from pyqtgraph.Qt.QtWidgets import (QWidget, QLabel)
 from pyqtgraph import SpinBox
 from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
-from QVideo.lib.VideoFilter import VideoFilter
+from QVideo.lib.VideoFilter import (QVideoFilter, VideoFilter)
 import numpy as np
 import cv2
 
@@ -10,31 +9,18 @@ import cv2
 __all__ = ['BlurFilter', 'QBlurFilter']
 
 
-class QBlurFilter(QGroupBox):
+class QBlurFilter(QVideoFilter):
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__('Gaussian Blur', parent)
-        self.filter = BlurFilter()
-        self._enabled = False
-        self._setupUi()
-
-    def __call__(self, image: np.ndarray) -> np.ndarray:
-        return self.filter(image) if self._enabled else image
+        super().__init__('Gaussian Blur', parent, BlurFilter())
 
     def _setupUi(self) -> None:
-        layout = QHBoxLayout(self)
-        enabledBox = QCheckBox('Enabled', self)
-        layout.addWidget(enabledBox)
-        enabledBox.stateChanged.connect(self.enable)
-        enabledBox.setChecked(self._enabled)
+        super()._setupUi()
+        self.layout.addWidget(QLabel('width'))
         spinbox = SpinBox(self, value=self.filter.width, step=2, int=True)
-        layout.addWidget(spinbox)
+        self.layout.addWidget(spinbox)
         spinbox.setMinimum(1)
         spinbox.valueChanged.connect(self.setWidth)
-
-    @pyqtSlot(int)
-    def enable(self, state: int) -> None:
-        self._enabled = bool(state)
 
     @pyqtSlot(object)
     def setWidth(self, width: int) -> None:
@@ -70,14 +56,5 @@ class BlurFilter(VideoFilter):
         self._width = int(width + (1 - width % 2))
 
 
-def example() -> None:
-    import pyqtgraph as pg
-
-    app = pg.mkQApp()
-    widget = QBlurFilter()
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':
-    example()
+    QBlurFilter.example()

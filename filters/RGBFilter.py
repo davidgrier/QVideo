@@ -1,39 +1,29 @@
-from pyqtgraph.Qt.QtWidgets import (
-    QWidget, QGroupBox, QHBoxLayout, QRadioButton)
+from pyqtgraph.Qt.QtWidgets import (QWidget, QRadioButton)
 from pyqtgraph.Qt.QtCore import pyqtSlot
-from QVideo.lib.VideoFilter import VideoFilter
+from QVideo.lib.VideoFilter import (QVideoFilter, VideoFilter)
 import numpy as np
 
 
 __all__ = ['QRGBFilter', 'RGBFilter']
 
 
-class QRGBFilter(QGroupBox):
-
-    '''GUI widget for RGBFilter
-    '''
+class QRGBFilter(QVideoFilter):
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__('Color Channel', parent)
-        self.filter = RGBFilter()
-        self._setupUi()
-
-    def __call__(self, image: np.ndarray) -> np.ndarray:
-        return self.filter(image)
+        super().__init__('Color Channel', parent, RGBFilter())
 
     def _setupUi(self) -> None:
-        layout = QHBoxLayout(self)
-        labels = 'Red Green Blue All'.split()
+        super()._setupUi()
+        labels = 'Red Green Blue'.split()
         buttons = [QRadioButton(t) for t in labels]
         for n, button in enumerate(buttons):
-            layout.addWidget(button)
+            self.layout.addWidget(button)
             button.toggled.connect(lambda c, n=n: self.setChannel(c, n))
-        buttons[3].setChecked(True)
+        buttons[self.filter.channel].setChecked(True)
 
     @pyqtSlot(bool, int)
     def setChannel(self, checked: bool, channel: int) -> None:
-        if checked:
-            self.filter.channel = channel
+        self.filter.channel = channel
 
 
 class RGBFilter(VideoFilter):
@@ -44,7 +34,6 @@ class RGBFilter(VideoFilter):
     ----------
     channel: int
         Channel to extract: 0=Red, 1=Green, 2=Blue
-        Default: 3 (passes through all channels)
 
     Methods
     -------
@@ -58,26 +47,17 @@ class RGBFilter(VideoFilter):
         super().__init__()
         self.channel = channel
 
-    def add(self, data: np.ndarray) -> None:
+    def add(self, image: np.ndarray) -> None:
         '''Incorporates new data'''
-        self.data = data
-        self.passthrough = (self.channel == 3) or (data.ndim < 3)
+        if image.ndim == 2:
+            self.data = image
+        else:
+            self.data = np.squeeze(image[:, :, self.channel])
 
     def get(self) -> np.ndarray:
         '''Returns extracted channel image'''
-        if self.passthrough:
-            return self.data
-        return np.squeeze(self.data[:, :, self.channel])
-
-
-def example() -> None:
-    import pyqtgraph as pg
-
-    app = pg.mkQApp()
-    widget = QRGBFilter()
-    widget.show()
-    pg.exec()
+        return self.data
 
 
 if __name__ == '__main__':
-    example()
+    QRGBFilter.example()

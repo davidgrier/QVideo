@@ -1,37 +1,23 @@
-from pyqtgraph.Qt.QtWidgets import (QGroupBox, QHBoxLayout,
-                                    QCheckBox, QPushButton)
+from pyqtgraph.Qt.QtWidgets import (QWidget, QPushButton)
 from pyqtgraph.Qt.QtCore import pyqtSlot
+from QVideo.lib.VideoFilter import QVideoFilter
 from QVideo.filters.Normalize import Normalize
 import numpy as np
 
 
-class QSampleHold(QGroupBox):
+class QSampleHold(QVideoFilter):
 
     '''GUI widget for SampleHold filter
     '''
 
-    def __init__(self, parent: QGroupBox | None = None) -> None:
-        super().__init__('Sample and Hold', parent)
-        self.filter = SampleHold()
-        self._enabled = False
-        self._setupUi()
-
-    def __call__(self, image: np.ndarray) -> np.ndarray:
-        return self.filter(image) if self._enabled else image
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__('Sample and Hold', parent, SampleHold())
 
     def _setupUi(self) -> None:
-        layout = QHBoxLayout(self)
-        enabledBox = QCheckBox('Enabled', self)
-        layout.addWidget(enabledBox)
+        super()._setupUi()
         resetButton = QPushButton('Reset', self)
-        layout.addWidget(resetButton)
-        enabledBox.stateChanged.connect(self.enable)
+        self.layout.addWidget(resetButton)
         resetButton.clicked.connect(self.reset)
-        enabledBox.setChecked(self._enabled)
-
-    @pyqtSlot(int)
-    def enable(self, state: int) -> None:
-        self._enabled = bool(state)
 
     @pyqtSlot(bool)
     def reset(self, checked) -> None:
@@ -67,3 +53,7 @@ class SampleHold(Normalize):
             self.count -= 1
         else:
             self._fg = data - self.darkcount
+
+
+if __name__ == '__main__':
+    QSampleHold.example()

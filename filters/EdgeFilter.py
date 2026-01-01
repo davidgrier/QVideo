@@ -1,35 +1,47 @@
-from pyqtgraph.Qt.QtWidgets import (
-    QWidget, QGroupBox, QHBoxLayout, QCheckBox)
+from pyqtgraph.Qt.QtWidgets import (QWidget, QLabel)
+from pyqtgraph import SpinBox
 from pyqtgraph.Qt.QtCore import pyqtSlot
-from QVideo.lib.VideoFilter import VideoFilter
+from QVideo.lib.VideoFilter import (QVideoFilter, VideoFilter)
 import numpy as np
 import cv2
 
 
-class QEdgeFilter(QGroupBox):
+__all__ = ['QEdgeFilter', 'EdgeFilter']
+
+
+class QEdgeFilter(QVideoFilter):
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__('Edge Detection', parent)
-        self.filter = EdgeFilter()
-        self._enabled = False
-        self._setupUi()
-
-    def __call__(self, image: np.ndarray) -> np.ndarray:
-        return self.filter(image) if self._enabled else image
+        super().__init__('Canny Edge Detection', parent, EdgeFilter())
 
     def _setupUi(self) -> None:
-        layout = QHBoxLayout(self)
-        enabledBox = QCheckBox('Enabled', self)
-        layout.addWidget(enabledBox)
-        enabledBox.stateChanged.connect(self.enable)
-        enabledBox.setChecked(self._enabled)
+        super()._setupUi()
+        self.layout.addWidget(QLabel('low'))
+        low = SpinBox(self, value=self.filter.low, int=True)
+        low.setMinimum(1)
+        low.valueChanged.connect(self.setLow)
+        self.layout.addWidget(low)
+        self.layout.addWidget(QLabel('high'))
+        high = SpinBox(self, value=self.filter.high, int=True)
+        high.setMinimum(2)
+        high.valueChanged.connect(self.setHigh)
+        self.layout.addWidget(high)
 
-    @pyqtSlot(int)
-    def enable(self, state: int) -> None:
-        self._enabled = bool(state)
+    @pyqtSlot(object)
+    def setLow(self, low: int) -> None:
+        self.filter.low = low
+
+    @pyqtSlot(object)
+    def setHigh(self, high: int) -> None:
+        self.filter.high = high
 
 
 class EdgeFilter(VideoFilter):
+
+    def __init__(self, low: int = 50, high: int = 150) -> None:
+        super().__init__()
+        self.low = low
+        self.high = high
 
     def add(self, image: np.ndarray) -> None:
         if image.ndim == 3:
@@ -38,17 +50,8 @@ class EdgeFilter(VideoFilter):
             self.data = image
 
     def get(self) -> np.ndarray:
-        return cv2.Canny(self.data, 50, 150)
-
-
-def example() -> None:
-    import pyqtgraph as pg
-
-    app = pg.mkQApp()
-    widget = QEdgeFilter()
-    widget.show()
-    pg.exec()
+        return cv2.Canny(self.data, self.low, self.high)
 
 
 if __name__ == '__main__':
-    example()
+    QEdgeFilter.example()

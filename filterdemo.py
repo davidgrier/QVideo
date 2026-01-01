@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from QVideo.lib import (QVideoScreen, QCameraTree, QFilterBank)
+from QVideo.lib import (QVideoScreen, QCameraTree)
 from QVideo.filters.RGBFilter import QRGBFilter
 from QVideo.filters.SampleHold import QSampleHold
 from QVideo.filters.BlurFilter import QBlurFilter
@@ -49,7 +49,7 @@ class demo(QWidget):
         self.controls.addWidget(self.cameraWidget)
 
     def addFilters(self) -> None:
-        self.screen.filter = QFilterBank(self)
+        self.screen.filter.setVisible(True)
         for cls in [QRGBFilter, QBlurFilter, QSampleHold, QEdgeFilter]:
             self.screen.filter.register(cls())
         self.controls.addWidget(self.screen.filter)

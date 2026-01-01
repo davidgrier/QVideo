@@ -1,6 +1,9 @@
 from pyqtgraph.Qt.QtWidgets import (QGroupBox, QWidget, QVBoxLayout)
 from QVideo.lib.VideoFilter import QVideoFilter
 import numpy as np
+import QVideo.filters
+from pathlib import Path
+from importlib import import_module
 
 
 class QFilterBank(QGroupBox):
@@ -25,3 +28,12 @@ class QFilterBank(QGroupBox):
     def deregister(self, filter: QVideoFilter) -> None:
         self.filters.remove(filter)
         self.layout.removeWidget(filter)
+
+    def registerByName(self, filtername: str) -> None:
+        modulename = f'QVideo.filters.{filtername}'
+        module = import_module(modulename)
+        if hasattr(module, filtername):
+            filter = getattr(module, filtername)()
+            self.register(filter)
+        else:
+            print(modulename)

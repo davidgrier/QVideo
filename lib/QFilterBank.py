@@ -35,5 +35,3 @@ class QFilterBank(QGroupBox):
         if hasattr(module, filtername):
             filter = getattr(module, filtername)()
             self.register(filter)
-        else:
-            print(modulename)

@@ -9,7 +9,7 @@ class QFilterBank(QObject):
         super().__init__()
         self.filters = []
 
-    def __call__(self, data: np.ndarray) -> None:
+    def __call__(self, data: np.ndarray) -> np.ndarray:
         for filter in self.filters:
             data = filter(data)
         return data

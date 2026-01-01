@@ -3,6 +3,8 @@
 from QVideo.lib import (QVideoScreen, QCameraTree)
 from QVideo.filters.RGBFilter import QRGBFilter
 from QVideo.filters.SampleHold import QSampleHold
+from QVideo.filters.BlurFilter import QBlurFilter
+from QVideo.filters.EdgeFilter import QEdgeFilter
 from pyqtgraph.Qt.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout)
 
 
@@ -47,7 +49,7 @@ class demo(QWidget):
         self.controlLayout.addWidget(self.cameraWidget)
 
     def addFilters(self) -> None:
-        for cls in [QRGBFilter, QSampleHold]:
+        for cls in [QRGBFilter, QSampleHold, QBlurFilter, QEdgeFilter]:
             widget = cls(self)
             self.controlLayout.addWidget(widget)
             self.screen.filter.register(widget)

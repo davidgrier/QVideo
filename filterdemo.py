@@ -12,6 +12,8 @@ class demo(QWidget):
     ----------
     cameraWidget : QCameraTree
         The camera control tree widget to display alongside the video feed.
+    filters : list[str]
+        List of the names of filters to include in filter bank
     kwargs : dict
         Additional keyword arguments to pass to the QWidget constructor.
 
@@ -28,14 +30,16 @@ class demo(QWidget):
     the provided camera widget and adds an RGB filter to the control layout.
     '''
 
-    def __init__(self, cameraWidget: QCameraTree, **kwargs) -> None:
+    def __init__(self,
+                 cameraWidget: QCameraTree,
+                 filters: list[str],
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         self.screen = QVideoScreen(self)
         self.cameraWidget = cameraWidget
         self._setupUi()
         self.screen.source = self.cameraWidget.source
-        filters = 'QRGBFilter QBlurFilter QSampleHold QEdgeFilter'
-        self.addFilters(filters.split())
+        self.addFilters(filters)
 
     def _setupUi(self) -> None:
         layout = QHBoxLayout(self)
@@ -58,7 +62,8 @@ def main() -> None:
 
     app = pg.mkQApp()
     camera = choose_camera().start()
-    widget = demo(camera)
+    filters = 'QRGBFilter QBlurFilter QSampleHold QEdgeFilter'.split()
+    widget = demo(camera, filters)
     widget.show()
     pg.exec()
 

@@ -61,12 +61,16 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.name = self.__class__.__name__
         self.mutex = QtCore.QMutex()
         self.waitcondition = QtCore.QWaitCondition()
         self._getInterface()
         self._paused = False
         self._isopen = False
+
+    @property
+    def name(self) -> str:
+        '''Camera name, derived from the concrete class name.'''
+        return type(self).__name__
 
     def __enter__(self) -> 'QCamera':
         return self.open()
@@ -75,11 +79,18 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         self.close()
 
     def _getInterface(self) -> None:
-        interface = vars(type(self)).items()
-        self._properties = [k for k, v in interface
-                            if isinstance(v, QtCore.pyqtProperty)]
-        self._methods = [k for k, v in interface
-                         if isinstance(v, types.FunctionType)]
+        properties: dict[str, QtCore.pyqtProperty] = {}
+        methods: dict[str, types.FunctionType] = {}
+        for cls in type(self).__mro__:
+            if cls is object:
+                continue
+            for k, v in vars(cls).items():
+                if k not in properties and isinstance(v, QtCore.pyqtProperty):
+                    properties[k] = v
+                if k not in methods and isinstance(v, types.FunctionType):
+                    methods[k] = v
+        self._properties = list(properties.keys())
+        self._methods = list(methods.keys())
 
     def open(self, *args, **kwargs) -> 'QCamera':
         '''Open the camera device.
@@ -100,6 +111,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         '''
         if not self._isopen:
             self._isopen = self._initialize(*args, **kwargs)
+            if not self._isopen:
+                logger.warning(f'{self.name}: initialization failed')
         return self
 
     @QtCore.pyqtSlot()
@@ -145,8 +158,12 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         return self._methods
 
     def settings(self) -> Settings:
-        '''Return all property values as a name→value dict.'''
-        return {p: self.get(p) for p in self.properties()}
+        '''Return all property values as a name→value dict.
+
+        Uses direct attribute access rather than :meth:`get` to avoid
+        emitting :attr:`propertyValue` for every property.
+        '''
+        return {p: getattr(self, p) for p in self.properties()}
 
     def setSettings(self, settings: Settings) -> None:
         '''Apply a dict of property name→value pairs.
@@ -214,7 +231,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         with QtCore.QMutexLocker(self.mutex):
             if key in self._methods:
                 method = getattr(self, key)
-                method(self)
+                method()
             else:
                 logger.error(f'Unknown method: {key}')
 

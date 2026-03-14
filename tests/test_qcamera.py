@@ -19,6 +19,7 @@ class _FakeCamera(QCamera):
         self._fps = 30.
         self._initialize_called = 0
         self._deinitialize_called = 0
+        self._method_called = False
 
     def _initialize(self, *args, **kwargs) -> bool:
         self._initialize_called += 1
@@ -26,6 +27,9 @@ class _FakeCamera(QCamera):
 
     def _deinitialize(self) -> None:
         self._deinitialize_called += 1
+
+    def calibrate(self) -> None:
+        self._method_called = True
 
     def read(self) -> QCamera.CameraData:
         frame = np.zeros((self._height, self._width), dtype=np.uint8)
@@ -111,6 +115,27 @@ class TestOpen(unittest.TestCase):
         cam.open()
         self.assertEqual(cam._initialize_called, 1)
 
+    def test_open_returns_self_on_failure(self):
+        cam = make_camera()
+        with patch.object(cam, '_initialize', return_value=False):
+            with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                result = cam.open()
+        self.assertIs(result, cam)
+
+    def test_open_logs_warning_on_failure(self):
+        cam = make_camera()
+        with patch.object(cam, '_initialize', return_value=False):
+            with self.assertLogs('QVideo.lib.QCamera', level='WARNING') as cm:
+                cam.open()
+        self.assertTrue(any('initialization failed' in line for line in cm.output))
+
+    def test_open_leaves_closed_on_failure(self):
+        cam = make_camera()
+        with patch.object(cam, '_initialize', return_value=False):
+            with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                cam.open()
+        self.assertFalse(cam.isOpen())
+
 
 class TestClose(unittest.TestCase):
 
@@ -172,6 +197,20 @@ class TestProperties(unittest.TestCase):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color'):
             self.assertIn(name, cam.properties())
+
+    def test_shape_property_discovered_via_mro(self):
+        # shape is defined on QCamera, not _FakeCamera — MRO traversal required
+        cam = make_camera()
+        self.assertIn('shape', cam.properties())
+
+    def test_subclass_properties_discovered(self):
+        class _ExtendedCamera(_FakeCamera):
+            @QtCore.pyqtProperty(int)
+            def gain(self) -> int:
+                return 0
+        cam = _ExtendedCamera()
+        self.assertIn('gain', cam.properties())
+        self.assertIn('width', cam.properties())  # inherited from _FakeCamera
 
     def test_methods_returns_list(self):
         cam = make_camera()
@@ -259,6 +298,12 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(cam.width, 320)
         self.assertEqual(cam.height, 240)
 
+    def test_settings_does_not_emit_property_value_signal(self):
+        cam = make_camera()
+        spy = QtTest.QSignalSpy(cam.propertyValue)
+        cam.settings()
+        self.assertEqual(len(spy), 0)
+
 
 class TestRead(unittest.TestCase):
 
@@ -305,6 +350,11 @@ class TestPauseResume(unittest.TestCase):
 
 
 class TestExecute(unittest.TestCase):
+
+    def test_execute_calls_method(self):
+        cam = make_camera()
+        cam.execute('calibrate')
+        self.assertTrue(cam._method_called)
 
     def test_execute_invalid_method_logs_error(self):
         cam = make_camera()

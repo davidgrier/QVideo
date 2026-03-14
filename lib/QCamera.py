@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from pyqtgraph.Qt import QtCore
 from numpy.typing import NDArray
-from typing import TypeAlias
 import numpy as np
 import types
 import logging
@@ -52,10 +51,10 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         Return type of :meth:`read`: success flag and frame (or ``None``).
     '''
 
-    PropertyValue: TypeAlias = bool | int | float | str
-    Settings: TypeAlias = dict[str, PropertyValue]
-    Image: TypeAlias = NDArray[np.uint8]
-    CameraData: TypeAlias = tuple[bool, Image | None]
+    PropertyValue = bool | int | float | str
+    Settings = dict[str, PropertyValue]
+    Image = NDArray[np.uint8]
+    CameraData = tuple[bool, Image | None]
 
     shapeChanged = QtCore.pyqtSignal(QtCore.QSize)
     propertyValue = QtCore.pyqtSignal(str, object)
@@ -135,7 +134,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     @abstractmethod
     def _deinitialize(self) -> None:
-        '''Release device resources so that deletion or re-opening succeeds.'''
+        '''Release resources so that deletion or re-opening succeeds.'''
 
     def properties(self) -> list[str]:
         '''Return the names of all registered camera properties.'''

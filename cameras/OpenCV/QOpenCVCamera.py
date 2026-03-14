@@ -19,6 +19,11 @@ class QOpenCVCamera(QCamera):
     On Linux the V4L2 backend is selected automatically; all other
     platforms use ``CAP_ANY``.
 
+    Transform properties (``mirrored``, ``flipped``, ``gray``) are
+    registered immediately on construction.  Device properties
+    (``width``, ``height``, ``fps``, ``color``) are registered inside
+    :meth:`_initialize` once the capture device is open.
+
     Parameters
     ----------
     cameraID : int
@@ -33,21 +38,6 @@ class QOpenCVCamera(QCamera):
         Forwarded to :class:`~QVideo.lib.QCamera`.
     **kwargs :
         Forwarded to :class:`~QVideo.lib.QCamera`.
-
-    Properties
-    ----------
-    width : int
-        Frame width in pixels.
-    height : int
-        Frame height in pixels.
-    fps : float
-        Capture frame rate.
-    mirrored : bool
-        Whether horizontal mirroring is active.
-    flipped : bool
-        Whether vertical flipping is active.
-    gray : bool
-        Whether grayscale conversion is active.
     '''
 
     WIDTH = cv2.CAP_PROP_FRAME_WIDTH
@@ -64,13 +54,25 @@ class QOpenCVCamera(QCamera):
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraID = cameraID
+        self._mirrored = bool(mirrored)
+        self._flipped = bool(flipped)
+        self._gray = bool(gray)
+        self.registerProperty('mirrored',
+                              getter=lambda: self._mirrored,
+                              setter=lambda v: setattr(self, '_mirrored', bool(v)),
+                              ptype=bool)
+        self.registerProperty('flipped',
+                              getter=lambda: self._flipped,
+                              setter=lambda v: setattr(self, '_flipped', bool(v)),
+                              ptype=bool)
+        self.registerProperty('gray',
+                              getter=lambda: self._gray,
+                              setter=lambda v: setattr(self, '_gray', bool(v)),
+                              ptype=bool)
         self.open()
-        self.mirrored = mirrored
-        self.flipped = flipped
-        self.gray = gray
 
     def _initialize(self) -> bool:
-        '''Open the OpenCV VideoCapture device.
+        '''Open the OpenCV VideoCapture device and register device properties.
 
         Returns
         -------
@@ -82,11 +84,35 @@ class QOpenCVCamera(QCamera):
         for _ in range(5):
             if (ready := self.device.read()[0]):
                 break
+        if ready:
+            self.registerProperty('width',
+                                  getter=lambda: int(self.device.get(self.WIDTH)),
+                                  setter=self._setWidth,
+                                  ptype=int)
+            self.registerProperty('height',
+                                  getter=lambda: int(self.device.get(self.HEIGHT)),
+                                  setter=self._setHeight,
+                                  ptype=int)
+            self.registerProperty('fps',
+                                  getter=lambda: float(self.device.get(self.FPS)),
+                                  setter=lambda v: self.device.set(self.FPS, v),
+                                  ptype=float)
+            self.registerProperty('color',
+                                  getter=lambda: not self._gray,
+                                  ptype=bool)
         return ready
 
     def _deinitialize(self) -> None:
         '''Release the OpenCV VideoCapture device.'''
         self.device.release()
+
+    def _setWidth(self, value: int) -> None:
+        self.device.set(self.WIDTH, value)
+        self.shapeChanged.emit(self.shape)
+
+    def _setHeight(self, value: int) -> None:
+        self.device.set(self.HEIGHT, value)
+        self.shapeChanged.emit(self.shape)
 
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
@@ -105,73 +131,12 @@ class QOpenCVCamera(QCamera):
             return False, None
         if ready:
             if image.ndim == 3:
-                code = self.BGR2GRAY if self.gray else self.BGR2RGB
+                code = self.BGR2GRAY if self._gray else self.BGR2RGB
                 image = cv2.cvtColor(image, code)
-            if self.flipped or self.mirrored:
-                operation = self.mirrored * (1 - 2 * self.flipped)
+            if self._flipped or self._mirrored:
+                operation = self._mirrored * (1 - 2 * self._flipped)
                 image = cv2.flip(image, operation)
         return ready, image
-
-    @QtCore.pyqtProperty(int)
-    def width(self) -> int:
-        '''Frame width in pixels.'''
-        return int(self.device.get(self.WIDTH))
-
-    @width.setter
-    def width(self, value: int) -> None:
-        self.device.set(self.WIDTH, value)
-        self.shapeChanged.emit(self.shape)
-
-    @QtCore.pyqtProperty(int)
-    def height(self) -> int:
-        '''Frame height in pixels.'''
-        return int(self.device.get(self.HEIGHT))
-
-    @height.setter
-    def height(self, value: int) -> None:
-        self.device.set(self.HEIGHT, value)
-        self.shapeChanged.emit(self.shape)
-
-    @QtCore.pyqtProperty(float)
-    def fps(self) -> float:
-        '''Capture frame rate in frames per second.'''
-        return float(self.device.get(self.FPS))
-
-    @fps.setter
-    def fps(self, value: float) -> None:
-        self.device.set(self.FPS, value)
-
-    @QtCore.pyqtProperty(bool)
-    def color(self) -> bool:
-        '''``True`` if the camera delivers colour frames.'''
-        return not self.gray
-
-    @QtCore.pyqtProperty(bool)
-    def mirrored(self) -> bool:
-        '''``True`` if frames are flipped horizontally.'''
-        return self._mirrored
-
-    @mirrored.setter
-    def mirrored(self, value: bool) -> None:
-        self._mirrored = bool(value)
-
-    @QtCore.pyqtProperty(bool)
-    def flipped(self) -> bool:
-        '''``True`` if frames are flipped vertically.'''
-        return self._flipped
-
-    @flipped.setter
-    def flipped(self, value: bool) -> None:
-        self._flipped = bool(value)
-
-    @QtCore.pyqtProperty(bool)
-    def gray(self) -> bool:
-        '''``True`` if frames are converted to grayscale.'''
-        return self._gray
-
-    @gray.setter
-    def gray(self, value: bool) -> None:
-        self._gray = bool(value)
 
 
 class QOpenCVSource(QVideoSource):

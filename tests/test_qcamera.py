@@ -21,6 +21,31 @@ class _FakeCamera(QCamera):
         self._deinitialize_called = 0
         self._method_called = False
 
+        def _set_width(v):
+            self._width = int(v)
+            self.shapeChanged.emit(self.shape)
+
+        def _set_height(v):
+            self._height = int(v)
+            self.shapeChanged.emit(self.shape)
+
+        self.registerProperty('width',
+                              getter=lambda: self._width,
+                              setter=_set_width,
+                              ptype=int)
+        self.registerProperty('height',
+                              getter=lambda: self._height,
+                              setter=_set_height,
+                              ptype=int)
+        self.registerProperty('fps',
+                              getter=lambda: self._fps,
+                              setter=lambda v: setattr(self, '_fps', float(v)),
+                              ptype=float)
+        self.registerProperty('color',
+                              getter=lambda: False,
+                              ptype=bool)
+        self.registerMethod('calibrate', self.calibrate)
+
     def _initialize(self, *args, **kwargs) -> bool:
         self._initialize_called += 1
         return True
@@ -28,42 +53,12 @@ class _FakeCamera(QCamera):
     def _deinitialize(self) -> None:
         self._deinitialize_called += 1
 
-    def calibrate(self) -> None:
-        self._method_called = True
-
     def read(self) -> QCamera.CameraData:
         frame = np.zeros((self._height, self._width), dtype=np.uint8)
         return True, frame
 
-    @QtCore.pyqtProperty(bool)
-    def color(self) -> bool:
-        return False
-
-    @QtCore.pyqtProperty(int)
-    def width(self) -> int:
-        return self._width
-
-    @width.setter
-    def width(self, value: int) -> None:
-        self._width = value
-        self.shapeChanged.emit(self.shape)
-
-    @QtCore.pyqtProperty(int)
-    def height(self) -> int:
-        return self._height
-
-    @height.setter
-    def height(self, value: int) -> None:
-        self._height = value
-        self.shapeChanged.emit(self.shape)
-
-    @QtCore.pyqtProperty(float)
-    def fps(self) -> float:
-        return self._fps
-
-    @fps.setter
-    def fps(self, value: float) -> None:
-        self._fps = value
+    def calibrate(self) -> None:
+        self._method_called = True
 
 
 def make_camera() -> _FakeCamera:
@@ -187,34 +182,54 @@ class TestContextManager(unittest.TestCase):
             self.assertTrue(cam.isOpen())
 
 
-class TestProperties(unittest.TestCase):
+class TestRegistration(unittest.TestCase):
 
     def test_properties_returns_list(self):
         cam = make_camera()
         self.assertIsInstance(cam.properties(), list)
 
-    def test_known_properties_present(self):
+    def test_registered_properties_present(self):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color'):
             self.assertIn(name, cam.properties())
 
-    def test_shape_property_discovered_via_mro(self):
-        # shape is defined on QCamera, not _FakeCamera — MRO traversal required
-        cam = make_camera()
-        self.assertIn('shape', cam.properties())
-
-    def test_subclass_properties_discovered(self):
-        class _ExtendedCamera(_FakeCamera):
-            @QtCore.pyqtProperty(int)
-            def gain(self) -> int:
-                return 0
-        cam = _ExtendedCamera()
-        self.assertIn('gain', cam.properties())
-        self.assertIn('width', cam.properties())  # inherited from _FakeCamera
-
     def test_methods_returns_list(self):
         cam = make_camera()
         self.assertIsInstance(cam.methods(), list)
+
+    def test_registered_method_present(self):
+        cam = make_camera()
+        self.assertIn('calibrate', cam.methods())
+
+    def test_subclass_inherits_and_extends_registrations(self):
+        class _ExtendedCamera(_FakeCamera):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._gain = 0
+                self.registerProperty('gain',
+                                      getter=lambda: self._gain,
+                                      setter=lambda v: setattr(self, '_gain', int(v)),
+                                      ptype=int)
+        cam = _ExtendedCamera()
+        self.assertIn('gain', cam.properties())
+        self.assertIn('width', cam.properties())
+
+
+class TestGetattr(unittest.TestCase):
+
+    def test_registered_property_accessible_as_attribute(self):
+        cam = make_camera()
+        self.assertEqual(cam.width, 640)
+
+    def test_registered_property_attribute_updates_with_setter(self):
+        cam = make_camera()
+        cam.set('width', 320)
+        self.assertEqual(cam.width, 320)
+
+    def test_unregistered_attribute_raises(self):
+        cam = make_camera()
+        with self.assertRaises(AttributeError):
+            _ = cam.nonexistent
 
 
 class TestShape(unittest.TestCase):
@@ -223,31 +238,36 @@ class TestShape(unittest.TestCase):
         cam = make_camera()
         self.assertIsInstance(cam.shape, QtCore.QSize)
 
-    def test_shape_matches_width_height(self):
+    def test_shape_matches_registered_width_height(self):
         cam = make_camera()
-        self.assertEqual(cam.shape, QtCore.QSize(cam.width, cam.height))
+        self.assertEqual(cam.shape, QtCore.QSize(640, 480))
 
     def test_shape_updates_with_width(self):
         cam = make_camera()
-        cam.width = 320
+        cam.set('width', 320)
         self.assertEqual(cam.shape.width(), 320)
 
     def test_shape_updates_with_height(self):
         cam = make_camera()
-        cam.height = 240
+        cam.set('height', 240)
         self.assertEqual(cam.shape.height(), 240)
 
     def test_shape_changed_emitted_on_width_change(self):
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.shapeChanged)
-        cam.width = 320
+        cam.set('width', 320)
         self.assertEqual(len(spy), 1)
 
     def test_shape_changed_emitted_on_height_change(self):
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.shapeChanged)
-        cam.height = 240
+        cam.set('height', 240)
         self.assertEqual(len(spy), 1)
+
+    def test_shape_returns_zero_size_when_not_registered(self):
+        cam = make_camera()
+        cam._registered_properties.clear()
+        self.assertEqual(cam.shape, QtCore.QSize(0, 0))
 
 
 class TestSettings(unittest.TestCase):
@@ -256,12 +276,18 @@ class TestSettings(unittest.TestCase):
         cam = make_camera()
         self.assertIsInstance(cam.settings(), dict)
 
-    def test_settings_contains_known_properties(self):
+    def test_settings_contains_registered_properties(self):
         cam = make_camera()
         s = cam.settings()
         self.assertIn('width', s)
         self.assertIn('height', s)
         self.assertIn('fps', s)
+
+    def test_settings_does_not_emit_property_value_signal(self):
+        cam = make_camera()
+        spy = QtTest.QSignalSpy(cam.propertyValue)
+        cam.settings()
+        self.assertEqual(len(spy), 0)
 
     def test_set_valid_property(self):
         cam = make_camera()
@@ -272,6 +298,11 @@ class TestSettings(unittest.TestCase):
         cam = make_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='ERROR'):
             cam.set('nonexistent', 42)
+
+    def test_set_read_only_property_logs_warning(self):
+        cam = make_camera()
+        with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+            cam.set('color', True)
 
     def test_get_valid_property(self):
         cam = make_camera()
@@ -297,12 +328,6 @@ class TestSettings(unittest.TestCase):
         cam.setSettings({'width': 320, 'height': 240})
         self.assertEqual(cam.width, 320)
         self.assertEqual(cam.height, 240)
-
-    def test_settings_does_not_emit_property_value_signal(self):
-        cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.propertyValue)
-        cam.settings()
-        self.assertEqual(len(spy), 0)
 
 
 class TestRead(unittest.TestCase):

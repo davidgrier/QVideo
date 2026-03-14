@@ -107,6 +107,20 @@ class TestInitialize(unittest.TestCase):
             cam = make_camera(read_ok=False)
         self.assertFalse(cam.isOpen())
 
+    def test_device_properties_registered_on_open(self):
+        cam = make_camera()
+        for name in ('width', 'height', 'fps', 'color'):
+            self.assertIn(name, cam.properties())
+
+    def test_transform_properties_registered_before_open(self):
+        # mirrored/flipped/gray are registered in __init__, not _initialize
+        device = make_mock_device(read_ok=False)
+        with patch('cv2.VideoCapture', return_value=device):
+            with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                cam = QOpenCVCamera()
+        for name in ('mirrored', 'flipped', 'gray'):
+            self.assertIn(name, cam.properties())
+
 
 class TestDeinitialize(unittest.TestCase):
 
@@ -124,44 +138,44 @@ class TestDeinitialize(unittest.TestCase):
 
 class TestProperties(unittest.TestCase):
 
-    def test_width_getter(self):
+    def test_width_via_attribute(self):
         cam = make_camera(width=640)
         self.assertEqual(cam.width, 640)
 
-    def test_height_getter(self):
+    def test_height_via_attribute(self):
         cam = make_camera(height=480)
         self.assertEqual(cam.height, 480)
 
-    def test_fps_getter_returns_float(self):
+    def test_fps_returns_float(self):
         cam = make_camera(fps=30.)
         self.assertIsInstance(cam.fps, float)
         self.assertAlmostEqual(cam.fps, 30.)
 
     def test_width_setter(self):
         cam = make_camera()
-        cam.width = 320
+        cam.set('width', 320)
         cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, 320)
 
     def test_height_setter(self):
         cam = make_camera()
-        cam.height = 240
+        cam.set('height', 240)
         cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, 240)
 
     def test_fps_setter(self):
         cam = make_camera()
-        cam.fps = 60.
+        cam.set('fps', 60.)
         cam.device.set.assert_any_call(QOpenCVCamera.FPS, 60.)
 
     def test_width_setter_emits_shape_changed(self):
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.shapeChanged)
-        cam.width = 320
+        cam.set('width', 320)
         self.assertEqual(len(spy), 1)
 
     def test_height_setter_emits_shape_changed(self):
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.shapeChanged)
-        cam.height = 240
+        cam.set('height', 240)
         self.assertEqual(len(spy), 1)
 
     def test_color_true_when_not_gray(self):
@@ -172,22 +186,27 @@ class TestProperties(unittest.TestCase):
         cam = make_camera(gray=True)
         self.assertFalse(cam.color)
 
+    def test_color_is_read_only(self):
+        cam = make_camera()
+        with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+            cam.set('color', False)
+
     def test_mirrored_setter(self):
         cam = make_camera()
-        cam.mirrored = True
+        cam.set('mirrored', True)
         self.assertTrue(cam.mirrored)
 
     def test_flipped_setter(self):
         cam = make_camera()
-        cam.flipped = True
+        cam.set('flipped', True)
         self.assertTrue(cam.flipped)
 
     def test_gray_setter(self):
         cam = make_camera()
-        cam.gray = True
+        cam.set('gray', True)
         self.assertTrue(cam.gray)
 
-    def test_known_properties_present(self):
+    def test_all_properties_registered(self):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color',
                      'mirrored', 'flipped', 'gray'):

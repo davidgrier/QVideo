@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from pyqtgraph.Qt import QtCore
 from numpy.typing import NDArray
 import numpy as np
-import types
 import logging
 
 
@@ -18,12 +17,21 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     '''Abstract base class for camera devices.
 
     Provides a unified interface for camera control and image acquisition,
-    including thread-safe frame reading, property management, and
-    context-manager support.
+    including thread-safe frame reading, a registration-based property
+    system, and context-manager support.
 
-    Subclasses must implement :meth:`_initialize`, :meth:`_deinitialize`,
-    :meth:`read`, and the abstract properties ``color``, ``width``,
-    ``height``, and ``fps``.
+    Subclasses implement :meth:`_initialize`, :meth:`_deinitialize`, and
+    :meth:`read`, then call :meth:`registerProperty` and
+    :meth:`registerMethod` to expose their adjustable parameters and
+    executable actions.  Properties may be registered at any time —
+    including inside :meth:`_initialize` — which allows cameras whose
+    feature sets are only known after connecting to hardware (e.g.
+    GenICam devices) to discover and publish their parameters at
+    run-time.
+
+    Registered properties are accessible both through the explicit
+    :meth:`get` / :meth:`set` API and as ordinary Python attributes
+    (``camera.fps``, ``camera.width``, etc.) via ``__getattr__``.
 
     Parameters
     ----------
@@ -35,20 +43,20 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     Signals
     -------
     shapeChanged(QSize)
-        Emitted when the camera image dimensions change.
+        Emitted by subclasses when the image dimensions change.
     propertyValue(str, object)
-        Emitted by :meth:`get` with the property name and its current value.
+        Emitted by :meth:`get` with the property name and current value.
 
     Type Aliases
     ------------
     PropertyValue : bool | int | float | str
-        Valid type for a camera property value.
+        Common type for scalar camera property values.
     Settings : dict[str, PropertyValue]
-        Mapping of property name to value.
+        Mapping of property name to value, as returned by :meth:`settings`.
     Image : NDArray[np.uint8]
-        A camera image frame.
+        A single camera frame.
     CameraData : tuple[bool, Image | None]
-        Return type of :meth:`read`: success flag and frame (or ``None``).
+        Return type of :meth:`read`.
     '''
 
     PropertyValue = bool | int | float | str
@@ -63,14 +71,10 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         super().__init__(*args, **kwargs)
         self.mutex = QtCore.QMutex()
         self.waitcondition = QtCore.QWaitCondition()
-        self._getInterface()
+        self._registered_properties: dict = {}
+        self._registered_methods: dict = {}
         self._paused = False
         self._isopen = False
-
-    @property
-    def name(self) -> str:
-        '''Camera name, derived from the concrete class name.'''
-        return type(self).__name__
 
     def __enter__(self) -> 'QCamera':
         return self.open()
@@ -78,36 +82,73 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def __exit__(self, type, value, traceback) -> None:
         self.close()
 
-    def _getInterface(self) -> None:
-        properties: dict[str, QtCore.pyqtProperty] = {}
-        methods: dict[str, types.FunctionType] = {}
-        for cls in type(self).__mro__:
-            if cls is object:
-                continue
-            for k, v in vars(cls).items():
-                if k not in properties and isinstance(v, QtCore.pyqtProperty):
-                    properties[k] = v
-                if k not in methods and isinstance(v, types.FunctionType):
-                    methods[k] = v
-        self._properties = list(properties.keys())
-        self._methods = list(methods.keys())
+    def __getattr__(self, name: str):
+        '''Delegate attribute lookup to registered property getters.
+
+        Allows ``camera.fps``, ``camera.width``, etc. to work without
+        declaring explicit Python properties for every camera parameter.
+        Only called when normal attribute lookup has already failed.
+        '''
+        if ('_registered_properties' in self.__dict__ and
+                name in self._registered_properties):
+            return self._registered_properties[name]['getter']()
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    # ------------------------------------------------------------------
+    # Registration API
+    # ------------------------------------------------------------------
+
+    def registerProperty(self, name: str, getter,
+                         setter=None, ptype=float, **meta) -> None:
+        '''Register a named camera property.
+
+        Parameters
+        ----------
+        name : str
+            Property name used with :meth:`get`, :meth:`set`, and
+            attribute access.
+        getter : callable
+            Zero-argument callable returning the current property value.
+        setter : callable or None
+            Single-argument callable applying a new value.  ``None``
+            marks the property as read-only.
+        ptype : type
+            Python type of the property value (``int``, ``float``,
+            ``bool``, ``str``).  Used by UI generators such as
+            ``QCameraTree``.
+        **meta :
+            Additional metadata (e.g. ``minimum``, ``maximum``, ``step``)
+            stored for use by richer UI widgets.
+        '''
+        self._registered_properties[name] = dict(
+            getter=getter, setter=setter, ptype=ptype, **meta)
+
+    def registerMethod(self, name: str, method) -> None:
+        '''Register a named callable method.
+
+        Parameters
+        ----------
+        name : str
+            Method name used with :meth:`execute`.
+        method : callable
+            Zero-argument callable to invoke.
+        '''
+        self._registered_methods[name] = method
+
+    # ------------------------------------------------------------------
+    # Open / close lifecycle
+    # ------------------------------------------------------------------
 
     def open(self, *args, **kwargs) -> 'QCamera':
         '''Open the camera device.
 
         Calls :meth:`_initialize` only if the device is not already open.
 
-        Parameters
-        ----------
-        *args :
-            Forwarded to :meth:`_initialize`.
-        **kwargs :
-            Forwarded to :meth:`_initialize`.
-
         Returns
         -------
         QCamera
-            ``self``, to allow chaining (e.g. ``camera.open().read()``).
+            ``self``, to allow chaining.
         '''
         if not self._isopen:
             self._isopen = self._initialize(*args, **kwargs)
@@ -119,7 +160,6 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def close(self) -> None:
         '''Close the camera device.
 
-        Calls :meth:`_deinitialize` only if the device is currently open.
         Safe to call on an already-closed device.
         '''
         if self._isopen:
@@ -127,7 +167,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         self._isopen = False
 
     def isOpen(self) -> bool:
-        '''Return whether the camera device is currently open.'''
+        '''Return whether the device is currently open.'''
         return self._isopen
 
     def isPaused(self) -> bool:
@@ -138,6 +178,10 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def _initialize(self, *args, **kwargs) -> bool:
         '''Configure the device so that :meth:`read` will succeed.
 
+        Subclasses should also call :meth:`registerProperty` and
+        :meth:`registerMethod` here for any parameters that are only
+        known after the device is opened.
+
         Returns
         -------
         bool
@@ -147,38 +191,43 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     @abstractmethod
     def _deinitialize(self) -> None:
-        '''Release resources so that deletion or re-opening succeeds.'''
+        '''Release device resources so that deletion or re-opening succeeds.'''
+
+    # ------------------------------------------------------------------
+    # Property / method access
+    # ------------------------------------------------------------------
 
     def properties(self) -> list[str]:
-        '''Return the names of all registered camera properties.'''
-        return self._properties
+        '''Return the names of all registered properties.'''
+        return list(self._registered_properties.keys())
 
     def methods(self) -> list[str]:
-        '''Return the names of all registered camera methods.'''
-        return self._methods
+        '''Return the names of all registered methods.'''
+        return list(self._registered_methods.keys())
 
     def settings(self) -> Settings:
-        '''Return all property values as a name→value dict.
+        '''Return all registered property values as a name→value dict.
 
-        Uses direct attribute access rather than :meth:`get` to avoid
-        emitting :attr:`propertyValue` for every property.
+        Uses the registered getters directly to avoid emitting
+        :attr:`propertyValue` for each property.
         '''
-        return {p: getattr(self, p) for p in self.properties()}
+        return {name: spec['getter']()
+                for name, spec in self._registered_properties.items()}
 
     def setSettings(self, settings: Settings) -> None:
-        '''Apply a dict of property name→value pairs.
+        '''Apply a dict of property name→value pairs via :meth:`set`.
 
         Parameters
         ----------
         settings : Settings
-            Properties to set.
+            Properties to apply.
         '''
         for key, value in settings.items():
             self.set(key, value)
 
     @QtCore.pyqtSlot(str, object)
     def set(self, key: str, value: PropertyValue) -> None:
-        '''Set a named property to the given value.
+        '''Set a registered property to the given value.
 
         Parameters
         ----------
@@ -188,15 +237,19 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             New value to assign.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            logger.debug(f'Setting {key}: {value}')
-            if key in self._properties:
-                setattr(self, key, value)
-            else:
+            if key not in self._registered_properties:
                 logger.error(f'Unknown property: {key}')
+                return
+            setter = self._registered_properties[key]['setter']
+            if setter is None:
+                logger.warning(f'Property {key!r} is read-only')
+            else:
+                logger.debug(f'Setting {key}: {value}')
+                setter(value)
 
     @QtCore.pyqtSlot(str)
     def get(self, key: str) -> PropertyValue | None:
-        '''Return the current value of a named property.
+        '''Return the current value of a registered property.
 
         Emits :attr:`propertyValue` with the name and value.
 
@@ -208,11 +261,11 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         Returns
         -------
         PropertyValue or None
-            Current property value, or ``None`` if the property is unknown.
+            Current value, or ``None`` if the property is unknown.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            if key in self._properties:
-                value = getattr(self, key)
+            if key in self._registered_properties:
+                value = self._registered_properties[key]['getter']()
             else:
                 logger.error(f'Unknown property: {key}')
                 value = None
@@ -221,7 +274,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     @QtCore.pyqtSlot(str)
     def execute(self, key: str) -> None:
-        '''Call a named method on the camera.
+        '''Call a registered method by name.
 
         Parameters
         ----------
@@ -229,11 +282,14 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             Method name.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            if key in self._methods:
-                method = getattr(self, key)
-                method()
+            if key in self._registered_methods:
+                self._registered_methods[key]()
             else:
                 logger.error(f'Unknown method: {key}')
+
+    # ------------------------------------------------------------------
+    # Frame acquisition
+    # ------------------------------------------------------------------
 
     @abstractmethod
     def read(self) -> CameraData:
@@ -248,9 +304,6 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     def saferead(self) -> CameraData:
         '''Read a frame, blocking if the camera is paused.
-
-        Acquires the mutex before reading. If the camera is paused,
-        waits on :attr:`waitcondition` until :meth:`resume` is called.
 
         Returns
         -------
@@ -273,66 +326,45 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         '''Wake any thread blocked in :meth:`saferead`.'''
         self.waitcondition.wakeAll()
 
-    @QtCore.pyqtProperty(QtCore.QSize)
+    # ------------------------------------------------------------------
+    # Derived properties
+    # ------------------------------------------------------------------
+
+    @property
+    def name(self) -> str:
+        '''Camera name, derived from the concrete class name.'''
+        return type(self).__name__
+
+    @property
     def shape(self) -> QtCore.QSize:
-        '''Image dimensions as ``QSize(width, height)``.'''
-        return QtCore.QSize(int(self.width), int(self.height))
+        '''Image dimensions as ``QSize(width, height)``.
 
-    @QtCore.pyqtProperty(bool)
-    @abstractmethod
-    def color(self) -> bool:
-        '''``True`` if the camera delivers colour frames.'''
-        return False
+        Returns ``QSize(0, 0)`` if ``width`` or ``height`` are not
+        registered.
+        '''
+        try:
+            w = self._registered_properties['width']['getter']()
+            h = self._registered_properties['height']['getter']()
+        except KeyError:
+            return QtCore.QSize(0, 0)
+        return QtCore.QSize(int(w), int(h))
 
-    @QtCore.pyqtProperty(int, notify=shapeChanged)
-    @abstractmethod
-    def width(self) -> int:
-        '''Image width in pixels.'''
-
-    @width.setter
-    @abstractmethod
-    def width(self, value: int) -> None:
-        self.shapeChanged.emit(self.shape)
-
-    @QtCore.pyqtProperty(int, notify=shapeChanged)
-    @abstractmethod
-    def height(self) -> int:
-        '''Image height in pixels.'''
-
-    @height.setter
-    @abstractmethod
-    def height(self, value: int) -> None:
-        self.shapeChanged.emit(self.shape)
-
-    @QtCore.pyqtProperty(float)
-    @abstractmethod
-    def fps(self) -> float:
-        '''Frame rate in frames per second.'''
-
-    @fps.setter
-    @abstractmethod
-    def fps(self, fps: float) -> None:
-        pass
+    # ------------------------------------------------------------------
+    # Example
+    # ------------------------------------------------------------------
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
         '''Print camera settings and read a few frames.'''
         from pprint import pprint
 
-        logger.setLevel(logging.ERROR)
         camera = cls()
         print(camera.name)
         pprint(camera.settings())
         with camera:
-            for n in range(5):
+            for _ in range(5):
                 print('.' if camera.read()[0] else 'x', end='')
-            else:
-                print('done')
-        with camera:
-            for n in range(5):
-                print('.' if camera.read()[0] else 'x', end='')
-            else:
-                print('done')
+            print('done')
 
 
 if __name__ == '__main__':  # pragma: no cover

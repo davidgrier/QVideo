@@ -121,9 +121,26 @@ class TestMedian(unittest.TestCase):
 
     def test_reset_zeros_buffers(self):
         f = make_filter(data=_A)
+        f.add(_A)
         f.reset()
         np.testing.assert_array_equal(f._result, np.zeros(_SHAPE, dtype=np.uint8))
         np.testing.assert_array_equal(f._buffer, np.zeros((2, *_SHAPE), dtype=np.uint8))
+
+    def test_clear_forgets_shape(self):
+        f = make_filter(data=_A)
+        f._clear()
+        self.assertIsNone(f.shape)
+
+    def test_clear_sets_result_to_none(self):
+        f = make_filter(data=_A)
+        f._clear()
+        self.assertIsNone(f._result)
+
+    def test_order_setter_clears_state(self):
+        f = make_filter(order=1, data=_A)
+        f.order = 2
+        self.assertIsNone(f.shape)
+        self.assertIsNone(f._result)
 
     def test_call_returns_result(self):
         f = make_filter()

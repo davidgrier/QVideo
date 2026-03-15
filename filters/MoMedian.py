@@ -31,23 +31,36 @@ class MoMedian(VideoFilter):
                  data: Image | None = None) -> None:
         super().__init__()
         self._order = order
-        self._initialize(data)
+        self._clear()
+        if data is not None:
+            self._initialize(data)
 
-    def _initialize(self, data: Image | None = None) -> None:
-        '''Allocate internal buffers for the given frame shape.
+    def _clear(self) -> None:
+        '''Reset to uninitialized state, forgetting frame shape.
 
-        Parameters
-        ----------
-        data : Image or None
-            Seed frame.  If ``None`` all buffers are set to ``None``
-            and initialisation is deferred to the first :meth:`add`.
+        Called on construction and when :attr:`order` changes.  Sets
+        all internal buffers to ``None`` so that the next :meth:`add`
+        triggers a fresh allocation via :meth:`_initialize`.
         '''
         self._index = 0
         self._next = None
-        if data is None:
-            self.shape = None
-            self._result = None
-            return
+        self.shape = None
+        self._result = None
+
+    def _initialize(self, data: Image) -> None:
+        '''Allocate internal buffers for the given frame shape.
+
+        Called on the first :meth:`add` after construction or after a
+        frame-shape change.  Always requires a concrete frame so that
+        buffer shape and dtype can be inferred.
+
+        Parameters
+        ----------
+        data : Image
+            Representative frame.
+        '''
+        self._index = 0
+        self._next = None
         self.shape = data.shape
         self._result = data.copy()
         self._buffer = np.zeros((2, *self.shape), data.dtype)
@@ -94,7 +107,7 @@ class MoMedian(VideoFilter):
     def order(self, order: int) -> None:
         if order != self._order:
             self._order = order
-            self._initialize()
+            self._clear()
 
     def reset(self) -> None:
         '''Clear all buffers and restart the estimator.
@@ -102,9 +115,8 @@ class MoMedian(VideoFilter):
         Fills the result and frame buffers with zeros and resets the
         frame index.  Does not reallocate memory.
         '''
-        if self._result is not None:
-            self._result.fill(0)
-            self._buffer.fill(0)
+        self._result.fill(0)
+        self._buffer.fill(0)
         self._index = 0
         if self._next is not None:
             self._next.reset()

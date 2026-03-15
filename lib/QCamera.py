@@ -210,24 +210,28 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     # Property / method access
     # ------------------------------------------------------------------
 
+    @property
     def properties(self) -> list[str]:
-        '''Return the names of all registered properties.'''
+        '''Names of all registered properties.'''
         return list(self._registered_properties.keys())
 
+    @property
     def methods(self) -> list[str]:
-        '''Return the names of all registered methods.'''
+        '''Names of all registered methods.'''
         return list(self._registered_methods.keys())
 
+    @property
     def settings(self) -> Settings:
-        '''Return all registered property values as a name→value dict.
+        '''All registered property values as a name→value dict.
 
-        Uses the registered getters directly to avoid emitting
+        Uses registered getters directly to avoid emitting
         :attr:`propertyValue` for each property.
         '''
         return {name: spec['getter']()
                 for name, spec in self._registered_properties.items()}
 
-    def setSettings(self, settings: Settings) -> None:
+    @settings.setter
+    def settings(self, settings: Settings) -> None:
         '''Apply a dict of property name→value pairs via :meth:`set`.
 
         Parameters

@@ -80,7 +80,7 @@ class QCameraTree(ParameterTree):
 
     @staticmethod
     def _defaultDescription(camera: QCamera) -> list:
-        settings = camera.settings().items()
+        settings = camera.settings.items()
         entries = [{'name': key,
                     'type': value.__class__.__name__,
                     'value': value}

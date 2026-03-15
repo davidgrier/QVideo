@@ -151,7 +151,7 @@ class QVideoSource(QThread):
 
         source = cls(*args).start()
         print(source.source.name)
-        pprint(source.source.settings())
+        pprint(source.source.settings)
         source.stop()
         source.quit()
         source.wait()

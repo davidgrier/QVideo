@@ -175,20 +175,20 @@ class TestRegistration(unittest.TestCase):
 
     def test_properties_returns_list(self):
         cam = make_camera()
-        self.assertIsInstance(cam.properties(), list)
+        self.assertIsInstance(cam.properties, list)
 
     def test_registered_properties_present(self):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color'):
-            self.assertIn(name, cam.properties())
+            self.assertIn(name, cam.properties)
 
     def test_methods_returns_list(self):
         cam = make_camera()
-        self.assertIsInstance(cam.methods(), list)
+        self.assertIsInstance(cam.methods, list)
 
     def test_registered_method_present(self):
         cam = make_camera()
-        self.assertIn('calibrate', cam.methods())
+        self.assertIn('calibrate', cam.methods)
 
     def test_auto_getter_reads_backing_attribute(self):
         cam = make_camera()
@@ -222,8 +222,8 @@ class TestRegistration(unittest.TestCase):
                                       setter=lambda v: setattr(self, '_gain', int(v)),
                                       ptype=int)
         cam = _ExtendedCamera()
-        self.assertIn('gain', cam.properties())
-        self.assertIn('width', cam.properties())
+        self.assertIn('gain', cam.properties)
+        self.assertIn('width', cam.properties)
 
 
 class TestGetattr(unittest.TestCase):
@@ -285,11 +285,11 @@ class TestSettings(unittest.TestCase):
 
     def test_settings_returns_dict(self):
         cam = make_camera()
-        self.assertIsInstance(cam.settings(), dict)
+        self.assertIsInstance(cam.settings, dict)
 
     def test_settings_contains_registered_properties(self):
         cam = make_camera()
-        s = cam.settings()
+        s = cam.settings
         self.assertIn('width', s)
         self.assertIn('height', s)
         self.assertIn('fps', s)
@@ -297,7 +297,7 @@ class TestSettings(unittest.TestCase):
     def test_settings_does_not_emit_property_value_signal(self):
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.propertyValue)
-        cam.settings()
+        cam.settings
         self.assertEqual(len(spy), 0)
 
     def test_set_valid_property(self):
@@ -336,7 +336,7 @@ class TestSettings(unittest.TestCase):
 
     def test_set_settings_applies_all(self):
         cam = make_camera()
-        cam.setSettings({'width': 320, 'height': 240})
+        cam.settings = {'width': 320, 'height': 240}
         self.assertEqual(cam.width, 320)
         self.assertEqual(cam.height, 240)
 

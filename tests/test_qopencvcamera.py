@@ -110,7 +110,7 @@ class TestInitialize(unittest.TestCase):
     def test_device_properties_registered_on_open(self):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color'):
-            self.assertIn(name, cam.properties())
+            self.assertIn(name, cam.properties)
 
     def test_transform_properties_registered_before_open(self):
         # mirrored/flipped/gray are registered in __init__, not _initialize
@@ -119,7 +119,7 @@ class TestInitialize(unittest.TestCase):
             with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
                 cam = QOpenCVCamera()
         for name in ('mirrored', 'flipped', 'gray'):
-            self.assertIn(name, cam.properties())
+            self.assertIn(name, cam.properties)
 
 
 class TestDeinitialize(unittest.TestCase):
@@ -210,7 +210,7 @@ class TestProperties(unittest.TestCase):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color',
                      'mirrored', 'flipped', 'gray'):
-            self.assertIn(name, cam.properties())
+            self.assertIn(name, cam.properties)
 
 
 class TestRead(unittest.TestCase):

@@ -148,8 +148,9 @@ class QOpenCVSource(QVideoSource):
     def __init__(self, *args,
                  camera: QOpenCVCamera | None = None,
                  **kwargs) -> None:
-        camera = camera or QOpenCVCamera(*args, **kwargs)
-        super().__init__(camera, *args, **kwargs)
+        if camera is None:
+            camera = QOpenCVCamera(*args, **kwargs)
+        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

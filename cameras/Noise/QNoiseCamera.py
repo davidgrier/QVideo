@@ -22,9 +22,9 @@ class QNoiseCamera(QCamera):
     Parameters
     ----------
     blacklevel : int
-        Minimum pixel value (inclusive). Default: ``0``.
+        Minimum pixel value (inclusive). Default: ``48``.
     whitelevel : int
-        Maximum pixel value (exclusive). Default: ``255``.
+        Maximum pixel value (exclusive). Default: ``128``.
     *args :
         Forwarded to :class:`~QVideo.lib.QCamera`.
     **kwargs :
@@ -32,8 +32,8 @@ class QNoiseCamera(QCamera):
     '''
 
     def __init__(self, *args,
-                 blacklevel: int = 0,
-                 whitelevel: int = 255,
+                 blacklevel: int = 48,
+                 whitelevel: int = 128,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._width = 640

@@ -87,7 +87,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def __enter__(self) -> 'QCamera':
         return self.open()
 
-    def __exit__(self, type, value, traceback) -> None:
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
     def __getattr__(self, name: str):
@@ -170,7 +170,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             ``self``, to allow chaining.
         '''
         if not self._isopen:
-            self._isopen = self._initialize(*args, **kwargs)
+            self._isopen = bool(self._initialize(*args, **kwargs))
             if not self._isopen:
                 logger.warning(f'{self.name}: initialization failed')
         return self
@@ -290,9 +290,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
                 value = self._properties[key]['getter']()
             else:
                 logger.error(f'Unknown property: {key}')
-                value = None
-            self.propertyValue.emit(key, value)
-            return value
+                return None
+        self.propertyValue.emit(key, value)
+        return value
 
     @QtCore.pyqtSlot(str)
     def execute(self, key: str) -> None:

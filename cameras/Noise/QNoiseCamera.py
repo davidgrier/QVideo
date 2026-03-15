@@ -42,18 +42,13 @@ class QNoiseCamera(QCamera):
         self._blacklevel = int(np.clip(blacklevel, 0, 254))
         self._whitelevel = int(np.clip(whitelevel, 1, 255))
 
-        self.registerProperty('width', setter=self._setWidth, ptype=int)
-        self.registerProperty('height', setter=self._setHeight, ptype=int)
-        self.registerProperty('fps', ptype=float)
-        self.registerProperty('color', getter=lambda: False, setter=None, ptype=bool)
-        self.registerProperty('blacklevel',
-                              setter=lambda v: setattr(
-                                  self, '_blacklevel', int(np.clip(v, 0, 254))),
-                              ptype=int)
-        self.registerProperty('whitelevel',
-                              setter=lambda v: setattr(
-                                  self, '_whitelevel', int(np.clip(v, 1, 255))),
-                              ptype=int)
+        register = self.registerProperty
+        register('width', setter=self._setWidth, ptype=int)
+        register('height', setter=self._setHeight, ptype=int)
+        register('fps', ptype=float)
+        register('color', getter=lambda: False, setter=None, ptype=bool)
+        register('blacklevel', setter=self._setBlacklevel, ptype=int)
+        register('whitelevel', setter=self._setWhitelevel, ptype=int)
         self.open()
 
     def _setWidth(self, value: int) -> None:
@@ -63,6 +58,12 @@ class QNoiseCamera(QCamera):
     def _setHeight(self, value: int) -> None:
         self._height = int(value)
         self.shapeChanged.emit(self.shape)
+
+    def _setBlacklevel(self, value: int) -> None:
+        self._blacklevel = int(np.clip(value, 0, 254))
+
+    def _setWhitelevel(self, value: int) -> None:
+        self._whitelevel = int(np.clip(value, 1, 255))
 
     def _initialize(self) -> bool:
         '''Seed the random number generator.
@@ -112,7 +113,7 @@ class QNoiseSource(QVideoSource):
                  camera: QNoiseCamera | None = None,
                  **kwargs) -> None:
         camera = camera or QNoiseCamera(*args, **kwargs)
-        super().__init__(camera, *args, **kwargs)
+        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

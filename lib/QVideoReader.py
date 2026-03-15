@@ -18,8 +18,9 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     '''Abstract base class for video-file readers.
 
     Provides a unified interface for reading frames from a video file,
-    including rate-limited frame delivery, pause/resume control, and
-    random access via :meth:`seek`.
+    including rate-limited frame delivery and random access via :meth:`seek`.
+    Pause/resume control is the responsibility of the enclosing
+    :class:`~QVideo.lib.QVideoSource`.
 
     Subclasses implement :meth:`_initialize`, :meth:`_deinitialize`,
     :meth:`read`, and the abstract properties :attr:`fps`, :attr:`width`,
@@ -43,14 +44,9 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
 
     Notes
     -----
-    :meth:`saferead` paces frame delivery by waiting :attr:`delay`
+    :meth:`saferead` paces frame delivery by sleeping :attr:`delay`
     milliseconds between reads so that callers receive frames at
-    approximately the correct playback rate.  When paused it blocks
-    indefinitely until :meth:`resume` is called.
-
-    ``_running`` and ``_paused`` are protected by :attr:`mutex`;
-    :attr:`waitcondition` is used to implement the inter-frame delay
-    and to wake the reader on :meth:`resume`.
+    approximately the correct playback rate.
     '''
 
     CameraData = QCamera.CameraData
@@ -67,9 +63,6 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
         '''
         super().__init__()
         self.filename = filename
-        self.mutex = QtCore.QMutex()
-        self.waitcondition = QtCore.QWaitCondition()
-        self._paused = False
         self._isopen = False
         self.open()
 
@@ -79,6 +72,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
+    @QtCore.pyqtSlot()
     def open(self) -> 'QVideoReader':
         '''Open the video file.
 
@@ -112,10 +106,6 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
         '''Return whether the file is currently open.'''
         return self._isopen
 
-    def isPaused(self) -> bool:
-        '''Return whether frame delivery is currently paused.'''
-        return self._paused
-
     @abstractmethod
     def _initialize(self) -> bool:
         '''Open the video file so that :meth:`read` will succeed.
@@ -144,39 +134,16 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     def saferead(self) -> CameraData:
         '''Read one frame, pacing delivery to the file's native frame rate.
 
-        When not paused, blocks for :attr:`delay` milliseconds before each
-        read so that callers receive frames at approximately the correct
-        playback rate.  When paused, blocks indefinitely until
-        :meth:`resume` is called.
+        Blocks for :attr:`delay` milliseconds before each read so that
+        callers receive frames at approximately the correct playback rate.
 
         Returns
         -------
         tuple[bool, ndarray or None]
             Result of :meth:`read`.
         '''
-        with QtCore.QMutexLocker(self.mutex):
-            if self._paused:
-                self.waitcondition.wait(self.mutex)
-            else:
-                self.waitcondition.wait(self.mutex, self.delay)
-            return self.read()
-
-    @QtCore.pyqtSlot()
-    def pause(self) -> None:
-        '''Pause frame delivery.
-
-        The next :meth:`saferead` call will block indefinitely until
-        :meth:`resume` is called.
-        '''
-        with QtCore.QMutexLocker(self.mutex):
-            self._paused = True
-
-    @QtCore.pyqtSlot()
-    def resume(self) -> None:
-        '''Resume frame delivery and wake any blocked :meth:`saferead` call.'''
-        with QtCore.QMutexLocker(self.mutex):
-            self._paused = False
-        self.waitcondition.wakeAll()
+        QtCore.QThread.msleep(self.delay)
+        return self.read()
 
     @property
     @abstractmethod
@@ -245,6 +212,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
         print(f'{video.width = } pixels')
         print(f'{video.height = } pixels')
         print(f'{video.fps = } fps')
+        video.close()
         with video:
             for _ in range(5):
                 ok, frame = video.read()

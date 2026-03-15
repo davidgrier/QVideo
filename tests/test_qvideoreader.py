@@ -85,18 +85,6 @@ class TestInit(unittest.TestCase):
         reader = make_reader('my_video.avi')
         self.assertEqual(reader.filename, 'my_video.avi')
 
-    def test_has_mutex(self):
-        reader = make_reader()
-        self.assertIsInstance(reader.mutex, QtCore.QMutex)
-
-    def test_has_waitcondition(self):
-        reader = make_reader()
-        self.assertIsInstance(reader.waitcondition, QtCore.QWaitCondition)
-
-    def test_initially_not_paused(self):
-        reader = make_reader()
-        self.assertFalse(reader.isPaused())
-
     def test_auto_opens_on_init(self):
         reader = make_reader()
         self.assertTrue(reader.isOpen())
@@ -238,57 +226,24 @@ class TestProperties(unittest.TestCase):
         self.assertEqual(reader.framenumber, 1)
 
 
-class TestPauseResume(unittest.TestCase):
-
-    def test_pause_sets_paused(self):
-        reader = make_reader()
-        reader.pause()
-        self.assertTrue(reader.isPaused())
-
-    def test_ispaused_reflects_state(self):
-        reader = make_reader()
-        self.assertFalse(reader.isPaused())
-        reader.pause()
-        self.assertTrue(reader.isPaused())
-
-    def test_resume_clears_paused(self):
-        reader = make_reader()
-        reader.pause()
-        reader.resume()
-        self.assertFalse(reader.isPaused())
-
-    def test_resume_wakes_waitcondition(self):
-        reader = make_reader()
-        with patch.object(reader.waitcondition, 'wakeAll') as mock_wake:
-            reader.resume()
-        mock_wake.assert_called_once()
-
-
 class TestSaferead(unittest.TestCase):
 
     def test_saferead_calls_read(self):
         reader = make_reader()
-        with patch.object(reader.waitcondition, 'wait'):
+        with patch('QVideo.lib.QVideoReader.QtCore.QThread.msleep'):
             with patch.object(reader, 'read', wraps=reader.read) as mock_read:
                 reader.saferead()
         mock_read.assert_called_once()
 
-    def test_saferead_waits_with_delay_when_not_paused(self):
+    def test_saferead_sleeps_for_delay(self):
         reader = make_reader()
-        with patch.object(reader.waitcondition, 'wait') as mock_wait:
+        with patch('QVideo.lib.QVideoReader.QtCore.QThread.msleep') as mock_sleep:
             reader.saferead()
-        mock_wait.assert_called_once_with(reader.mutex, reader.delay)
-
-    def test_saferead_waits_indefinitely_when_paused(self):
-        reader = make_reader()
-        reader._paused = True
-        with patch.object(reader.waitcondition, 'wait') as mock_wait:
-            reader.saferead()
-        mock_wait.assert_called_once_with(reader.mutex)
+        mock_sleep.assert_called_once_with(reader.delay)
 
     def test_saferead_returns_frame(self):
         reader = make_reader()
-        with patch.object(reader.waitcondition, 'wait'):
+        with patch('QVideo.lib.QVideoReader.QtCore.QThread.msleep'):
             ok, frame = reader.saferead()
         self.assertTrue(ok)
         self.assertIsInstance(frame, np.ndarray)

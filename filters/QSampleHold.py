@@ -72,11 +72,13 @@ class SampleHold(Normalize):
 
 class QSampleHold(QVideoFilter):
 
-    '''Widget for :class:`SampleHold` with a *Reset* button.
+    '''Widget for :class:`SampleHold` with order buttons and a *Reset* button.
 
-    Wraps :class:`SampleHold` in a checkable group box.  The *Reset*
-    button triggers :meth:`~SampleHold.reset`, causing the filter to
-    re-sample the background on the next ``3 ** order`` frames.
+    Wraps :class:`SampleHold` in a checkable group box.  Three radio
+    buttons select the accumulation order (1, 2, or 3), corresponding
+    to background estimates built from 3, 9, or 27 frames respectively.
+    The *Reset* button triggers :meth:`~SampleHold.reset`, causing the
+    filter to re-sample the background using the selected order.
 
     Parameters
     ----------
@@ -89,9 +91,35 @@ class QSampleHold(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
+        self.layout.addWidget(QtWidgets.QLabel('order'))
+        self._order_buttons = [QtWidgets.QRadioButton(str(n)) for n in (1, 2, 3)]
+        for n, button in enumerate(self._order_buttons, start=1):
+            button.toggled.connect(lambda checked, n=n: self.setOrder(checked, n))
+            self.layout.addWidget(button)
+        self._order_buttons[self.filter.order - 1].setChecked(True)
         self._reset_button = QtWidgets.QPushButton('Reset', self)
         self._reset_button.clicked.connect(self.reset)
         self.layout.addWidget(self._reset_button)
+
+    @QtCore.pyqtSlot(bool, int)
+    def setOrder(self, checked: bool, order: int) -> None:
+        '''Set the accumulation order and restart background sampling.
+
+        Only acts when *checked* is ``True`` to avoid double-firing on
+        radio button deselection.  Setting a new order clears the
+        estimator and restarts accumulation immediately.
+
+        Parameters
+        ----------
+        checked : bool
+            Whether the button is being selected (``True``) or
+            deselected (``False``).
+        order : int
+            Accumulation order (1, 2, or 3).
+        '''
+        if checked:
+            self.filter.order = order
+            self.filter.reset()
 
     @QtCore.pyqtSlot(bool)
     def reset(self, _checked: bool = False) -> None:

@@ -1,7 +1,4 @@
-from pyqtgraph.Qt.QtCore import (QThread,
-                                 QMutex, QMutexLocker, QWaitCondition,
-                                 pyqtSlot, pyqtSignal, pyqtProperty,
-                                 QVariant, QSize)
+from pyqtgraph.Qt import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
 import numpy as np
@@ -10,10 +7,9 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
-class QVideoSource(QThread):
+class QVideoSource(QtCore.QThread):
 
     '''A threaded video source that reads frames from a camera
     or video file in a separate thread.
@@ -57,18 +53,18 @@ class QVideoSource(QThread):
 
     Source: TypeAlias = QCamera | QVideoReader
 
-    newFrame = pyqtSignal(np.ndarray)
+    newFrame = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self, source: Source, *args, **kwargs) -> None:
         super().__init__()
         self.source = source
         self.source.moveToThread(self)
-        self.mutex = QMutex()
-        self.waitcondition = QWaitCondition()
+        self.mutex = QtCore.QMutex()
+        self.waitcondition = QtCore.QWaitCondition()
         self._paused = False
         self._running = True
 
-    @pyqtProperty(QVariant)
+    @QtCore.pyqtProperty(QtCore.QVariant)
     def source(self) -> Source:
         return self._source
 
@@ -78,23 +74,25 @@ class QVideoSource(QThread):
         self.shapeChanged = source.shapeChanged
 
     def isOpen(self) -> bool:
+        '''Return whether the source is open.'''
         return self.source.isOpen()
 
-    @pyqtProperty(float)
+    @QtCore.pyqtProperty(float)
     def fps(self) -> float:
+        '''Frame rate of the video source [frames per second].'''
         return self.source.fps
 
-    @pyqtProperty(QSize)
-    def shape(self) -> QSize:
+    @QtCore.pyqtProperty(QtCore.QSize)
+    def shape(self) -> QtCore.QSize:
+        '''Shape of the video frames as QSize(width, height).'''
         return self.source.shape
 
-    @pyqtSlot()
     def run(self) -> None:
         logger.debug('streaming started')
         with self.source:
             while self._running:
                 ok = False
-                with QMutexLocker(self.mutex):
+                with QtCore.QMutexLocker(self.mutex):
                     if self._paused:
                         self.waitcondition.wait(self.mutex)
                         self._paused = False
@@ -103,33 +101,33 @@ class QVideoSource(QThread):
                     ok, frame = self.source.saferead()
                 if ok:
                     self.newFrame.emit(frame)
-        self.finished.emit()
         logger.debug('streaming finished')
 
-    @pyqtSlot()
-    def start(self):
+    @QtCore.pyqtSlot()
+    def start(self) -> 'QVideoSource':
+        '''Start the video source thread.'''
         logger.debug('starting')
         super().start()
         return self
 
-    @pyqtSlot()
+    @QtCore.pyqtSlot()
     def stop(self) -> None:
         '''Stop the video source thread.'''
         logger.debug('stopping')
-        with QMutexLocker(self.mutex):
+        with QtCore.QMutexLocker(self.mutex):
             self._running = False
             self._paused = False
         self.waitcondition.wakeAll()
 
-    @pyqtSlot()
+    @QtCore.pyqtSlot()
     def pause(self) -> None:
         '''Pause video readout.'''
         logger.debug('pausing')
-        with QMutexLocker(self.mutex):
+        with QtCore.QMutexLocker(self.mutex):
             if self._running:
                 self._paused = True
 
-    @pyqtSlot()
+    @QtCore.pyqtSlot()
     def resume(self) -> None:
         '''Resume video readout after pause().'''
         self.waitcondition.wakeAll()
@@ -139,9 +137,8 @@ class QVideoSource(QThread):
         return self._paused
 
     @classmethod
-    def example(cls: 'QVideoSource', *args) -> None:
-        '''Demonstrate basic operation of a threaded video source'''
-
+    def example(cls: 'QVideoSource', *args) -> None:  # pragma: no cover
+        '''Demonstrate basic operation of a threaded video source.'''
         from pprint import pprint
 
         source = cls(*args).start()

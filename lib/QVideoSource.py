@@ -49,6 +49,14 @@ class QVideoSource(QtCore.QThread):
         Check if video readout is paused.
     example(*args) -> None
         Demonstrate basic operation of a threaded video source.
+
+    Notes
+    -----
+    The source is moved to this thread via ``moveToThread`` so that its
+    slots are delivered in the capture thread rather than the main thread.
+    State variables ``_running`` and ``_paused`` are protected by
+    :attr:`mutex`; :attr:`waitcondition` is used to block the capture
+    loop while paused and to wake it on :meth:`resume` or :meth:`stop`.
     '''
 
     Source: TypeAlias = QCamera | QVideoReader
@@ -56,6 +64,15 @@ class QVideoSource(QtCore.QThread):
     newFrame = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self, source: Source, *args, **kwargs) -> None:
+        '''Initialise the video source thread.
+
+        Parameters
+        ----------
+        source : QCamera | QVideoReader
+            The video source to read frames from.  It is moved to this
+            thread so that its context manager (open/close) runs in the
+            capture thread.
+        '''
         super().__init__()
         self.source = source
         self.source.moveToThread(self)
@@ -66,6 +83,7 @@ class QVideoSource(QtCore.QThread):
 
     @QtCore.pyqtProperty(QtCore.QVariant)
     def source(self) -> Source:
+        '''The underlying QCamera or QVideoReader.'''
         return self._source
 
     @source.setter
@@ -84,10 +102,20 @@ class QVideoSource(QtCore.QThread):
 
     @QtCore.pyqtProperty(QtCore.QSize)
     def shape(self) -> QtCore.QSize:
-        '''Shape of the video frames as QSize(width, height).'''
+        '''Shape of the video frames as ``QSize(width, height)``.'''
         return self.source.shape
 
     def run(self) -> None:
+        '''Capture loop: open the source, read frames, emit :attr:`newFrame`.
+
+        Opens the source via its context manager, then loops calling
+        :meth:`~QCamera.saferead` and emitting :attr:`newFrame` for each
+        successful frame.  The loop blocks when :meth:`pause` is called and
+        resumes when :meth:`resume` or :meth:`stop` is called.
+
+        This method is invoked automatically by :meth:`start` in a new
+        thread and should not be called directly in production code.
+        '''
         logger.debug('streaming started')
         with self.source:
             while self._running:
@@ -105,14 +133,25 @@ class QVideoSource(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def start(self) -> 'QVideoSource':
-        '''Start the video source thread.'''
+        '''Start the capture thread.
+
+        Returns
+        -------
+        QVideoSource
+            ``self``, to allow chaining (e.g. ``src = QVideoSource(cam).start()``).
+        '''
         logger.debug('starting')
         super().start()
         return self
 
     @QtCore.pyqtSlot()
     def stop(self) -> None:
-        '''Stop the video source thread.'''
+        '''Stop the capture thread.
+
+        Sets ``_running`` to ``False`` and wakes any thread blocked in
+        :meth:`pause`, so that :meth:`run` exits cleanly at the next
+        loop iteration.
+        '''
         logger.debug('stopping')
         with QtCore.QMutexLocker(self.mutex):
             self._running = False
@@ -121,7 +160,12 @@ class QVideoSource(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def pause(self) -> None:
-        '''Pause video readout.'''
+        '''Pause frame readout.
+
+        The capture loop will block after the current frame completes.
+        Has no effect if the thread is not running.  Call :meth:`resume`
+        to continue.
+        '''
         logger.debug('pausing')
         with QtCore.QMutexLocker(self.mutex):
             if self._running:
@@ -129,11 +173,11 @@ class QVideoSource(QtCore.QThread):
 
     @QtCore.pyqtSlot()
     def resume(self) -> None:
-        '''Resume video readout after pause().'''
+        '''Resume frame readout after :meth:`pause`.'''
         self.waitcondition.wakeAll()
 
     def isPaused(self) -> bool:
-        '''True if readout is paused.'''
+        '''Return ``True`` if the capture loop is currently paused.'''
         return self._paused
 
     @classmethod

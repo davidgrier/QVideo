@@ -1,7 +1,6 @@
-from pyqtgraph.Qt.QtWidgets import (QWidget, QLabel)
+from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
-from QVideo.lib.VideoFilter import (QVideoFilter, VideoFilter)
+from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
 import numpy as np
 import cv2
 
@@ -9,52 +8,94 @@ import cv2
 __all__ = ['BlurFilter', 'QBlurFilter']
 
 
-class QBlurFilter(QVideoFilter):
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__('Gaussian Blur', parent, BlurFilter())
-
-    def _setupUi(self) -> None:
-        super()._setupUi()
-        self.layout.addWidget(QLabel('width'))
-        spinbox = SpinBox(self, value=self.filter.width, step=2, int=True)
-        self.layout.addWidget(spinbox)
-        spinbox.setMinimum(1)
-        spinbox.valueChanged.connect(self.setWidth)
-
-    @pyqtSlot(object)
-    def setWidth(self, width: int) -> None:
-        self.filter.width = width
-
-
 class BlurFilter(VideoFilter):
 
-    '''Performs a Gaussian blur
+    '''Gaussian blur filter.
 
-    Properties
+    Parameters
     ----------
     width : int
-        extent of Gaussian blur
+        Kernel width in pixels.  Must be odd and at least 1; even values
+        are rounded up to the next odd integer.  Default: ``15``.
+
+    Notes
+    -----
+    OpenCV's ``GaussianBlur`` requires an odd, positive kernel size.
+    The :attr:`width` setter enforces this automatically.
+
+    ``sigma`` is set to 0, which instructs OpenCV to derive it from the
+    kernel size.  Subclasses that need explicit sigma control should
+    override :meth:`get`.
     '''
 
     def __init__(self, width: int = 15) -> None:
         super().__init__()
         self.width = width
 
-    def add(self, image: np.ndarray) -> None:
-        self.data = image
-
-    def get(self) -> np.ndarray:
-        return cv2.GaussianBlur(self.data, 2*(self.width,), 0)
-
-    @pyqtProperty(int)
-    def width(self):
+    @property
+    def width(self) -> int:
+        '''Kernel width [pixels], always odd and at least 1.'''
         return self._width
 
     @width.setter
-    def width(self, width: int):
-        self._width = int(width + (1 - width % 2))
+    def width(self, width: int) -> None:
+        width = max(1, int(width))
+        self._width = width - (width % 2) + 1
+
+    def get(self) -> np.ndarray | None:
+        '''Return the Gaussian-blurred frame.
+
+        Returns
+        -------
+        np.ndarray or None
+            Blurred version of the most recently added frame, or
+            ``None`` if no frame has been added yet.
+        '''
+        if self.data is None:
+            return None
+        return cv2.GaussianBlur(self.data, (self.width, self.width), 0)
 
 
-if __name__ == '__main__':
+class QBlurFilter(QVideoFilter):
+
+    '''Widget for :class:`BlurFilter` with a kernel-width spinbox.
+
+    Parameters
+    ----------
+    parent : QtWidgets.QWidget or None
+        Parent widget.
+    '''
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__('Gaussian Blur', parent, BlurFilter())
+
+    def _setupUi(self) -> None:
+        super()._setupUi()
+        self.layout.addWidget(QtWidgets.QLabel('width'))
+        self._spinbox = SpinBox(self, value=self.filter.width,
+                                step=1, int=True)
+        self._spinbox.setMinimum(3)
+        self._spinbox.valueChanged.connect(self.setWidth)
+        self.layout.addWidget(self._spinbox)
+
+    @QtCore.pyqtSlot(object)
+    def setWidth(self, width: int) -> None:
+        '''Set the blur kernel width.
+
+        Passes *width* to :class:`BlurFilter`, which enforces odd values,
+        then snaps the spinbox display to the corrected value.
+
+        Parameters
+        ----------
+        width : int
+            New kernel width.  Even values are rounded up to the next
+            odd integer.
+        '''
+        self.filter.width = width
+        self._spinbox.blockSignals(True)
+        self._spinbox.setValue(self.filter.width)
+        self._spinbox.blockSignals(False)
+
+
+if __name__ == '__main__':  # pragma: no cover
     QBlurFilter.example()

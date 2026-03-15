@@ -61,11 +61,20 @@ class TestMedian(unittest.TestCase):
         result = f.get()
         np.testing.assert_array_equal(result, _B)
 
-    def test_get_resets_ready_flag(self):
+    def test_get_does_not_reset_ready_flag(self):
         f = make_filter()
         for frame in (_A, _B, _C):
             f.add(frame)
+        self.assertTrue(f.ready())
         f.get()
+        self.assertTrue(f.ready())
+
+    def test_ready_resets_on_next_add(self):
+        f = make_filter()
+        for frame in (_A, _B, _C):
+            f.add(frame)
+        self.assertTrue(f.ready())
+        f.add(_A)  # new add() resets ready at its start
         self.assertFalse(f.ready())
 
     def test_shape_set_after_first_add(self):

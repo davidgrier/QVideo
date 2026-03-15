@@ -67,12 +67,17 @@ class Median(VideoFilter):
     def add(self, data: Image) -> None:
         '''Incorporate a new frame into the median estimate.
 
+        Resets the ready flag at the start of each call so that
+        :meth:`ready` reflects only whether *this* call produced a new
+        estimate.
+
         Parameters
         ----------
         data : Image
             Input frame.  If the shape differs from the previously seen
             shape, the internal buffers are reallocated.
         '''
+        self._ready = False
         if data.shape != self.shape:
             self._initialize(data)
         if self._next is not None:
@@ -98,19 +103,21 @@ class Median(VideoFilter):
         -------
         Image or None
             Most recent estimate, or ``None`` if no frames have been
-            added yet.  Calling ``get`` resets the ready flag.
+            added yet.
         '''
-        self._ready = False
         return self._result
 
     def ready(self) -> bool:
-        '''Return ``True`` if a new estimate is available.
+        '''Return ``True`` if the most recent :meth:`add` produced a new estimate.
+
+        The flag is reset at the start of each :meth:`add` call and set
+        again only if that call completes a new median computation.
+        Calling :meth:`get` does not affect this flag.
 
         Returns
         -------
         bool
-            ``True`` after every ``3 ** order`` frames until :meth:`get`
-            is called.
+            ``True`` if the last :meth:`add` yielded a fresh estimate.
         '''
         return self._ready
 

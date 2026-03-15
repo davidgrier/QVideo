@@ -1,63 +1,44 @@
-from QVideo.lib import (QCamera, QVideoSource, QFilterBank)
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
-                                 QSize, QTimer)
-from pyqtgraph import (GraphicsLayoutWidget, ImageItem)
-from pyqtgraph.exporters import ImageExporter
+from QVideo.lib import QVideoSource, QFilterBank
+from pyqtgraph.Qt import QtCore
+from pyqtgraph import GraphicsLayoutWidget, ImageItem
 import numpy as np
-from pathlib import Path
-from datetime import datetime
 import logging
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class QVideoScreen(GraphicsLayoutWidget):
 
     '''Video display widget.
 
-    Inherits
-    --------
-    pyqtgraph.GraphicsLayoutWidget
+    Displays frames from a :class:`~QVideo.lib.QVideoSource` in real time,
+    with optional frame-rate throttling and image filtering via
+    :class:`~QVideo.lib.QFilterBank`.
+
+    Inherits from :class:`pyqtgraph.GraphicsLayoutWidget`.
 
     Parameters
     ----------
-    args : list
-        Additional positional arguments to pass to the
-        GraphicsLayoutWidget constructor.
-    size : tuple(int, int)
-        Starting dimensions of the VideoScreen.
-        Default: (640, 480)
+    size : tuple[int, int]
+        Initial widget dimensions in pixels. Default: ``(640, 480)``.
     framerate : int | None
-        Maximum frames per second
-        Default: None -- no delay
-    kwargs : dict
-        Additional keyword arguments to pass to the
-        GraphicsLayoutWidget constructor.
-
-    Returns
-    -------
-    QVideoScreen : GraphicsLayoutWidget
-        The video display widget.
+        Maximum display frame rate in frames per second.
+        ``None`` means no throttling. Default: ``None``.
+    *args :
+        Forwarded to :class:`pyqtgraph.GraphicsLayoutWidget`.
+    **kwargs :
+        Forwarded to :class:`pyqtgraph.GraphicsLayoutWidget`.
 
     Properties
     ----------
+    framerate : int | None
+        Maximum display frame rate [fps]. Setting this updates the throttle
+        interval.
     source : QVideoSource
-        video source object.
-
-    Methods
-    -------
-    start() -> None
-        Start the video source.
-    setImage(image: np.ndarray) -> None
-        Update the displayed image with a new frame.
-    updateShape(shape: QSize) -> None
-        Update the display shape based on the video source shape.
+        The video source. Setting this connects :attr:`newFrame` and
+        :attr:`shapeChanged` to the display.
     '''
-
-    status = pyqtSignal(str)
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
@@ -66,7 +47,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         super().__init__(*args, size=size, **kwargs)
         self.framerate = framerate
         self._ready = True
+        self._pending = None
         self._setupUi()
+        self._timer = QtCore.QTimer()
         self._source = None
         self.filter = QFilterBank(self)
         self.filter.setVisible(False)
@@ -81,54 +64,70 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.updateShape(self.size())
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
-        self.timer = QTimer()
 
-    @pyqtProperty(int)
+    @property
     def framerate(self) -> int | None:
+        '''Maximum display frame rate [fps], or ``None`` for no throttling.'''
         return self._framerate
 
     @framerate.setter
     def framerate(self, framerate: int | None) -> None:
+        if framerate is not None and framerate <= 0:
+            raise ValueError(f'framerate must be positive, got {framerate}')
         self._framerate = framerate
-        self._interval = 0 if framerate is None else int(1000/framerate)
+        self._interval = 0 if framerate is None else int(1000 / framerate)
 
     def _setready(self) -> None:
         self._ready = True
+        if self._pending is not None:
+            self.setImage(self._pending)
 
-    @pyqtProperty(QVideoSource)
+    @property
     def source(self) -> QVideoSource:
+        '''The video source providing frames to display.'''
         return self._source
 
     @source.setter
     def source(self, source: QVideoSource) -> None:
+        if self._source is not None:
+            self._source.shapeChanged.disconnect(self.updateShape)
+            self._source.newFrame.disconnect(self.setImage)
         self._source = source
-        self.updateShape(source.source.shape)
+        self.updateShape(source.shape)
         self._source.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
 
-    @pyqtSlot()
-    def start(self):
-        self._source.start()
+    @QtCore.pyqtSlot(np.ndarray)
+    def setImage(self, image: np.ndarray) -> None:
+        '''Display a new video frame, subject to frame-rate throttling.
 
-    @pyqtSlot(np.ndarray)
-    def setImage(self, image: QCamera.Image) -> None:
+        Passes the frame through :attr:`filter` before display.  If the
+        throttle interval has not yet elapsed, the frame is buffered as the
+        most recent pending frame; when the interval expires the buffered
+        frame is displayed immediately so no extra latency accumulates.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            The frame to display.
+        '''
         if self._ready:
             self.image.setImage(self.filter(image), autoLevels=False)
             self._ready = False
-            self.timer.singleShot(self._interval, self._setready)
+            self._pending = None
+            self._timer.singleShot(self._interval, self._setready)
+        else:
+            self._pending = image
 
-    @pyqtSlot()
-    def saveImage(self) -> None:
-        exporter = ImageExporter(self.image)
-        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = str(Path.home() / f'pyfab_{ts}.png')
-        exporter.export(filename)
-        message = f'Saved image to {filename}'
-        self.status.emit(message)
-        logger.info(message)
+    @QtCore.pyqtSlot(QtCore.QSize)
+    def updateShape(self, shape: QtCore.QSize) -> None:
+        '''Resize the display to match the video frame dimensions.
 
-    @pyqtSlot(QSize)
-    def updateShape(self, shape: QSize) -> None:
+        Parameters
+        ----------
+        shape : QtCore.QSize
+            New frame dimensions.
+        '''
         logger.debug(f'Resizing to {shape}')
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
@@ -136,7 +135,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.setMinimumSize(shape / 2)
 
     @classmethod
-    def example(cls: 'QVideoScreen') -> None:
+    def example(cls: 'QVideoScreen') -> None:  # pragma: no cover
+        '''Demonstrate the video screen with a noise source.'''
         import pyqtgraph as pg
         from QVideo.cameras.Noise import QNoiseSource
 
@@ -148,5 +148,5 @@ class QVideoScreen(GraphicsLayoutWidget):
         pg.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QVideoScreen.example()

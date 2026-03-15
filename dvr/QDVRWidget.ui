@@ -16,17 +16,6 @@
     <height>120</height>
    </size>
   </property>
-  <property name="font">
-   <font>
-    <family>Arial</family>
-   </font>
-  </property>
-  <property name="windowTitle">
-   <string>QDVRWidget</string>
-  </property>
-  <property name="statusTip">
-   <string>Video Recorder</string>
-  </property>
   <property name="frameShape">
    <enum>QFrame::Box</enum>
   </property>
@@ -100,15 +89,6 @@
       </item>
       <item>
        <widget class="QLCDNumber" name="frameNumber">
-        <property name="autoFillBackground">
-         <bool>false</bool>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">QLCDNumber{
-    color: rgb(0, 0, 0);    
-    background-color: rgb(255, 255, 255);
-}</string>
-        </property>
         <property name="segmentStyle">
          <enum>QLCDNumber::Flat</enum>
         </property>
@@ -182,7 +162,7 @@
          <string>Rewind video file</string>
         </property>
         <property name="text">
-         <string>Rewind</string>
+         <string>&amp;Rewind</string>
         </property>
         <property name="icon">
          <iconset resource="icons.qrc">
@@ -196,7 +176,7 @@
          <string>Pause video playback</string>
         </property>
         <property name="text">
-         <string>Pause</string>
+         <string>&amp;Pause</string>
         </property>
         <property name="icon">
          <iconset resource="icons.qrc">
@@ -210,7 +190,7 @@
          <string>Play video file</string>
         </property>
         <property name="text">
-         <string>Play</string>
+         <string>P&amp;lay</string>
         </property>
         <property name="icon">
          <iconset resource="icons.qrc">
@@ -325,7 +305,7 @@
       <item>
        <widget class="QSpinBox" name="nskip">
         <property name="toolTip">
-         <string>number of frames to skip</string>
+         <string>Record every Nth frame</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

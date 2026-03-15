@@ -1,5 +1,6 @@
-from QVideo.lib import (QVideoReader, QVideoSource)
-from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty)
+from QVideo.lib import QVideoReader, QVideoSource
+from pyqtgraph.Qt import QtCore
+from pathlib import Path
 import h5py
 
 
@@ -8,13 +9,10 @@ __all__ = ['QHDF5Reader', 'QHDF5Source']
 
 class QHDF5Reader(QVideoReader):
 
-    '''Video reader for HDF5 files
+    '''Video reader for HDF5 files.
 
-    Reads frames from an HDF5 file containing image datasets.
-
-    Inherits
-    --------
-    QVideo.lib.QVideoReader
+    Reads frames from an HDF5 file containing an ``images`` group of
+    timestamped datasets, as written by :class:`QHDF5Writer`.
 
     Parameters
     ----------
@@ -23,14 +21,17 @@ class QHDF5Reader(QVideoReader):
     '''
 
     def _initialize(self) -> bool:
-        if (file := h5py.File(self.filename, 'r')) is None:
+        try:
+            self.file = h5py.File(self.filename, 'r')
+            self.images = self.file['images']
+        except (OSError, KeyError):
             return False
-        self.file = file
-        self.images = self.file['images']
-        self.keys = list(self.images.keys())
+        self.keys = sorted(self.images.keys(), key=float)
         self._length = len(self.keys)
+        if not self.keys:
+            return False
         self._framenumber = 0
-        self._width, self._height = self.images[self.keys[0]][()].shape[0:2]
+        self._height, self._width = self.images[self.keys[0]][()].shape[0:2]
         return True
 
     def _deinitialize(self) -> None:
@@ -40,52 +41,53 @@ class QHDF5Reader(QVideoReader):
         if self._framenumber >= len(self.keys):
             return False, None
         key = self.keys[self._framenumber]
-        self.frame = self.images[key][()]
+        frame = self.images[key][()]
         self._framenumber += 1
-        return True, self.frame
+        return True, frame
 
-    @pyqtSlot(int)
+    @QtCore.pyqtSlot(int)
     def seek(self, framenumber: int) -> None:
-        '''Advamces playback to specified frame number'''
+        '''Advance playback to specified frame number.'''
         self._framenumber = framenumber
-        self.now = self.timestamp()
 
-    @pyqtProperty(float)
+    @QtCore.pyqtProperty(float)
     def fps(self) -> float:
-        return 30.
+        if len(self.keys) < 2:
+            return 30.
+        elapsed = float(self.keys[-1]) - float(self.keys[0])
+        if elapsed <= 0.:
+            return 30.
+        return (len(self.keys) - 1) / elapsed
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def length(self) -> int:
         return self._length
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def framenumber(self) -> int:
         return self._framenumber
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def width(self) -> int:
         return self._width
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def height(self) -> int:
         return self._height
 
 
 class QHDF5Source(QVideoSource):
 
-    '''Video source for HDF5 files
-
-    Inherits
-    --------
-    QVideo.lib.QVideoSource
+    '''Video source for HDF5 files.
 
     Parameters
     ----------
-    reader : str | QHDF5Reader
-        Path to the HDF5 file to read or an instance of QHDF5Reader.
+    reader : str, Path, or QHDF5Reader
+        Path to the HDF5 file to read, or an existing
+        :class:`QHDF5Reader` instance.
     '''
 
-    def __init__(self, reader: str | QHDF5Reader) -> None:
-        if isinstance(reader, str):
-            reader = QHDF5Reader(reader)
+    def __init__(self, reader: str | Path | QHDF5Reader) -> None:
+        if isinstance(reader, (str, Path)):
+            reader = QHDF5Reader(str(reader))
         super().__init__(reader)

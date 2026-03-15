@@ -1,95 +1,82 @@
-from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from pyqtgraph.Qt.QtCore import (pyqtSlot, pyqtProperty, Qt, QSize)
-from QVideo.lib import (QCamera, QVideoSource)
-from typing import TypeAlias
+from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.parametertree import Parameter, ParameterTree
+from QVideo.lib import QCamera, QVideoSource
 import logging
 
 
-logging.basicConfig()
+__all__ = ['QCameraTree']
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
+Source = QCamera | QVideoSource
+Description = list[dict[str, str]]
+Change = tuple[Parameter, str, QCamera.PropertyValue]
+Changes = list[Change]
+
+
 class QCameraTree(ParameterTree):
 
-    '''A parameter tree widget for controlling QCamera properties.
+    '''A parameter tree widget for controlling :class:`~QVideo.lib.QCamera.QCamera` properties.
 
-    Inherits
-    --------
-    ParameterTree
-        A tree widget for displaying and editing parameters.
+    Wraps a :class:`~QVideo.lib.QVideoSource.QVideoSource` (or a bare
+    :class:`~QVideo.lib.QCamera.QCamera`) and presents its settings as
+    an editable :class:`~pyqtgraph.parametertree.ParameterTree`.
+    Changes made in the tree are pushed to the camera; camera-side
+    changes are reflected back into the tree.
 
     Parameters
     ----------
-    source : QCamera | QVideoSource
-        The video source to control.
-    description : list[dict[str, str]] | None
-        Optional description of camera properties to display
-        in the parameter tree. If None, a default description
-        is generated from the camera settings.
-    args : list
-        Additional positional arguments to pass to the
-        ParameterTree constructor.
-    kwargs : dict
-        Additional keyword arguments to pass to the
-        ParameterTree constructor.
+    source : QCamera or QVideoSource
+        The video source to control.  Must already be open.
+    description : list[dict] or None
+        Parameter-tree description of the camera properties to expose.
+        If ``None`` a default description is generated from
+        :attr:`~QVideo.lib.QCamera.QCamera.settings`.
+    *args :
+        Additional positional arguments forwarded to
+        :class:`~pyqtgraph.parametertree.ParameterTree`.
+    **kwargs :
+        Additional keyword arguments forwarded to
+        :class:`~pyqtgraph.parametertree.ParameterTree`.
 
-    Returns
-    -------
-    QCameraTree : ParameterTree
-        The camera control tree widget.
-
-    Properties
-    ----------
-    source : QVideoSource
-        The video source object.
-    camera : QCamera
-        The camera object.
-
-    Methods
-    -------
-    start() -> QCameraTree
-        Start the video source.
-    stop() -> None
-        Stop the video source.
-    close() -> None
-        Close the video source.
-    set(key: str, value: QCamera.PropertyValue) -> None
-        Set a camera property value.
-    get(key: str) -> QCamera.PropertyValue | None
-        Get a camera property value.
-    example() -> None
-        Run an example of the QCameraTree widget.
+    Raises
+    ------
+    RuntimeError
+        If *source* is not open when the tree is created.
     '''
 
-    Source: TypeAlias = QCamera | QVideoSource
-    Description: TypeAlias = list[dict[str, str]]
-    Change: TypeAlias = tuple[Parameter, str, QCamera.PropertyValue]
-    Changes: TypeAlias = list[Change]
-
-    @staticmethod
-    def _getParameters(parameter: Parameter) -> dict[str, object]:
-        '''Recursively find setters for named Parameters'''
+    @classmethod
+    def _getParameters(cls, parameter: Parameter) -> dict[str, object]:
+        '''Recursively collect leaf :class:`~pyqtgraph.parametertree.Parameter` nodes.'''
         parameters = dict()
         for child in parameter.children():
             if child.hasChildren():
-                parameters.update(QCameraTree._getParameters(child))
+                parameters.update(cls._getParameters(child))
             else:
                 parameters.update({child.name(): child})
         return parameters
 
     @staticmethod
-    def _defaultDescription(camera: QCamera) -> list:
-        settings = camera.settings.items()
-        entries = [{'name': key,
-                    'type': value.__class__.__name__,
-                    'value': value}
-                   for key, value in settings if value is not None]
+    def _defaultDescription(camera: QCamera) -> Description:
+        entries = []
+        for name, spec in camera._properties.items():
+            value = spec['getter']()
+            if value is None:
+                continue
+            entry = {'name': name,
+                     'type': type(value).__name__,
+                     'value': value}
+            if spec['setter'] is None:
+                entry['enabled'] = False
+            entries.append(entry)
         return entries
 
     def __init__(self,
                  source: Source,
-                 description: Description | None,
+                 description: Description | None = None,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         if not source.isOpen():
@@ -98,16 +85,15 @@ class QCameraTree(ParameterTree):
             self._source = QVideoSource(source)
         else:
             self._source = source
+        self._ignore_sync = False
         self._createTree(description)
         self._connectSignals()
         self._setupUi()
 
-    def __del__(self) -> None:
-        logger.debug('__del__ called')
-        try:
-            self.stop()
-        except Exception as ex:
-            logger.debug(f'__del__: {ex}')
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        '''Stop the video source when the widget is closed.'''
+        self.stop()
+        super().closeEvent(event)
 
     def _createTree(self, description: Description | None) -> None:
         if description is None:
@@ -121,11 +107,11 @@ class QCameraTree(ParameterTree):
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
-        self._ignoresync = False
+        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
 
     def _setupUi(self) -> None:
         header = self.header()
-        self.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
         policy = header.ResizeMode.Interactive
         header.setSectionResizeMode(policy)
         header.setStretchLastSection(False)
@@ -135,22 +121,31 @@ class QCameraTree(ParameterTree):
         self.adjustSize()
         self.setMinimumWidth(self.width())
 
-    @pyqtSlot(object, object)
-    def _sync(self, tree: ParameterTree, changes: Changes) -> None:
-        if self._ignoresync:
+    @QtCore.pyqtSlot(object, object)
+    def _sync(self, root: Parameter, changes: Changes) -> None:
+        if self._ignore_sync:
             return
         for param, change, value in changes:
             if (change == 'value'):
-                key = param.name()  # .lower()
+                key = param.name()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
-        self._ignoresync = True
-        for key, value in self.camera.settings().items():
+        self._ignore_sync = True
+        for key, value in self.camera.settings.items():
             self.set(key, value)
-        self._ignoresync = False
+        self._ignore_sync = False
 
-    @pyqtSlot(str, object)
+    @QtCore.pyqtSlot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
+        '''Set a camera property and update the tree.
+
+        Parameters
+        ----------
+        key : str
+            Property name.
+        value : QCamera.PropertyValue
+            New value.
+        '''
         if key in self._parameters:
             logger.debug(f'set {key}: {value}')
             self._parameters[key].setValue(value)
@@ -158,37 +153,56 @@ class QCameraTree(ParameterTree):
             logger.warning(f'Unsupported property: {key}')
 
     def get(self, key: str) -> QCamera.PropertyValue | None:
+        '''Get a camera property value from the tree.
+
+        Parameters
+        ----------
+        key : str
+            Property name.
+
+        Returns
+        -------
+        QCamera.PropertyValue or None
+            Current value, or ``None`` if *key* is not in the tree.
+        '''
         if key in self._parameters:
-            return self._parameters[key].getValue()
-        else:
-            logger.warning(f'Unsupported property: {key}')
+            return self._parameters[key].value()
+        logger.warning(f'Unsupported property: {key}')
         return None
 
-    @pyqtProperty(QVideoSource)
+    @QtCore.pyqtProperty(QVideoSource)
     def source(self) -> QVideoSource:
+        '''The underlying :class:`~QVideo.lib.QVideoSource.QVideoSource`.'''
         return self._source
 
-    @pyqtProperty(QCamera)
+    @QtCore.pyqtProperty(QCamera)
     def camera(self) -> QCamera:
+        '''The :class:`~QVideo.lib.QCamera.QCamera` driven by this tree.'''
         return self.source.source
 
-    @pyqtSlot()
-    def start(self):
+    @QtCore.pyqtSlot()
+    def start(self) -> 'QCameraTree':
+        '''Start the video source.
+
+        Returns
+        -------
+        QCameraTree
+            ``self``, to allow chaining (e.g. ``tree = QCameraTree(...).start()``).
+        '''
         self.source.start()
         return self
 
-    @pyqtSlot()
+    @QtCore.pyqtSlot()
     def stop(self) -> None:
-        self.source.stop()
-        self.source.quit()
-        self.source.wait()
-
-    @pyqtSlot()
-    def close(self) -> None:
-        self.stop()
+        '''Stop and join the video source thread.'''
+        if self.source.isRunning():
+            self.source.stop()
+            self.source.quit()
+            self.source.wait()
 
     @classmethod
-    def example(cls: 'QCameraTree') -> None:
+    def example(cls: 'QCameraTree') -> None:  # pragma: no cover
+        '''Demonstrate the widget with a default camera source.'''
         import pyqtgraph as pg
 
         app = pg.mkQApp(f'{cls.__name__} Example')

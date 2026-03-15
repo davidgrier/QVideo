@@ -21,6 +21,11 @@ def make_smooth(**kwargs) -> SmoothNormalize:
 
 class TestNormalize(unittest.TestCase):
 
+    def test_get_before_add_raises(self):
+        f = make_normalize()
+        with self.assertRaises(RuntimeError):
+            f.get()
+
     def test_inherits_median(self):
         f = make_normalize()
         self.assertIsInstance(f, Median)

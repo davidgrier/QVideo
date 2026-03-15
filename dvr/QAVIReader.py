@@ -1,5 +1,6 @@
-from QVideo.lib import (QVideoReader, QVideoSource)
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)
+from QVideo.lib import QVideoReader, QVideoSource
+from pyqtgraph.Qt import QtCore
+from pathlib import Path
 import cv2
 
 
@@ -7,13 +8,11 @@ __all__ = ['QAVIReader', 'QAVISource']
 
 
 class QAVIReader(QVideoReader):
-    '''Video reader for AVI files
 
-    Reads frames from a video file,
+    '''Video reader for AVI files.
 
-    Inherits
-    --------
-    QVideo.lib.QVideoReader
+    Reads frames from a video file using OpenCV's ``VideoCapture``.
+    Frames are converted from BGR (OpenCV native) to RGB on read.
 
     Parameters
     ----------
@@ -21,77 +20,79 @@ class QAVIReader(QVideoReader):
         Path to the AVI video file to read.
     '''
 
-    if cv2.__version__.startswith('2.'):
-        SEEK = cv2.cv.CV_CAP_PROP_POS_FRAMES
-        WIDTH = cv2.cv.CV_CAP_PROP_FRAME_WIDTH
-        HEIGHT = cv2.cv.CV_CAP_PROP_FRAME_HEIGHT
-        FRAMENUMBER = cv2.cv.CV_CAP_PROP_POS_FRAMES
-        LENGTH = cv2.cv.CV_CAP_PROP_FRAME_COUNT
-        FPS = cv2.cv.CV_CAP_PROP_FPS
-        BRG2RGB = cv2.cv.CV_COLOR_BGR2RGB
-    else:
-        SEEK = cv2.CAP_PROP_POS_FRAMES
-        WIDTH = cv2.CAP_PROP_FRAME_WIDTH
-        HEIGHT = cv2.CAP_PROP_FRAME_HEIGHT
-        FRAMENUMBER = cv2.CAP_PROP_POS_FRAMES
-        LENGTH = cv2.CAP_PROP_FRAME_COUNT
-        FPS = cv2.CAP_PROP_FPS
-        BRG2RGB = cv2.COLOR_BGR2RGB
+    FRAMENUMBER = cv2.CAP_PROP_POS_FRAMES
+    WIDTH = cv2.CAP_PROP_FRAME_WIDTH
+    HEIGHT = cv2.CAP_PROP_FRAME_HEIGHT
+    LENGTH = cv2.CAP_PROP_FRAME_COUNT
+    FPS = cv2.CAP_PROP_FPS
+    _COLOR_BGR2RGB = cv2.COLOR_BGR2RGB
 
     def _initialize(self) -> bool:
         self.reader = cv2.VideoCapture(self.filename)
-        return self.reader.isOpened()
+        if not self.reader.isOpened():
+            return False
+        self._framenumber = 0
+        return True
 
     def _deinitialize(self) -> None:
-        self.reader.release()
+        if self.reader is not None:
+            self.reader.release()
         self.reader = None
 
     def read(self) -> QVideoReader.CameraData:
+        if not self.isOpen():
+            return False, None
         ok, frame = self.reader.read()
-        if ok and frame.ndim == 3:
-            frame = cv2.cvtColor(frame, self.BRG2RGB)
-        return ok, frame
+        if not ok:
+            return False, None
+        if frame.ndim == 3:
+            frame = cv2.cvtColor(frame, self._COLOR_BGR2RGB)
+        self._framenumber += 1
+        return True, frame
 
-    @pyqtSlot(int)
+    @QtCore.pyqtSlot(int)
     def seek(self, framenumber: int) -> None:
-        self.reader.set(self.SEEK, framenumber)
+        '''Seek to the specified frame number.'''
+        self.reader.set(self.FRAMENUMBER, framenumber)
+        self._framenumber = framenumber
 
-    @pyqtProperty(float)
+    @QtCore.pyqtProperty(float)
     def fps(self) -> float:
         return self.reader.get(self.FPS)
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def length(self) -> int:
         return int(self.reader.get(self.LENGTH))
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def framenumber(self) -> int:
-        return int(self.reader.get(self.FRAMENUMBER))
+        return self._framenumber
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def width(self) -> int:
-        return self.reader.get(self.WIDTH)
+        return int(self.reader.get(self.WIDTH))
 
-    @pyqtProperty(int)
+    @QtCore.pyqtProperty(int)
     def height(self) -> int:
-        return self.reader.get(self.HEIGHT)
+        return int(self.reader.get(self.HEIGHT))
 
 
 class QAVISource(QVideoSource):
 
-    '''Video source for AVI files
+    '''Video source for AVI files.
 
     Parameters
     ----------
-    reader : str | QAVIReader
-        Path to the AVI video file to read or an instance of QAVIReader.
+    reader : str, Path, or QAVIReader
+        Path to the AVI video file to read, or an existing
+        :class:`QAVIReader` instance.
     '''
 
-    def __init__(self, reader: str | QAVIReader) -> None:
-        if isinstance(reader, str):
-            reader = QAVIReader(reader)
+    def __init__(self, reader: str | Path | QAVIReader) -> None:
+        if isinstance(reader, (str, Path)):
+            reader = QAVIReader(str(reader))
         super().__init__(reader)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QAVIReader.example()

@@ -1,53 +1,19 @@
-# -*- coding: utf-8 -*-
-
-from QVideo.lib import QVideoWriter
-from QVideo.lib.types import Image
-from pyqtgraph.Qt.QtCore import pyqtSlot
-import cv2
+from .QOpenCVWriter import QOpenCVWriter
 
 
-class QAVIWriter(QVideoWriter):
+__all__ = ['QAVIWriter']
 
-    def __init__(self, *args,
-                 codec: str | None = None,
-                 **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        # NOTE: libavcodec appears to seg fault when
-        # recording with the lossless FFV1 codec
-        # codec = codec or 'FFV1'
-        # HuffyYUV 'HFYU' appears to work on both
-        # Ubuntu and Macports
-        codec = codec or 'HFYU'
-        # codec = codec or 'XVID'
-        if cv2.__version__.startswith('2.'):
-            self.fourcc = cv2.cv.CV_FOURCC(*codec)
-            self.BGR2RGB = cv2.cv.CV_COLOR_BGR2RGB
-        else:
-            self.fourcc = cv2.VideoWriter_fourcc(*codec)
-            self.BGR2RGB = cv2.COLOR_BGR2RGB
-        self._writer = None
-        self._shape = None
 
-    def open(self, frame: Image) -> bool:
-        self._shape = frame.shape
-        h, w = self._shape[:2]
-        color = (frame.ndim == 3)
-        args = [self.filename, self.fourcc, self.fps, (w, h), color]
-        self._writer = cv2.VideoWriter(*args)
-        return self._writer.isOpened()
+class QAVIWriter(QOpenCVWriter):
 
-    def isOpen(self) -> bool:
-        return (self._writer is not None) and self._writer.isOpened()
+    '''Video writer for AVI files.
 
-    def _write(self, frame: Image) -> None:
-        if frame.shape != self._shape:
-            self.finished.emit()
-            return
-        if frame.ndim == 3:
-            frame = cv2.cvtColor(frame, self.BGR2RGB)
-        self._writer.write(frame)
+    Writes lossless video to an AVI container.  ``FFV1`` (Free Lossless
+    Video Codec) is tried first for its superior compression and
+    multithreaded encoding; ``HFYU`` (HuffYUV) is the fallback.
 
-    @pyqtSlot()
-    def close(self) -> None:
-        if self.isOpen():
-            self._writer.release()
+    See :class:`QOpenCVWriter` for full parameter and attribute
+    documentation.
+    '''
+
+    CODECS = ('FFV1', 'HFYU')

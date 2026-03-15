@@ -94,12 +94,12 @@ class QVideoSource(QtCore.QThread):
         '''Return whether the source is open.'''
         return self.source.isOpen()
 
-    @QtCore.pyqtProperty(float)
+    @property
     def fps(self) -> float:
         '''Frame rate of the video source [frames per second].'''
         return self.source.fps
 
-    @QtCore.pyqtProperty(QtCore.QSize)
+    @property
     def shape(self) -> QtCore.QSize:
         '''Shape of the video frames as ``QSize(width, height)``.'''
         return self.source.shape
@@ -137,7 +137,8 @@ class QVideoSource(QtCore.QThread):
         Returns
         -------
         QVideoSource
-            ``self``, to allow chaining (e.g. ``src = QVideoSource(cam).start()``).
+            ``self``, to allow chaining
+            e.g. ``src = QVideoSource(cam).start()``.
         '''
         logger.debug('starting')
         super().start()

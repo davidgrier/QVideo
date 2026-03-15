@@ -34,11 +34,11 @@ class TestInit(unittest.TestCase):
 
     def test_default_blacklevel(self):
         cam = make_camera()
-        self.assertEqual(cam.blacklevel, 0)
+        self.assertEqual(cam.blacklevel, 48)
 
     def test_default_whitelevel(self):
         cam = make_camera()
-        self.assertEqual(cam.whitelevel, 255)
+        self.assertEqual(cam.whitelevel, 128)
 
     def test_custom_blacklevel(self):
         cam = make_camera(blacklevel=48)
@@ -149,12 +149,12 @@ class TestProperties(unittest.TestCase):
         self.assertEqual(cam.blacklevel, 0)
 
     def test_blacklevel_setter_clamps_above(self):
-        cam = make_camera()
+        cam = make_camera(whitelevel=255)
         cam.set('blacklevel', 300)
         self.assertEqual(cam.blacklevel, 254)
 
     def test_whitelevel_setter_clamps_below(self):
-        cam = make_camera()
+        cam = make_camera(blacklevel=0)
         cam.set('whitelevel', 0)
         self.assertEqual(cam.whitelevel, 1)
 
@@ -162,6 +162,20 @@ class TestProperties(unittest.TestCase):
         cam = make_camera()
         cam.set('whitelevel', 300)
         self.assertEqual(cam.whitelevel, 255)
+
+    def test_blacklevel_rejected_when_gte_whitelevel(self):
+        cam = make_camera(blacklevel=48, whitelevel=128)
+        with self.assertLogs('QVideo.cameras.Noise.QNoiseCamera',
+                             level='WARNING'):
+            cam.set('blacklevel', 128)
+        self.assertEqual(cam.blacklevel, 48)
+
+    def test_whitelevel_rejected_when_lte_blacklevel(self):
+        cam = make_camera(blacklevel=48, whitelevel=128)
+        with self.assertLogs('QVideo.cameras.Noise.QNoiseCamera',
+                             level='WARNING'):
+            cam.set('whitelevel', 48)
+        self.assertEqual(cam.whitelevel, 128)
 
     def test_width_setter_emits_shape_changed(self):
         cam = make_camera()
@@ -177,6 +191,13 @@ class TestProperties(unittest.TestCase):
 
 
 class TestRead(unittest.TestCase):
+
+    def test_read_when_closed_returns_false_none(self):
+        cam = make_camera()
+        cam.close()
+        ok, frame = cam.read()
+        self.assertFalse(ok)
+        self.assertIsNone(frame)
 
     def test_read_returns_true(self):
         cam = make_camera()

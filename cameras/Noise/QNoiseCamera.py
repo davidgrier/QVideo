@@ -1,5 +1,4 @@
 from QVideo.lib import QCamera, QVideoSource
-from pyqtgraph.Qt import QtCore
 import numpy as np
 import time
 import logging
@@ -62,12 +61,30 @@ class QNoiseCamera(QCamera):
         self.shapeChanged.emit(self.shape)
 
     def _setBlacklevel(self, value: int) -> None:
-        '''Set black level, clamped to [0, 254].'''
-        self._blacklevel = int(np.clip(value, 0, 254))
+        '''Set black level, clamped to [0, 254].
+
+        Rejects values that would make blacklevel >= whitelevel.
+        '''
+        value = int(np.clip(value, 0, 254))
+        if value >= self._whitelevel:
+            logger.warning(
+                f'blacklevel {value} must be less than '
+                f'whitelevel {self._whitelevel}: ignoring')
+            return
+        self._blacklevel = value
 
     def _setWhitelevel(self, value: int) -> None:
-        '''Set white level, clamped to [1, 255].'''
-        self._whitelevel = int(np.clip(value, 1, 255))
+        '''Set white level, clamped to [1, 255].
+
+        Rejects values that would make whitelevel <= blacklevel.
+        '''
+        value = int(np.clip(value, 1, 255))
+        if value <= self._blacklevel:
+            logger.warning(
+                f'whitelevel {value} must be greater than '
+                f'blacklevel {self._blacklevel}: ignoring')
+            return
+        self._whitelevel = value
 
     def _initialize(self) -> bool:
         '''Seed the random number generator.
@@ -93,6 +110,8 @@ class QNoiseCamera(QCamera):
             ``(True, frame)`` where ``frame`` is a grayscale uint8 array
             of shape ``(height, width)``.
         '''
+        if not self.isOpen():
+            return False, None
         time.sleep(1. / self._fps)
         image = self._rng.integers(self._blacklevel, self._whitelevel,
                                    (self._height, self._width), np.uint8)

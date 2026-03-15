@@ -33,6 +33,13 @@ class Median(_MedianBase):
 
     The :meth:`reset` method clears all buffers and resets the ready
     flag so that the estimator starts fresh without reallocating memory.
+
+    References
+    ----------
+    .. [1] P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
+       averaging method for large data sets", *Journal of the American
+       Statistical Association*, 85(409):97–104, 1990.
+       :doi:`10.1080/01621459.1990.10475311`
     '''
 
     def add(self, data: Image) -> None:

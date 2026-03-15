@@ -5,7 +5,7 @@ import numpy as np
 
 class _MedianBase(VideoFilter):
 
-    '''Shared base for median-of-medians background estimators.
+    '''Shared base for Remedian background estimators.
 
     Provides buffer management, the ``order`` property, and ``reset``.
     Subclasses implement :meth:`add` with their own update cadence.
@@ -17,6 +17,13 @@ class _MedianBase(VideoFilter):
         frames.  Default: ``1``.
     data : Image or None
         Optional seed frame for pre-allocating buffers.  Default: ``None``.
+
+    References
+    ----------
+    .. [1] P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
+       averaging method for large data sets", *Journal of the American
+       Statistical Association*, 85(409):97–104, 1990.
+       :doi:`10.1080/01621459.1990.10475311`
     '''
 
     def __init__(self,

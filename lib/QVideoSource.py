@@ -1,6 +1,7 @@
 from pyqtgraph.Qt import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
+from QVideo.lib.types import Image
 import numpy as np
 import logging
 
@@ -20,7 +21,7 @@ class QVideoSource(QtCore.QThread):
 
     Signals
     -------
-    newFrame(np.ndarray)
+    newFrame(Image)
         Emitted when a new video frame is available.
 
     Properties

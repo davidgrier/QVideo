@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from QVideo.lib import QVideoWriter
+from QVideo.lib.types import Image
 from pyqtgraph.Qt.QtCore import pyqtSlot
-import numpy as np
 import cv2
 
 
@@ -28,7 +28,7 @@ class QAVIWriter(QVideoWriter):
         self._writer = None
         self._shape = None
 
-    def open(self, frame: np.ndarray) -> bool:
+    def open(self, frame: Image) -> bool:
         self._shape = frame.shape
         h, w = self._shape[:2]
         color = (frame.ndim == 3)
@@ -39,7 +39,7 @@ class QAVIWriter(QVideoWriter):
     def isOpen(self) -> bool:
         return (self._writer is not None) and self._writer.isOpened()
 
-    def _write(self, frame: np.ndarray) -> None:
+    def _write(self, frame: Image) -> None:
         if frame.shape != self._shape:
             self.finished.emit()
             return

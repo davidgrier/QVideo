@@ -1,7 +1,7 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
-import numpy as np
+from QVideo.lib.types import Image
 import cv2
 
 
@@ -42,12 +42,12 @@ class BlurFilter(VideoFilter):
         width = max(1, int(width))
         self._width = width - (width % 2) + 1
 
-    def get(self) -> np.ndarray | None:
+    def get(self) -> Image | None:
         '''Return the Gaussian-blurred frame.
 
         Returns
         -------
-        np.ndarray or None
+        Image or None
             Blurred version of the most recently added frame, or
             ``None`` if no frame has been added yet.
         '''

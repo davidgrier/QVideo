@@ -2,14 +2,14 @@
 
 from pyqtgraph.Qt.QtCore import pyqtSlot
 from QVideo.lib import QVideoWriter
-import numpy as np
+from QVideo.lib.types import Image
 import h5py
 from time import time
 
 
 class QHDF5Writer(QVideoWriter):
 
-    def open(self, frame: np.ndarray) -> bool:
+    def open(self, frame: Image) -> bool:
         self.file = h5py.File(self.filename, 'w',
                               libver='latest',
                               track_order=True)
@@ -21,7 +21,7 @@ class QHDF5Writer(QVideoWriter):
     def isOpen(self) -> bool:
         return hasattr(self, 'file') and bool(self.file)
 
-    def _write(self, frame: np.ndarray) -> None:
+    def _write(self, frame: Image) -> None:
         now = time() - self.start
         self._writer.create_dataset(str(now), data=frame)
 

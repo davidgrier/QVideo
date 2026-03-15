@@ -1,5 +1,6 @@
 from abc import (ABCMeta, abstractmethod)
 from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot)
+from QVideo.lib.types import Image
 import numpy as np
 import logging
 
@@ -44,7 +45,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
 
     Slots
     -----
-    write(frame: np.ndarray) -> None
+    write(frame: Image) -> None
         Write a video frame to the file.
     close() -> None
         Close the video file.
@@ -62,11 +63,11 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
 
     Abstract Methods
     ----------------
-    open(frame: np.ndarray) -> bool
+    open(frame: Image) -> bool
         Open the video file for writing.
     isOpen() -> bool
         Check if the video file is open.
-    _write(frame: np.ndarray) -> None
+    _write(frame: Image) -> None
         Write a video frame to the file.
     close() -> None
         Close the video file.
@@ -90,7 +91,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
         self.blank = False
 
     @abstractmethod
-    def open(self, frame: np.ndarray) -> bool:
+    def open(self, frame: Image) -> bool:
         pass
 
     @abstractmethod
@@ -98,7 +99,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
         return False
 
     @pyqtSlot(np.ndarray)
-    def write(self, frame: np.ndarray) -> None:
+    def write(self, frame: Image) -> None:
         if not self.isOpen():
             if not self.open(frame):
                 logger.warning(f'Could not write to {self.filename}')
@@ -113,7 +114,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
             self.frameNumber.emit(self.framenumber)
 
     @abstractmethod
-    def _write(self, frame: np.ndarray) -> None:
+    def _write(self, frame: Image) -> None:
         pass
 
     @pyqtSlot()

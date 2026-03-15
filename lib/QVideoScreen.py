@@ -1,7 +1,8 @@
 from QVideo.lib import QVideoSource, QFilterBank
+from QVideo.lib.types import Image
 from pyqtgraph.Qt import QtCore
-from pyqtgraph import GraphicsLayoutWidget, ImageItem
 import numpy as np
+from pyqtgraph import GraphicsLayoutWidget, ImageItem
 import logging
 
 
@@ -98,7 +99,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._source.newFrame.connect(self.setImage)
 
     @QtCore.pyqtSlot(np.ndarray)
-    def setImage(self, image: np.ndarray) -> None:
+    def setImage(self, image: Image) -> None:
         '''Display a new video frame, subject to frame-rate throttling.
 
         Passes the frame through :attr:`filter` before display.  If the
@@ -108,7 +109,7 @@ class QVideoScreen(GraphicsLayoutWidget):
 
         Parameters
         ----------
-        image : np.ndarray
+        image : Image
             The frame to display.
         '''
         if self._ready:

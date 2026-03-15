@@ -1,3 +1,4 @@
+from .types import Image
 from .clickable import clickable
 from .QCamera import QCamera
 from .QVideoSource import QVideoSource
@@ -10,7 +11,7 @@ from .chooser import choose_camera
 from .QListCameras import QListCameras
 
 
-__all__ = '''clickable
-choose_camera QListCameras
+__all__ = '''Image
+clickable choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank
 QVideoReader QVideoWriter QVideoScreen'''.split()

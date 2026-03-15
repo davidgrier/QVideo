@@ -1,7 +1,7 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
-import numpy as np
+from QVideo.lib.types import Image
 import cv2
 import logging
 
@@ -68,12 +68,12 @@ class EdgeFilter(VideoFilter):
             return
         self._high = high
 
-    def add(self, image: np.ndarray) -> None:
+    def add(self, image: Image) -> None:
         '''Convert color input to grayscale and store the result.
 
         Parameters
         ----------
-        image : np.ndarray
+        image : Image
             Input frame.  3-D (color) arrays are converted to
             grayscale; 2-D arrays are stored unchanged.
         '''
@@ -82,12 +82,12 @@ class EdgeFilter(VideoFilter):
         else:
             self.data = image
 
-    def get(self) -> np.ndarray | None:
+    def get(self) -> Image | None:
         '''Return the Canny edge map of the stored frame.
 
         Returns
         -------
-        np.ndarray or None
+        Image or None
             Edge map, or ``None`` if no frame has been added yet.
         '''
         if self.data is None:

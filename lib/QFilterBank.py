@@ -1,6 +1,6 @@
 from pyqtgraph.Qt.QtWidgets import (QGroupBox, QWidget, QVBoxLayout)
 from QVideo.lib.VideoFilter import QVideoFilter
-import numpy as np
+from QVideo.lib.types import Image
 import QVideo.filters
 from pathlib import Path
 from importlib import import_module
@@ -16,7 +16,7 @@ class QFilterBank(QGroupBox):
     def _setupUi(self) -> None:
         self.layout = QVBoxLayout(self)
 
-    def __call__(self, data: np.ndarray) -> np.ndarray:
+    def __call__(self, data: Image) -> Image:
         for filter in self.filters:
             data = filter(data)
         return data

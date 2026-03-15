@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from pyqtgraph.Qt import QtCore
-from numpy.typing import NDArray
+from QVideo.lib.types import Image
 import numpy as np
 import logging
 
@@ -71,7 +71,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     PropertyValue = bool | int | float | str
     Settings = dict[str, PropertyValue]
-    Image = NDArray[np.uint8]
+    Image = Image
     CameraData = tuple[bool, Image | None]
 
     shapeChanged = QtCore.pyqtSignal(QtCore.QSize)

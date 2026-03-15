@@ -1,5 +1,5 @@
 from pyqtgraph.Qt import QtWidgets
-import numpy as np
+from QVideo.lib.types import Image
 
 
 __all__ = ['VideoFilter', 'QVideoFilter']
@@ -19,40 +19,40 @@ class VideoFilter:
     '''
 
     def __init__(self) -> None:
-        self.data: np.ndarray | None = None
+        self.data: Image | None = None
 
-    def __call__(self, data: np.ndarray) -> np.ndarray:
+    def __call__(self, data: Image) -> Image:
         '''Apply the filter to *data* and return the result.
 
         Parameters
         ----------
-        data : np.ndarray
+        data : Image
             Input frame.
 
         Returns
         -------
-        np.ndarray
+        Image
             Filtered frame.
         '''
         self.add(data)
         return self.get()
 
-    def add(self, data: np.ndarray) -> None:
+    def add(self, data: Image) -> None:
         '''Incorporate a new frame into the filter state.
 
         Parameters
         ----------
-        data : np.ndarray
+        data : Image
             Input frame.
         '''
         self.data = data
 
-    def get(self) -> np.ndarray:
+    def get(self) -> Image:
         '''Return the current filter output.
 
         Returns
         -------
-        np.ndarray
+        Image
             Filtered frame.
         '''
         return self.data
@@ -93,17 +93,17 @@ class QVideoFilter(QtWidgets.QGroupBox):
         self.filter = video_filter
         self._setupUi()
 
-    def __call__(self, image: np.ndarray) -> np.ndarray:
+    def __call__(self, image: Image) -> Image:
         '''Apply the filter if enabled, otherwise return *image* unchanged.
 
         Parameters
         ----------
-        image : np.ndarray
+        image : Image
             Input frame.
 
         Returns
         -------
-        np.ndarray
+        Image
             Filtered frame if checked, otherwise *image* unchanged.
         '''
         return self.filter(image) if self.isChecked() else image

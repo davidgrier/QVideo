@@ -1,6 +1,6 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
-import numpy as np
+from QVideo.lib.types import Image
 
 
 __all__ = ['RGBFilter', 'QRGBFilter']
@@ -35,12 +35,12 @@ class RGBFilter(VideoFilter):
             raise ValueError(f'channel must be 0, 1, or 2; got {channel}')
         self._channel = channel
 
-    def add(self, image: np.ndarray) -> None:
+    def add(self, image: Image) -> None:
         '''Extract the selected channel and store the result.
 
         Parameters
         ----------
-        image : np.ndarray
+        image : Image
             Input frame.  2-D arrays are stored unchanged; 3-D arrays
             have the selected channel extracted.
         '''

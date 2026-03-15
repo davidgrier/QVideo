@@ -1,4 +1,4 @@
-from QVideo.filters._median_base import _MedianBase
+from QVideo.filters._MedianBase import _MedianBase
 from QVideo.lib.types import Image
 import numpy as np
 

@@ -29,21 +29,10 @@ class _FakeCamera(QCamera):
             self._height = int(v)
             self.shapeChanged.emit(self.shape)
 
-        self.registerProperty('width',
-                              getter=lambda: self._width,
-                              setter=_set_width,
-                              ptype=int)
-        self.registerProperty('height',
-                              getter=lambda: self._height,
-                              setter=_set_height,
-                              ptype=int)
-        self.registerProperty('fps',
-                              getter=lambda: self._fps,
-                              setter=lambda v: setattr(self, '_fps', float(v)),
-                              ptype=float)
-        self.registerProperty('color',
-                              getter=lambda: False,
-                              ptype=bool)
+        self.registerProperty('width', setter=_set_width, ptype=int)
+        self.registerProperty('height', setter=_set_height, ptype=int)
+        self.registerProperty('fps', ptype=float)
+        self.registerProperty('color', getter=lambda: False, setter=None, ptype=bool)
         self.registerMethod('calibrate', self.calibrate)
 
     def _initialize(self, *args, **kwargs) -> bool:
@@ -200,6 +189,28 @@ class TestRegistration(unittest.TestCase):
     def test_registered_method_present(self):
         cam = make_camera()
         self.assertIn('calibrate', cam.methods())
+
+    def test_auto_getter_reads_backing_attribute(self):
+        cam = make_camera()
+        cam._fps = 60.
+        self.assertEqual(cam.get('fps'), 60.)
+
+    def test_auto_setter_writes_backing_attribute(self):
+        cam = make_camera()
+        cam.set('fps', 24.)
+        self.assertAlmostEqual(cam._fps, 24.)
+
+    def test_auto_setter_coerces_to_ptype(self):
+        cam = make_camera()
+        cam.set('width', 320.9)   # float passed, ptype=int
+        self.assertIsInstance(cam._width, int)
+        self.assertEqual(cam._width, 320)
+
+    def test_explicit_setter_none_is_read_only(self):
+        cam = make_camera()
+        with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+            cam.set('color', True)
+        self.assertFalse(cam.color)
 
     def test_subclass_inherits_and_extends_registrations(self):
         class _ExtendedCamera(_FakeCamera):

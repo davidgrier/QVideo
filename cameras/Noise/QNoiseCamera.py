@@ -42,28 +42,15 @@ class QNoiseCamera(QCamera):
         self._blacklevel = int(np.clip(blacklevel, 0, 254))
         self._whitelevel = int(np.clip(whitelevel, 1, 255))
 
-        self.registerProperty('width',
-                              getter=lambda: self._width,
-                              setter=self._setWidth,
-                              ptype=int)
-        self.registerProperty('height',
-                              getter=lambda: self._height,
-                              setter=self._setHeight,
-                              ptype=int)
-        self.registerProperty('fps',
-                              getter=lambda: self._fps,
-                              setter=lambda v: setattr(self, '_fps', float(v)),
-                              ptype=float)
-        self.registerProperty('color',
-                              getter=lambda: False,
-                              ptype=bool)
+        self.registerProperty('width', setter=self._setWidth, ptype=int)
+        self.registerProperty('height', setter=self._setHeight, ptype=int)
+        self.registerProperty('fps', ptype=float)
+        self.registerProperty('color', getter=lambda: False, setter=None, ptype=bool)
         self.registerProperty('blacklevel',
-                              getter=lambda: self._blacklevel,
                               setter=lambda v: setattr(
                                   self, '_blacklevel', int(np.clip(v, 0, 254))),
                               ptype=int)
         self.registerProperty('whitelevel',
-                              getter=lambda: self._whitelevel,
                               setter=lambda v: setattr(
                                   self, '_whitelevel', int(np.clip(v, 1, 255))),
                               ptype=int)

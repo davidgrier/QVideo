@@ -57,18 +57,9 @@ class QOpenCVCamera(QCamera):
         self._mirrored = bool(mirrored)
         self._flipped = bool(flipped)
         self._gray = bool(gray)
-        self.registerProperty('mirrored',
-                              getter=lambda: self._mirrored,
-                              setter=lambda v: setattr(self, '_mirrored', bool(v)),
-                              ptype=bool)
-        self.registerProperty('flipped',
-                              getter=lambda: self._flipped,
-                              setter=lambda v: setattr(self, '_flipped', bool(v)),
-                              ptype=bool)
-        self.registerProperty('gray',
-                              getter=lambda: self._gray,
-                              setter=lambda v: setattr(self, '_gray', bool(v)),
-                              ptype=bool)
+        self.registerProperty('mirrored', ptype=bool)
+        self.registerProperty('flipped', ptype=bool)
+        self.registerProperty('gray', ptype=bool)
         self.open()
 
     def _initialize(self) -> bool:
@@ -99,7 +90,7 @@ class QOpenCVCamera(QCamera):
                                   ptype=float)
             self.registerProperty('color',
                                   getter=lambda: not self._gray,
-                                  ptype=bool)
+                                  setter=None, ptype=bool)
         return ready
 
     def _deinitialize(self) -> None:

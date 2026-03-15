@@ -7,6 +7,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_AUTO = object()  # sentinel: auto-generate getter/setter from _name convention
+
 
 class QCameraMeta(type(QtCore.QObject), ABCMeta):
     pass
@@ -99,28 +101,39 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     # Registration API
     # ------------------------------------------------------------------
 
-    def registerProperty(self, name: str, getter,
-                         setter=None, ptype=float, **meta) -> None:
+    def registerProperty(self, name: str, getter=_AUTO,
+                         setter=_AUTO, ptype=float, **meta) -> None:
         '''Register a named camera property.
+
+        By default both getter and setter are auto-generated from the
+        ``_name`` backing-attribute convention: the getter reads
+        ``self._name`` and the setter writes ``ptype(value)`` back to
+        ``self._name``.  Pass an explicit callable to override either,
+        or pass ``setter=None`` to make the property read-only.
 
         Parameters
         ----------
         name : str
             Property name used with :meth:`get`, :meth:`set`, and
             attribute access.
-        getter : callable
-            Zero-argument callable returning the current property value.
-        setter : callable or None
+        getter : callable, optional
+            Zero-argument callable returning the current value.
+            Defaults to ``lambda: getattr(self, f'_{name}')``.
+        setter : callable or None, optional
             Single-argument callable applying a new value.  ``None``
-            marks the property as read-only.
+            marks the property read-only.  Defaults to
+            ``lambda v: setattr(self, f'_{name}', ptype(v))``.
         ptype : type
             Python type of the property value (``int``, ``float``,
-            ``bool``, ``str``).  Used by UI generators such as
-            ``QCameraTree``.
+            ``bool``, ``str``).  Drives the default setter coercion and
+            is stored for use by UI generators such as ``QCameraTree``.
         **meta :
-            Additional metadata (e.g. ``minimum``, ``maximum``, ``step``)
-            stored for use by richer UI widgets.
+            Additional metadata (e.g. ``minimum``, ``maximum``, ``step``).
         '''
+        if getter is _AUTO:
+            getter = lambda: getattr(self, f'_{name}')
+        if setter is _AUTO:
+            setter = lambda v: setattr(self, f'_{name}', ptype(v))
         self._registered_properties[name] = dict(
             getter=getter, setter=setter, ptype=ptype, **meta)
 

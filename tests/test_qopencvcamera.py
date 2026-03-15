@@ -228,7 +228,7 @@ class TestRead(unittest.TestCase):
         self.assertTrue(success)
         self.assertIsInstance(frame, np.ndarray)
 
-    def test_read_colour_frame_converted_to_rgb(self):
+    def test_read_color_frame_converted_to_rgb(self):
         cam = make_camera()
         with patch('cv2.cvtColor', return_value=_FRAME_BGR) as mock_cvt:
             cam.read()
@@ -236,7 +236,7 @@ class TestRead(unittest.TestCase):
         _, code = mock_cvt.call_args[0]
         self.assertEqual(code, QOpenCVCamera.BGR2RGB)
 
-    def test_read_colour_frame_converted_to_gray(self):
+    def test_read_color_frame_converted_to_gray(self):
         cam = make_camera(gray=True)
         with patch('cv2.cvtColor', return_value=_FRAME_GRAY) as mock_cvt:
             cam.read()

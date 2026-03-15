@@ -8,7 +8,7 @@ __all__ = ['RGBFilter', 'QRGBFilter']
 
 class RGBFilter(VideoFilter):
 
-    '''Extracts a single colour channel from an RGB image.
+    '''Extracts a single color channel from an RGB image.
 
     For grayscale (2-D) input the frame is passed through unchanged
     regardless of the :attr:`channel` setting.
@@ -74,7 +74,7 @@ class QRGBFilter(QVideoFilter):
 
     @QtCore.pyqtSlot(bool, int)
     def setChannel(self, checked: bool, channel: int) -> None:
-        '''Set the active colour channel.
+        '''Set the active color channel.
 
         Called on every radio button toggle; only acts when *checked*
         is ``True`` to avoid updating the filter on the deselection

@@ -108,7 +108,7 @@ class QOpenCVCamera(QCamera):
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
 
-        Applies colour conversion and geometric transforms according to
+        Applies color conversion and geometric transforms according to
         the current ``gray``, ``mirrored``, and ``flipped`` settings.
 
         Returns

@@ -15,7 +15,7 @@ class EdgeFilter(VideoFilter):
 
     '''Canny edge detector.
 
-    Converts colour input to greyscale, then applies OpenCV's Canny
+    Converts color input to grayscale, then applies OpenCV's Canny
     edge-detection algorithm.
 
     Parameters
@@ -69,13 +69,13 @@ class EdgeFilter(VideoFilter):
         self._high = high
 
     def add(self, image: np.ndarray) -> None:
-        '''Convert colour input to greyscale and store the result.
+        '''Convert color input to grayscale and store the result.
 
         Parameters
         ----------
         image : np.ndarray
-            Input frame.  3-D (colour) arrays are converted to
-            greyscale; 2-D arrays are stored unchanged.
+            Input frame.  3-D (color) arrays are converted to
+            grayscale; 2-D arrays are stored unchanged.
         '''
         if image.ndim == 3:
             self.data = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)

@@ -64,17 +64,10 @@ class TestInit(unittest.TestCase):
         cam = make_camera()
         self.assertFalse(cam.isOpen())
 
-    def test_initially_not_paused(self):
-        cam = make_camera()
-        self.assertFalse(cam.isPaused())
-
     def test_has_mutex(self):
         cam = make_camera()
         self.assertIsInstance(cam.mutex, QtCore.QMutex)
 
-    def test_has_waitcondition(self):
-        cam = make_camera()
-        self.assertIsInstance(cam.waitcondition, QtCore.QWaitCondition)
 
 
 class TestOpen(unittest.TestCase):
@@ -369,20 +362,6 @@ class TestRead(unittest.TestCase):
         with patch.object(cam, 'read', wraps=cam.read) as mock_read:
             cam.saferead()
             self.assertTrue(mock_read.called)
-
-
-class TestPauseResume(unittest.TestCase):
-
-    def test_pause_sets_paused(self):
-        cam = make_camera()
-        cam.pause()
-        self.assertTrue(cam.isPaused())
-
-    def test_resume_wakes_condition(self):
-        cam = make_camera()
-        with patch.object(cam.waitcondition, 'wakeAll') as mock_wake:
-            cam.resume()
-            self.assertTrue(mock_wake.called)
 
 
 class TestExecute(unittest.TestCase):

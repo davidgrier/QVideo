@@ -59,6 +59,14 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         A single camera frame.
     CameraData : tuple[bool, Image | None]
         Return type of :meth:`read`.
+
+    Notes
+    -----
+    ``QCamera`` holds a single non-recursive :attr:`mutex`.  :meth:`set`,
+    :meth:`get`, :meth:`execute`, and :meth:`saferead` all acquire it,
+    so subclass :meth:`read` implementations must not call back into
+    any of those methods or a deadlock will result.  Pause and resume
+    control is the responsibility of the enclosing :class:`QVideoSource`.
     '''
 
     PropertyValue = bool | int | float | str
@@ -72,10 +80,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.mutex = QtCore.QMutex()
-        self.waitcondition = QtCore.QWaitCondition()
         self._properties: dict = {}
         self._methods: dict = {}
-        self._paused = False
         self._isopen = False
 
     def __enter__(self) -> 'QCamera':
@@ -183,10 +189,6 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         '''Return whether the device is currently open.'''
         return self._isopen
 
-    def isPaused(self) -> bool:
-        '''Return whether the camera is in a paused state.'''
-        return self._paused
-
     @abstractmethod
     def _initialize(self, *args, **kwargs) -> bool:
         '''Configure the device so that :meth:`read` will succeed.
@@ -207,6 +209,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         '''Release device resources.
 
         Implement so that deletion or re-opening succeeds.'''
+        pass
 
     # ------------------------------------------------------------------
     # Property / method access
@@ -318,11 +321,20 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         -------
         tuple[bool, Image or None]
             ``(True, frame)`` on success, ``(False, None)`` on failure.
+
+        Notes
+        -----
+        Must not call :meth:`set`, :meth:`get`, :meth:`execute`, or
+        :meth:`saferead` — those methods acquire the same non-recursive
+        mutex that :meth:`saferead` holds while invoking ``read()``.
         '''
         return False, None
 
     def saferead(self) -> CameraData:
-        '''Read a frame, blocking if the camera is paused.
+        '''Read one frame under the camera mutex.
+
+        Blocks any concurrent call to :meth:`set`, :meth:`get`, or
+        :meth:`execute` until the frame transfer completes.
 
         Returns
         -------
@@ -330,20 +342,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             Result of :meth:`read`.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            if self._paused:
-                self.waitcondition.wait(self.mutex)
-                self._paused = False
             return self.read()
-
-    @QtCore.pyqtSlot()
-    def pause(self) -> None:
-        '''Signal that the next :meth:`saferead` should block.'''
-        self._paused = True
-
-    @QtCore.pyqtSlot()
-    def resume(self) -> None:
-        '''Wake any thread blocked in :meth:`saferead`.'''
-        self.waitcondition.wakeAll()
 
     # ------------------------------------------------------------------
     # Derived properties

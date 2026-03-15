@@ -9,7 +9,6 @@ from typing import TypeAlias
 import logging
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
@@ -23,15 +22,6 @@ class QVideoSource(QThread):
     ----------
     source : QCamera | QVideoReader
         The video source to read frames from.
-    args : list
-        Additional positional arguments to pass to the QThread constructor.
-    kwargs : dict
-        Additional keyword arguments to pass to the QThread constructor.
-
-    Returns
-    -------
-    QVideoSource : QThread
-        The threaded video source object.
 
     Signals
     -------
@@ -43,7 +33,7 @@ class QVideoSource(QThread):
     source : QCamera | QVideoReader
         The video source object.
     fps : float
-        frame rate of the video source [frames per second].
+        Frame rate of the video source [frames per second].
     shape : QSize
         The shape of the video frames (width, height).
 
@@ -103,13 +93,16 @@ class QVideoSource(QThread):
         logger.debug('streaming started')
         with self.source:
             while self._running:
+                ok = False
                 with QMutexLocker(self.mutex):
                     if self._paused:
                         self.waitcondition.wait(self.mutex)
                         self._paused = False
+                    if not self._running:
+                        break
                     ok, frame = self.source.saferead()
-                    if ok:
-                        self.newFrame.emit(frame)
+                if ok:
+                    self.newFrame.emit(frame)
         self.finished.emit()
         logger.debug('streaming finished')
 
@@ -120,27 +113,29 @@ class QVideoSource(QThread):
         return self
 
     @pyqtSlot()
-    def stop(self):
-        self.resume()
+    def stop(self) -> None:
+        '''Stop the video source thread.'''
         logger.debug('stopping')
-        if self._running:
+        with QMutexLocker(self.mutex):
             self._running = False
+            self._paused = False
+        self.waitcondition.wakeAll()
 
     @pyqtSlot()
     def pause(self) -> None:
-        '''Pause video readout'''
+        '''Pause video readout.'''
         logger.debug('pausing')
-        if self._running:
-            self._paused = True
+        with QMutexLocker(self.mutex):
+            if self._running:
+                self._paused = True
 
     @pyqtSlot()
     def resume(self) -> None:
-        '''Resume video readout after pause()'''
-        if self._paused:
-            self.waitcondition.wakeAll()
+        '''Resume video readout after pause().'''
+        self.waitcondition.wakeAll()
 
     def isPaused(self) -> bool:
-        '''True if readout is paused'''
+        '''True if readout is paused.'''
         return self._paused
 
     @classmethod

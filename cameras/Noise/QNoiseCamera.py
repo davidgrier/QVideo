@@ -52,17 +52,21 @@ class QNoiseCamera(QCamera):
         self.open()
 
     def _setWidth(self, value: int) -> None:
+        '''Set frame width and emit :attr:`shapeChanged`.'''
         self._width = int(value)
         self.shapeChanged.emit(self.shape)
 
     def _setHeight(self, value: int) -> None:
+        '''Set frame height and emit :attr:`shapeChanged`.'''
         self._height = int(value)
         self.shapeChanged.emit(self.shape)
 
     def _setBlacklevel(self, value: int) -> None:
+        '''Set black level, clamped to [0, 254].'''
         self._blacklevel = int(np.clip(value, 0, 254))
 
     def _setWhitelevel(self, value: int) -> None:
+        '''Set white level, clamped to [1, 255].'''
         self._whitelevel = int(np.clip(value, 1, 255))
 
     def _initialize(self) -> bool:
@@ -77,7 +81,8 @@ class QNoiseCamera(QCamera):
         return True
 
     def _deinitialize(self) -> None:
-        pass
+        '''Release the random number generator.'''
+        self._rng = None
 
     def read(self) -> QCamera.CameraData:
         '''Generate and return a random noise frame.

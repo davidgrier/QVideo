@@ -62,7 +62,7 @@ class QVideoSource(QtCore.QThread):
 
     newFrame = QtCore.pyqtSignal(np.ndarray)
 
-    def __init__(self, source: Source, *args, **kwargs) -> None:
+    def __init__(self, source: Source) -> None:
         '''Initialise the video source thread.
 
         Parameters
@@ -80,7 +80,7 @@ class QVideoSource(QtCore.QThread):
         self._paused = False
         self._running = True
 
-    @QtCore.pyqtProperty(QtCore.QVariant)
+    @property
     def source(self) -> Source:
         '''The underlying QCamera or QVideoReader.'''
         return self._source

@@ -71,7 +71,6 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     PropertyValue = bool | int | float | str
     Settings = dict[str, PropertyValue]
-    Image = Image
     CameraData = tuple[bool, Image | None]
 
     shapeChanged = QtCore.pyqtSignal(QtCore.QSize)

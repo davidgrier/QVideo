@@ -68,7 +68,8 @@ class QRGBFilter(QVideoFilter):
         labels = ['Red', 'Green', 'Blue']
         self._buttons = [QtWidgets.QRadioButton(t) for t in labels]
         for n, button in enumerate(self._buttons):
-            button.toggled.connect(lambda checked, n=n: self.setChannel(checked, n))
+            button.toggled.connect(lambda checked, n=n:
+                                   self.setChannel(checked, n))
             self.layout.addWidget(button)
         self._buttons[self.filter.channel].setChecked(True)
 

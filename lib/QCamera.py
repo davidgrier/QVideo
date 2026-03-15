@@ -73,8 +73,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         super().__init__(*args, **kwargs)
         self.mutex = QtCore.QMutex()
         self.waitcondition = QtCore.QWaitCondition()
-        self._registered_properties: dict = {}
-        self._registered_methods: dict = {}
+        self._properties: dict = {}
+        self._methods: dict = {}
         self._paused = False
         self._isopen = False
 
@@ -91,9 +91,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         declaring explicit Python properties for every camera parameter.
         Only called when normal attribute lookup has already failed.
         '''
-        if ('_registered_properties' in self.__dict__ and
-                name in self._registered_properties):
-            return self._registered_properties[name]['getter']()
+        if ('_properties' in self.__dict__ and
+                name in self._properties):
+            return self._properties[name]['getter']()
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'")
 
@@ -131,10 +131,10 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             Additional metadata (e.g. ``minimum``, ``maximum``, ``step``).
         '''
         if getter is _AUTO:
-            getter = lambda: getattr(self, f'_{name}')
+            def getter(): return getattr(self, f'_{name}')
         if setter is _AUTO:
-            setter = lambda v: setattr(self, f'_{name}', ptype(v))
-        self._registered_properties[name] = dict(
+            def setter(v): return setattr(self, f'_{name}', ptype(v))
+        self._properties[name] = dict(
             getter=getter, setter=setter, ptype=ptype, **meta)
 
     def registerMethod(self, name: str, method) -> None:
@@ -147,7 +147,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         method : callable
             Zero-argument callable to invoke.
         '''
-        self._registered_methods[name] = method
+        self._methods[name] = method
 
     # ------------------------------------------------------------------
     # Open / close lifecycle
@@ -204,7 +204,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     @abstractmethod
     def _deinitialize(self) -> None:
-        '''Release device resources so that deletion or re-opening succeeds.'''
+        '''Release device resources.
+
+        Implement so that deletion or re-opening succeeds.'''
 
     # ------------------------------------------------------------------
     # Property / method access
@@ -213,12 +215,12 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     @property
     def properties(self) -> list[str]:
         '''Names of all registered properties.'''
-        return list(self._registered_properties.keys())
+        return list(self._properties.keys())
 
     @property
     def methods(self) -> list[str]:
         '''Names of all registered methods.'''
-        return list(self._registered_methods.keys())
+        return list(self._methods.keys())
 
     @property
     def settings(self) -> Settings:
@@ -228,7 +230,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         :attr:`propertyValue` for each property.
         '''
         return {name: spec['getter']()
-                for name, spec in self._registered_properties.items()}
+                for name, spec in self._properties.items()}
 
     @settings.setter
     def settings(self, settings: Settings) -> None:
@@ -254,10 +256,10 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             New value to assign.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            if key not in self._registered_properties:
+            if key not in self._properties:
                 logger.error(f'Unknown property: {key}')
                 return
-            setter = self._registered_properties[key]['setter']
+            setter = self._properties[key]['setter']
             if setter is None:
                 logger.warning(f'Property {key!r} is read-only')
             else:
@@ -281,8 +283,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             Current value, or ``None`` if the property is unknown.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            if key in self._registered_properties:
-                value = self._registered_properties[key]['getter']()
+            if key in self._properties:
+                value = self._properties[key]['getter']()
             else:
                 logger.error(f'Unknown property: {key}')
                 value = None
@@ -299,8 +301,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             Method name.
         '''
         with QtCore.QMutexLocker(self.mutex):
-            if key in self._registered_methods:
-                self._registered_methods[key]()
+            if key in self._methods:
+                self._methods[key]()
             else:
                 logger.error(f'Unknown method: {key}')
 
@@ -360,8 +362,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         registered.
         '''
         try:
-            w = self._registered_properties['width']['getter']()
-            h = self._registered_properties['height']['getter']()
+            w = self._properties['width']['getter']()
+            h = self._properties['height']['getter']()
         except KeyError:
             return QtCore.QSize(0, 0)
         return QtCore.QSize(int(w), int(h))
@@ -377,7 +379,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
         camera = cls()
         print(camera.name)
-        pprint(camera.settings())
+        pprint(camera.settings)
         with camera:
             for _ in range(5):
                 print('.' if camera.read()[0] else 'x', end='')

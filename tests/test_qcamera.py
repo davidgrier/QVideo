@@ -277,7 +277,7 @@ class TestShape(unittest.TestCase):
 
     def test_shape_returns_zero_size_when_not_registered(self):
         cam = make_camera()
-        cam._registered_properties.clear()
+        cam._properties.clear()
         self.assertEqual(cam.shape, QtCore.QSize(0, 0))
 
 

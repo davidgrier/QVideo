@@ -1,5 +1,6 @@
 from QVideo.lib.VideoFilter import VideoFilter
 from QVideo.lib.types import Image
+import numpy as np
 
 
 __all__ = ['MoMedian']
@@ -41,8 +42,8 @@ class MoMedian(VideoFilter):
             Seed frame.  If ``None`` all buffers are set to ``None``
             and initialisation is deferred to the first :meth:`add`.
         '''
-        import numpy as np
         self._index = 0
+        self._next = None
         if data is None:
             self.shape = None
             self._result = None
@@ -50,7 +51,8 @@ class MoMedian(VideoFilter):
         self.shape = data.shape
         self._result = data.copy()
         self._buffer = np.zeros((2, *self.shape), data.dtype)
-        self._next = MoMedian(self._order - 1, data) if self._order > 1 else None
+        if self._order > 1:
+            self._next = MoMedian(self._order - 1, data)
 
     def add(self, data: Image) -> None:
         '''Incorporate a new frame into the median estimate.
@@ -61,7 +63,6 @@ class MoMedian(VideoFilter):
             Input frame.  If the shape differs from the previously seen
             shape, the internal buffers are reallocated.
         '''
-        import numpy as np
         if data.shape != self.shape:
             self._initialize(data)
         if self._order > 1:

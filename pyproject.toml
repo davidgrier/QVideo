@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "QVideo"
+dynamic = ["version"]
+description = "PyQt-based framework for integrating video cameras into research applications"
+readme = "README.md"
+license = { file = "LICENSE.md" }
+requires-python = ">=3.10"
+dependencies = [
+    "h5py",
+    "numba",
+    "numpy",
+    "opencv-python",
+    "PyQt5",
+    "PyQt5-sip",
+    "pyqtgraph",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "QVideo.version.__version__" }
+
+[tool.coverage.run]
+source = ["QVideo"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/docs/*",
+    "*/dvr/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "@classmethod",
+]
+show_missing = true

@@ -202,14 +202,12 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         bool
             ``True`` if initialisation succeeded.
         '''
-        return True
 
     @abstractmethod
     def _deinitialize(self) -> None:
         '''Release device resources.
 
         Implement so that deletion or re-opening succeeds.'''
-        pass
 
     # ------------------------------------------------------------------
     # Property / method access
@@ -328,7 +326,6 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         :meth:`saferead` — those methods acquire the same non-recursive
         mutex that :meth:`saferead` holds while invoking ``read()``.
         '''
-        return False, None
 
     def saferead(self) -> CameraData:
         '''Read one frame under the camera mutex.

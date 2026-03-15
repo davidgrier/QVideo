@@ -2,7 +2,6 @@ from pyqtgraph.Qt import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
 import numpy as np
-from typing import TypeAlias
 import logging
 
 
@@ -59,7 +58,7 @@ class QVideoSource(QtCore.QThread):
     loop while paused and to wake it on :meth:`resume` or :meth:`stop`.
     '''
 
-    Source: TypeAlias = QCamera | QVideoReader
+    Source = QCamera | QVideoReader
 
     newFrame = QtCore.pyqtSignal(np.ndarray)
 

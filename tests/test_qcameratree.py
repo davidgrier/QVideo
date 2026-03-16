@@ -162,6 +162,34 @@ class TestQCameraTreeSyncGuard(unittest.TestCase):
         tree._ignore_sync = False
 
 
+class TestQCameraTreeCustomDescription(unittest.TestCase):
+
+    def test_accepts_custom_description(self):
+        '''Passing a description skips _defaultDescription (covers 99→101 branch).'''
+        desc = [{'name': 'width', 'type': 'int', 'value': 640, 'default': 640}]
+        source = make_source()
+        tree = QCameraTree(source, description=desc)
+        self.assertIn('width', tree._parameters)
+
+    def test_custom_description_excludes_undescribed_properties(self):
+        desc = [{'name': 'width', 'type': 'int', 'value': 640, 'default': 640}]
+        source = make_source()
+        tree = QCameraTree(source, description=desc)
+        self.assertNotIn('height', tree._parameters)
+
+
+class TestQCameraTreeSyncNonValueChange(unittest.TestCase):
+
+    def test_sync_ignores_non_value_changes(self):
+        '''_sync skips changes where change != "value" (covers 129→128 branch).'''
+        cam = make_camera()
+        tree = make_tree(source=make_source(cam))
+        original_width = cam.width
+        param = tree._parameters['width']
+        tree._sync(None, [(param, 'options', 9999)])
+        self.assertEqual(cam.width, original_width)
+
+
 class TestQCameraTreeStartStop(unittest.TestCase):
 
     def test_start_returns_self(self):

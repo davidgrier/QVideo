@@ -68,7 +68,8 @@ class QCameraTree(ParameterTree):
                 continue
             entry = {'name': name,
                      'type': type(value).__name__,
-                     'value': value}
+                     'value': value,
+                     'default': value}
             if spec['setter'] is None:
                 entry['enabled'] = False
             entries.append(entry)

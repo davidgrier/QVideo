@@ -2,22 +2,31 @@ from pyqtgraph import ComboBox
 from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot
 
 
+__all__ = ['QListCameras']
+
+
 class QListCameras(ComboBox):
-    '''A QComboBox that lists available cameras.
+    '''Base class for a combo box that lists available cameras.
+
+    Subclasses should override :meth:`_listCameras` to populate the
+    combo box with available camera entries, and :meth:`_model` to
+    return the camera class associated with entries.
 
     Inherits
     --------
     pyqtgraph.ComboBox
 
-    Methods
-    -------
-    refresh()
-        Refresh the list of available cameras.
-
     Signals
     -------
     cameraSelected(model: type, index: int)
-        Emitted when a camera is selected from the combo box.
+        Emitted when a camera entry is selected. ``model`` is the
+        camera class returned by :meth:`_model` and ``index`` is the
+        device index stored as the item's data.
+
+    Methods
+    -------
+    refresh()
+        Clear and repopulate the list of available cameras.
     '''
 
     cameraSelected = pyqtSignal(type, int)
@@ -28,35 +37,46 @@ class QListCameras(ComboBox):
         self.refresh()
 
     def refresh(self) -> None:
-        '''Refresh the list of available cameras.'''
+        '''Clear and repopulate the list of available cameras.'''
         self.clear()
         self.addItem('Select Camera', -1)
         self._listCameras()
 
     def _listCameras(self) -> None:
-        '''List available cameras and populate the combo box.
+        '''Populate the combo box with available camera entries.
 
-        This method should be overridden in subclasses
+        Override in subclasses to add camera-specific items via
+        ``self.addItem(label, device_index)``.
         '''
-        pass
+        raise NotImplementedError
 
     def _model(self) -> type:
-        '''Return the camera model class.
+        '''Return the camera model class for selected entries.
 
-        This method should be overridden in subclasses
+        Override in subclasses to return the appropriate camera class.
         '''
-        return None
+        raise NotImplementedError
 
     @pyqtSlot(int)
-    def cameraSelection(self, index: int) -> None:
-        self.cameraSelected.emit(self._model(), self.currentData())
+    def cameraSelection(self, row: int) -> None:
+        '''Emit :attr:`cameraSelected` for the current combo box entry.
+
+        The placeholder "Select Camera" entry (row 0) and an empty
+        combo box (row -1) are ignored and do not emit the signal.
+
+        Parameters
+        ----------
+        row : int
+            The combo box row index of the newly selected item.
+        '''
+        if row > 0:
+            self.cameraSelected.emit(self._model(), self.currentData())
 
     @classmethod
-    def example(cls):
+    def example(cls):  # pragma: no cover
         import pyqtgraph as pg
-        from pyqtgraph.Qt.QtCore import pyqtSlot
 
-        @pyqtSlot(int, str)
+        @pyqtSlot(type, int)
         def on_camera_changed(model: type, index: int) -> None:
             print(f'Selected {model.__name__} {index = }')
 

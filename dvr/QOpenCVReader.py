@@ -4,12 +4,12 @@ from pathlib import Path
 import cv2
 
 
-__all__ = ['QAVIReader', 'QAVISource']
+__all__ = ['QOpenCVReader', 'QOpenCVSource']
 
 
-class QAVIReader(QVideoReader):
+class QOpenCVReader(QVideoReader):
 
-    '''Video reader for AVI files.
+    '''Video reader for common video file formats (AVI, MKV, MP4, etc.).
 
     Reads frames from a video file using OpenCV's ``VideoCapture``.
     Frames are converted from BGR (OpenCV native) to RGB on read.
@@ -17,7 +17,7 @@ class QAVIReader(QVideoReader):
     Parameters
     ----------
     filename : str
-        Path to the AVI video file to read.
+        Path to the video file to read.
     '''
 
     FRAMENUMBER = cv2.CAP_PROP_POS_FRAMES
@@ -77,22 +77,22 @@ class QAVIReader(QVideoReader):
         return int(self.reader.get(self.HEIGHT))
 
 
-class QAVISource(QVideoSource):
+class QOpenCVSource(QVideoSource):
 
-    '''Video source for AVI files.
+    '''Video source for common video file formats (AVI, MKV, MP4, etc.).
 
     Parameters
     ----------
-    reader : str, Path, or QAVIReader
-        Path to the AVI video file to read, or an existing
-        :class:`QAVIReader` instance.
+    reader : str, Path, or QOpenCVReader
+        Path to the video file to read, or an existing
+        :class:`QOpenCVReader` instance.
     '''
 
-    def __init__(self, reader: str | Path | QAVIReader) -> None:
+    def __init__(self, reader: str | Path | QOpenCVReader) -> None:
         if isinstance(reader, (str, Path)):
-            reader = QAVIReader(str(reader))
+            reader = QOpenCVReader(str(reader))
         super().__init__(reader)
 
 
 if __name__ == '__main__':  # pragma: no cover
-    QAVIReader.example()
+    QOpenCVReader.example()

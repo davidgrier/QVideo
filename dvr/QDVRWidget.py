@@ -1,10 +1,8 @@
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets, uic
 from pathlib import Path
 from QVideo.lib import clickable, QVideoSource
-from .QAVIWriter import QAVIWriter
-from .QMKVWriter import QMKVWriter
-from .QMP4Writer import QMP4Writer
-from .QAVIReader import QAVISource
+from .QOpenCVWriter import QOpenCVWriter
+from .QOpenCVReader import QOpenCVSource
 from .QHDF5Writer import QHDF5Writer
 from .QHDF5Reader import QHDF5Source
 import logging
@@ -31,8 +29,9 @@ class QDVRWidget(QtWidgets.QFrame):
     capture incoming frames to a file, and can play back previously
     recorded files.  Supported formats are determined by the
     :attr:`Writer` and :attr:`Player` class attributes; by default
-    AVI (``.avi``), MKV (``.mkv``), MP4 (``.mp4``), and HDF5 (``.h5``) are supported.  Requesting an
-    unsupported extension is logged as an error and silently ignored.
+    AVI (``.avi``), MKV (``.mkv``), MP4 (``.mp4``), and HDF5 (``.h5``)
+    are supported.  Requesting an unsupported extension is logged
+    as an error and silently ignored.
 
     Recording and playback stop automatically when the widget is closed
     or the application is about to quit.
@@ -66,13 +65,13 @@ class QDVRWidget(QtWidgets.QFrame):
     GetFileName = {True: QtWidgets.QFileDialog.getSaveFileName,
                    False: QtWidgets.QFileDialog.getOpenFileName}
 
-    Writer = {'.avi': QAVIWriter,
-              '.mkv': QMKVWriter,
-              '.mp4': QMP4Writer,
+    Writer = {'.avi': QOpenCVWriter,
+              '.mkv': QOpenCVWriter,
+              '.mp4': QOpenCVWriter,
               '.h5': QHDF5Writer}
-    Player = {'.avi': QAVISource,
-              '.mkv': QAVISource,
-              '.mp4': QAVISource,
+    Player = {'.avi': QOpenCVSource,
+              '.mkv': QOpenCVSource,
+              '.mp4': QOpenCVSource,
               '.h5': QHDF5Source}
 
     FileGroups = {'Video files': {'.avi', '.mkv', '.mp4'},
@@ -269,7 +268,8 @@ class QDVRWidget(QtWidgets.QFrame):
                 self._writer.frameNumber.disconnect(self.setFrameNumber)
                 self._writer.finished.disconnect(self.stop)
             except (RuntimeError, TypeError):
-                logger.debug('Some recording signals were already disconnected')
+                logger.debug(
+                    'Some recording signals were already disconnected')
             self._thread.quit()
             self._thread.wait()
             self._writer.close()

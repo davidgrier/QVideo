@@ -1,10 +1,10 @@
-'''Unit tests for QAVIReader and QAVISource.'''
+'''Unit tests for QOpenCVReader and QOpenCVSource.'''
 import unittest
 import numpy as np
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from pyqtgraph.Qt import QtWidgets
-from QVideo.dvr.QAVIReader import QAVIReader, QAVISource
+from QVideo.dvr.QOpenCVReader import QOpenCVReader, QOpenCVSource
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -24,11 +24,11 @@ def make_mock_capture(width=640, height=480, fps=30., length=100,
 
     def _get(prop):
         return {
-            QAVIReader.WIDTH: width,
-            QAVIReader.HEIGHT: height,
-            QAVIReader.FPS: fps,
-            QAVIReader.LENGTH: length,
-            QAVIReader.FRAMENUMBER: 0,
+            QOpenCVReader.WIDTH: width,
+            QOpenCVReader.HEIGHT: height,
+            QOpenCVReader.FPS: fps,
+            QOpenCVReader.LENGTH: length,
+            QOpenCVReader.FRAMENUMBER: 0,
         }.get(prop, 0.)
 
     cap.get.side_effect = _get
@@ -36,14 +36,14 @@ def make_mock_capture(width=640, height=480, fps=30., length=100,
 
 
 def make_reader(**kwargs):
-    '''Return a QAVIReader with a mocked VideoCapture.'''
+    '''Return a QOpenCVReader with a mocked VideoCapture.'''
     cap = make_mock_capture(**kwargs)
     with patch('cv2.VideoCapture', return_value=cap):
-        reader = QAVIReader('test.avi')
+        reader = QOpenCVReader('test.avi')
     return reader
 
 
-class TestQAVIReaderInit(unittest.TestCase):
+class TestQOpenCVReaderInit(unittest.TestCase):
 
     def test_opens_on_init(self):
         reader = make_reader()
@@ -75,7 +75,7 @@ class TestQAVIReaderInit(unittest.TestCase):
         self.assertEqual(reader.framenumber, 0)
 
 
-class TestQAVIReaderRead(unittest.TestCase):
+class TestQOpenCVReaderRead(unittest.TestCase):
 
     def test_read_returns_true_on_success(self):
         reader = make_reader()
@@ -93,7 +93,7 @@ class TestQAVIReaderRead(unittest.TestCase):
             reader.read()
         mock_cvt.assert_called_once()
         _, code = mock_cvt.call_args[0]
-        self.assertEqual(code, QAVIReader._COLOR_BGR2RGB)
+        self.assertEqual(code, QOpenCVReader._COLOR_BGR2RGB)
 
     def test_read_grayscale_frame_not_converted(self):
         reader = make_reader(frame=_FRAME_GRAY.copy())
@@ -125,12 +125,12 @@ class TestQAVIReaderRead(unittest.TestCase):
         self.assertEqual(reader.framenumber, 0)
 
 
-class TestQAVIReaderSeek(unittest.TestCase):
+class TestQOpenCVReaderSeek(unittest.TestCase):
 
     def test_seek_calls_capture_set(self):
         reader = make_reader()
         reader.seek(42)
-        reader.reader.set.assert_called_with(QAVIReader.FRAMENUMBER, 42)
+        reader.reader.set.assert_called_with(QOpenCVReader.FRAMENUMBER, 42)
 
     def test_seek_updates_framenumber(self):
         reader = make_reader()
@@ -140,7 +140,7 @@ class TestQAVIReaderSeek(unittest.TestCase):
     def test_rewind_seeks_to_zero(self):
         reader = make_reader()
         reader.rewind()
-        reader.reader.set.assert_called_with(QAVIReader.FRAMENUMBER, 0)
+        reader.reader.set.assert_called_with(QOpenCVReader.FRAMENUMBER, 0)
 
     def test_rewind_resets_framenumber(self):
         reader = make_reader()
@@ -149,7 +149,7 @@ class TestQAVIReaderSeek(unittest.TestCase):
         self.assertEqual(reader.framenumber, 0)
 
 
-class TestQAVIReaderClose(unittest.TestCase):
+class TestQOpenCVReaderClose(unittest.TestCase):
 
     def test_close_releases_capture(self):
         reader = make_reader()
@@ -168,23 +168,23 @@ class TestQAVIReaderClose(unittest.TestCase):
         self.assertIsNone(reader.reader)
 
 
-class TestQAVISource(unittest.TestCase):
+class TestQOpenCVSource(unittest.TestCase):
 
     def test_accepts_string_filename(self):
         cap = make_mock_capture()
         with patch('cv2.VideoCapture', return_value=cap):
-            src = QAVISource('test.avi')
-        self.assertIsInstance(src.source, QAVIReader)
+            src = QOpenCVSource('test.avi')
+        self.assertIsInstance(src.source, QOpenCVReader)
 
     def test_accepts_path_filename(self):
         cap = make_mock_capture()
         with patch('cv2.VideoCapture', return_value=cap):
-            src = QAVISource(Path('test.avi'))
-        self.assertIsInstance(src.source, QAVIReader)
+            src = QOpenCVSource(Path('test.avi'))
+        self.assertIsInstance(src.source, QOpenCVReader)
 
     def test_accepts_reader_instance(self):
         reader = make_reader()
-        src = QAVISource(reader)
+        src = QOpenCVSource(reader)
         self.assertIs(src.source, reader)
 
 

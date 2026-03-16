@@ -1,6 +1,7 @@
 from QVideo.lib import QVideoWriter
 from QVideo.lib.types import Image
 from pyqtgraph.Qt import QtCore
+from pathlib import Path
 import cv2
 import logging
 
@@ -13,23 +14,20 @@ logger = logging.getLogger(__name__)
 
 class QOpenCVWriter(QVideoWriter):
 
-    '''Base class for OpenCV-backed video file writers.
+    '''OpenCV-backed video file writer supporting AVI, MKV, and MP4.
 
     Writes frames to a video file using ``cv2.VideoWriter``.  The file
     is opened lazily on the first frame so that frame dimensions and
     colour mode can be determined automatically.
 
-    When no codec is specified, :meth:`open` probes the codecs listed
-    in :attr:`CODECS` in order and uses the first one that OpenCV
-    accepts on the current build.  Specifying *codec* explicitly
-    bypasses probing and uses that codec directly.
+    Codecs are selected based on the file extension using
+    :attr:`CODEC_MAP`.  When no codec is specified, the preference-ordered
+    list for the extension is probed and the first one OpenCV accepts is
+    used.  Specifying *codec* explicitly bypasses probing.
 
     If the shape of a subsequent frame differs from the first, recording
     stops immediately and :attr:`~QVideo.lib.QVideoWriter.finished` is
     emitted.
-
-    Subclasses set :attr:`CODECS` to a preference-ordered tuple of
-    four-character codec codes appropriate for their container format.
 
     Parameters
     ----------
@@ -37,8 +35,8 @@ class QOpenCVWriter(QVideoWriter):
         Path to the output video file.
     codec : str or None
         Four-character codec code passed to ``cv2.VideoWriter_fourcc``.
-        If ``None``, codecs are tried in the order given by
-        :attr:`CODECS`.
+        If ``None``, codecs are chosen from :attr:`CODEC_MAP` based on
+        the file extension.
     *args :
         Forwarded to :class:`~QVideo.lib.QVideoWriter`.
     **kwargs :
@@ -46,18 +44,25 @@ class QOpenCVWriter(QVideoWriter):
 
     Attributes
     ----------
-    CODECS : tuple[str, ...]
-        Preference-ordered codec codes tried during auto-selection.
-        Subclasses must override this with at least one entry.
+    CODEC_MAP : dict[str, tuple[str, ...]]
+        Maps file extensions to preference-ordered codec codes.
     '''
 
-    CODECS: tuple[str, ...] = ()
+    CODEC_MAP: dict[str, tuple[str, ...]] = {
+        '.avi': ('FFV1', 'HFYU'),
+        '.mkv': ('FFV1', 'HFYU'),
+        '.mp4': ('avc1', 'mp4v'),
+    }
 
     def __init__(self, *args,
                  codec: str | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._codecs = (codec,) if codec is not None else self.CODECS
+        if codec is not None:
+            self._codecs = (codec,)
+        else:
+            suffix = Path(self.filename).suffix
+            self._codecs = self.CODEC_MAP.get(suffix, ())
         self._writer = None
         self._shape = None
 

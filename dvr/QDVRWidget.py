@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 
 try:
     from .icons_rc import *
-except Exception:
-    logger.debug('Could not load DVR icons; buttons will show text labels only')
+except Exception:  # pragma: no cover
+    logger.debug(
+        'Could not load DVR icons; buttons will show text labels only')
 
 
 class QDVRWidget(QtWidgets.QFrame):
@@ -96,11 +97,17 @@ class QDVRWidget(QtWidgets.QFrame):
         '''
         formats = set(cls.Writer if save else cls.Player)
         parts = []
+        covered = set()
         for label, exts in cls.FileGroups.items():
             matching = sorted(exts & formats)
             if matching:
+                covered |= set(matching)
                 parts.append(
                     f'{label} ({" ".join("*" + e for e in matching)})')
+        ungrouped = sorted(formats - covered)
+        if ungrouped:
+            parts.append(
+                f'Other files ({" ".join("*" + e for e in ungrouped)})')
         return ';;'.join(parts) if parts else 'All files (*)'
 
     def __init__(self,
@@ -167,9 +174,10 @@ class QDVRWidget(QtWidgets.QFrame):
                           str(self.filename),
                           self._buildFilter(save))
         if filename:
-            self.playname = filename
             if save:
                 self.filename = filename
+            else:
+                self.playname = filename
         return filename
 
     @QtCore.pyqtSlot()
@@ -199,7 +207,6 @@ class QDVRWidget(QtWidgets.QFrame):
         self._writer.frameNumber.connect(self.setFrameNumber)
         self._writer.finished.connect(self.stop)
         self._thread = QtCore.QThread()
-        self._thread.finished.connect(self._writer.close)
         self._writer.moveToThread(self._thread)
         self._thread.start()
         self.source.newFrame.connect(self._writer.write)
@@ -239,7 +246,7 @@ class QDVRWidget(QtWidgets.QFrame):
     def pause(self) -> None:
         '''Pause or resume playback.'''
         if self.isPlaying():
-            if self._player.isPaused():
+            if self.isPaused():
                 self._player.resume()
             else:
                 self._player.pause()
@@ -257,18 +264,24 @@ class QDVRWidget(QtWidgets.QFrame):
         '''Stop recording or playback.'''
         if self.isRecording():
             logger.debug('Stopping Recording')
-            self.source.newFrame.disconnect(self._writer.write)
-            self._writer.frameNumber.disconnect(self.setFrameNumber)
-            self._writer.finished.disconnect(self.stop)
-            self._thread.finished.disconnect(self._writer.close)
+            try:
+                self.source.newFrame.disconnect(self._writer.write)
+                self._writer.frameNumber.disconnect(self.setFrameNumber)
+                self._writer.finished.disconnect(self.stop)
+            except (RuntimeError, TypeError):
+                logger.debug('Some recording signals were already disconnected')
             self._thread.quit()
             self._thread.wait()
+            self._writer.close()
             self._thread = None
             self._writer = None
             self.recording.emit(False)
         if self.isPlaying():
             logger.debug('Stopping Playback')
-            self._player.newFrame.disconnect(self.stepFrameNumber)
+            try:
+                self._player.newFrame.disconnect(self.stepFrameNumber)
+            except (RuntimeError, TypeError):
+                logger.debug('Playback signal was already disconnected')
             self._player.stop()
             self._player = None
             self.playing.emit(False)
@@ -312,7 +325,6 @@ class QDVRWidget(QtWidgets.QFrame):
             return
         if not (self.isRecording() or self.isPlaying()):
             self.saveEdit.setText(filename)
-            self.playname = self.filename
 
     @QtCore.pyqtProperty(str)
     def playname(self) -> str:

@@ -10,6 +10,11 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['QOpenCVCamera', 'QOpenCVSource']
 
+_FLIP: dict[tuple[bool, bool], int] = {
+    (True,  False): 1,   # mirror only  → horizontal flip
+    (False, True):  0,   # flip only    → vertical flip
+    (True,  True): -1,  # both         → 180° rotation
+}
 
 # Curated set of device properties to probe at runtime.
 # Maps display name → (CAP_PROP_* id, Python type).
@@ -116,6 +121,7 @@ class QOpenCVCamera(QCamera):
         property to its current value.  If the device accepts the write,
         the property is registered as read-write; otherwise it is skipped.
         '''
+        registered = []
         for name, (prop_id, ptype) in _PROBED_PROPS.items():
             value = self.device.get(prop_id)
             if self.device.set(prop_id, value):
@@ -124,9 +130,11 @@ class QOpenCVCamera(QCamera):
                     getter=lambda p=prop_id, t=ptype: t(self.device.get(p)),
                     setter=lambda v, p=prop_id: self.device.set(p, v),
                     ptype=ptype)
-                logger.debug(f'Registered property: {name!r}')
+                registered.append(name)
             else:
                 logger.debug(f'Property {name!r} not supported by this device')
+        logger.debug(
+            f'Registered {len(registered)} device properties: {registered}')
 
     def _deinitialize(self) -> None:
         '''Release the OpenCV VideoCapture device.'''
@@ -147,11 +155,15 @@ class QOpenCVCamera(QCamera):
         self.shapeChanged.emit(self.shape)
 
     def _getColor(self) -> bool:
-        '''Return ``True`` if frames are delivered in color, ``False`` for grayscale.'''
+        '''Return color mode
+            ``True`` if frames are delivered in color
+            ``False`` for grayscale.'''
         return not self._gray
 
     def _setColor(self, value: bool) -> None:
-        '''Set color mode.  ``False`` converts frames to grayscale; ``True`` restores color.'''
+        '''Set color mode.
+            ``False`` converts frames to grayscale
+            ``True`` restores color.'''
         self._gray = not bool(value)
 
     def read(self) -> QCamera.CameraData:
@@ -166,7 +178,11 @@ class QOpenCVCamera(QCamera):
             ``(True, frame)`` on success, ``(False, None)`` when closed.
         '''
         if self.isOpen():
-            ready, image = self.device.read()
+            try:
+                ready, image = self.device.read()
+            except Exception as e:
+                logger.warning(f'Frame read failed: {e}')
+                return False, None
         else:
             return False, None
         if ready:
@@ -174,7 +190,7 @@ class QOpenCVCamera(QCamera):
                 code = self.BGR2GRAY if self._gray else self.BGR2RGB
                 image = cv2.cvtColor(image, code)
             if self._flipped or self._mirrored:
-                operation = self._mirrored * (1 - 2 * self._flipped)
+                operation = _FLIP[(self._mirrored, self._flipped)]
                 image = cv2.flip(image, operation)
         return ready, image
 

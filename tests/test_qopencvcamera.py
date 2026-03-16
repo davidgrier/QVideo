@@ -270,12 +270,40 @@ class TestRead(unittest.TestCase):
         mock_flip.assert_called_once()
         self.assertEqual(mock_flip.call_args[0][1], -1)
 
+    def test_read_device_exception_returns_false_none(self):
+        cam = make_camera()
+        cam.device.read.side_effect = RuntimeError('device error')
+        with self.assertLogs('QVideo.cameras.OpenCV.QOpenCVCamera', level='WARNING'):
+            success, frame = cam.read()
+        self.assertFalse(success)
+        self.assertIsNone(frame)
+
     def test_read_no_flip_when_neither_set(self):
         cam = make_camera()
         with patch('cv2.cvtColor', return_value=_FRAME_BGR):
             with patch('cv2.flip') as mock_flip:
                 cam.read()
         mock_flip.assert_not_called()
+
+
+class TestProbeProperties(unittest.TestCase):
+
+    def test_unsupported_property_not_registered(self):
+        '''device.set returning False skips registration (line 129).'''
+        device = make_mock_device()
+        device.set.return_value = False
+        with patch('cv2.VideoCapture', return_value=device):
+            cam = QOpenCVCamera()
+        for name in ('fps', 'brightness', 'contrast'):
+            self.assertNotIn(name, cam.properties)
+
+    def test_supported_property_registered(self):
+        '''device.set returning True registers the property.'''
+        device = make_mock_device()
+        device.set.return_value = True
+        with patch('cv2.VideoCapture', return_value=device):
+            cam = QOpenCVCamera()
+        self.assertIn('fps', cam.properties)
 
 
 class TestQOpenCVSource(unittest.TestCase):

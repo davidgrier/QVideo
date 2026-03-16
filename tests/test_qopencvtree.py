@@ -57,6 +57,24 @@ class TestQOpenCVTreeInit(unittest.TestCase):
         args, _ = mock_cap.call_args
         self.assertEqual(args[0], 2)
 
+    def test_mirrored_forwarded_to_camera(self):
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device):
+            tree = QOpenCVTree(mirrored=True)
+        self.assertTrue(tree.camera.mirrored)
+
+    def test_flipped_forwarded_to_camera(self):
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device):
+            tree = QOpenCVTree(flipped=True)
+        self.assertTrue(tree.camera.flipped)
+
+    def test_gray_forwarded_to_camera(self):
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device):
+            tree = QOpenCVTree(gray=True)
+        self.assertFalse(tree.camera.color)
+
 
 if __name__ == '__main__':
     unittest.main()

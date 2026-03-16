@@ -7,11 +7,11 @@ __all__ = ['QOpenCVTree']
 
 class QOpenCVTree(QCameraTree):
 
-    '''Camera tree for an :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera`.
+    '''Camera tree for :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera`.
 
     Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
-    that creates and opens a
-    :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera` automatically
+    that automatically creates and opens a
+    :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera`
     if one is not provided.
 
     Parameters
@@ -19,10 +19,19 @@ class QOpenCVTree(QCameraTree):
     camera : QOpenCVCamera or None
         Camera instance to use.  If ``None``, a new
         :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera` is
-        created using *cameraID*.
+        created from the camera keyword arguments below.
     cameraID : int
         Index of the camera device to open.  Used only when *camera*
         is ``None``.  Default: ``0``.
+    mirrored : bool
+        Flip the image horizontally.  Used only when *camera* is ``None``.
+        Default: ``False``.
+    flipped : bool
+        Flip the image vertically.  Used only when *camera* is ``None``.
+        Default: ``False``.
+    gray : bool
+        Open in grayscale mode.  Used only when *camera* is ``None``.
+        Default: ``False``.
     *args :
         Positional arguments forwarded to
         :class:`~QVideo.lib.QCameraTree.QCameraTree`.
@@ -34,9 +43,15 @@ class QOpenCVTree(QCameraTree):
     def __init__(self, *args,
                  camera: QOpenCVCamera | None = None,
                  cameraID: int = 0,
+                 mirrored: bool = False,
+                 flipped: bool = False,
+                 gray: bool = False,
                  **kwargs) -> None:
         if camera is None:
-            camera = QOpenCVCamera(cameraID=cameraID)
+            camera = QOpenCVCamera(cameraID=cameraID,
+                                   mirrored=mirrored,
+                                   flipped=flipped,
+                                   gray=gray)
         super().__init__(camera, *args, **kwargs)
 
 

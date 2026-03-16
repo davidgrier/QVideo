@@ -1,67 +1,88 @@
-from pyqtgraph.Qt.QtCore import (QObject,
-                                 pyqtSignal, pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt import QtCore
+from collections import deque
 import time
+import logging
 
 
-class QFPSMeter(QObject):
-    '''A frames-per-second (FPS) meter that calculates
-    the frame rate over a specified window of frames.
+logger = logging.getLogger(__name__)
 
-    Inherits
-    --------
-    QObject
-        The base class for all Qt objects.
+
+class QFPSMeter(QtCore.QObject):
+
+    '''Measures frame rate over a sliding window of frame timestamps.
+
+    On every :meth:`tick` a timestamp is appended to a circular buffer
+    of length *window*.  Once the buffer is full, FPS is computed from
+    the span of the buffered timestamps and :attr:`fpsReady` is emitted.
+    Because the buffer slides forward one frame at a time, the reading
+    updates on every tick rather than in discrete batches.
 
     Parameters
     ----------
     window : int
-        The number of frames over which to calculate the FPS.
-
-    Returns
-    -------
-    QFPSMeter : QObject
-        The FPS meter object.
+        Number of timestamps retained.  Larger values give smoother
+        estimates at the cost of slower response to rate changes.
+        Values less than 2 are clamped to 2.
 
     Signals
     -------
     fpsReady(float)
-        Emitted when a new FPS value is calculated.
-
-    Slots
-    -----
-    tick() -> None
-        Increment the frame count and calculate FPS if
-        the window size is reached.
+        Emitted on every :meth:`tick` once the buffer is full.
 
     Properties
     ----------
     value : float
-        The current FPS value.
+        Most recently measured frame rate [frames per second].
+        Zero until the buffer fills for the first time.
+
+    Slots
+    -----
+    tick() -> None
+        Record one frame arrival and update the FPS estimate.
+    reset() -> None
+        Clear the timestamp buffer and cached value.
     '''
 
-    fpsReady = pyqtSignal(float)
+    fpsReady = QtCore.pyqtSignal(float)
 
-    def __init__(self,
-                 window: int = 10) -> None:
+    def __init__(self, window: int = 10) -> None:
         super().__init__()
-        self.window = window
+        self.window = max(2, int(window))
         self._value = 0.
-        self.count = 0
-        self.start = time.time()
+        self._timestamps = deque(maxlen=self.window)
 
-    def __call__(self) -> float:
-        return self.value
-
-    @pyqtSlot()
+    @QtCore.pyqtSlot()
     def tick(self) -> None:
-        self.count += 1
-        if (self.count >= self.window):
-            now = time.time()
-            self._value = self.window / (now - self.start)
-            self.fpsReady.emit(self._value)
-            self.start = now
-            self.count = 0
+        '''Record one frame arrival and update the FPS estimate.
 
-    @pyqtProperty(float)
+        Appends the current time to the circular buffer.  Once the
+        buffer holds *window* timestamps, computes::
+
+            fps = (window - 1) / (newest_timestamp - oldest_timestamp)
+
+        and emits :attr:`fpsReady`.
+        '''
+        self._timestamps.append(time.perf_counter())
+        if len(self._timestamps) == self.window:
+            elapsed = self._timestamps[-1] - self._timestamps[0]
+            if elapsed > 0:
+                self._value = (self.window - 1) / elapsed
+                self.fpsReady.emit(self._value)
+            else:
+                logger.warning('elapsed time is zero; skipping FPS update')
+
+    @QtCore.pyqtSlot()
+    def reset(self) -> None:
+        '''Reset the meter to its initial state.
+
+        Clears the timestamp buffer and cached value so that the next
+        :meth:`tick` begins a fresh measurement.  Useful when the video
+        source stops and restarts.
+        '''
+        self._value = 0.
+        self._timestamps.clear()
+
+    @property
     def value(self) -> float:
+        '''Most recently measured frame rate [frames per second].'''
         return self._value

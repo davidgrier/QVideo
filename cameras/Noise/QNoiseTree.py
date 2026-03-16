@@ -15,6 +15,8 @@ class QNoiseTree(QCameraTree):
 
     Parameters
     ----------
+    cameraID : int
+        Accepted for API consistency with other camera trees; ignored.
     *args :
         Positional arguments forwarded to
         :class:`~QVideo.lib.QCameraTree.QCameraTree`.
@@ -23,7 +25,7 @@ class QNoiseTree(QCameraTree):
         :class:`~QVideo.lib.QCameraTree.QCameraTree`.
     '''
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(QNoiseSource(), *args, **kwargs)
         if 'color' in self._parameters:
             self._parameters['color'].setOpts(enabled=False)

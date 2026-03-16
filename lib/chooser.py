@@ -1,21 +1,79 @@
+import importlib
+import logging
 from argparse import ArgumentParser
+from typing import NamedTuple
+
 from QVideo.lib import QCameraTree
+from QVideo.cameras.Noise import QNoiseTree
+
+__all__ = ['camera_parser', 'choose_camera']
+
+logger = logging.getLogger(__name__)
+
+
+class _CameraEntry(NamedTuple):
+    flag: str
+    module: str
+    cls: str
+    label: str
+    help: str
+
+
+_CAMERAS: dict[str, _CameraEntry] = {
+    'opencv':    _CameraEntry('-c', 'QVideo.cameras.OpenCV',
+                              'QOpenCVTree', 'OpenCV', 'OpenCV camera'),
+    'flir':      _CameraEntry('-f', 'QVideo.cameras.Flir',
+                              'QFlirTree', 'Flir', 'Flir camera'),
+    'spinnaker': _CameraEntry('-s', 'QVideo.cameras.Spinnaker',
+                              'QSpinnakerTree', 'Spinnaker SDK',
+                              'Spinnaker SDK camera'),
+}
 
 
 def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
-    '''Returns a command-line argument parser'''
+    '''Returns a command-line argument parser with camera selection options.
+
+    Adds a mutually exclusive group of camera flags and an optional
+    positional cameraID argument to the parser.
+    If the parser already defines any of these arguments,
+    they are left as-is.
+
+    Parameters
+    ----------
+    parser : ArgumentParser | None
+        An optional ArgumentParser to extend with camera options.
+        If None, a new ArgumentParser is created.
+
+    Returns
+    -------
+    ArgumentParser
+        Parser with mutually exclusive flags:
+            -c -> OpenCV
+            -f -> Flir
+            -s -> Spinnaker
+        The flag can be followed by an optional positional
+        cameraID argument.
+    '''
     parser = parser or ArgumentParser()
-    arg = parser.add_argument
-    arg('-c', dest='opencv', help='OpenCV camera', action='store_true')
-    arg('-f', dest='flir', help='Flir camera', action='store_true')
-    arg('-s', dest='spinnaker', help='Spinnaker SDK', action='store_true')
-    arg('cameraID', nargs='?', type=int, default=0,
-        help='camera ID number (default: %(default)d)')
+    registered = parser._option_string_actions
+    first_flag = next(iter(_CAMERAS.values())).flag
+    if first_flag not in registered:
+        group = parser.add_mutually_exclusive_group()
+        for dest, entry in _CAMERAS.items():
+            group.add_argument(entry.flag, dest=dest, help=entry.help,
+                               action='store_true')
+    if not any(a.dest == 'cameraID' for a in parser._actions):
+        parser.add_argument('cameraID', nargs='?', type=int, default=0,
+                            help='camera ID number (default: %(default)d)')
     return parser
 
 
 def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
     '''Chooses and returns a camera based on command-line arguments.
+
+    Tries to import and instantiate the camera backend selected by the
+    command-line flags.  Falls back to :class:`QNoiseTree` if the
+    requested backend cannot be imported.
 
     Parameters
     ----------
@@ -30,27 +88,17 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
         The chosen camera object.
     '''
     args, _ = camera_parser(parser).parse_known_args()
-    if args.opencv:
-        try:
-            from QVideo.cameras.OpenCV import QOpenCVTree as Camera
-        except ImportError as ex:
-            logger.warning(f'Could not import OpenCV camera: {ex}')
-    elif args.flir:
-        try:
-            from QVideo.cameras.Flir import QFlirTree as Camera
-        except ImportError as ex:
-            logger.warning(f'Could not import Flir camera: {ex}')
-    elif args.spinnaker:
-        try:
-            from QVideo.cameras.Spinnaker import QSpinnakerTree as Camera
-        except ImportError as ex:
-            logger.warning(f'Could not import Spinnaker SDK camera: {ex}')
-    else:
-        from QVideo.cameras.Noise import QNoiseTree as Camera
-
-    return Camera(cameraID=args.cameraID)
+    for dest, entry in _CAMERAS.items():
+        if getattr(args, dest, False):
+            try:
+                module = importlib.import_module(entry.module)
+                Camera = getattr(module, entry.cls)
+                return Camera(cameraID=args.cameraID)
+            except ImportError as ex:
+                logger.warning(f'Could not import {entry.label}: {ex}')
+            break
+    return QNoiseTree(cameraID=args.cameraID)
 
 
 if __name__ == '__main__':
-    args, _ = camera_parser().parse_known_args()
-    print(args)
+    choose_camera().show()

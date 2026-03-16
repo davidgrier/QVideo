@@ -1,6 +1,8 @@
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets, uic
 from pathlib import Path
+import numpy as np
 from QVideo.lib import clickable, QVideoSource
+from QVideo.lib.types import Image
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVSource
 from .QHDF5Writer import QHDF5Writer
@@ -50,12 +52,15 @@ class QDVRWidget(QtWidgets.QFrame):
 
     Signals
     -------
+    newFrame(Image)
+        Emitted for each frame during playback.
     recording(bool)
         Emitted when recording starts (``True``) or stops (``False``).
     playing(bool)
         Emitted when playback starts (``True``) or stops (``False``).
     '''
 
+    newFrame = QtCore.pyqtSignal(np.ndarray)
     recording = QtCore.pyqtSignal(bool)
     playing = QtCore.pyqtSignal(bool)
 
@@ -236,6 +241,7 @@ class QDVRWidget(QtWidgets.QFrame):
         if self._player.isOpen():
             logger.debug('connecting signals')
             self._player.newFrame.connect(self.stepFrameNumber)
+            self._player.newFrame.connect(self.newFrame)
             self.playing.emit(True)
             self._player.start()
         else:
@@ -280,6 +286,7 @@ class QDVRWidget(QtWidgets.QFrame):
             logger.debug('Stopping Playback')
             try:
                 self._player.newFrame.disconnect(self.stepFrameNumber)
+                self._player.newFrame.disconnect(self.newFrame)
             except (RuntimeError, TypeError):
                 logger.debug('Playback signal was already disconnected')
             self._player.stop()

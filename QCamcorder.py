@@ -62,11 +62,12 @@ class QCamcorder(QWidget):
             self.source.newFrame.disconnect(self.screen.setImage)
             self.dvr.newFrame.connect(self.screen.setImage)
         else:
+            self.dvr.newFrame.disconnect(self.screen.setImage)
             self.source.newFrame.connect(self.screen.setImage)
         self.cameraWidget.setDisabled(playback)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 

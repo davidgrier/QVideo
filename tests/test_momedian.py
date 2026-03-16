@@ -118,6 +118,25 @@ class TestMoMedian(unittest.TestCase):
         f.add(_A)
         np.testing.assert_array_equal(_A, original)
 
+    def test_order2_delegates_to_sub_estimator(self):
+        '''MoMedian with order=2 passes data through self._next on add().'''
+        f = make_filter(order=2)
+        f.add(_A)
+        f.add(_B)
+        f.add(_C)
+        result = f.get()
+        self.assertIsNotNone(result)
+        self.assertEqual(result.shape, _SHAPE)
+
+    def test_order2_reset_resets_sub_estimator(self):
+        '''reset() on order=2 filter also resets the sub-estimator.'''
+        f = make_filter(order=2, data=_A)
+        f.add(_A)
+        f.add(_B)
+        f.reset()
+        self.assertIsNotNone(f._next)
+        np.testing.assert_array_equal(f._next._result, np.zeros(_SHAPE, dtype=np.uint8))
+
 
 if __name__ == '__main__':
     unittest.main()

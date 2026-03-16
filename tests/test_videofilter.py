@@ -27,6 +27,11 @@ class TestVideoFilter(unittest.TestCase):
         f = make_filter()
         self.assertIsNone(f.data)
 
+    def test_get_before_add_raises(self):
+        f = make_filter()
+        with self.assertRaises(RuntimeError):
+            f.get()
+
     def test_add_stores_data(self):
         f = make_filter()
         f.add(_FRAME)
@@ -131,7 +136,7 @@ class TestQVideoFilter(unittest.TestCase):
     def test_set_filter_replaces_filter(self):
         widget = make_widget()
         new_filter = make_filter()
-        widget.setFilter(new_filter)
+        widget.filter = new_filter
         self.assertIs(widget.filter, new_filter)
 
     def test_set_filter_takes_effect_on_call(self):
@@ -140,13 +145,18 @@ class TestQVideoFilter(unittest.TestCase):
                 return _OTHER
 
         widget = make_widget(checked=True)
-        widget.setFilter(ConstantFilter())
+        widget.filter = ConstantFilter()
         result = widget(_FRAME)
         np.testing.assert_array_equal(result, _OTHER)
 
+    def test_filter_setter_rejects_non_filter(self):
+        widget = make_widget()
+        with self.assertRaises(TypeError):
+            widget.filter = 'not a filter'
+
     def test_has_layout(self):
         widget = make_widget()
-        self.assertIsInstance(widget.layout, QtWidgets.QHBoxLayout)
+        self.assertIsInstance(widget._layout, QtWidgets.QHBoxLayout)
 
     def test_title_set(self):
         widget = QVideoFilter('My Filter', None, make_filter())

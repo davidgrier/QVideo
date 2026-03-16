@@ -70,7 +70,7 @@ class QRGBFilter(QVideoFilter):
         for n, button in enumerate(self._buttons):
             button.toggled.connect(lambda checked, n=n:
                                    self.setChannel(checked, n))
-            self.layout.addWidget(button)
+            self._layout.addWidget(button)
         self._buttons[self.filter.channel].setChecked(True)
 
     @QtCore.pyqtSlot(bool, int)

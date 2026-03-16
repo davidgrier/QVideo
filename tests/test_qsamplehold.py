@@ -29,23 +29,23 @@ class TestSampleHold(unittest.TestCase):
 
     def test_initial_count_equals_three_to_the_order(self):
         f = make_filter(order=1)
-        self.assertEqual(f.count, 3)
+        self.assertEqual(f._count, 3)
 
     def test_count_for_order_two(self):
         f = make_filter(order=2)
-        self.assertEqual(f.count, 9)
+        self.assertEqual(f._count, 9)
 
     def test_reset_restores_count(self):
         f = make_filter(order=1)
-        f.count = 0
+        f._count = 0
         f.reset()
-        self.assertEqual(f.count, 3)
+        self.assertEqual(f._count, 3)
 
     def test_add_decrements_count(self):
         f = make_filter(order=1)
-        initial = f.count
+        initial = f._count
         f.add(_FRAME)
-        self.assertEqual(f.count, initial - 1)
+        self.assertEqual(f._count, initial - 1)
 
     def test_add_calls_super_while_counting(self):
         f = make_filter(order=1)
@@ -56,7 +56,7 @@ class TestSampleHold(unittest.TestCase):
     def test_add_does_not_call_super_after_count_zero(self):
         f = make_filter(order=1)
         # Drain the counter
-        for _ in range(f.count):
+        for _ in range(f._count):
             f.add(_FRAME)
         with patch.object(f.__class__.__bases__[0], 'add') as mock_add:
             f.add(_FRAME)
@@ -65,16 +65,16 @@ class TestSampleHold(unittest.TestCase):
     def test_shape_change_triggers_reset(self):
         f = make_filter(order=1)
         # Drain the counter so count == 0
-        for _ in range(f.count):
+        for _ in range(f._count):
             f.add(_FRAME)
-        self.assertEqual(f.count, 0)
+        self.assertEqual(f._count, 0)
         # Feed a frame with a different shape
         f.add(np.full((8, 8), 100, dtype=np.uint8))
-        self.assertEqual(f.count, 3 - 1)  # reset then decremented once
+        self.assertEqual(f._count, 3 - 1)  # reset then decremented once
 
     def test_add_stores_fg_after_count_zero(self):
         f = make_filter(order=1)
-        for _ in range(f.count):
+        for _ in range(f._count):
             f.add(_FRAME)
         foreground = np.full(_SHAPE, 50, dtype=np.uint8)
         f.add(foreground)
@@ -138,7 +138,7 @@ class TestQSampleHold(unittest.TestCase):
     def test_set_order_when_checked_resets_count(self):
         widget = make_widget()
         widget.setOrder(True, 2)
-        self.assertEqual(widget.filter.count, 9)
+        self.assertEqual(widget.filter._count, 9)
 
     def test_set_order_when_unchecked_does_not_update(self):
         widget = make_widget()
@@ -148,9 +148,9 @@ class TestQSampleHold(unittest.TestCase):
 
     def test_reset_calls_filter_reset(self):
         widget = make_widget()
-        widget.filter.count = 0
+        widget.filter._count = 0
         widget.reset()
-        self.assertEqual(widget.filter.count, 3 ** widget.filter.order)
+        self.assertEqual(widget.filter._count, 3 ** widget.filter.order)
 
     def test_reset_button_triggers_filter_reset(self):
         widget = make_widget()

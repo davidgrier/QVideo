@@ -11,6 +11,25 @@ logger = logging.getLogger(__name__)
 __all__ = ['QOpenCVCamera', 'QOpenCVSource']
 
 
+# Curated set of device properties to probe at runtime.
+# Maps display name → (CAP_PROP_* id, Python type).
+# Width, height, and color are handled separately.
+_PROBED_PROPS: dict[str, tuple[int, type]] = {
+    'fps':        (cv2.CAP_PROP_FPS,         float),
+    'brightness': (cv2.CAP_PROP_BRIGHTNESS,  float),
+    'contrast':   (cv2.CAP_PROP_CONTRAST,    float),
+    'saturation': (cv2.CAP_PROP_SATURATION,  float),
+    'hue':        (cv2.CAP_PROP_HUE,         float),
+    'gain':       (cv2.CAP_PROP_GAIN,        float),
+    'exposure':   (cv2.CAP_PROP_EXPOSURE,    float),
+    'sharpness':  (cv2.CAP_PROP_SHARPNESS,   float),
+    'gamma':      (cv2.CAP_PROP_GAMMA,       float),
+    'backlight':  (cv2.CAP_PROP_BACKLIGHT,   float),
+    'focus':      (cv2.CAP_PROP_FOCUS,       float),
+    'zoom':       (cv2.CAP_PROP_ZOOM,        float),
+}
+
+
 class QOpenCVCamera(QCamera):
 
     '''Camera backed by OpenCV's ``VideoCapture``.
@@ -19,10 +38,11 @@ class QOpenCVCamera(QCamera):
     On Linux the V4L2 backend is selected automatically; all other
     platforms use ``CAP_ANY``.
 
-    Transform properties (``mirrored``, ``flipped``, ``gray``) are
-    registered immediately on construction.  Device properties
-    (``width``, ``height``, ``fps``, ``color``) are registered inside
-    :meth:`_initialize` once the capture device is open.
+    Transform properties (``mirrored``, ``flipped``) are registered
+    immediately on construction.  Device properties (``width``,
+    ``height``, ``color``, and any properties in :data:`_PROBED_PROPS`
+    that the device supports) are registered inside :meth:`_initialize`
+    once the capture device is open.
 
     Parameters
     ----------
@@ -33,7 +53,8 @@ class QOpenCVCamera(QCamera):
     flipped : bool
         Flip the image vertically. Default: ``False``.
     gray : bool
-        Convert frames to grayscale. Default: ``False``.
+        Initial grayscale state.  Equivalent to opening with ``color=False``.
+        Default: ``False`` (color output).
     *args :
         Forwarded to :class:`~QVideo.lib.QCamera`.
     **kwargs :
@@ -59,11 +80,14 @@ class QOpenCVCamera(QCamera):
         self._gray = bool(gray)
         self.registerProperty('mirrored', ptype=bool)
         self.registerProperty('flipped', ptype=bool)
-        self.registerProperty('gray', ptype=bool)
         self.open()
 
     def _initialize(self) -> bool:
         '''Open the OpenCV VideoCapture device and register device properties.
+
+        Registers ``width``, ``height``, and ``color`` unconditionally,
+        then probes the device for each property in :data:`_PROBED_PROPS`
+        and registers those it supports.
 
         Returns
         -------
@@ -76,40 +100,65 @@ class QOpenCVCamera(QCamera):
             if (ready := self.device.read()[0]):
                 break
         if ready:
-            self.registerProperty('width',
-                                  getter=lambda: int(self.device.get(self.WIDTH)),
-                                  setter=self._setWidth,
-                                  ptype=int)
-            self.registerProperty('height',
-                                  getter=lambda: int(self.device.get(self.HEIGHT)),
-                                  setter=self._setHeight,
-                                  ptype=int)
-            self.registerProperty('fps',
-                                  getter=lambda: float(self.device.get(self.FPS)),
-                                  setter=lambda v: self.device.set(self.FPS, v),
-                                  ptype=float)
-            self.registerProperty('color',
-                                  getter=lambda: not self._gray,
-                                  setter=None, ptype=bool)
+            self.registerProperty('width', getter=self._getWidth,
+                                  setter=self._setWidth, ptype=int)
+            self.registerProperty('height', getter=self._getHeight,
+                                  setter=self._setHeight, ptype=int)
+            self.registerProperty('color', getter=self._getColor,
+                                  setter=self._setColor, ptype=bool)
+            self._probeProperties()
         return ready
+
+    def _probeProperties(self) -> None:
+        '''Register device properties that the camera actually supports.
+
+        For each entry in :data:`_PROBED_PROPS`, attempts to set the
+        property to its current value.  If the device accepts the write,
+        the property is registered as read-write; otherwise it is skipped.
+        '''
+        for name, (prop_id, ptype) in _PROBED_PROPS.items():
+            value = self.device.get(prop_id)
+            if self.device.set(prop_id, value):
+                self.registerProperty(
+                    name,
+                    getter=lambda p=prop_id, t=ptype: t(self.device.get(p)),
+                    setter=lambda v, p=prop_id: self.device.set(p, v),
+                    ptype=ptype)
+                logger.debug(f'Registered property: {name!r}')
+            else:
+                logger.debug(f'Property {name!r} not supported by this device')
 
     def _deinitialize(self) -> None:
         '''Release the OpenCV VideoCapture device.'''
         self.device.release()
 
+    def _getWidth(self) -> int:
+        return int(self.device.get(self.WIDTH))
+
     def _setWidth(self, value: int) -> None:
         self.device.set(self.WIDTH, value)
         self.shapeChanged.emit(self.shape)
+
+    def _getHeight(self) -> int:
+        return int(self.device.get(self.HEIGHT))
 
     def _setHeight(self, value: int) -> None:
         self.device.set(self.HEIGHT, value)
         self.shapeChanged.emit(self.shape)
 
+    def _getColor(self) -> bool:
+        '''Return ``True`` if frames are delivered in color, ``False`` for grayscale.'''
+        return not self._gray
+
+    def _setColor(self, value: bool) -> None:
+        '''Set color mode.  ``False`` converts frames to grayscale; ``True`` restores color.'''
+        self._gray = not bool(value)
+
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
 
         Applies color conversion and geometric transforms according to
-        the current ``gray``, ``mirrored``, and ``flipped`` settings.
+        the current ``color``, ``mirrored``, and ``flipped`` settings.
 
         Returns
         -------

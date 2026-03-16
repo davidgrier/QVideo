@@ -71,12 +71,12 @@ class QBlurFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self.layout.addWidget(QtWidgets.QLabel('width'))
+        self._layout.addWidget(QtWidgets.QLabel('width'))
         self._spinbox = SpinBox(self, value=self.filter.width,
                                 step=1, int=True)
         self._spinbox.setMinimum(3)
         self._spinbox.valueChanged.connect(self.setWidth)
-        self.layout.addWidget(self._spinbox)
+        self._layout.addWidget(self._spinbox)
 
     @QtCore.pyqtSlot(object)
     def setWidth(self, width: int) -> None:

@@ -93,6 +93,12 @@ class TestQHDF5ReaderInit(unittest.TestCase):
         reader = make_reader([_FRAME.copy()])
         self.assertAlmostEqual(reader.fps, 30.)
 
+    def test_fps_zero_elapsed_returns_default(self):
+        '''fps falls back to 30 when all timestamps are identical.'''
+        reader = make_reader([_FRAME.copy(), _FRAME.copy()])
+        reader.keys = ['0.000000000', '0.000000000']
+        self.assertAlmostEqual(reader.fps, 30.)
+
     def test_width_from_frame_shape(self):
         reader = make_reader()
         self.assertEqual(reader.width, _FRAME.shape[1])  # shape[1] is width

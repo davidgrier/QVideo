@@ -232,6 +232,42 @@ class TestSetready(unittest.TestCase):
         self.assertTrue(screen._ready)
 
 
+class TestSizeHints(unittest.TestCase):
+
+    def setUp(self):
+        self.screen = make_screen()
+        self.shape = QtCore.QSize(640, 480)
+        self.source = make_mock_source(width=640, height=480)
+        with patch.object(self.screen, 'updateShape'):
+            self.screen._source = self.source
+
+    def test_size_hint_returns_source_shape(self):
+        self.assertEqual(self.screen.sizeHint(), self.shape)
+
+    def test_has_height_for_width_true_with_source(self):
+        self.assertTrue(self.screen.hasHeightForWidth())
+
+    def test_has_height_for_width_false_without_source(self):
+        screen = make_screen()
+        self.assertFalse(screen.hasHeightForWidth())
+
+    def test_height_for_width_preserves_aspect_ratio(self):
+        # 640×480 → height for width=320 should be 240
+        self.assertEqual(self.screen.heightForWidth(320), 240)
+
+    def test_height_for_width_without_source_delegates(self):
+        screen = make_screen()
+        try:
+            screen.heightForWidth(320)
+        except Exception as e:
+            self.fail(f'heightForWidth raised {e} without source')
+
+    def test_size_hint_without_source_delegates(self):
+        screen = make_screen()
+        result = screen.sizeHint()
+        self.assertIsInstance(result, QtCore.QSize)
+
+
 class TestUpdateShape(unittest.TestCase):
 
     def test_updateshape_sets_range(self):
@@ -250,6 +286,15 @@ class TestUpdateShape(unittest.TestCase):
             with patch.object(screen, 'setMinimumSize') as mock_min:
                 screen.updateShape(shape)
         mock_min.assert_called_once_with(shape / 2)
+
+    def test_updateshape_calls_update_geometry(self):
+        screen = make_screen()
+        shape = QtCore.QSize(640, 480)
+        with patch.object(screen.view, 'setRange'):
+            with patch.object(screen, 'setMinimumSize'):
+                with patch.object(screen, 'updateGeometry') as mock_geom:
+                    screen.updateShape(shape)
+        mock_geom.assert_called_once()
 
 
 if __name__ == '__main__':

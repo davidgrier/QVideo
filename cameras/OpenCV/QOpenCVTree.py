@@ -2,29 +2,43 @@ from QVideo.lib import QCameraTree
 from QVideo.cameras.OpenCV import QOpenCVCamera
 
 
-class QOpenCVTree(QCameraTree):
-    '''Threaded camera tree that uses OpenCV to access camera devices.
+__all__ = ['QOpenCVTree']
 
-    Inherits
-    --------
-    QVideo.lib.QCameraTree
+
+class QOpenCVTree(QCameraTree):
+
+    '''Camera tree for an :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera`.
+
+    Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
+    that creates and opens a
+    :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera` automatically
+    if one is not provided.
 
     Parameters
     ----------
-    camera : QOpenCVCamera | None
-        An instance of QOpenCVCamera. If None, a new instance is created.
+    camera : QOpenCVCamera or None
+        Camera instance to use.  If ``None``, a new
+        :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera` is
+        created using *cameraID*.
     cameraID : int
-        ID of the camera device (default is 0).
+        Index of the camera device to open.  Used only when *camera*
+        is ``None``.  Default: ``0``.
+    *args :
+        Positional arguments forwarded to
+        :class:`~QVideo.lib.QCameraTree.QCameraTree`.
+    **kwargs :
+        Keyword arguments forwarded to
+        :class:`~QVideo.lib.QCameraTree.QCameraTree`.
     '''
 
     def __init__(self, *args,
-                 camera: QCameraTree.Source | None = None,
+                 camera: QOpenCVCamera | None = None,
                  cameraID: int = 0,
                  **kwargs) -> None:
-        camera = camera or QOpenCVCamera(*args, cameraID=cameraID, **kwargs)
-        controls = None
-        super().__init__(camera, controls, *args, **kwargs)
+        if camera is None:
+            camera = QOpenCVCamera(cameraID=cameraID)
+        super().__init__(camera, *args, **kwargs)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QOpenCVTree.example()

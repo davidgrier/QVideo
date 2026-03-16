@@ -63,9 +63,9 @@ class TestInit(unittest.TestCase):
         cam = make_camera()
         self.assertFalse(cam.flipped)
 
-    def test_default_gray_false(self):
+    def test_default_color_true(self):
         cam = make_camera()
-        self.assertFalse(cam.gray)
+        self.assertTrue(cam.color)
 
     def test_mirrored_kwarg(self):
         cam = make_camera(mirrored=True)
@@ -75,9 +75,9 @@ class TestInit(unittest.TestCase):
         cam = make_camera(flipped=True)
         self.assertTrue(cam.flipped)
 
-    def test_gray_kwarg(self):
+    def test_gray_kwarg_sets_color_false(self):
         cam = make_camera(gray=True)
-        self.assertTrue(cam.gray)
+        self.assertFalse(cam.color)
 
     def test_name_is_class_name(self):
         cam = make_camera()
@@ -113,12 +113,12 @@ class TestInitialize(unittest.TestCase):
             self.assertIn(name, cam.properties)
 
     def test_transform_properties_registered_before_open(self):
-        # mirrored/flipped/gray are registered in __init__, not _initialize
+        # mirrored/flipped are registered in __init__, not _initialize
         device = make_mock_device(read_ok=False)
         with patch('cv2.VideoCapture', return_value=device):
             with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
                 cam = QOpenCVCamera()
-        for name in ('mirrored', 'flipped', 'gray'):
+        for name in ('mirrored', 'flipped'):
             self.assertIn(name, cam.properties)
 
 
@@ -186,10 +186,11 @@ class TestProperties(unittest.TestCase):
         cam = make_camera(gray=True)
         self.assertFalse(cam.color)
 
-    def test_color_is_read_only(self):
+    def test_color_setter_updates_gray_state(self):
         cam = make_camera()
-        with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
-            cam.set('color', False)
+        cam.set('color', False)
+        self.assertFalse(cam.color)
+        self.assertTrue(cam._gray)
 
     def test_mirrored_setter(self):
         cam = make_camera()
@@ -201,15 +202,10 @@ class TestProperties(unittest.TestCase):
         cam.set('flipped', True)
         self.assertTrue(cam.flipped)
 
-    def test_gray_setter(self):
-        cam = make_camera()
-        cam.set('gray', True)
-        self.assertTrue(cam.gray)
-
     def test_all_properties_registered(self):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color',
-                     'mirrored', 'flipped', 'gray'):
+                     'mirrored', 'flipped'):
             self.assertIn(name, cam.properties)
 
 

@@ -110,16 +110,16 @@ class QEdgeFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self.layout.addWidget(QtWidgets.QLabel('low'))
+        self._layout.addWidget(QtWidgets.QLabel('low'))
         self._low_spinbox = SpinBox(self, value=self.filter.low, int=True)
         self._low_spinbox.setMinimum(1)
         self._low_spinbox.valueChanged.connect(self.setLow)
-        self.layout.addWidget(self._low_spinbox)
-        self.layout.addWidget(QtWidgets.QLabel('high'))
+        self._layout.addWidget(self._low_spinbox)
+        self._layout.addWidget(QtWidgets.QLabel('high'))
         self._high_spinbox = SpinBox(self, value=self.filter.high, int=True)
         self._high_spinbox.setMinimum(2)
         self._high_spinbox.valueChanged.connect(self.setHigh)
-        self.layout.addWidget(self._high_spinbox)
+        self._layout.addWidget(self._high_spinbox)
 
     @QtCore.pyqtSlot(object)
     def setLow(self, low: int) -> None:

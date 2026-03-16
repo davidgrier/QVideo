@@ -120,6 +120,23 @@ class QVideoScreen(GraphicsLayoutWidget):
         else:
             self._pending = image
 
+    def sizeHint(self) -> QtCore.QSize:
+        '''Return the source's natural frame size as the preferred widget size.'''
+        if self.source is not None:
+            return self.source.shape
+        return super().sizeHint()
+
+    def hasHeightForWidth(self) -> bool:
+        '''Return True when the source frame size is known.'''
+        return self.source is not None
+
+    def heightForWidth(self, width: int) -> int:
+        '''Return the height that preserves the source aspect ratio.'''
+        if self.source is not None:
+            shape = self.source.shape
+            return width * shape.height() // shape.width()
+        return super().heightForWidth(width)
+
     @QtCore.pyqtSlot(QtCore.QSize)
     def updateShape(self, shape: QtCore.QSize) -> None:
         '''Resize the display to match the video frame dimensions.
@@ -134,6 +151,7 @@ class QVideoScreen(GraphicsLayoutWidget):
                            yRange=(0, shape.height()),
                            padding=0, update=True)
         self.setMinimumSize(shape / 2)
+        self.updateGeometry()
 
     @classmethod
     def example(cls: 'QVideoScreen') -> None:  # pragma: no cover

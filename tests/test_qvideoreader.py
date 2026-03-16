@@ -230,20 +230,20 @@ class TestSaferead(unittest.TestCase):
 
     def test_saferead_calls_read(self):
         reader = make_reader()
-        with patch('QVideo.lib.QVideoReader.QtCore.QThread.msleep'):
+        with patch.object(QtCore.QThread, 'msleep'):
             with patch.object(reader, 'read', wraps=reader.read) as mock_read:
                 reader.saferead()
         mock_read.assert_called_once()
 
     def test_saferead_sleeps_for_delay(self):
         reader = make_reader()
-        with patch('QVideo.lib.QVideoReader.QtCore.QThread.msleep') as mock_sleep:
+        with patch.object(QtCore.QThread, 'msleep') as mock_sleep:
             reader.saferead()
         mock_sleep.assert_called_once_with(reader.delay)
 
     def test_saferead_returns_frame(self):
         reader = make_reader()
-        with patch('QVideo.lib.QVideoReader.QtCore.QThread.msleep'):
+        with patch.object(QtCore.QThread, 'msleep'):
             ok, frame = reader.saferead()
         self.assertTrue(ok)
         self.assertIsInstance(frame, np.ndarray)

@@ -82,7 +82,14 @@ class _NormalizeMixin:
         -------
         Image
             Normalized (and optionally scaled) frame.
+
+        Raises
+        ------
+        RuntimeError
+            If called before the first :meth:`add`.
         '''
+        if self._fg is None:
+            raise RuntimeError('get() called before add()')
         bg = super().get()
         result = np.zeros_like(self._fg, dtype=float)
         np.divide(self._fg, bg, out=result, where=(bg != 0))

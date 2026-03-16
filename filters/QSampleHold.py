@@ -44,7 +44,7 @@ class SampleHold(Normalize):
         Resets the frame counter so that the next ``3 ** order`` frames
         are used to build a fresh background estimate.
         '''
-        self.count = 3 ** self.order
+        self._count = 3 ** self.order
 
     def add(self, image: Image) -> None:
         '''Incorporate a new frame into the filter state.
@@ -63,9 +63,9 @@ class SampleHold(Normalize):
         '''
         if image.shape != self.shape:
             self.reset()
-        if self.count > 0:
+        if self._count > 0:
             super().add(image)
-            self.count -= 1
+            self._count -= 1
         else:
             self._fg = image - self.darkcount
 
@@ -91,15 +91,15 @@ class QSampleHold(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self.layout.addWidget(QtWidgets.QLabel('order'))
+        self._layout.addWidget(QtWidgets.QLabel('order'))
         self._order_buttons = [QtWidgets.QRadioButton(str(n)) for n in (1, 2, 3)]
         for n, button in enumerate(self._order_buttons, start=1):
             button.toggled.connect(lambda checked, n=n: self.setOrder(checked, n))
-            self.layout.addWidget(button)
+            self._layout.addWidget(button)
         self._order_buttons[self.filter.order - 1].setChecked(True)
         self._reset_button = QtWidgets.QPushButton('Reset', self)
         self._reset_button.clicked.connect(self.reset)
-        self.layout.addWidget(self._reset_button)
+        self._layout.addWidget(self._reset_button)
 
     @QtCore.pyqtSlot(bool, int)
     def setOrder(self, checked: bool, order: int) -> None:

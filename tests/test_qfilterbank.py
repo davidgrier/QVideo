@@ -35,12 +35,17 @@ class TestQFilterBank(unittest.TestCase):
 
     def test_has_layout(self):
         bank = make_bank()
-        self.assertIsInstance(bank.layout, QtWidgets.QVBoxLayout)
+        self.assertIsInstance(bank._layout, QtWidgets.QVBoxLayout)
 
     def test_call_returns_frame_unchanged_when_empty(self):
         bank = make_bank()
         result = bank(_FRAME)
         np.testing.assert_array_equal(result, _FRAME)
+
+    def test_register_rejects_non_qvideofilter(self):
+        bank = make_bank()
+        with self.assertRaises(TypeError):
+            bank.register('not a filter')
 
     def test_register_adds_filter(self):
         bank = make_bank()
@@ -52,7 +57,7 @@ class TestQFilterBank(unittest.TestCase):
         bank = make_bank()
         f = make_filter()
         bank.register(f)
-        self.assertEqual(bank.layout.count(), 1)
+        self.assertEqual(bank._layout.count(), 1)
 
     def test_deregister_removes_filter(self):
         bank = make_bank()
@@ -66,7 +71,7 @@ class TestQFilterBank(unittest.TestCase):
         f = make_filter()
         bank.register(f)
         bank.deregister(f)
-        self.assertEqual(bank.layout.count(), 0)
+        self.assertEqual(bank._layout.count(), 0)
 
     def test_deregister_detaches_widget(self):
         bank = make_bank()
@@ -106,6 +111,26 @@ class TestQFilterBank(unittest.TestCase):
         bank = make_bank()
         with self.assertRaises(ValueError):
             bank.registerByName('NonExistentFilter')
+
+    def test_register_by_name_non_filter_raises(self):
+        bank = make_bank()
+        with self.assertRaises(ValueError):
+            bank.registerByName('Median')
+
+    def test_filters_property_returns_copy(self):
+        bank = make_bank()
+        f = make_filter()
+        bank.register(f)
+        snapshot = bank.filters
+        snapshot.clear()
+        self.assertIn(f, bank.filters)
+
+    def test_iter_yields_filters_in_order(self):
+        bank = make_bank()
+        filters = [make_filter() for _ in range(3)]
+        for f in filters:
+            bank.register(f)
+        self.assertEqual(list(bank), filters)
 
     def test_multiple_filters_registered(self):
         bank = make_bank()

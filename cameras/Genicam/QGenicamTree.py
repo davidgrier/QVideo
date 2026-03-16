@@ -1,5 +1,6 @@
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QVariant)
 from QVideo.lib import QCameraTree
+from QVideo.lib.QCameraTree import Source
 from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
@@ -15,7 +16,7 @@ logger.setLevel(logging.WARNING)
 class QGenicamTree(QCameraTree):
 
     def __init__(self, *args,
-                 camera: QCameraTree.Source | None = None,
+                 camera: Source | None = None,
                  cameraID: int = 0,
                  visibility: EVisibility = EVisibility.Guru,
                  controls: list[str] | None = None,

@@ -1,12 +1,12 @@
 from QVideo.lib import (QCameraTree, QVideoSource)
+from QVideo.lib.QCameraTree import Source
 from QVideo.cameras.Spinnaker import QSpinnakerCamera
-from typing import Optional
 
 
 class QSpinnakerTree(QCameraTree):
 
     def __init__(self, *args,
-                 camera: QCameraTree.Source | None = None,
+                 camera: Source | None = None,
                  cameraID: int = 0,
                  **kwargs) -> None:
         camera = camera or QSpinnakerCamera(*args,

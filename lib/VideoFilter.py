@@ -54,7 +54,14 @@ class VideoFilter:
         -------
         Image
             Filtered frame.
+
+        Raises
+        ------
+        RuntimeError
+            If called before the first :meth:`add`.
         '''
+        if self.data is None:
+            raise RuntimeError('get() called before add()')
         return self.data
 
 
@@ -68,30 +75,37 @@ class QVideoFilter(QtWidgets.QGroupBox):
 
     Subclasses can extend the UI by overriding :meth:`_setupUi`.  The
     override should call ``super()._setupUi()`` first, then add widgets
-    to ``self.layout``.
+    to ``self._layout``.
 
     Parameters
     ----------
     title : str
         Label displayed in the group box border.
-    parent : QtWidgets.QWidget
+    parent : QtWidgets.QWidget or None
         Parent widget.
-    filter : VideoFilter
-        The filter to apply when enabled.
-
-    Notes
-    -----
-    Pass a plain :class:`VideoFilter` instance as *filter* when no
-    processing is needed — it acts as an identity (passthrough) filter.
+    video_filter : VideoFilter or None
+        The filter to apply when enabled.  Defaults to a passthrough
+        :class:`VideoFilter` if not provided.
     '''
 
     def __init__(self,
                  title: str,
-                 parent: QtWidgets.QWidget,
-                 video_filter: VideoFilter) -> None:
+                 parent: QtWidgets.QWidget | None = None,
+                 video_filter: VideoFilter | None = None) -> None:
         super().__init__(title, parent)
-        self.filter = video_filter
+        self._filter = VideoFilter() if video_filter is None else video_filter
         self._setupUi()
+
+    @property
+    def filter(self) -> VideoFilter:
+        '''The :class:`VideoFilter` applied when this widget is enabled.'''
+        return self._filter
+
+    @filter.setter
+    def filter(self, video_filter: VideoFilter) -> None:
+        if not isinstance(video_filter, VideoFilter):
+            raise TypeError(f'expected VideoFilter, got {type(video_filter).__name__}')
+        self._filter = video_filter
 
     def __call__(self, image: Image) -> Image:
         '''Apply the filter if enabled, otherwise return *image* unchanged.
@@ -112,23 +126,13 @@ class QVideoFilter(QtWidgets.QGroupBox):
         '''Configure the group box and create the horizontal layout.
 
         Subclasses should call ``super()._setupUi()`` and then add their
-        own widgets to ``self.layout``.
+        own widgets to ``self._layout``.
         '''
         self.setCheckable(True)
         self.setChecked(False)
         self.setFlat(True)
-        self.layout = QtWidgets.QHBoxLayout(self)
-        self.layout.setContentsMargins(2, 5, 2, 5)
-
-    def setFilter(self, video_filter: VideoFilter) -> None:
-        '''Replace the active filter.
-
-        Parameters
-        ----------
-        video_filter : VideoFilter
-            New filter to use.
-        '''
-        self.filter = video_filter
+        self._layout = QtWidgets.QHBoxLayout(self)
+        self._layout.setContentsMargins(2, 5, 2, 5)
 
     @classmethod
     def example(cls: 'QVideoFilter') -> None:  # pragma: no cover

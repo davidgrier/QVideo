@@ -1,7 +1,9 @@
+from typing import Iterator
+
 from pyqtgraph.Qt import QtWidgets
 from QVideo.lib.VideoFilter import QVideoFilter
 from QVideo.lib.types import Image
-import QVideo.filters as filters_pkg
+import QVideo.filters as videofilters
 
 
 __all__ = ['QFilterBank']
@@ -18,17 +20,25 @@ class QFilterBank(QtWidgets.QGroupBox):
 
     Parameters
     ----------
-    parent : QtWidgets.QWidget
+    parent : QtWidgets.QWidget or None
         Parent widget.
     '''
 
-    def __init__(self, parent: QtWidgets.QWidget) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__('Display Filters', parent)
-        self.filters = []
+        self._filters = []
         self._setupUi()
 
     def _setupUi(self) -> None:
-        self.layout = QtWidgets.QVBoxLayout(self)
+        self._layout = QtWidgets.QVBoxLayout(self)
+
+    def __iter__(self) -> Iterator[QVideoFilter]:
+        return iter(self._filters)
+
+    @property
+    def filters(self) -> list[QVideoFilter]:
+        '''Read-only view of the registered filters.'''
+        return list(self._filters)
 
     def __call__(self, image: Image) -> Image:
         '''Apply all registered filters to *image* in order.
@@ -43,7 +53,7 @@ class QFilterBank(QtWidgets.QGroupBox):
         Image
             Frame after all enabled filters have been applied.
         '''
-        for video_filter in self.filters:
+        for video_filter in self:
             image = video_filter(image)
         return image
 
@@ -54,9 +64,16 @@ class QFilterBank(QtWidgets.QGroupBox):
         ----------
         video_filter : QVideoFilter
             Filter widget to add.
+
+        Raises
+        ------
+        TypeError
+            If *video_filter* is not a :class:`~QVideo.lib.VideoFilter.QVideoFilter`.
         '''
-        self.filters.append(video_filter)
-        self.layout.addWidget(video_filter)
+        if not isinstance(video_filter, QVideoFilter):
+            raise TypeError(f'expected QVideoFilter, got {type(video_filter).__name__}')
+        self._filters.append(video_filter)
+        self._layout.addWidget(video_filter)
 
     def deregister(self, video_filter: QVideoFilter) -> None:
         '''Remove a filter from the pipeline.
@@ -65,9 +82,14 @@ class QFilterBank(QtWidgets.QGroupBox):
         ----------
         video_filter : QVideoFilter
             Filter widget to remove.
+
+        Raises
+        ------
+        ValueError
+            If *video_filter* is not currently registered.
         '''
-        self.filters.remove(video_filter)
-        self.layout.removeWidget(video_filter)
+        self._filters.remove(video_filter)
+        self._layout.removeWidget(video_filter)
         video_filter.setParent(None)
 
     def registerByName(self, name: str) -> None:
@@ -85,9 +107,12 @@ class QFilterBank(QtWidgets.QGroupBox):
         Raises
         ------
         ValueError
-            If *name* is not found in :mod:`QVideo.filters`.
+            If *name* is not found in :mod:`QVideo.filters` or does not
+            refer to a :class:`~QVideo.lib.VideoFilter.QVideoFilter`
+            subclass.
         '''
-        cls = getattr(filters_pkg, name, None)
-        if cls is None:
+        cls = getattr(videofilters, name, None)
+        if cls is None or not (isinstance(cls, type) and
+                               issubclass(cls, QVideoFilter)):
             raise ValueError(f'{name!r} is not a known filter')
         self.register(cls())

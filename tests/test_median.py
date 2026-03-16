@@ -156,5 +156,50 @@ class TestMedian(unittest.TestCase):
         np.testing.assert_array_equal(_A, original)
 
 
+class TestMedianOrder2(unittest.TestCase):
+    '''Tests for order=2 median — exercises the _next recursive branch.
+
+    An order=2 filter wraps an order=1 sub-filter.  The sub-filter
+    produces its first result after 3 frames, then one more every 2
+    additional frames (3, 5, 7, …).  The outer filter needs 3
+    sub-results, so the first outer result arrives after 7 frames.
+    '''
+
+    def test_not_ready_before_seven_frames(self):
+        f = make_filter(order=2)
+        for _ in range(6):
+            f.add(_A)
+        self.assertFalse(f.ready())
+
+    def test_ready_after_seven_frames(self):
+        f = make_filter(order=2)
+        for _ in range(7):
+            f.add(_A)
+        self.assertTrue(f.ready())
+
+    def test_order2_constant_input_returns_that_value(self):
+        f = make_filter(order=2)
+        for _ in range(7):
+            f.add(_B)
+        np.testing.assert_array_equal(f.get(), _B)
+
+    def test_next_not_ready_causes_early_return(self):
+        '''Adding fewer than three frames leaves _next not ready → early return.'''
+        f = make_filter(order=2)
+        f.add(_A)   # _next.add(), _next not ready → return before outer logic
+        f.add(_B)   # same
+        # Neither outer add produced a result; outer index must still be 0.
+        self.assertEqual(f._index, 0)
+
+    def test_next_ready_feeds_result_to_outer(self):
+        '''After the sub-estimator is ready its result propagates to the outer level.'''
+        f = make_filter(order=2)
+        for frame in (_A, _A, _A):   # three identical → sub-median = A, _next ready
+            f.add(frame)
+        # _next is now ready; the outer level consumed that result and
+        # advanced its own index to 1.
+        self.assertEqual(f._index, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,7 +1,7 @@
 '''Unit tests for QCameraTree.'''
 import unittest
 from unittest.mock import patch
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
 from QVideo.cameras.Noise.QNoiseCamera import QNoiseCamera, QNoiseSource
 
@@ -116,6 +116,50 @@ class TestQCameraTreeSync(unittest.TestCase):
         tree = make_tree()
         # If this call returns without recursion error, the guard works
         tree._parameters['width'].setValue(320)
+
+
+class TestQCameraTreeDefaultDescriptionNone(unittest.TestCase):
+
+    def test_skips_properties_with_none_getter(self):
+        '''_defaultDescription omits entries whose getter returns None.'''
+        cam = make_camera()
+        cam._properties['_fake'] = {'getter': lambda: None, 'setter': None}
+        try:
+            desc = QCameraTree._defaultDescription(cam)
+            names = [e['name'] for e in desc]
+            self.assertNotIn('_fake', names)
+        finally:
+            del cam._properties['_fake']
+
+
+class TestQCameraTreeCloseEvent(unittest.TestCase):
+
+    def test_close_event_stops_running_source(self):
+        tree = make_tree()
+        tree.start()
+        event = QtGui.QCloseEvent()
+        tree.closeEvent(event)
+        self.assertFalse(tree.source.isRunning())
+
+    def test_close_event_safe_when_not_running(self):
+        tree = make_tree()
+        event = QtGui.QCloseEvent()
+        tree.closeEvent(event)  # should not raise
+
+
+class TestQCameraTreeSyncGuard(unittest.TestCase):
+
+    def test_sync_returns_early_when_ignore_sync_set(self):
+        '''_sync short-circuits when _ignore_sync is True.'''
+        cam = make_camera()
+        tree = make_tree(source=make_source(cam))
+        tree._ignore_sync = True
+        original_width = cam.width
+        # Calling _sync directly with a value change should be ignored
+        param = tree._parameters['width']
+        tree._sync(None, [(param, 'value', 9999)])
+        self.assertEqual(cam.width, original_width)
+        tree._ignore_sync = False
 
 
 class TestQCameraTreeStartStop(unittest.TestCase):

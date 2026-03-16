@@ -28,7 +28,9 @@ def clickable(widget: QWidget):
 
         def eventFilter(self, obj: QObject, event: QMouseEvent) -> bool:
             if event.type() == QEvent.Type.MouseButtonRelease:
-                if obj.rect().contains(event.position().toPoint()):
+                pos = (event.position().toPoint()
+                       if hasattr(event, 'position') else event.pos())
+                if obj.rect().contains(pos):
                     self.clicked.emit()
                     return True
             return super().eventFilter(obj, event)

@@ -1,6 +1,6 @@
 '''Unit tests for QCamcorder.'''
 import unittest
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise.QNoiseTree import QNoiseTree
 
@@ -35,6 +35,27 @@ class TestQCamcorderInit(unittest.TestCase):
         items = [layout.itemAt(i).widget() for i in range(layout.count())]
         self.assertIn(tree, items)
 
+    def test_source_property_returns_camera_widget_source(self):
+        tree = QNoiseTree()
+        widget = QCamcorder(tree)
+        self.assertIs(widget.source, tree.source)
+
+
+class TestQCamcorderCloseEvent(unittest.TestCase):
+
+    def test_close_event_stops_camera_source(self):
+        tree = QNoiseTree()
+        widget = QCamcorder(tree)
+        tree.start()
+        event = QtGui.QCloseEvent()
+        widget.closeEvent(event)
+        self.assertFalse(tree.source.isRunning())
+
+    def test_close_event_safe_when_not_running(self):
+        widget = make_camcorder()
+        event = QtGui.QCloseEvent()
+        widget.closeEvent(event)  # should not raise
+
 
 class TestQCamcorderDvrPlayback(unittest.TestCase):
 
@@ -46,14 +67,12 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
     def test_dvr_playback_true_disconnects_source_from_screen(self):
         widget = make_camcorder()
         widget.dvrPlayback(True)
-        # source.newFrame should be disconnected; trying to disconnect again raises
         with self.assertRaises(Exception):
             widget.source.newFrame.disconnect(widget.screen.setImage)
 
     def test_dvr_playback_true_connects_dvr_to_screen(self):
         widget = make_camcorder()
         widget.dvrPlayback(True)
-        # dvr.newFrame should now be connected; disconnect should succeed
         widget.dvr.newFrame.disconnect(widget.screen.setImage)
 
     def test_dvr_playback_false_enables_camera_widget(self):
@@ -66,16 +85,19 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
         widget = make_camcorder()
         widget.dvrPlayback(True)
         widget.dvrPlayback(False)
-        # source.newFrame should be reconnected; disconnect should succeed
         widget.source.newFrame.disconnect(widget.screen.setImage)
 
     def test_dvr_playback_false_disconnects_dvr_from_screen(self):
         widget = make_camcorder()
         widget.dvrPlayback(True)
         widget.dvrPlayback(False)
-        # dvr.newFrame should be disconnected; trying to disconnect again raises
         with self.assertRaises(Exception):
             widget.dvr.newFrame.disconnect(widget.screen.setImage)
+
+    def test_dvr_playback_false_without_prior_true_does_not_raise(self):
+        '''Guard catches RuntimeError when dvr.newFrame was never connected.'''
+        widget = make_camcorder()
+        widget.dvrPlayback(False)  # should not raise
 
 
 if __name__ == '__main__':

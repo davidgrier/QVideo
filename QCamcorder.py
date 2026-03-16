@@ -2,76 +2,95 @@
 
 from pyqtgraph.Qt.QtWidgets import QWidget
 from pyqtgraph.Qt.QtCore import pyqtSlot
-from pyqtgraph.Qt import uic
-from QVideo.lib import QCameraTree
+from pyqtgraph.Qt import QtGui, uic
+from QVideo.lib import QCameraTree, QVideoSource
 from pathlib import Path
 
 
 class QCamcorder(QWidget):
-    '''A widget that combines a video screen with camera controls
-    and DVR functionality.
+    '''A widget combining a video screen, camera controls, and DVR.
+
+    Lays out a :class:`~QVideo.lib.QVideoScreen.QVideoScreen` alongside
+    a :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` and an arbitrary
+    :class:`~QVideo.lib.QCameraTree.QCameraTree` control panel.  Live
+    frames from the camera source are routed to the screen; when the DVR
+    starts playback the screen is switched to the playback stream and the
+    camera controls are disabled until playback ends.
 
     Parameters
     ----------
     cameraWidget : QCameraTree
-        The camera control widget to display alongside the video feed.
-    args : tuple
-        Additional parameters to pass to the QWidget constructor.
-    kwargs : dict
-        Additional keyword arguments to pass to the QWidget constructor.
-
-    Returns
-    -------
-    QCamcorder : QWidget
-        The camcorder widget containing the video feed, camera controls,
-        and DVR functionality.
-
-    Notes
-    -----
-    This widget loads its UI from a .ui file and sets up the video screen,
-    camera controls, and DVR functionality. It connects the camera source's
-    newFrame signal to update the video screen and adjusts the screen shape
-    when the camera source's shape changes. It also manages playback state
-    for the DVR.
+        Camera control tree to embed in the controls panel.
+    *args :
+        Additional positional arguments forwarded to
+        :class:`~pyqtgraph.Qt.QtWidgets.QWidget`.
+    **kwargs :
+        Additional keyword arguments forwarded to
+        :class:`~pyqtgraph.Qt.QtWidgets.QWidget`.
     '''
 
-    UIFILE = 'QCamcorder.ui'
+    UIFILE = Path(__file__).parent / 'QCamcorder.ui'
 
     def __init__(self,
                  cameraWidget: QCameraTree,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
-        self.source = self.cameraWidget.source
         self._setupUi()
         self._connectSignals()
         self.screen.source = self.source
         self.dvr.source = self.source
 
     def _setupUi(self) -> None:
-        uifile = str(Path(__file__).parent / self.UIFILE)
-        uic.loadUi(uifile, self)
+        uic.loadUi(str(self.UIFILE), self)
         self.controls.layout().addWidget(self.cameraWidget)
 
     def _connectSignals(self) -> None:
         self.dvr.playing.connect(self.dvrPlayback)
 
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        '''Stop the camera source when the widget is closed.'''
+        self.cameraWidget.stop()
+        super().closeEvent(event)
+
     @pyqtSlot(bool)
     def dvrPlayback(self, playback: bool) -> None:
-        if playback:
-            self.source.newFrame.disconnect(self.screen.setImage)
-            self.dvr.newFrame.connect(self.screen.setImage)
-        else:
-            self.dvr.newFrame.disconnect(self.screen.setImage)
-            self.source.newFrame.connect(self.screen.setImage)
+        '''Switch the screen source between live camera and DVR playback.
+
+        Connected to :attr:`~QVideo.dvr.QDVRWidget.QDVRWidget.playing`.
+        When playback starts the camera source is disconnected from the
+        screen and the DVR's :attr:`~QVideo.dvr.QDVRWidget.QDVRWidget.newFrame`
+        signal is connected instead; the camera controls are disabled.
+        When playback ends the connections are reversed and the controls
+        are re-enabled.
+
+        Parameters
+        ----------
+        playback : bool
+            ``True`` when DVR playback begins, ``False`` when it ends.
+        '''
+        try:
+            if playback:
+                self.source.newFrame.disconnect(self.screen.setImage)
+                self.dvr.newFrame.connect(self.screen.setImage)
+            else:
+                self.dvr.newFrame.disconnect(self.screen.setImage)
+                self.source.newFrame.connect(self.screen.setImage)
+        except (RuntimeError, TypeError):
+            pass
         self.cameraWidget.setDisabled(playback)
+
+    @property
+    def source(self) -> QVideoSource:
+        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` from the camera widget.'''
+        return self.cameraWidget.source
 
 
 def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    app = pg.mkQApp()
+    pg.mkQApp()
     camera = choose_camera()
     widget = QCamcorder(camera.start())
     widget.show()

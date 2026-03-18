@@ -3,7 +3,7 @@ import unittest
 from pyqtgraph.Qt import QtWidgets
 from QVideo.lib import QVideoScreen
 from QVideo.cameras.Noise.QNoiseTree import QNoiseTree
-from QVideo.demos.filterdemo import demo
+from QVideo.demos.filterdemo import Demo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -12,14 +12,14 @@ FILTERS = ['QRGBFilter', 'QBlurFilter']
 
 
 def make_demo(filters=None):
-    return demo(QNoiseTree(), filters or FILTERS)
+    return Demo(QNoiseTree(), filters or FILTERS)
 
 
 class TestFilterDemo(unittest.TestCase):
 
     def test_creates_successfully(self):
         widget = make_demo()
-        self.assertIsInstance(widget, demo)
+        self.assertIsInstance(widget, Demo)
 
     def test_screen_attribute_is_qvideoscreen(self):
         widget = make_demo()
@@ -27,12 +27,12 @@ class TestFilterDemo(unittest.TestCase):
 
     def test_cameratree_attribute_is_set(self):
         tree = QNoiseTree()
-        widget = demo(tree, FILTERS)
+        widget = Demo(tree, FILTERS)
         self.assertIs(widget.cameraTree, tree)
 
     def test_screen_source_connected_to_tree_source(self):
         tree = QNoiseTree()
-        widget = demo(tree, FILTERS)
+        widget = Demo(tree, FILTERS)
         self.assertIs(widget.screen.source, tree.source)
 
     def test_layout_contains_screen(self):
@@ -53,7 +53,7 @@ class TestFilterDemo(unittest.TestCase):
 
     def test_empty_filter_list(self):
         widget = make_demo([])
-        self.assertIsInstance(widget, demo)
+        self.assertIsInstance(widget, Demo)
 
 
 if __name__ == '__main__':

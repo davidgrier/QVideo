@@ -1,9 +1,9 @@
-'''Unit tests for demos.ROIdemo.'''
+'''Unit tests for demos.ROIDemo.'''
 import unittest
 import numpy as np
 from pyqtgraph.Qt import QtWidgets, QtTest
 from QVideo.cameras.Noise.QNoiseTree import QNoiseTree
-from QVideo.demos.ROIdemo import ROIFilter, ROIdemo
+from QVideo.demos.ROIdemo import ROIFilter, ROIDemo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -14,7 +14,7 @@ def make_roi(fps=30., pos=None, size=None):
 
 
 def make_widget():
-    return ROIdemo(QNoiseTree())
+    return ROIDemo(QNoiseTree())
 
 
 class TestROIFilterInit(unittest.TestCase):
@@ -50,35 +50,35 @@ class TestROIFilterCrop(unittest.TestCase):
         np.testing.assert_array_equal(spy[0][0], self.frame[0:2, 0:3])
 
 
-class TestROIdemoConstants(unittest.TestCase):
+class TestROIDemoConstants(unittest.TestCase):
 
     def test_roi_pos_default(self):
-        self.assertEqual(ROIdemo.ROI_POS, [100, 100])
+        self.assertEqual(ROIDemo.ROI_POS, [100, 100])
 
     def test_roi_size_default(self):
-        self.assertEqual(ROIdemo.ROI_SIZE, [400, 400])
+        self.assertEqual(ROIDemo.ROI_SIZE, [400, 400])
 
 
-class TestROIdemo(unittest.TestCase):
+class TestROIDemo(unittest.TestCase):
 
     def setUp(self):
         self.widget = make_widget()
 
     def test_creates_successfully(self):
-        self.assertIsInstance(self.widget, ROIdemo)
+        self.assertIsInstance(self.widget, ROIDemo)
 
     def test_roi_is_roi_filter(self):
         self.assertIsInstance(self.widget.roi, ROIFilter)
 
     def test_roi_pos_matches_class_constant(self):
         pos = self.widget.roi.pos()
-        self.assertAlmostEqual(pos[0], ROIdemo.ROI_POS[0])
-        self.assertAlmostEqual(pos[1], ROIdemo.ROI_POS[1])
+        self.assertAlmostEqual(pos[0], ROIDemo.ROI_POS[0])
+        self.assertAlmostEqual(pos[1], ROIDemo.ROI_POS[1])
 
     def test_roi_size_matches_class_constant(self):
         size = self.widget.roi.size()
-        self.assertAlmostEqual(size[0], ROIdemo.ROI_SIZE[0])
-        self.assertAlmostEqual(size[1], ROIdemo.ROI_SIZE[1])
+        self.assertAlmostEqual(size[0], ROIDemo.ROI_SIZE[0])
+        self.assertAlmostEqual(size[1], ROIDemo.ROI_SIZE[1])
 
     def test_dvr_filename_set(self):
         self.assertIn('roidemo.avi', self.widget.dvr.filename)

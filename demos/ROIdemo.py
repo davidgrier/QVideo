@@ -7,6 +7,9 @@ import numpy as np
 from pathlib import Path
 
 
+__all__ = ['ROIFilter', 'ROIDemo']
+
+
 class ROIFilter(pg.RectROI):
     '''Draggable rectangular ROI that crops video frames to its bounds.
 
@@ -55,7 +58,7 @@ class ROIFilter(pg.RectROI):
         self.newFrame.emit(crop)
 
 
-class ROIdemo(QCamcorder):
+class ROIDemo(QCamcorder):
     '''Camcorder demo with a draggable ROI for recording cropped video.
 
     Subclasses :class:`~QVideo.QCamcorder.QCamcorder` and overlays a
@@ -79,8 +82,8 @@ class ROIdemo(QCamcorder):
         Default [width, height] of the ROI overlay. Default: ``[400, 400]``.
     '''
 
-    ROI_POS = [100, 100]
-    ROI_SIZE = [400, 400]
+    ROI_POS: list[int] = [100, 100]
+    ROI_SIZE: list[int] = [400, 400]
 
     def _setupUi(self) -> None:
         super()._setupUi()
@@ -126,7 +129,7 @@ def main() -> None:  # pragma: no cover
 
     pg.mkQApp()
     camera = choose_camera().start()
-    widget = ROIdemo(camera)
+    widget = ROIDemo(camera)
     widget.show()
     pg.exec()
 

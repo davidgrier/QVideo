@@ -4,7 +4,10 @@ from QVideo.lib import QVideoScreen
 from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout
 
 
-class demo(QWidget):
+__all__ = ['Demo']
+
+
+class Demo(QWidget):
     '''A demo widget that displays a video feed from a camera
     alongside a camera control tree.
 
@@ -12,8 +15,8 @@ class demo(QWidget):
     ----------
     cameraTree : QCameraTree
         The camera control tree widget to display alongside the video feed.
-    kwargs : dict
-        Additional keyword arguments to pass to the QWidget constructor.
+    **kwargs :
+        Additional keyword arguments forwarded to :class:`QWidget`.
 
     Notes
     -----
@@ -40,7 +43,7 @@ def main() -> None:  # pragma: no cover
 
     pg.mkQApp()
     camera = choose_camera().start()
-    widget = demo(camera)
+    widget = Demo(camera)
     widget.show()
     pg.exec()
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "QVideo"
-version = "2.1.0"
+version = "3.0.0"
 description = "PyQt-based framework for integrating video cameras into research applications"
 readme = "README.md"
 license = { file = "LICENSE.md" }

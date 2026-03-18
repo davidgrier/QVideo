@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=61", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "QVideo"
-dynamic = ["version"]
+version = "2.1.0"
 description = "PyQt-based framework for integrating video cameras into research applications"
 readme = "README.md"
 license = { file = "LICENSE.md" }
@@ -19,8 +19,44 @@ dependencies = [
     "pyqtgraph",
 ]
 
-[tool.setuptools.dynamic]
-version = { attr = "QVideo.version.__version__" }
+[project.optional-dependencies]
+genicam = ["harvesters", "genicam"]
+picamera = ["picamera2"]
+dev = ["pytest", "pytest-cov"]
+
+[tool.setuptools]
+package-dir = {
+    "QVideo"                    = ".",
+    "QVideo.cameras"            = "cameras",
+    "QVideo.cameras.Flir"       = "cameras/Flir",
+    "QVideo.cameras.Genicam"    = "cameras/Genicam",
+    "QVideo.cameras.Noise"      = "cameras/Noise",
+    "QVideo.cameras.OpenCV"     = "cameras/OpenCV",
+    "QVideo.cameras.Picamera"   = "cameras/Picamera",
+    "QVideo.cameras.Spinnaker"  = "cameras/Spinnaker",
+    "QVideo.cameras.Spinnaker2" = "cameras/Spinnaker2",
+    "QVideo.dvr"                = "dvr",
+    "QVideo.filters"            = "filters",
+    "QVideo.lib"                = "lib",
+}
+packages = [
+    "QVideo",
+    "QVideo.cameras",
+    "QVideo.cameras.Flir",
+    "QVideo.cameras.Genicam",
+    "QVideo.cameras.Noise",
+    "QVideo.cameras.OpenCV",
+    "QVideo.cameras.Picamera",
+    "QVideo.cameras.Spinnaker",
+    "QVideo.cameras.Spinnaker2",
+    "QVideo.dvr",
+    "QVideo.filters",
+    "QVideo.lib",
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["QVideo"]

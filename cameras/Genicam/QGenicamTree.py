@@ -122,6 +122,7 @@ class QGenicamTree(QCameraTree):
         logger.debug('Handling item changes')
         self._updateVisible()
         self._updateEnabled()
+        self._updateLimits()
 
     def _updateVisible(self) -> None:
         for item in self.listAllItems()[1:]:
@@ -145,6 +146,31 @@ class QGenicamTree(QCameraTree):
             if p.opts.get('visible', False):
                 name = p.opts['name']
                 p.setOpts(enabled=self.camera.is_readwrite(name))
+
+    def _updateLimits(self) -> None:
+        '''Refresh Parameter constraints from the live GenICam node values.
+
+        Called after every property change so that dependent nodes (e.g.
+        ``OffsetX`` range after a ``Width`` change) reflect the current
+        hardware state in the UI.  Only visible leaf parameters are updated.
+        '''
+        for item in self.listAllItems()[1:]:
+            p = item.param
+            if not p.opts.get('visible', False):
+                continue
+            name = p.opts.get('name')
+            node = self.camera.node(name)
+            if node is None:
+                continue
+            if isinstance(node, IInteger):
+                p.setOpts(limits=(node.min, node.max), step=node.inc)
+            elif isinstance(node, IFloat):
+                opts = {'limits': (node.min, node.max)}
+                if node.has_inc():
+                    opts['step'] = node.inc
+                p.setOpts(**opts)
+            elif isinstance(node, IEnumeration):
+                p.setOpts(limits=[v.symbolic for v in node.entries])
 
     @pyqtProperty(QVariant)
     def controls(self) -> list[str] | None:

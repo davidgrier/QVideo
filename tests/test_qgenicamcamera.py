@@ -392,12 +392,13 @@ class TestSet(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width',
                                 min=64, max=1920, inc=4)
         # Mode changes: RW before start → RO after start (protected),
-        # then RO during registration.  _set_feature no longer re-checks
-        # the mode, so only 3 calls total during _initialize.
+        # then RO during registration.  The setter also checks access mode
+        # at runtime (4th call) but proceeds because Width is protected.
         feature.node.get_access_mode.side_effect = [
             _EAccessMode.RW,  # _scan_modes pre-start
             _EAccessMode.RO,  # _scan_modes post-start → protected
             _EAccessMode.RO,  # _register_features
+            _EAccessMode.RO,  # setter runtime check
         ]
         device = _make_device()
         root = MagicMock(spec=_ICategory)
@@ -409,6 +410,21 @@ class TestSet(unittest.TestCase):
         cam.set('Width', 640)
         device.stop.assert_called_once()
         device.start.assert_called_once()
+
+    def test_set_warns_when_feature_becomes_readonly_at_runtime(self):
+        feature = _make_feature(_IInteger, name='Gamma', min=0, max=4, inc=1)
+        # RW at registration, then RO at runtime (e.g. auto-mode enabled).
+        feature.node.get_access_mode.side_effect = [
+            _EAccessMode.RW,  # _scan_modes pre-start
+            _EAccessMode.RW,  # _scan_modes post-start (not protected)
+            _EAccessMode.RW,  # _register_features
+            _EAccessMode.RO,  # setter runtime check → should warn and skip
+        ]
+        cam, _, _ = make_camera_with_node(feature)
+        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+                             level='WARNING'):
+            cam.set('Gamma', 2)
+        self.assertNotEqual(feature.value, 2)
 
     def test_set_unknown_key_does_nothing(self):
         cam, _, _ = make_camera()

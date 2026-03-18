@@ -110,8 +110,18 @@ class QGenicamCamera(QCamera):
         return modes
 
     def _make_setter(self, feature: IValue, name: str):
-        '''Return a setter that stops/restarts acquisition for protected features.'''
+        '''Return a setter that checks current access mode before writing.
+
+        If the feature is not currently writable (and is not a protected
+        feature that can be written after stopping acquisition), the write
+        is skipped and a warning is logged.  Protected features stop and
+        restart acquisition around the write as before.
+        '''
         def setter(value):
+            mode = feature.node.get_access_mode()
+            if mode != EAccessMode.RW and name not in self.protected:
+                logger.warning(f'{name} is not currently writable (mode={mode})')
+                return
             restart = name in self.protected and self.device.is_acquiring()
             if restart:
                 self.device.stop()

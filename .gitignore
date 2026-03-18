@@ -45,6 +45,8 @@ creds.js
 
 # Scratch
 requirements.txt.bak
+cameras/Genicam/vimbax/tmp/
+cameras/Spinnaker2/Untitled.ipynb
 
 
 # Byte-compiled / optimized / DLL files

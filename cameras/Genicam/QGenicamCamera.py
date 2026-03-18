@@ -48,10 +48,6 @@ class QGenicamCamera(QCamera):
     @staticmethod
     def _set_feature(feature: IValue, value: QCamera.PropertyValue) -> None:
         '''Set the value of a feature node.'''
-        mode = feature.node.get_access_mode()
-        if mode not in (EAccessMode.RW, EAccessMode.WO):
-            logger.info(f'{feature.node.name} is not writeable')
-            return
         logger.debug(f'Setting {feature.node.name}: {value}')
         if isinstance(feature, IEnumeration):
             if value in [v.symbolic for v in feature.entries]:
@@ -152,6 +148,7 @@ class QGenicamCamera(QCamera):
         super().__init__(*args, **kwargs)
         self.producer = producer
         self.cameraID = cameraID
+        self.node_map = None
         self.open()
 
     def _initialize(self) -> bool:
@@ -233,6 +230,8 @@ class QGenicamCamera(QCamera):
         IValue or None
             The requested node, or ``None`` if it does not exist.
         '''
+        if self.node_map is None:
+            return None
         if self.node_map.has_node(name):
             return self.node_map.get_node(name)
         logger.warning(f'node {name} is unknown')

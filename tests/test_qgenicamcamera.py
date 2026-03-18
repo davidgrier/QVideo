@@ -279,6 +279,14 @@ class TestNode(unittest.TestCase):
         nm.get_node.assert_called_with('Width')
         self.assertIsNotNone(node)
 
+    def test_returns_none_when_node_map_unset(self):
+        harvester = MagicMock()
+        harvester.create.side_effect = ValueError('no camera')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = QGenicamCamera(PRODUCER)
+        self.assertIsNone(cam.node('Width'))
+
     def test_returns_none_when_not_found(self):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = False
@@ -384,12 +392,12 @@ class TestSet(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width',
                                 min=64, max=1920, inc=4)
         # Mode changes: RW before start → RO after start (protected),
-        # then RO during registration, then RW after device.stop() in setter.
+        # then RO during registration.  _set_feature no longer re-checks
+        # the mode, so only 3 calls total during _initialize.
         feature.node.get_access_mode.side_effect = [
             _EAccessMode.RW,  # _scan_modes pre-start
             _EAccessMode.RO,  # _scan_modes post-start → protected
             _EAccessMode.RO,  # _register_features
-            _EAccessMode.RW,  # _set_feature after device.stop()
         ]
         device = _make_device()
         root = MagicMock(spec=_ICategory)

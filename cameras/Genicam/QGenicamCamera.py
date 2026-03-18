@@ -1,100 +1,53 @@
-from QVideo.lib import (QCamera, QVideoSource)
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QMutexLocker)
+from QVideo.lib import QCamera, QVideoSource
+from pyqtgraph.Qt import QtCore
 import numpy as np
 import logging
+
 try:
     from harvesters.core import Harvester
     from genicam.genapi import (IValue, EAccessMode, EVisibility,
                                 ICategory, ICommand, IEnumeration,
                                 IBoolean, IInteger, IFloat, IString)
     from genicam.gentl import TimeoutException
-except (ImportError, ModuleNotFoundError) as error:
+    IProperty = IEnumeration | IBoolean | IInteger | IFloat | IString
+except (ImportError, ModuleNotFoundError):
     Harvester = None
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 __all__ = ['QGenicamCamera', 'QGenicamSource']
 
 
-IProperty = IEnumeration | IBoolean | IInteger | IFloat
-
-
 class QGenicamCamera(QCamera):
-    '''Base class for cameras implementing the GenICam standard
 
-    GenICam is a standardized machine-vision interface maintained
-    by the European Machine Vision Association
-    https://www.emva.org/standards-technology/genicam/
+    '''Camera backed by a GenICam-compliant device via Harvesters.
 
-    Requirements
-    ------------
-    > pip install genicam
-    > pip install harvesters
+    `GenICam <https://www.emva.org/standards-technology/genicam/>`_ is a
+    standardized machine-vision interface maintained by the European Machine
+    Vision Association.  Communication with the physical device is handled by
+    a GenTL producer — a ``.cti`` binary supplied by the camera manufacturer.
 
-    Connecting to a specific GenICam camera requires a "GenTL producer",
-    which is a binary file that implements communications between
-    the host computer and the camera. The producer typically is
-    provided by the manufacturer of the camera is is a file with
-    a ".cti" extension. Manufacturers may provide different versions
-    of the cti file for different operating systems and for different
-    versions of python.
+    Requires the ``genicam`` and ``harvesters`` packages
+    (``pip install genicam harvesters``).  If either package is absent the
+    class is still importable but :meth:`_initialize` will return ``False``.
 
-    Inherits
-    --------
-    QVideo.lib.QCamera
-
-    Properties
+    Parameters
     ----------
     producer : str
-        Path to GenTL producer file
+        Path to the GenTL producer ``.cti`` file.
     cameraID : int
-        Index of camera to use (default 0)
+        Index of the camera to open.  Default: ``0``.
+    *args :
+        Forwarded to :class:`~QVideo.lib.QCamera`.
+    **kwargs :
+        Forwarded to :class:`~QVideo.lib.QCamera`.
     '''
 
     @staticmethod
-    def __properties(feature: IValue) -> list[str]:
-        '''Returns a list of names of accessible properties'''
-        properties = []
-        if isinstance(feature, ICategory):
-            for f in feature.features:
-                properties.extend(QGenicamCamera.__properties(f))
-        elif isinstance(feature, IProperty):
-            accessmode = feature.node.get_access_mode()
-            if accessmode in (EAccessMode.RO, EAccessMode.RW):
-                properties = [feature.node.name]
-        return properties
-
-    @staticmethod
-    def __methods(feature: IValue) -> list[str]:
-        '''Returns list of names of executable methods'''
-        methods = []
-        if isinstance(feature, ICategory):
-            for f in feature.features:
-                methods.extend(QGenicamCamera.__methods(f))
-        elif isinstance(feature, ICommand):
-            methods = [feature.node.name]
-        return methods
-
-    @staticmethod
-    def __modes(feature: IValue) -> dict[str, int]:
-        '''Returns a dictionary of access modes of all camera settings'''
-        modes = dict()
-        if isinstance(feature, ICategory):
-            for f in feature.features:
-                modes.update(QGenicamCamera.__modes(f))
-        elif isinstance(feature, IProperty):
-            name = feature.node.name
-            mode = feature.node.get_access_mode()
-            modes[name] = mode
-        return modes
-
-    @staticmethod
-    def __set(feature: IValue, value: QCamera.PropertyValue):
-        '''Sets the value of a feature'''
+    def _set_feature(feature: IValue, value: QCamera.PropertyValue) -> None:
+        '''Set the value of a feature node.'''
         mode = feature.node.get_access_mode()
         if mode not in (EAccessMode.RW, EAccessMode.WO):
             logger.info(f'{feature.node.name} is not writeable')
@@ -104,7 +57,7 @@ class QGenicamCamera(QCamera):
             if value in [v.symbolic for v in feature.entries]:
                 feature.from_string(value)
             else:
-                logger.warning(f'{value} is not in {feature.name}')
+                logger.warning(f'{value} is not in {feature.node.name}')
         elif isinstance(feature, IBoolean):
             feature.value = bool(value)
         elif isinstance(feature, IInteger):
@@ -117,17 +70,80 @@ class QGenicamCamera(QCamera):
             feature.value = str(value)
 
     @staticmethod
-    def __get(feature: IValue) -> QCamera.PropertyValue | None:
-        '''Returns the value of a feature'''
-        accessmode = feature.node.get_access_mode()
-        if accessmode not in (EAccessMode.RW, EAccessMode.RO):
-            logger.info('f{feature.node.name} is not readable')
-            return None
-        logger.debug(f'Getting {feature.node.name}')
+    def _make_getter(feature: IValue):
+        '''Return a zero-argument callable that reads the feature value.'''
         if isinstance(feature, IEnumeration):
-            return feature.to_string()
-        else:
-            return feature.value
+            return lambda: feature.to_string()
+        return lambda: feature.value
+
+    @staticmethod
+    def _feature_ptype(feature: IValue) -> type:
+        '''Return the Python type for a feature.'''
+        if isinstance(feature, IBoolean):
+            return bool
+        if isinstance(feature, IInteger):
+            return int
+        if isinstance(feature, IFloat):
+            return float
+        return str  # IEnumeration, IString
+
+    @staticmethod
+    def _feature_meta(feature: IValue) -> dict:
+        '''Return extra metadata kwargs for registerProperty.'''
+        if isinstance(feature, IEnumeration):
+            return {'limits': [v.symbolic for v in feature.entries]}
+        if isinstance(feature, IInteger):
+            return {'minimum': feature.min, 'maximum': feature.max,
+                    'step': feature.inc}
+        if isinstance(feature, IFloat):
+            meta = {'minimum': feature.min, 'maximum': feature.max}
+            if feature.has_inc():
+                meta['step'] = feature.inc
+            return meta
+        return {}
+
+    @staticmethod
+    def _scan_modes(feature: IValue) -> dict[str, object]:
+        '''Return a dict mapping property node names to their access modes.'''
+        modes = {}
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                modes.update(QGenicamCamera._scan_modes(f))
+        elif isinstance(feature, IProperty):
+            modes[feature.node.name] = feature.node.get_access_mode()
+        return modes
+
+    def _make_setter(self, feature: IValue, name: str):
+        '''Return a setter that stops/restarts acquisition for protected features.'''
+        def setter(value):
+            restart = name in self.protected and self.device.is_acquiring()
+            if restart:
+                self.device.stop()
+            QGenicamCamera._set_feature(feature, value)
+            if restart:
+                self.device.start()
+        return setter
+
+    def _register_features(self, feature: IValue) -> None:
+        '''Recursively walk the node tree, registering properties and methods.'''
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                self._register_features(f)
+        elif isinstance(feature, ICommand):
+            self.registerMethod(feature.node.name, feature.execute)
+        elif isinstance(feature, IProperty):
+            mode = feature.node.get_access_mode()
+            if mode not in (EAccessMode.RO, EAccessMode.RW):
+                return
+            name = feature.node.name
+            getter = self._make_getter(feature)
+            writable = (mode == EAccessMode.RW) or (name in self.protected)
+            setter = self._make_setter(feature, name) if writable else None
+            self.registerProperty(name,
+                                  getter=getter,
+                                  setter=setter,
+                                  ptype=self._feature_ptype(feature),
+                                  **self._feature_meta(feature))
 
     def __init__(self, producer: str,
                  *args,
@@ -139,10 +155,16 @@ class QGenicamCamera(QCamera):
         self.open()
 
     def _initialize(self) -> bool:
+        '''Open the GenICam device and register available properties.
+
+        Returns
+        -------
+        bool
+            ``True`` if a valid camera device was opened successfully.
+        '''
         if Harvester is None:
-            logger.warning('''
-            Could not import harvesters library:
-            Genicam camera support is not available''')
+            logger.warning('Could not import harvesters: '
+                           'Genicam camera support is not available')
             return False
         self.harvester = Harvester()
         self.harvester.add_file(self.producer)
@@ -152,25 +174,39 @@ class QGenicamCamera(QCamera):
         except ValueError:
             logger.warning('No camera was found')
             return False
-        try:
-            self.node_map = self.device.remote_device.node_map
-            self.name = self.node_map.DeviceModelName.value
-            root = self.node()
-            self._properties = self.__properties(root)
-            self._methods = self.__methods(root)
-            ma = self.__modes(root)
-            self.device.start()
-            mb = self.__modes(root)
-            self.protected = [k for k, v in ma.items() if mb[k] != v]
-        finally:
-            return self.device.is_valid()
+        self.node_map = self.device.remote_device.node_map
+        root = self.node()
+        ma = self._scan_modes(root)
+        self.device.start()
+        mb = self._scan_modes(root)
+        self.protected = {k for k, v in ma.items()
+                          if k in mb and mb[k] != v}
+        self._register_features(root)
+        for genicam_name, alias in (('Width', 'width'), ('Height', 'height')):
+            if genicam_name in self._properties:
+                orig_setter = self._properties[genicam_name]['setter']
+                if orig_setter is not None:
+                    def _shape_setter(v, s=orig_setter):
+                        s(v)
+                        self.shapeChanged.emit(self.shape)
+                    self._properties[genicam_name]['setter'] = _shape_setter
+                self._properties[alias] = self._properties[genicam_name]
+        return self.device.is_valid()
 
     def _deinitialize(self) -> None:
+        '''Stop acquisition and release the GenICam device.'''
         self.device.stop()
         self.device.destroy()
         self.harvester.reset()
 
     def read(self) -> QCamera.CameraData:
+        '''Read one frame from the camera.
+
+        Returns
+        -------
+        tuple[bool, ndarray or None]
+            ``(True, frame)`` on success, ``(False, None)`` on timeout.
+        '''
         frame = None
         try:
             with self.device.fetch(timeout=1) as buffer:
@@ -184,97 +220,66 @@ class QGenicamCamera(QCamera):
             logger.warning('camera acquisition timed out')
         return frame is not None, frame
 
-    def node(self, name: str = 'Root') -> IValue | None:
+    def node(self, name: str = 'Root') -> 'IValue | None':
+        '''Return the GenICam node with the given name.
+
+        Parameters
+        ----------
+        name : str
+            Node name to look up.  Default: ``'Root'``.
+
+        Returns
+        -------
+        IValue or None
+            The requested node, or ``None`` if it does not exist.
+        '''
         if self.node_map.has_node(name):
             return self.node_map.get_node(name)
-        else:
-            logger.warning(f'node {name} is unknown')
-            return None
-
-    @pyqtSlot(str, object)
-    def set(self, key: str, value) -> None:
-        '''Set named property'''
-        if (feature := self.node(key)) is not None:
-            restart = key in self.protected and self.device.is_acquiring()
-            with QMutexLocker(self.mutex):
-                logger.debug(f'setting {key}: {value} ({restart})')
-                if restart:
-                    self.device.stop()
-                self.__set(feature, value)
-                if restart:
-                    self.device.start()
-
-    @pyqtSlot(str)
-    def get(self, key: str) -> QCamera.PropertyValue | None:
-        '''Get named property'''
-        value = None
-        if (feature := self.node(key)):
-            with QMutexLocker(self.mutex):
-                value = self.__get(feature)
-                logger.debug(f'getting {key}: {value}')
-                self.propertyValue.emit(key, value)
-        return value
-
-    @pyqtSlot(str)
-    def execute(self, key: str) -> None:
-        '''Execute named method'''
-        if (feature := self.node(key)) and isinstance(feature, ICommand):
-            with QMutexLocker(self.mutex):
-                logger.debug(f'executing {feature}')
-                feature.execute()
+        logger.warning(f'node {name} is unknown')
+        return None
 
     def is_readwrite(self, feature: str) -> bool:
-        mode = self.node(feature).node.get_access_mode()
+        '''Return ``True`` if the named feature is currently writable.
+
+        Parameters
+        ----------
+        feature : str
+            GenICam node name.
+
+        Returns
+        -------
+        bool
+            ``True`` if the feature is writable, or protected (writable
+            after stopping acquisition).
+        '''
+        node = self.node(feature)
+        if node is None:
+            return False
+        mode = node.node.get_access_mode()
         return (mode == EAccessMode.RW) or (feature in self.protected)
-
-    @pyqtProperty(int)
-    def width(self) -> int:
-        return self.get('Width')
-
-    @width.setter
-    def width(self, width: int) -> None:
-        self.set('Width', width)
-        self.shapeChanged.emit(self.shape)
-
-    @pyqtProperty(int)
-    def height(self) -> int:
-        return self.get('Height')
-
-    @height.setter
-    def height(self, height: int) -> None:
-        self.set('Height', height)
-        self.shapeChanged.emit(self.shape)
-
-    @pyqtProperty(float)
-    def fps(self) -> float:
-        return self.get('AcquistionResultingFrameRate')
-
-    @fps.setter
-    def fps(self, fps: float) -> None:
-        self.set('AcquisitionFrameRate', fps)
-
-    def properties(self) -> list[str]:
-        return self._properties
-
-    def methods(self) -> list[str]:
-        return self._methods
 
 
 class QGenicamSource(QVideoSource):
 
-    '''Base class for video sources using GenICam cameras
+    '''Threaded video source backed by :class:`QGenicamCamera`.
 
-    Inherits
-    --------
-    QVideo.lib.QVideoSource
+    Parameters
+    ----------
+    camera : QGenicamCamera or None
+        Camera instance to wrap.  If ``None``, a new
+        :class:`QGenicamCamera` is created from the remaining arguments.
+    *args :
+        Forwarded to :class:`QGenicamCamera` when ``camera`` is ``None``.
+    **kwargs :
+        Forwarded to :class:`QGenicamCamera` when ``camera`` is ``None``.
     '''
 
     def __init__(self, *args,
                  camera: QGenicamCamera | None = None,
                  **kwargs) -> None:
         camera = camera or QGenicamCamera(*args, **kwargs)
-        super().__init__(camera, *args, **kwargs)
+        super().__init__(camera)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QGenicamCamera.example()

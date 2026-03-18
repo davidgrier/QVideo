@@ -1,4 +1,4 @@
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QVariant)
+from pyqtgraph.Qt.QtCore import pyqtProperty, pyqtSlot, QVariant
 from QVideo.lib import QCameraTree
 from QVideo.lib.QCameraTree import Source
 from QVideo.cameras.Genicam import QGenicamCamera
@@ -8,12 +8,40 @@ from genicam.genapi import (IValue, EAccessMode, EVisibility,
 import logging
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+
+
+__all__ = ['QGenicamTree']
 
 
 class QGenicamTree(QCameraTree):
+
+    '''Camera property tree for :class:`~QVideo.cameras.Genicam.QGenicamCamera`.
+
+    Builds a :class:`~QVideo.lib.QCameraTree.QCameraTree` from the camera's
+    GenICam node map and exposes visibility and per-feature enable/disable
+    controls.
+
+    Parameters
+    ----------
+    camera : QGenicamCamera or None
+        Camera instance to use.  If ``None``, a new
+        :class:`~QVideo.cameras.Genicam.QGenicamCamera.QGenicamCamera` is
+        created from ``cameraID`` and the remaining arguments.
+    cameraID : int
+        Index of the camera device to open.  Used only when *camera* is
+        ``None``.  Default: ``0``.
+    visibility : EVisibility
+        Maximum GenICam visibility level to display.
+        Default: ``EVisibility.Guru``.
+    controls : list of str or None
+        If given, only nodes whose names appear in this list are shown;
+        all others are hidden.  Default: ``None`` (show all).
+    *args :
+        Forwarded to :class:`~QVideo.lib.QCameraTree.QCameraTree`.
+    **kwargs :
+        Forwarded to :class:`~QVideo.lib.QCameraTree.QCameraTree`.
+    '''
 
     def __init__(self, *args,
                  camera: Source | None = None,
@@ -144,5 +172,5 @@ class QGenicamTree(QCameraTree):
         self._updateVisible()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QGenicamTree.example()

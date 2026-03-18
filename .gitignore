@@ -33,6 +33,19 @@ creds.js
 # Mac/OSX
 .DS_Store
 
+# Emacs backup and lock files
+*~
+\#*\#
+.\#*
+
+# Hardware SDK binaries (large, not redistributable)
+*.dmg
+*.tar.gz
+*.cti.[0-9]*
+
+# Scratch
+requirements.txt.bak
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

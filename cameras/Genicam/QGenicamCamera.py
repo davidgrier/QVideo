@@ -1,5 +1,4 @@
 from QVideo.lib import QCamera, QVideoSource
-from pyqtgraph.Qt import QtCore
 import numpy as np
 import logging
 
@@ -12,6 +11,7 @@ try:
     IProperty = IEnumeration | IBoolean | IInteger | IFloat | IString
 except (ImportError, ModuleNotFoundError):
     Harvester = None
+    TimeoutException = Exception
 
 
 logger = logging.getLogger(__name__)

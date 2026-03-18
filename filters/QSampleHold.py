@@ -92,14 +92,14 @@ class QSampleHold(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._layout.addWidget(QtWidgets.QLabel('order'))
-        self._order_buttons = [QtWidgets.QRadioButton(str(n)) for n in (1, 2, 3)]
-        for n, button in enumerate(self._order_buttons, start=1):
+        self._orderButtons = [QtWidgets.QRadioButton(str(n)) for n in (1, 2, 3)]
+        for n, button in enumerate(self._orderButtons, start=1):
             button.toggled.connect(lambda checked, n=n: self.setOrder(checked, n))
             self._layout.addWidget(button)
-        self._order_buttons[self.filter.order - 1].setChecked(True)
-        self._reset_button = QtWidgets.QPushButton('Reset', self)
-        self._reset_button.clicked.connect(self.reset)
-        self._layout.addWidget(self._reset_button)
+        self._orderButtons[self.filter.order - 1].setChecked(True)
+        self._resetButton = QtWidgets.QPushButton('Reset', self)
+        self._resetButton.clicked.connect(self.reset)
+        self._layout.addWidget(self._resetButton)
 
     @QtCore.pyqtSlot(bool, int)
     def setOrder(self, checked: bool, order: int) -> None:

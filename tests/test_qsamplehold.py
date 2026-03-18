@@ -109,26 +109,26 @@ class TestQSampleHold(unittest.TestCase):
         widget = make_widget()
         self.assertFalse(widget.isChecked())
 
-    def test_has_reset_button(self):
+    def test_has_resetButton(self):
         widget = make_widget()
-        self.assertIsInstance(widget._reset_button, QtWidgets.QPushButton)
+        self.assertIsInstance(widget._resetButton, QtWidgets.QPushButton)
 
-    def test_reset_button_label(self):
+    def test_resetButton_label(self):
         widget = make_widget()
-        self.assertEqual(widget._reset_button.text(), 'Reset')
+        self.assertEqual(widget._resetButton.text(), 'Reset')
 
-    def test_has_three_order_buttons(self):
+    def test_has_three_orderButtons(self):
         widget = make_widget()
-        self.assertEqual(len(widget._order_buttons), 3)
+        self.assertEqual(len(widget._orderButtons), 3)
 
     def test_order_button_labels(self):
         widget = make_widget()
-        labels = [b.text() for b in widget._order_buttons]
+        labels = [b.text() for b in widget._orderButtons]
         self.assertEqual(labels, ['1', '2', '3'])
 
     def test_default_order_button_checked(self):
         widget = make_widget()
-        self.assertTrue(widget._order_buttons[0].isChecked())
+        self.assertTrue(widget._orderButtons[0].isChecked())
 
     def test_set_order_when_checked_updates_filter(self):
         widget = make_widget()
@@ -152,10 +152,10 @@ class TestQSampleHold(unittest.TestCase):
         widget.reset()
         self.assertEqual(widget.filter._count, 3 ** widget.filter.order)
 
-    def test_reset_button_triggers_filter_reset(self):
+    def test_resetButton_triggers_filter_reset(self):
         widget = make_widget()
         with patch.object(widget.filter, 'reset') as mock_reset:
-            widget._reset_button.clicked.emit(False)
+            widget._resetButton.clicked.emit(False)
         mock_reset.assert_called_once()
 
     def test_call_when_unchecked_returns_frame_unchanged(self):

@@ -148,7 +148,7 @@ class QGenicamCamera(QCamera):
         super().__init__(*args, **kwargs)
         self.producer = producer
         self.cameraID = cameraID
-        self.node_map = None
+        self.nodeMap = None
         self.open()
 
     def _initialize(self) -> bool:
@@ -171,7 +171,7 @@ class QGenicamCamera(QCamera):
         except ValueError:
             logger.warning('No camera was found')
             return False
-        self.node_map = self.device.remote_device.node_map
+        self.nodeMap = self.device.remote_device.node_map
         root = self.node()
         ma = self._scan_modes(root)
         self.device.start()
@@ -230,10 +230,10 @@ class QGenicamCamera(QCamera):
         IValue or None
             The requested node, or ``None`` if it does not exist.
         '''
-        if self.node_map is None:
+        if self.nodeMap is None:
             return None
-        if self.node_map.has_node(name):
-            return self.node_map.get_node(name)
+        if self.nodeMap.has_node(name):
+            return self.nodeMap.get_node(name)
         logger.warning(f'node {name} is unknown')
         return None
 

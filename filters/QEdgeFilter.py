@@ -111,15 +111,15 @@ class QEdgeFilter(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._layout.addWidget(QtWidgets.QLabel('low'))
-        self._low_spinbox = SpinBox(self, value=self.filter.low, int=True)
-        self._low_spinbox.setMinimum(1)
-        self._low_spinbox.valueChanged.connect(self.setLow)
-        self._layout.addWidget(self._low_spinbox)
+        self._lowSpinbox = SpinBox(self, value=self.filter.low, int=True)
+        self._lowSpinbox.setMinimum(1)
+        self._lowSpinbox.valueChanged.connect(self.setLow)
+        self._layout.addWidget(self._lowSpinbox)
         self._layout.addWidget(QtWidgets.QLabel('high'))
-        self._high_spinbox = SpinBox(self, value=self.filter.high, int=True)
-        self._high_spinbox.setMinimum(2)
-        self._high_spinbox.valueChanged.connect(self.setHigh)
-        self._layout.addWidget(self._high_spinbox)
+        self._highSpinbox = SpinBox(self, value=self.filter.high, int=True)
+        self._highSpinbox.setMinimum(2)
+        self._highSpinbox.valueChanged.connect(self.setHigh)
+        self._layout.addWidget(self._highSpinbox)
 
     @QtCore.pyqtSlot(object)
     def setLow(self, low: int) -> None:
@@ -135,9 +135,9 @@ class QEdgeFilter(QVideoFilter):
             New lower threshold.
         '''
         self.filter.low = low
-        self._low_spinbox.blockSignals(True)
-        self._low_spinbox.setValue(self.filter.low)
-        self._low_spinbox.blockSignals(False)
+        self._lowSpinbox.blockSignals(True)
+        self._lowSpinbox.setValue(self.filter.low)
+        self._lowSpinbox.blockSignals(False)
 
     @QtCore.pyqtSlot(object)
     def setHigh(self, high: int) -> None:
@@ -153,9 +153,9 @@ class QEdgeFilter(QVideoFilter):
             New upper threshold.
         '''
         self.filter.high = high
-        self._high_spinbox.blockSignals(True)
-        self._high_spinbox.setValue(self.filter.high)
-        self._high_spinbox.blockSignals(False)
+        self._highSpinbox.blockSignals(True)
+        self._highSpinbox.setValue(self.filter.high)
+        self._highSpinbox.blockSignals(False)
 
 
 if __name__ == '__main__':  # pragma: no cover

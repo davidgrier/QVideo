@@ -133,13 +133,13 @@ class TestQEdgeFilter(unittest.TestCase):
         widget = make_widget()
         self.assertFalse(widget.isChecked())
 
-    def test_has_low_spinbox(self):
+    def test_has_lowSpinbox(self):
         widget = make_widget()
-        self.assertIsNotNone(widget._low_spinbox)
+        self.assertIsNotNone(widget._lowSpinbox)
 
-    def test_has_high_spinbox(self):
+    def test_has_highSpinbox(self):
         widget = make_widget()
-        self.assertIsNotNone(widget._high_spinbox)
+        self.assertIsNotNone(widget._highSpinbox)
 
     def test_set_low_updates_filter(self):
         widget = make_widget()
@@ -154,26 +154,26 @@ class TestQEdgeFilter(unittest.TestCase):
     def test_set_low_snaps_spinbox(self):
         widget = make_widget()
         widget.setLow(20)
-        self.assertEqual(widget._low_spinbox.value(), 20)
+        self.assertEqual(widget._lowSpinbox.value(), 20)
 
     def test_set_high_snaps_spinbox(self):
         widget = make_widget()
         widget.setHigh(200)
-        self.assertEqual(widget._high_spinbox.value(), 200)
+        self.assertEqual(widget._highSpinbox.value(), 200)
 
     def test_set_low_rejected_snaps_spinbox_back(self):
         widget = make_widget()
         original_low = widget.filter.low
         with self.assertLogs('QVideo.filters.QEdgeFilter', level='WARNING'):
             widget.setLow(widget.filter.high + 10)
-        self.assertEqual(widget._low_spinbox.value(), original_low)
+        self.assertEqual(widget._lowSpinbox.value(), original_low)
 
     def test_set_high_rejected_snaps_spinbox_back(self):
         widget = make_widget()
         original_high = widget.filter.high
         with self.assertLogs('QVideo.filters.QEdgeFilter', level='WARNING'):
             widget.setHigh(widget.filter.low - 1)
-        self.assertEqual(widget._high_spinbox.value(), original_high)
+        self.assertEqual(widget._highSpinbox.value(), original_high)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
         widget = make_widget()

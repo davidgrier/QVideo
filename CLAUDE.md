@@ -77,3 +77,10 @@ Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilte
 - Patch hardware classes with `patch.object(module, 'Harvester', return_value=mock_harvester)`.
 - `# pragma: no cover` on all `if __name__ == '__main__':` guards.
 - Docstrings use NumPy style.
+
+## Naming conventions
+
+Follow the PyQt camelCase convention for all instance attributes on Qt classes:
+- Use `camelCase` for private attributes (e.g. `self._ignoreSync`, `self._isOpen`, `self._colorCapable`).
+- Use `snake_case` only for pure-Python, non-Qt classes (e.g. `VideoFilter` subclasses).
+- When renaming, update both the source file and all corresponding test files.

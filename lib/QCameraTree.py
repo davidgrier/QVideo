@@ -86,7 +86,7 @@ class QCameraTree(ParameterTree):
             self._source = QVideoSource(source)
         else:
             self._source = source
-        self._ignore_sync = False
+        self._ignoreSync = False
         self._createTree(description)
         self._connectSignals()
         self._setupUi()
@@ -124,17 +124,17 @@ class QCameraTree(ParameterTree):
 
     @QtCore.pyqtSlot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:
-        if self._ignore_sync:
+        if self._ignoreSync:
             return
         for param, change, value in changes:
             if (change == 'value'):
                 key = param.name()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
-        self._ignore_sync = True
+        self._ignoreSync = True
         for key, value in self.camera.settings.items():
             self.set(key, value)
-        self._ignore_sync = False
+        self._ignoreSync = False
 
     @QtCore.pyqtSlot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:

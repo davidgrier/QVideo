@@ -81,7 +81,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         self.mutex = QtCore.QMutex()
         self._properties: dict = {}
         self._methods: dict = {}
-        self._isopen = False
+        self._isOpen = False
 
     def __enter__(self) -> 'QCamera':
         return self.open()
@@ -168,9 +168,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         QCamera
             ``self``, to allow chaining.
         '''
-        if not self._isopen:
-            self._isopen = bool(self._initialize(*args, **kwargs))
-            if not self._isopen:
+        if not self._isOpen:
+            self._isOpen = bool(self._initialize(*args, **kwargs))
+            if not self._isOpen:
                 logger.warning(f'{self.name}: initialization failed')
         return self
 
@@ -180,13 +180,13 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
         Safe to call on an already-closed device.
         '''
-        if self._isopen:
+        if self._isOpen:
             self._deinitialize()
-        self._isopen = False
+        self._isOpen = False
 
     def isOpen(self) -> bool:
         '''Return whether the device is currently open.'''
-        return self._isopen
+        return self._isOpen
 
     @abstractmethod
     def _initialize(self, *args, **kwargs) -> bool:

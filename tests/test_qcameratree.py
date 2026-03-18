@@ -112,7 +112,7 @@ class TestQCameraTreeSync(unittest.TestCase):
         self.assertEqual(cam.width, 320)
 
     def test_set_does_not_cause_infinite_loop(self):
-        '''_sync sets _ignore_sync to avoid re-entrant loops.'''
+        '''_sync sets _ignoreSync to avoid re-entrant loops.'''
         tree = make_tree()
         # If this call returns without recursion error, the guard works
         tree._parameters['width'].setValue(320)
@@ -149,17 +149,17 @@ class TestQCameraTreeCloseEvent(unittest.TestCase):
 
 class TestQCameraTreeSyncGuard(unittest.TestCase):
 
-    def test_sync_returns_early_when_ignore_sync_set(self):
-        '''_sync short-circuits when _ignore_sync is True.'''
+    def test_sync_returns_early_when_ignoreSync_set(self):
+        '''_sync short-circuits when _ignoreSync is True.'''
         cam = make_camera()
         tree = make_tree(source=make_source(cam))
-        tree._ignore_sync = True
+        tree._ignoreSync = True
         original_width = cam.width
         # Calling _sync directly with a value change should be ignored
         param = tree._parameters['width']
         tree._sync(None, [(param, 'value', 9999)])
         self.assertEqual(cam.width, original_width)
-        tree._ignore_sync = False
+        tree._ignoreSync = False
 
 
 class TestQCameraTreeCustomDescription(unittest.TestCase):

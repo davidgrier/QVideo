@@ -255,7 +255,7 @@ class QSpinnakerCamera(QCamera):
     @gray.setter
     def gray(self, gray: bool) -> None:
         logger.debug(f'Setting Gray: {gray}')
-        if self._color_capable:
+        if self._colorCapable:
             self.pixelformat = 'Mono8' if gray else 'RGB8Packed'
 
     @pyqtProperty(str)
@@ -270,7 +270,7 @@ class QSpinnakerCamera(QCamera):
         return self.acquisitionframerate
 
     def colorCapable(self) -> bool:
-        return self._color_capable
+        return self._colorCapable
 
     def _refineProperties(self) -> None:
         for p in self.properties():
@@ -281,13 +281,13 @@ class QSpinnakerCamera(QCamera):
         level = logger.level
         logger.setLevel(logging.CRITICAL)
         if self.pixelformat == 'RGB8Packed':
-            self._color_capable = True
+            self._colorCapable = True
         else:
             try:
                 self.pixelformat = 'RGB8Packed'
-                self._color_capable = True
+                self._colorCapable = True
             except PySpin.SpinnakerException:
-                self._color_capable = False
+                self._colorCapable = False
             self.pixelformat = 'Mono8'
         logger.setLevel(level)
 

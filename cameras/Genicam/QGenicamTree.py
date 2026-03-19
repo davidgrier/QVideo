@@ -173,12 +173,11 @@ class QGenicamTree(QCameraTree):
         for item in self.listAllItems()[1:]:
             p = item.param
             name = p.opts['name']
-            if (controls is None) or (name in controls):
-                node = self.camera.node(name)
-                visibility = node.node.visibility if node is not None else EVisibility.Invisible
-            else:
-                visibility = EVisibility.Invisible
-            p.opts['visibility'] = visibility
+            node = self.camera.node(name)
+            visible = controls is None or name in controls
+            p.opts['visibility'] = (node.node.visibility
+                                    if node is not None and visible
+                                    else EVisibility.Invisible)
 
     @property
     def visibility(self) -> EVisibility:

@@ -28,6 +28,27 @@ Each demo can be launched directly::
     python -m QVideo.demos.demo
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.ROIdemo
+
+Camera selection
+----------------
+All demos accept the same command-line flags to select a camera backend.
+If no flag is given, a noise camera is used as a fallback.
+
+.. code-block:: text
+
+    -c [cameraID]   OpenCV camera
+    -f [cameraID]   FLIR camera (requires Spinnaker SDK)
+    -s [cameraID]   Spinnaker SDK camera
+    -v [cameraID]   Allied Vision VimbaX camera
+
+``cameraID`` is an optional integer index (default ``0``) used when
+multiple cameras of the same type are connected.  The flags are mutually
+exclusive — only one backend can be selected at a time.
+
+Example::
+
+    python -m QVideo.demos.demo -f        # first FLIR camera
+    python -m QVideo.demos.filterdemo -c 1  # second OpenCV camera
 '''
 
 from .demo import Demo

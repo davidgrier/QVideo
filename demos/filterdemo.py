@@ -6,7 +6,7 @@ Run directly::
     python -m QVideo.demos.filterdemo
 '''
 
-from QVideo.lib import QVideoScreen
+from QVideo.lib import QVideoScreen, QCameraTree
 from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 
 
@@ -33,7 +33,7 @@ class Demo(QWidget):
     '''
 
     def __init__(self,
-                 cameraTree: 'QCameraTree',
+                 cameraTree: QCameraTree,
                  filters: list[str],
                  **kwargs) -> None:
         super().__init__(**kwargs)

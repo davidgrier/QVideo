@@ -3,7 +3,18 @@
 
 Run directly to launch a full camcorder application with camera selection::
 
-    python -m QVideo.QCamcorder
+    python -m QVideo.QCamcorder [-c|-f|-s|-v] [cameraID]
+
+Camera flags (mutually exclusive):
+
+.. code-block:: text
+
+    -c [cameraID]   OpenCV camera
+    -f [cameraID]   FLIR camera (requires Spinnaker SDK)
+    -s [cameraID]   Spinnaker SDK camera
+    -v [cameraID]   Allied Vision VimbaX camera
+
+If no flag is given, a noise camera is used as a fallback.
 '''
 
 from pyqtgraph.Qt.QtWidgets import QWidget

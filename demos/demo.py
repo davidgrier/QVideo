@@ -6,7 +6,7 @@ Run directly::
     python -m QVideo.demos.demo
 '''
 
-from QVideo.lib import QVideoScreen
+from QVideo.lib import QVideoScreen, QCameraTree
 from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout
 
 
@@ -30,7 +30,7 @@ class Demo(QWidget):
     and a camera control tree on the right.
     '''
 
-    def __init__(self, cameraTree: 'QCameraTree', **kwargs) -> None:
+    def __init__(self, cameraTree: QCameraTree, **kwargs) -> None:
         super().__init__(**kwargs)
         self.screen = QVideoScreen()
         self.cameraTree = cameraTree

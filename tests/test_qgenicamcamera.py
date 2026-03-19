@@ -242,6 +242,86 @@ class TestInitialize(unittest.TestCase):
                 cam = _ConcreteCamera()
         self.assertFalse(cam.isOpen())
 
+    def test_harvester_reset_called_when_no_camera_found(self):
+        harvester = MagicMock()
+        harvester.create.side_effect = ValueError('no camera')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                _ConcreteCamera()
+        harvester.reset.assert_called_once()
+
+    def test_returns_false_when_producer_fails_to_load(self):
+        harvester = MagicMock()
+        harvester.add_file.side_effect = OSError('file not found')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.isOpen())
+
+    def test_harvester_reset_called_when_producer_fails_to_load(self):
+        harvester = MagicMock()
+        harvester.add_file.side_effect = OSError('file not found')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                _ConcreteCamera()
+        harvester.reset.assert_called_once()
+
+    def test_returns_false_when_update_fails(self):
+        harvester = MagicMock()
+        harvester.update.side_effect = RuntimeError('bad cti')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.isOpen())
+
+    def test_returns_false_when_create_raises_non_value_error(self):
+        harvester = MagicMock()
+        harvester.create.side_effect = RuntimeError('driver error')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.isOpen())
+
+    def test_returns_false_when_node_map_is_none(self):
+        device = _make_device()
+        device.remote_device.node_map = None
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.isOpen())
+
+    def test_cleanup_called_when_node_map_is_none(self):
+        device = _make_device()
+        device.remote_device.node_map = None
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                _ConcreteCamera()
+        harvester.reset.assert_called_once()
+
+    def test_returns_false_when_is_valid_false(self):
+        device = _make_device(is_valid=False)
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.isOpen())
+
+    def test_cleanup_called_when_is_valid_false(self):
+        device = _make_device(is_valid=False)
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                _ConcreteCamera()
+        device.stop.assert_called()
+        device.destroy.assert_called_once()
+        harvester.reset.assert_called_once()
+
     def test_name_returns_class_name(self):
         cam, _, _ = make_camera()
         self.assertEqual(cam.name, '_ConcreteCamera')
@@ -347,6 +427,21 @@ class TestRead(unittest.TestCase):
     def test_returns_false_none_on_timeout(self):
         device = _make_device()
         device.fetch.return_value.__enter__.side_effect = _TimeoutException
+        cam, _, _ = make_camera(device=device)
+        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+                             level='WARNING'):
+            ok, frame = cam.read()
+        self.assertFalse(ok)
+        self.assertIsNone(frame)
+
+    def test_returns_false_none_on_empty_payload(self):
+        device = _make_device()
+        buf = MagicMock()
+        buf.payload.components = []
+        cm = MagicMock()
+        cm.__enter__ = MagicMock(return_value=buf)
+        cm.__exit__ = MagicMock(return_value=False)
+        device.fetch.return_value = cm
         cam, _, _ = make_camera(device=device)
         with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
                              level='WARNING'):

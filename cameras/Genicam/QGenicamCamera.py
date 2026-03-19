@@ -181,32 +181,70 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
+        success = False
         self.harvester = Harvester()
-        self.harvester.add_file(self.producer)
-        self.harvester.update()
+        self.device = None
         try:
-            self.device = self.harvester.create(self.cameraID)
-        except ValueError:
-            logger.warning('No camera was found')
-            return False
-        self.nodeMap = self.device.remote_device.node_map
-        root = self.node()
-        ma = self._scan_modes(root)
-        self.device.start()
-        mb = self._scan_modes(root)
-        self.protected = {k for k, v in ma.items()
-                          if k in mb and mb[k] != v}
-        self._register_features(root)
-        for genicam_name, alias in (('Width', 'width'), ('Height', 'height')):
-            if genicam_name in self._properties:
-                orig_setter = self._properties[genicam_name]['setter']
-                if orig_setter is not None:
-                    def _shape_setter(v, s=orig_setter):
-                        s(v)
-                        self.shapeChanged.emit(self.shape)
-                    self._properties[genicam_name]['setter'] = _shape_setter
-                self._properties[alias] = self._properties[genicam_name]
-        return self.device.is_valid()
+            try:
+                self.harvester.add_file(self.producer)
+                self.harvester.update()
+            except Exception as ex:
+                logger.warning(f'Failed to load producer {self.producer!r}: {ex}')
+                return False
+            try:
+                self.device = self.harvester.create(self.cameraID)
+            except Exception as ex:
+                logger.warning(f'No camera found at index {self.cameraID}: {ex}')
+                return False
+            self.nodeMap = self.device.remote_device.node_map
+            if self.nodeMap is None:
+                logger.warning('Camera node map is not available')
+                return False
+            root = self.node()
+            ma = self._scan_modes(root)
+            self.device.start()
+            mb = self._scan_modes(root)
+            self.protected = {k for k, v in ma.items()
+                              if k in mb and mb[k] != v}
+            self._register_features(root)
+            for genicam_name, alias in (('Width', 'width'), ('Height', 'height')):
+                if genicam_name in self._properties:
+                    orig_setter = self._properties[genicam_name]['setter']
+                    if orig_setter is not None:
+                        def _shape_setter(v, s=orig_setter):
+                            s(v)
+                            self.shapeChanged.emit(self.shape)
+                        self._properties[genicam_name]['setter'] = _shape_setter
+                    self._properties[alias] = self._properties[genicam_name]
+            success = self.device.is_valid()
+            if not success:
+                logger.warning('Camera device reported invalid after initialization')
+            return success
+        finally:
+            if not success:
+                self._cleanup()
+
+    def _cleanup(self) -> None:
+        '''Release partially initialized resources after a failed _initialize.
+
+        Safe to call regardless of how far initialization progressed.
+        Each step is guarded so that a failure here does not mask the
+        original exception.
+        '''
+        if self.device is not None:
+            try:
+                self.device.stop()
+            except Exception:
+                pass
+            try:
+                self.device.destroy()
+            except Exception:
+                pass
+            self.device = None
+        try:
+            self.harvester.reset()
+        except Exception:
+            pass
 
     def _deinitialize(self) -> None:
         '''Stop acquisition and release the GenICam device.'''
@@ -225,7 +263,11 @@ class QGenicamCamera(QCamera):
         frame = None
         try:
             with self.device.fetch(timeout=1) as buffer:
-                image = buffer.payload.components[0]
+                components = buffer.payload.components
+                if not components:
+                    logger.warning('camera returned empty payload')
+                    return False, None
+                image = components[0]
                 height = image.height
                 width = image.width
                 channels = int(image.num_components_per_pixel)

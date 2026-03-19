@@ -28,7 +28,26 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the previous static lookup table.
 - **`QListCVCameras`** — soft OpenCV dependency with probe fallback.
 - **`CLAUDE.md`** — developer guide committed to the repository.
-- Full test suite: **895 tests**, 0 failures, covering all core modules,
+- **`cameras/Basler`** — new GenICam backend for Basler cameras via the
+  pylon GenTL producer (`ProducerU3V.cti` / `ProducerGEV.cti`).
+- **`cameras/IDS`** — new GenICam backend for IDS Imaging cameras.
+- **`cameras/MV`** — new GenICam backend using the MATRIX VISION
+  mvGenTLProducer for broad camera compatibility.
+- **`QGenicamCamera._findProducer`** — static method that searches
+  `GENICAM_GENTL64_PATH` (set by all GenICam SDK installers) for a
+  named `.cti` producer file; replaces bundled producer directories.
+- **`QGenicamTree._updateValues`** — refreshes read-only GenICam node
+  values in the property tree after any property change.
+- **`QPicamera`** — rewritten: `cameraID`, `width`, `height` parameters;
+  `_probeControls` registers all supported picamera2 controls (exposure,
+  gain, brightness, contrast, etc.) with hardware-reported ranges.
+- **`QPicameraSource`**, **`QPicameraTree`** — new classes following the
+  standard camera backend pattern.
+- **Sphinx documentation** — full API docs with autodoc, napoleon,
+  intersphinx, and furo theme.
+- **`demos/`** — module docstrings; all demos use `choose_camera` for
+  consistent camera selection.
+- Full test suite: **1050+ tests**, 0 failures, covering all core modules,
   camera backends, filters, DVR, and utilities.
 
 ### Changed
@@ -62,6 +81,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Exploratory Jupyter notebooks from `cameras/Genicam/` and
   `cameras/Spinnaker/`.
 - `lib/QCameraList.py` — superseded by `QListCameras`.
+- `cameras/Spinnaker` and `cameras/Spinnaker2` — retired from the released
+  package; FLIR cameras are now supported via the GenICam interface
+  (`cameras/Flir`).  The Spinnaker backends are preserved in `devel/` for
+  reference.
 
 ### Fixed
 - `QGenicamCamera._initialize`: removed `try/finally` anti-pattern that

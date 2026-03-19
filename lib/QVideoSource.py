@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['QVideoSource']
+
 
 class QVideoSource(QtCore.QThread):
 

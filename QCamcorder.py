@@ -27,6 +27,9 @@ from QVideo.lib import QCameraTree, QVideoSource
 from pathlib import Path
 
 
+__all__ = ['QCamcorder']
+
+
 class QCamcorder(QWidget):
     '''A widget combining a video screen, camera controls, and DVR.
 

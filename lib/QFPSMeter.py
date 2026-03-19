@@ -6,6 +6,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['QFPSMeter']
+
 
 class QFPSMeter(QtCore.QObject):
 

@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['QVideoScreen']
+
 
 class QVideoScreen(GraphicsLayoutWidget):
 

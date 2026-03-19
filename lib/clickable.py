@@ -5,6 +5,9 @@ from pyqtgraph.Qt.QtGui import QMouseEvent
 from pyqtgraph.Qt.QtWidgets import QWidget
 
 
+__all__ = ['clickable']
+
+
 def clickable(widget: QWidget):
     '''Adds a clicked() signal to a widget such as QLineEdit that
     ordinarily does not provide notifications of clicks.

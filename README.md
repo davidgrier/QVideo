@@ -56,7 +56,7 @@ app = QtWidgets.QApplication([])
 
 source = QNoiseSource()          # synthetic noise — no hardware needed
 screen = QVideoScreen()
-source.newFrame.connect(screen.setFrame)
+source.newFrame.connect(screen.setImage)
 
 screen.show()
 source.start()
@@ -72,9 +72,12 @@ hardware — the rest of the code is identical.
 |---------|-------|----------|
 | `cameras/Noise` | `QNoiseCamera` | Synthetic — no hardware required |
 | `cameras/OpenCV` | `QOpenCVCamera` | USB webcams via OpenCV |
-| `cameras/Genicam` | `QGenicamCamera` | Any GenICam/GigE Vision camera via Harvesters |
-| `cameras/Flir` | `QFlirCamera` | FLIR cameras via Spinnaker SDK |
-| `cameras/Spinnaker` | `QSpinnakerCamera` | Spinnaker-based cameras |
+| `cameras/Genicam` | `QGenicamCamera` | Abstract base for all GenICam/GigE Vision cameras |
+| `cameras/Flir` | `QFlirCamera` | FLIR cameras via GenICam (Spinnaker GenTL producer) |
+| `cameras/Basler` | `QBaslerCamera` | Basler cameras via GenICam (pylon GenTL producer) |
+| `cameras/IDS` | `QIDSCamera` | IDS Imaging cameras via GenICam |
+| `cameras/MV` | `QMVCamera` | Any GenICam camera via MATRIX VISION mvGenTLProducer |
+| `cameras/Vimbax` | `QVimbaXCamera` | Allied Vision cameras via VimbaX GenTL producer |
 | `cameras/Picamera` | `QPicamera` | Raspberry Pi camera module |
 
 ## Writing a new camera backend

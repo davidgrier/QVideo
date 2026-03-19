@@ -1,6 +1,8 @@
 import cv2
 
 
+__all__ = ['probe_resolutions', 'COMMON_RESOLUTIONS']
+
 COMMON_RESOLUTIONS: list[tuple[int, int]] = [
     (160, 120),
     (320, 240),

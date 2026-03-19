@@ -5,9 +5,9 @@ import numpy as np
 import logging
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+
+__all__ = ['QVideoWriter']
 
 
 class QVideoWriterMeta(type(QObject), ABCMeta):

@@ -7,6 +7,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['QCamera']
+
 _AUTO = object()  # sentinel: auto-generate getter/setter from _name convention
 
 

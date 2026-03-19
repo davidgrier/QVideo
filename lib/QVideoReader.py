@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['QVideoReader']
+
 
 class QVideoReaderMeta(type(QtCore.QObject), ABCMeta):
     pass

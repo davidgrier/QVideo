@@ -8,7 +8,6 @@ from .QHDF5Reader import QHDF5Reader, QHDF5Source
 __all__ = [
     'QDVRWidget',
     'QOpenCVWriter',
-    'QOpenCVWriter',
     'QHDF5Writer',
     'QOpenCVReader', 'QOpenCVSource',
     'QHDF5Reader', 'QHDF5Source',

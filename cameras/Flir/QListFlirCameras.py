@@ -3,6 +3,9 @@ from harvesters.core import Harvester
 from QVideo.cameras.Flir.QFlirCamera import QFlirCamera
 
 
+__all__ = ['QListFlirCameras']
+
+
 class QListFlirCameras(QListCameras):
     '''A QComboBox that lists available Flir cameras.
 

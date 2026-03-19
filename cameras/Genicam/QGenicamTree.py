@@ -1,4 +1,3 @@
-from pyqtgraph.Qt.QtCore import pyqtProperty, pyqtSlot, QVariant
 from QVideo.lib import QCameraTree
 from QVideo.lib.QCameraTree import Source
 from QVideo.cameras.Genicam import QGenicamCamera
@@ -109,7 +108,6 @@ class QGenicamTree(QCameraTree):
             p = item.param
             p.sigValueChanged.connect(self._handleItemChanges)
 
-    @pyqtSlot()
     def _handleItemChanges(self) -> None:
         logger.debug('Handling item changes')
         self._updateVisible()
@@ -165,7 +163,7 @@ class QGenicamTree(QCameraTree):
             elif isinstance(node, IEnumeration):
                 p.setOpts(limits=[v.symbolic for v in node.entries])
 
-    @pyqtProperty(QVariant)
+    @property
     def controls(self) -> list[str] | None:
         return self._controls
 
@@ -182,7 +180,7 @@ class QGenicamTree(QCameraTree):
                 visibility = EVisibility.Invisible
             p.opts['visibility'] = visibility
 
-    @pyqtProperty(EVisibility)
+    @property
     def visibility(self) -> EVisibility:
         return self._visibility
 

@@ -25,10 +25,14 @@ def _probe_cameras():
 
     Yields (label, index) pairs for each index that opens successfully.
     Camera labels are synthetic, e.g. ``"Camera 0 (640x480)"``.
-    OpenCV log output is suppressed during probing.
+    OpenCV log output is suppressed during probing when the cv2 log-level
+    API is available (OpenCV >= 4.5.2).
     '''
-    level = cv2.getLogLevel()
-    cv2.setLogLevel(0)
+    _get_log = getattr(cv2, 'getLogLevel', None)
+    _set_log = getattr(cv2, 'setLogLevel', None)
+    level = _get_log() if _get_log else None
+    if _set_log:
+        _set_log(0)
     try:
         for i in range(_MAX_PROBE):
             cap = cv2.VideoCapture(i)
@@ -38,7 +42,8 @@ def _probe_cameras():
                 yield f'Camera {i} ({w}x{h})', i
             cap.release()
     finally:
-        cv2.setLogLevel(level)
+        if _set_log and level is not None:
+            _set_log(level)
 
 
 class QListCVCameras(QListCameras):

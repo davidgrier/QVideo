@@ -198,23 +198,27 @@ class TestProbeCameras(unittest.TestCase):
         self.assertEqual([i for _, i in results], [0, 1, 3])
 
     def test_log_level_restored_after_probe(self):
-        original_level = cv2.getLogLevel()
-        with patch('QVideo.cameras.OpenCV.QListCVCameras.cv2.VideoCapture',
+        with patch.object(cv2, 'getLogLevel', return_value=3, create=True), \
+             patch.object(cv2, 'setLogLevel', create=True) as mock_set_log, \
+             patch('QVideo.cameras.OpenCV.QListCVCameras.cv2.VideoCapture',
                    side_effect=self._make_cv2_mock(open_at=())):
             list(_probe_cameras())
-        self.assertEqual(cv2.getLogLevel(), original_level)
+        calls = [c.args[0] for c in mock_set_log.call_args_list]
+        self.assertEqual(calls, [0, 3])
 
     def test_log_level_restored_on_exception(self):
-        original_level = cv2.getLogLevel()
         def bad_capture(i):
             raise RuntimeError('device error')
-        with patch('QVideo.cameras.OpenCV.QListCVCameras.cv2.VideoCapture',
+        with patch.object(cv2, 'getLogLevel', return_value=3, create=True), \
+             patch.object(cv2, 'setLogLevel', create=True) as mock_set_log, \
+             patch('QVideo.cameras.OpenCV.QListCVCameras.cv2.VideoCapture',
                    side_effect=bad_capture):
             try:
                 list(_probe_cameras())
             except RuntimeError:
                 pass
-        self.assertEqual(cv2.getLogLevel(), original_level)
+        calls = [c.args[0] for c in mock_set_log.call_args_list]
+        self.assertEqual(calls[-1], 3)
 
     def test_release_called_for_closed_capture(self):
         closed_cap = make_mock_capture(is_open=False)

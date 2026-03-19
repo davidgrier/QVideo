@@ -44,6 +44,7 @@ class QGenicamTree(QCameraTree):
                  **kwargs) -> None:
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
+        self._visibility = visibility
         self.controls = controls
         self.visibility = visibility
         self._updateEnabled()
@@ -97,7 +98,7 @@ class QGenicamTree(QCameraTree):
             this['type'] = 'str'
             this['value'] = this['default'] = feature.value
         else:
-            '''FIXME: Support for IRegister nodes'''
+            # FIXME: Support for IRegister nodes
             logger.debug(
                 f'Unsupported node type: {feature.node.name}: {type(feature)}')
         return this
@@ -119,14 +120,12 @@ class QGenicamTree(QCameraTree):
             p = item.param
             p.setOpts(visible=self.visible(p))
 
-    def visible(self, param: dict | list[dict]) -> bool | list[bool]:
-        if isinstance(param, list):
-            return [self.visible(p) for p in param]
+    def visible(self, param) -> bool:
         ptype = param.opts['type']
         if ptype in ('action', None):
             return False
         if ptype == 'group':
-            return any(self.visible(param.children()))
+            return any(self.visible(c) for c in param.children())
         visibility = param.opts.get('visibility', EVisibility.Invisible)
         return visibility <= self.visibility
 
@@ -178,6 +177,7 @@ class QGenicamTree(QCameraTree):
             p.opts['visibility'] = (node.node.visibility
                                     if node is not None and visible
                                     else EVisibility.Invisible)
+        self._updateVisible()
 
     @property
     def visibility(self) -> EVisibility:

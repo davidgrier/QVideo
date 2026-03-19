@@ -539,6 +539,14 @@ class TestControls(unittest.TestCase):
         nm.get_node.side_effect = lambda n: None
         tree.controls = ['Width']  # must not raise
 
+    def test_controls_change_at_runtime_updates_visible_state(self):
+        features = [_int_feature('Width'), _int_feature('Height')]
+        tree, _, _ = make_tree(features=features)
+        # Both visible initially; restrict to Width only
+        tree.controls = ['Width']
+        p_h = tree._parameters['Height']
+        self.assertFalse(p_h.opts.get('visible', True))
+
 
 # ---------------------------------------------------------------------------
 # TestVisibilityProperty

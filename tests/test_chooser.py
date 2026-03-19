@@ -82,6 +82,14 @@ class TestCameraParser(unittest.TestCase):
         args, _ = camera_parser().parse_known_args(['3'])
         self.assertEqual(args.cameraID, 3)
 
+    def test_opencv_resolution_flag_false_by_default(self):
+        args, _ = camera_parser().parse_known_args([])
+        self.assertFalse(args.opencv_resolution)
+
+    def test_opencv_resolution_flag_set_by_minus_r(self):
+        args, _ = camera_parser().parse_known_args(['-r'])
+        self.assertTrue(args.opencv_resolution)
+
     def test_opencv_flag_false_by_default(self):
         args, _ = camera_parser().parse_known_args([])
         self.assertFalse(args.opencv)
@@ -204,7 +212,6 @@ class TestChooseCameraOpenCV(unittest.TestCase):
         camera.close()
 
     def test_opencv_flag_forwards_cameraID(self):
-        from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera
         device = make_mock_cv2_device()
         with patch('sys.argv', ['prog', '-c', '2']):
             with patch('cv2.VideoCapture', return_value=device) as mock_cap:
@@ -222,6 +229,32 @@ class TestChooseCameraOpenCV(unittest.TestCase):
                     camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
         mock_logger.warning.assert_called_once()
+        camera.close()
+
+    def test_opencv_resolution_flag_returns_resolution_tree(self):
+        from QVideo.cameras.OpenCV import QOpenCVResolutionTree
+        import sys as _sys
+        _MODULE = _sys.modules['QVideo.cameras.OpenCV.QOpenCVResolutionTree']
+        device = make_mock_cv2_device()
+        with patch('sys.argv', ['prog', '-r']):
+            with patch('cv2.VideoCapture', return_value=device):
+                with patch.object(_MODULE, 'probe_resolutions',
+                                  return_value=[(640, 480)]):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QOpenCVResolutionTree)
+        camera.close()
+
+    def test_opencv_resolution_flag_forwards_cameraID(self):
+        import sys as _sys
+        _MODULE = _sys.modules['QVideo.cameras.OpenCV.QOpenCVResolutionTree']
+        device = make_mock_cv2_device()
+        with patch('sys.argv', ['prog', '-r', '2']):
+            with patch('cv2.VideoCapture', return_value=device) as mock_cap:
+                with patch.object(_MODULE, 'probe_resolutions',
+                                  return_value=[(640, 480)]):
+                    camera = choose_camera()
+        args, _ = mock_cap.call_args
+        self.assertEqual(args[0], 2)
         camera.close()
 
 

@@ -12,7 +12,9 @@ class QOpenCVTree(QCameraTree):
     Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
     that automatically creates and opens a
     :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera`
-    if one is not provided.
+    if one is not provided.  Width and height are exposed as independent
+    integer spinboxes.  For a resolution drop-down selector, use
+    :class:`~QVideo.cameras.OpenCV.QOpenCVResolutionTree.QOpenCVResolutionTree`.
 
     Parameters
     ----------

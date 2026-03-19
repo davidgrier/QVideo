@@ -6,7 +6,6 @@ from pyqtgraph.Qt import QtWidgets
 from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera
 from QVideo.cameras.OpenCV.QOpenCVTree import QOpenCVTree
 
-
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 _FRAME_BGR = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -74,6 +73,21 @@ class TestQOpenCVTreeInit(unittest.TestCase):
         with patch('cv2.VideoCapture', return_value=device):
             tree = QOpenCVTree(gray=True)
         self.assertFalse(tree.camera.color)
+
+    def test_width_in_parameters(self):
+        cam = make_camera()
+        tree = QOpenCVTree(camera=cam)
+        self.assertIn('width', tree._parameters)
+
+    def test_height_in_parameters(self):
+        cam = make_camera()
+        tree = QOpenCVTree(camera=cam)
+        self.assertIn('height', tree._parameters)
+
+    def test_resolution_not_in_parameters(self):
+        cam = make_camera()
+        tree = QOpenCVTree(camera=cam)
+        self.assertNotIn('resolution', tree._parameters)
 
 
 if __name__ == '__main__':

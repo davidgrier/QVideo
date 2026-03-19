@@ -17,25 +17,27 @@ _MODULE = sys.modules['QVideo.cameras.Picamera.QPicamera']
 _FRAME_RGB = np.zeros((960, 1280, 3), dtype=np.uint8)
 
 _CAMERA_CONTROLS = {
-    'AeEnable':     (False, True,    True),
-    'AwbEnable':    (False, True,    True),
-    'Brightness':   (-1.0,  1.0,     0.0),
-    'Contrast':     (0.0,   32.0,    1.0),
-    'Saturation':   (0.0,   32.0,    1.0),
-    'Sharpness':    (0.0,   16.0,    1.0),
-    'ExposureTime': (100,   1000000, 10000),
-    'AnalogueGain': (1.0,   16.0,    1.0),
+    'AeEnable':          (False, True,      True),
+    'AwbEnable':         (False, True,      True),
+    'Brightness':        (-1.0,  1.0,       0.0),
+    'Contrast':          (0.0,   32.0,      1.0),
+    'Saturation':        (0.0,   32.0,      1.0),
+    'Sharpness':         (0.0,   16.0,      1.0),
+    'ExposureTime':      (100,   1000000,   10000),
+    'AnalogueGain':      (1.0,   16.0,      1.0),
+    'FrameDurationLimits': (33333, 120000000, (33333, 33333)),
 }
 
 _METADATA = {
-    'AeEnable':     True,
-    'AwbEnable':    True,
-    'Brightness':   0.0,
-    'Contrast':     1.0,
-    'Saturation':   1.0,
-    'Sharpness':    1.0,
-    'ExposureTime': 10000,
-    'AnalogueGain': 1.0,
+    'AeEnable':      True,
+    'AwbEnable':     True,
+    'Brightness':    0.0,
+    'Contrast':      1.0,
+    'Saturation':    1.0,
+    'Sharpness':     1.0,
+    'ExposureTime':  10000,
+    'AnalogueGain':  1.0,
+    'FrameDuration': 33333,
 }
 
 def make_mock_device(width=1280, height=960, frame=None,
@@ -53,8 +55,12 @@ def make_mock_device(width=1280, height=960, frame=None,
                                      'format': 'RGB888'}}
     if capture_ok:
         device.capture_array.return_value = frame.copy()
+        request = MagicMock()
+        request.make_array.return_value = frame.copy()
+        device.capture_request.return_value = request
     else:
         device.capture_array.side_effect = RuntimeError('no frame')
+        device.capture_request.side_effect = RuntimeError('no frame')
     device.capture_metadata.return_value = metadata.copy()
     return device
 
@@ -321,6 +327,20 @@ class TestRead(unittest.TestCase):
         self.assertEqual(frame.ndim, 3)
         self.assertEqual(frame.shape[2], 3)
 
+    def test_read_uses_capture_request(self):
+        self.cam.read()
+        self.device.capture_request.assert_called()
+
+    def test_read_calls_make_array_on_request(self):
+        self.cam.read()
+        request = self.device.capture_request.return_value
+        request.make_array.assert_called_with('main')
+
+    def test_read_releases_request(self):
+        self.cam.read()
+        request = self.device.capture_request.return_value
+        request.release.assert_called()
+
     def test_read_returns_false_when_closed(self):
         self.cam.close()
         ok, frame = self.cam.read()
@@ -328,10 +348,56 @@ class TestRead(unittest.TestCase):
         self.assertIsNone(frame)
 
     def test_read_returns_false_on_capture_error(self):
-        self.device.capture_array.side_effect = RuntimeError('error')
+        self.device.capture_request.side_effect = RuntimeError('error')
         ok, frame = self.cam.read()
         self.assertFalse(ok)
         self.assertIsNone(frame)
+
+
+class TestFrameRate(unittest.TestCase):
+
+    def setUp(self):
+        self.cam, self.device = make_camera()
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_fps_registered(self):
+        self.assertIn('fps', self.cam.properties)
+
+    def test_fps_initial_value(self):
+        self.assertAlmostEqual(self.cam.fps, 1_000_000 / 33333, places=1)
+
+    def test_fps_maximum(self):
+        spec = self.cam._properties['fps']
+        self.assertAlmostEqual(spec['maximum'], 1_000_000 / 33333, places=1)
+
+    def test_fps_minimum(self):
+        spec = self.cam._properties['fps']
+        self.assertAlmostEqual(spec['minimum'], 1_000_000 / 120000000, places=4)
+
+    def test_set_fps_calls_set_controls(self):
+        self.cam.set('fps', 15.0)
+        duration = int(1_000_000 / 15.0)
+        self.device.set_controls.assert_called_with(
+            {'FrameDurationLimits': (duration, duration)})
+
+    def test_set_fps_updates_cached_value(self):
+        self.cam.set('fps', 15.0)
+        self.assertAlmostEqual(self.cam.fps, 15.0, places=1)
+
+    def test_fps_not_registered_without_control(self):
+        controls = {k: v for k, v in _CAMERA_CONTROLS.items()
+                    if k != 'FrameDurationLimits'}
+        cam, _ = make_camera(controls=controls)
+        self.assertNotIn('fps', cam.properties)
+        cam.close()
+
+    def test_fps_reapplied_after_reconfigure(self):
+        self.cam.set('fps', 15.0)
+        self.device.reset_mock()
+        self.cam.set('width', 640)
+        self.device.set_controls.assert_called()
 
 
 class TestDeinitialize(unittest.TestCase):

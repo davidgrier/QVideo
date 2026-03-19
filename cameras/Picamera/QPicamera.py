@@ -103,17 +103,24 @@ class QPicamera(QCamera):
                               setter=self._setHeight, ptype=int)
         self.registerProperty('color', getter=lambda: True,
                               setter=None, ptype=bool)
-        self._probeControls()
+        metadata = self.device.capture_metadata()
+        self._probeControls(metadata)
+        self._registerFrameRate(metadata)
         return True
 
-    def _probeControls(self) -> None:
+    def _probeControls(self, metadata: dict) -> None:
         '''Register picamera2 controls supported by this camera.
 
         For each name in :data:`_CONTROL_TYPES` that the camera reports in
         :attr:`~picamera2.Picamera2.camera_controls`, a read-write property
         is registered with the hardware-reported range.
+
+        Parameters
+        ----------
+        metadata : dict
+            Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
+            used to initialise cached control values.
         '''
-        metadata = self.device.capture_metadata()
         for name, ptype in _CONTROL_TYPES.items():
             if name not in self.device.camera_controls:
                 continue
@@ -132,6 +139,43 @@ class QPicamera(QCamera):
                 setter=lambda v, n=name, t=ptype: self._setControl(n, t(v)),
                 ptype=ptype,
                 **meta)
+
+    def _registerFrameRate(self, metadata: dict) -> None:
+        '''Register the ``fps`` property if the camera supports it.
+
+        Frame rate is controlled via ``FrameDurationLimits``, a picamera2
+        control that accepts a ``(min_µs, max_µs)`` tuple.  Setting both
+        elements to the same value pins the frame rate.
+
+        Parameters
+        ----------
+        metadata : dict
+            Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
+            used to read the current ``FrameDuration``.
+        '''
+        if 'FrameDurationLimits' not in self.device.camera_controls:
+            return
+        lo, hi, default = self.device.camera_controls['FrameDurationLimits']
+        duration = metadata.get('FrameDuration', None)
+        if duration is None:
+            duration = default[0] if isinstance(default, tuple) else lo
+        self._controlValues['FrameDurationLimits'] = (duration, duration)
+        self.registerProperty(
+            'fps',
+            getter=self._getFps,
+            setter=self._setFps,
+            ptype=float,
+            minimum=1_000_000 / hi,
+            maximum=1_000_000 / lo,
+        )
+
+    def _getFps(self) -> float:
+        duration = self._controlValues['FrameDurationLimits'][0]
+        return 1_000_000 / duration
+
+    def _setFps(self, fps: float) -> None:
+        duration = int(1_000_000 / fps)
+        self._setControl('FrameDurationLimits', (duration, duration))
 
     def _setControl(self, name: str, value) -> None:
         '''Apply a control value to the camera and update the local cache.'''
@@ -188,6 +232,10 @@ class QPicamera(QCamera):
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
 
+        Uses :meth:`~picamera2.Picamera2.capture_request` for direct buffer
+        access, which avoids an extra copy compared to
+        :meth:`~picamera2.Picamera2.capture_array`.
+
         Returns
         -------
         tuple[bool, ndarray or None]
@@ -196,7 +244,9 @@ class QPicamera(QCamera):
         if not self.isOpen():
             return False, None
         try:
-            frame = self.device.capture_array()
+            request = self.device.capture_request()
+            frame = request.make_array('main').copy()
+            request.release()
         except Exception as ex:
             logger.warning(f'Frame read failed: {ex}')
             return False, None

@@ -22,6 +22,9 @@ class _CameraEntry(NamedTuple):
 _CAMERAS: dict[str, _CameraEntry] = {
     'opencv':    _CameraEntry('-c', 'QVideo.cameras.OpenCV',
                               'QOpenCVTree', 'OpenCV', 'OpenCV camera'),
+    'opencv_resolution': _CameraEntry('-r', 'QVideo.cameras.OpenCV',
+                              'QOpenCVResolutionTree', 'OpenCV',
+                              'OpenCV camera with resolution selector'),
     'basler':    _CameraEntry('-b', 'QVideo.cameras.Basler',
                               'QBaslerTree', 'Basler', 'Basler pylon camera'),
     'flir':      _CameraEntry('-f', 'QVideo.cameras.Flir',
@@ -59,11 +62,12 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     ArgumentParser
         Parser with mutually exclusive flags:
             -b -> Basler (pylon)
-            -c -> OpenCV
+            -c -> OpenCV (separate width/height spinboxes)
             -f -> Flir
             -i -> IDS Imaging
             -m -> MATRIX VISION mvGenTLProducer (universal GenICam)
             -p -> Raspberry Pi camera module
+            -r -> OpenCV with resolution drop-down selector
             -v -> Allied Vision VimbaX
         The flag can be followed by an optional positional
         cameraID argument.

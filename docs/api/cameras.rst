@@ -31,6 +31,9 @@ OpenCV
 .. automodule:: QVideo.cameras.OpenCV
    :members:
 
+.. automodule:: QVideo.cameras.OpenCV.QOpenCVResolutionTree
+   :members:
+
 GenICam (base)
 --------------
 

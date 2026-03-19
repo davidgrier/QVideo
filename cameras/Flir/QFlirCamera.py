@@ -1,9 +1,4 @@
-from QVideo.cameras.Genicam import QGenicamCamera
-from QVideo.lib import QVideoSource
-import logging
-
-
-logger = logging.getLogger(__name__)
+from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 
 
 __all__ = ['QFlirCamera', 'QFlirSource']
@@ -29,7 +24,7 @@ class QFlirCamera(QGenicamCamera):
     producer = QGenicamCamera._findProducer('Spinnaker_GenTL.cti')
 
 
-class QFlirSource(QVideoSource):
+class QFlirSource(QGenicamSource):
 
     '''Threaded video source backed by :class:`QFlirCamera`.
 

@@ -1,6 +1,18 @@
 Camera backends
 ===============
 
+Basler
+------
+
+.. automodule:: QVideo.cameras.Basler
+   :members:
+
+IDS Imaging
+-----------
+
+.. automodule:: QVideo.cameras.IDS
+   :members:
+
 Noise (reference)
 -----------------
 

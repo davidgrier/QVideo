@@ -29,8 +29,10 @@ docs = ["furo", "sphinx", "sphinx-autodoc-typehints"]
 packages = [
     "QVideo",
     "QVideo.cameras",
+    "QVideo.cameras.Basler",
     "QVideo.cameras.Flir",
     "QVideo.cameras.Genicam",
+    "QVideo.cameras.IDS",
     "QVideo.cameras.Noise",
     "QVideo.cameras.OpenCV",
     "QVideo.cameras.Picamera",
@@ -45,8 +47,10 @@ packages = [
 [tool.setuptools.package-dir]
 "QVideo"                    = "."
 "QVideo.cameras"            = "cameras"
+"QVideo.cameras.Basler"     = "cameras/Basler"
 "QVideo.cameras.Flir"       = "cameras/Flir"
 "QVideo.cameras.Genicam"    = "cameras/Genicam"
+"QVideo.cameras.IDS"        = "cameras/IDS"
 "QVideo.cameras.Noise"      = "cameras/Noise"
 "QVideo.cameras.OpenCV"     = "cameras/OpenCV"
 "QVideo.cameras.Picamera"   = "cameras/Picamera"

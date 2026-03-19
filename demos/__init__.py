@@ -36,8 +36,10 @@ If no flag is given, a noise camera is used as a fallback.
 
 .. code-block:: text
 
+    -b [cameraID]   Basler camera (requires pylon SDK)
     -c [cameraID]   OpenCV camera
     -f [cameraID]   FLIR camera (requires Spinnaker SDK)
+    -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -s [cameraID]   Spinnaker SDK camera
     -v [cameraID]   Allied Vision VimbaX camera
 

@@ -22,8 +22,12 @@ class _CameraEntry(NamedTuple):
 _CAMERAS: dict[str, _CameraEntry] = {
     'opencv':    _CameraEntry('-c', 'QVideo.cameras.OpenCV',
                               'QOpenCVTree', 'OpenCV', 'OpenCV camera'),
+    'basler':    _CameraEntry('-b', 'QVideo.cameras.Basler',
+                              'QBaslerTree', 'Basler', 'Basler pylon camera'),
     'flir':      _CameraEntry('-f', 'QVideo.cameras.Flir',
                               'QFlirTree', 'Flir', 'Flir camera'),
+    'ids':       _CameraEntry('-i', 'QVideo.cameras.IDS',
+                              'QIDSTree', 'IDS', 'IDS Imaging camera'),
     'spinnaker': _CameraEntry('-s', 'QVideo.cameras.Spinnaker',
                               'QSpinnakerTree', 'Spinnaker SDK',
                               'Spinnaker SDK camera'),
@@ -51,8 +55,10 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     -------
     ArgumentParser
         Parser with mutually exclusive flags:
+            -b -> Basler (pylon)
             -c -> OpenCV
             -f -> Flir
+            -i -> IDS Imaging
             -s -> Spinnaker
             -v -> Allied Vision VimbaX
         The flag can be followed by an optional positional

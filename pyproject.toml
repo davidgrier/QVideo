@@ -33,6 +33,7 @@ packages = [
     "QVideo.cameras.Flir",
     "QVideo.cameras.Genicam",
     "QVideo.cameras.IDS",
+    "QVideo.cameras.MV",
     "QVideo.cameras.Noise",
     "QVideo.cameras.OpenCV",
     "QVideo.cameras.Picamera",
@@ -51,6 +52,7 @@ packages = [
 "QVideo.cameras.Flir"       = "cameras/Flir"
 "QVideo.cameras.Genicam"    = "cameras/Genicam"
 "QVideo.cameras.IDS"        = "cameras/IDS"
+"QVideo.cameras.MV"         = "cameras/MV"
 "QVideo.cameras.Noise"      = "cameras/Noise"
 "QVideo.cameras.OpenCV"     = "cameras/OpenCV"
 "QVideo.cameras.Picamera"   = "cameras/Picamera"

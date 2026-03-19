@@ -13,6 +13,12 @@ IDS Imaging
 .. automodule:: QVideo.cameras.IDS
    :members:
 
+MATRIX VISION mvGenTLProducer (universal)
+-----------------------------------------
+
+.. automodule:: QVideo.cameras.MV
+   :members:
+
 Noise (reference)
 -----------------
 

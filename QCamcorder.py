@@ -13,6 +13,7 @@ Camera flags (mutually exclusive):
     -c [cameraID]   OpenCV camera
     -f [cameraID]   FLIR camera (requires Spinnaker SDK)
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
+    -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -s [cameraID]   Spinnaker SDK camera
     -v [cameraID]   Allied Vision VimbaX camera
 

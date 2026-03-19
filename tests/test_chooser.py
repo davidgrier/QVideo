@@ -4,11 +4,10 @@ from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
 import numpy as np
 from pyqtgraph.Qt import QtWidgets
-
-app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 import QVideo.lib.chooser as chooser_module
 from QVideo.lib.chooser import camera_parser, choose_camera, _CameraEntry, _CAMERAS
+
+app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 _FRAME_BGR = np.zeros((480, 640, 3), dtype=np.uint8)
 

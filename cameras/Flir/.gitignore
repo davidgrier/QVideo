@@ -1,0 +1,4 @@
+# GenTL producer binaries are supplied by the Spinnaker SDK installer
+# and discovered at runtime via GENICAM_GENTL64_PATH.
+*.cti
+*.cti.*

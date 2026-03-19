@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/QVideo)](https://pypi.org/project/QVideo/)
 [![Python](https://img.shields.io/pypi/pyversions/QVideo)](https://pypi.org/project/QVideo/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
 [![Tests](https://github.com/davidgrier/QVideo/actions/workflows/test.yml/badge.svg)](https://github.com/davidgrier/QVideo/actions/workflows/test.yml)
 
 **QVideo** is a framework for integrating video cameras into PyQt5 projects

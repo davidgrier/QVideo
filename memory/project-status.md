@@ -10,11 +10,8 @@ type: project
 
 - 1138 tests passing (+ 16 subtests)
 - Main branch: `main`
-- **v3.1.0 published to PyPI**: https://pypi.org/project/QVideo/
-- Post-3.1.0 work on main (not yet released):
-  - CONTRIBUTING.md added
-  - GitHub Actions workflows opted into Node.js 24
-  - All camera module files renamed from Q<Name>Camera/Tree.py to _camera/_tree.py (Option B collision fix)
+- **v3.2.0 tagged and pushed**; GitHub Actions publish workflow triggered
+- v3.1.0 previously published to PyPI: https://pypi.org/project/QVideo/
 
 ## Recent commits (v3.1.0 work)
 

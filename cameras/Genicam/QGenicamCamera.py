@@ -1,6 +1,8 @@
 from QVideo.lib import QCamera, QVideoSource
 import numpy as np
+import os
 import logging
+from pathlib import Path
 
 try:
     from harvesters.core import Harvester
@@ -55,6 +57,29 @@ class QGenicamCamera(QCamera):
     '''
 
     producer: str | None = None
+
+    @staticmethod
+    def _find_producer(*filenames: str) -> 'str | None':
+        '''Search GENICAM_GENTL64_PATH for the first matching GenTL producer.
+
+        Parameters
+        ----------
+        *filenames : str
+            Producer ``.cti`` filenames to search for, in priority order.
+
+        Returns
+        -------
+        str or None
+            Absolute path to the first ``.cti`` file found, or ``None`` if
+            none of the requested producers exist on the path.
+        '''
+        search_path = os.environ.get('GENICAM_GENTL64_PATH', '')
+        for directory in search_path.split(os.pathsep):
+            for name in filenames:
+                candidate = Path(directory) / name
+                if candidate.exists():
+                    return str(candidate)
+        return None
 
     @staticmethod
     def _set_feature(feature: IValue, value: QCamera.PropertyValue) -> None:

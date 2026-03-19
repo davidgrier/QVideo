@@ -1,73 +1,53 @@
 from QVideo.cameras.Genicam import QGenicamCamera
 from QVideo.lib import QVideoSource
-from pathlib import Path
-import platform
 import logging
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 __all__ = ['QFlirCamera', 'QFlirSource']
 
 
-PRODUCER = 'Spinnaker_GenTL.cti'
-
-
 class QFlirCamera(QGenicamCamera):
-    '''Camera class that uses the FLIR Genicam producer
-    to access FLIR cameras.
 
-    Inherits
-    --------
-    QVideo.lib.QGenicamCamera
+    '''Camera backed by a FLIR device via the Spinnaker GenTL producer.
+
+    `Spinnaker <https://www.flir.com/products/spinnaker-sdk/>`_ is FLIR's
+    SDK for machine-vision cameras.  It installs a GenTL producer whose
+    path is discovered automatically from the ``GENICAM_GENTL64_PATH``
+    environment variable set by the Spinnaker installer.
+
+    If Spinnaker is not installed, instantiation raises :exc:`TypeError`.
 
     Parameters
     ----------
-    producer : str | None
-        Path to the Genicam producer. If None, the default path for the
-        present operating system and python version is used.
+    cameraID : int
+        Index of the FLIR camera to open.  Default: ``0``.
     '''
 
-    def __init__(self, *args,
-                 producer: str | None = None,
-                 **kwargs) -> None:
-        producer = producer or self.producer()
-        super().__init__(producer, *args, **kwargs)
-
-    @staticmethod
-    def producer() -> str:
-        '''Returns the path to the Genicam producer
-        for the present operating system and python version
-        '''
-        root = Path(__file__).parent
-        os = platform.system()
-        pythonversion = '.'.join(platform.python_version_tuple()[0:2])
-        path = root / 'producer' / os / pythonversion / PRODUCER
-        if not path.exists():
-            logger.warning(f'{PRODUCER} not available '
-                           f'for python {pythonversion} on {os}')
-            return ''
-        return str(path)
+    producer = QGenicamCamera._find_producer('Spinnaker_GenTL.cti')
 
 
 class QFlirSource(QVideoSource):
 
-    '''Video source class that uses FLIR cameras.
+    '''Threaded video source backed by :class:`QFlirCamera`.
 
-    Inherits
-    --------
-    QVideo.lib.QVideoSource
+    Parameters
+    ----------
+    camera : QFlirCamera or None
+        Camera instance to wrap.  If ``None``, a new
+        :class:`QFlirCamera` is created from ``cameraID``.
+    cameraID : int
+        Index of the camera to open.  Used only when *camera* is ``None``.
+        Default: ``0``.
     '''
 
-    def __init__(self, *args,
-                 camera: QFlirCamera | None = None,
-                 **kwargs) -> None:
-        camera = camera or FlirCamera(*args, **kwargs)
-        super().__init__(camera, *args, **kwargs)
+    def __init__(self, camera: QFlirCamera | None = None,
+                 cameraID: int = 0) -> None:
+        camera = camera or QFlirCamera(cameraID=cameraID)
+        super().__init__(camera)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QFlirCamera.example()

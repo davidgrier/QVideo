@@ -1,36 +1,9 @@
-import os
-from pathlib import Path
 from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera, QGenicamSource
-
 import logging
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['QVimbaXCamera', 'QVimbaXSource']
-
-_PRODUCER_NAMES = ('VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
-
-
-def _find_vimbax_producer() -> str | None:
-    '''Search GENICAM_GENTL64_PATH for the first available VimbaX producer.
-
-    Allied Vision's VimbaX installer registers producer directories in the
-    ``GENICAM_GENTL64_PATH`` environment variable.  The first ``.cti`` file
-    found in any of those directories is returned.
-
-    Returns
-    -------
-    str or None
-        Absolute path to the producer ``.cti`` file, or ``None`` if VimbaX
-        is not installed.
-    '''
-    search_path = os.environ.get('GENICAM_GENTL64_PATH', '')
-    for directory in search_path.split(os.pathsep):
-        for name in _PRODUCER_NAMES:
-            candidate = Path(directory) / name
-            if candidate.exists():
-                return str(candidate)
-    return None
 
 
 class QVimbaXCamera(QGenicamCamera):
@@ -50,7 +23,8 @@ class QVimbaXCamera(QGenicamCamera):
         Index of the Allied Vision camera to open.  Default: ``0``.
     '''
 
-    producer = _find_vimbax_producer()
+    producer = QGenicamCamera._find_producer(
+        'VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
 
 
 class QVimbaXSource(QGenicamSource):

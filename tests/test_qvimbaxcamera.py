@@ -34,6 +34,15 @@ class _EAccessMode:
     NI = 'NI'
 
 
+class _EVisibility(int):
+    pass
+
+_EVisibility.Beginner  = _EVisibility(0)
+_EVisibility.Expert    = _EVisibility(1)
+_EVisibility.Guru      = _EVisibility(2)
+_EVisibility.Invisible = _EVisibility(99)
+
+
 class _TimeoutException(Exception):
     pass
 
@@ -48,7 +57,7 @@ _mock_genapi.IInteger     = _IInteger
 _mock_genapi.IFloat       = _IFloat
 _mock_genapi.IString      = _IString
 _mock_genapi.EAccessMode  = _EAccessMode
-_mock_genapi.EVisibility  = MagicMock()
+_mock_genapi.EVisibility  = _EVisibility
 _mock_genapi.IProperty = _IEnumeration | _IBoolean | _IInteger | _IFloat | _IString
 
 _mock_gentl                  = MagicMock()
@@ -65,17 +74,9 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
-# QGenicamTree imports from genicam.genapi at class-definition time and uses
-# @pyqtProperty(EVisibility), which fails with a mocked EVisibility.
-# Stub the whole module so that QVimbaXTree can be imported without it.
-sys.modules.setdefault('QVideo.cameras.Genicam.QGenicamTree', MagicMock())
-
 # Import directly from the submodule to avoid pulling in QVimbaXTree
-# (which inherits from QGenicamTree and cannot be imported in this session).
 from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera
-from QVideo.cameras.Vimbax.QVimbaXCamera import (
-    QVimbaXCamera, QVimbaXSource, _find_vimbax_producer, _PRODUCER_NAMES,
-)
+from QVideo.cameras.Vimbax.QVimbaXCamera import QVimbaXCamera, QVimbaXSource
 
 _cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
 
@@ -127,35 +128,35 @@ def make_camera(cameraID=0, device=None):
 
 
 # ---------------------------------------------------------------------------
-# TestFindVimbaXProducer
+# TestFindProducer
 # ---------------------------------------------------------------------------
 
-class TestFindVimbaXProducer(unittest.TestCase):
+class TestFindProducer(unittest.TestCase):
 
     def test_returns_none_when_env_not_set(self):
         with patch.dict(os.environ, {}, clear=True):
-            result = _find_vimbax_producer()
+            result = QGenicamCamera._find_producer('VimbaUSBTL.cti')
         self.assertIsNone(result)
 
     def test_returns_none_when_no_producer_files_found(self):
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': '/no/such/dir'}):
             with patch.object(Path, 'exists', return_value=False):
-                result = _find_vimbax_producer()
+                result = QGenicamCamera._find_producer('VimbaUSBTL.cti')
         self.assertIsNone(result)
 
-    def test_returns_path_when_usb_producer_exists(self):
+    def test_returns_path_when_producer_exists(self):
         fake_dir = '/opt/VimbaX/lib'
         expected = str(Path(fake_dir) / 'VimbaUSBTL.cti')
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': fake_dir}):
             with patch.object(Path, 'exists', return_value=True):
-                result = _find_vimbax_producer()
+                result = QGenicamCamera._find_producer('VimbaUSBTL.cti')
         self.assertEqual(result, expected)
 
     def test_returns_string_not_path(self):
         fake_dir = '/opt/VimbaX/lib'
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': fake_dir}):
             with patch.object(Path, 'exists', return_value=True):
-                result = _find_vimbax_producer()
+                result = QGenicamCamera._find_producer('VimbaUSBTL.cti')
         self.assertIsInstance(result, str)
 
     def test_searches_multiple_directories(self):
@@ -168,10 +169,10 @@ class TestFindVimbaXProducer(unittest.TestCase):
         with patch.dict(os.environ,
                         {'GENICAM_GENTL64_PATH': os.pathsep.join([dir1, dir2])}):
             with patch.object(Path, 'exists', _exists):
-                result = _find_vimbax_producer()
+                result = QGenicamCamera._find_producer('VimbaUSBTL.cti')
         self.assertEqual(result, expected)
 
-    def test_usb_preferred_over_gige(self):
+    def test_first_filename_preferred(self):
         fake_dir = '/opt/VimbaX/lib'
         usb = str(Path(fake_dir) / 'VimbaUSBTL.cti')
         gige = str(Path(fake_dir) / 'VimbaGigETL.cti')
@@ -181,14 +182,9 @@ class TestFindVimbaXProducer(unittest.TestCase):
 
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': fake_dir}):
             with patch.object(Path, 'exists', _exists):
-                result = _find_vimbax_producer()
+                result = QGenicamCamera._find_producer(
+                    'VimbaUSBTL.cti', 'VimbaGigETL.cti')
         self.assertEqual(result, usb)
-
-    def test_producer_names_constant_contains_usb(self):
-        self.assertIn('VimbaUSBTL.cti', _PRODUCER_NAMES)
-
-    def test_producer_names_constant_contains_gige(self):
-        self.assertIn('VimbaGigETL.cti', _PRODUCER_NAMES)
 
 
 # ---------------------------------------------------------------------------

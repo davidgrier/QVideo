@@ -46,7 +46,22 @@ _mock_genapi.IInteger     = _IInteger
 _mock_genapi.IFloat       = _IFloat
 _mock_genapi.IString      = _IString
 _mock_genapi.EAccessMode  = _EAccessMode
-_mock_genapi.EVisibility  = MagicMock()
+
+
+class _EVisibility(int):
+    '''Minimal stand-in for genicam.genapi.EVisibility.
+
+    Must be a real Python type so that @pyqtProperty(EVisibility) in
+    QGenicamTree does not raise TypeError at class-definition time.
+    '''
+
+
+_EVisibility.Beginner  = _EVisibility(0)
+_EVisibility.Expert    = _EVisibility(1)
+_EVisibility.Guru      = _EVisibility(2)
+_EVisibility.Invisible = _EVisibility(99)
+
+_mock_genapi.EVisibility  = _EVisibility
 # IProperty union — mirrors the camera module definition
 _mock_genapi.IProperty = _IEnumeration | _IBoolean | _IInteger | _IFloat | _IString
 
@@ -64,15 +79,25 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
-# QGenicamTree uses @pyqtProperty(EVisibility) at class-definition time.
-# EVisibility is not a valid PyQt type when mocked, so stub the whole module
-# to prevent the class body from executing during import.
-sys.modules.setdefault('QVideo.cameras.Genicam.QGenicamTree', MagicMock())
 
 from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera, QGenicamSource
 # Retrieve the module object directly — the `import ... as` form resolves
 # through attribute access and lands on the class (shadowed by __init__.py).
 _cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
+
+# Use the exact class objects that the loaded camera module references.
+# If test_qgenicamtree.py ran first it may have placed different stubs in
+# sys.modules; reading back from the module ensures isinstance() checks in
+# the camera code and in our helpers agree on the same type objects.
+_IValue       = _cam_module.IValue
+_ICategory    = _cam_module.ICategory
+_ICommand     = _cam_module.ICommand
+_IEnumeration = _cam_module.IEnumeration
+_IBoolean     = _cam_module.IBoolean
+_IInteger     = _cam_module.IInteger
+_IFloat       = _cam_module.IFloat
+_IString      = _cam_module.IString
+_EAccessMode  = _cam_module.EAccessMode
 
 
 # ---------------------------------------------------------------------------

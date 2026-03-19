@@ -1,5 +1,5 @@
-from .QGenicamCamera import (QGenicamCamera, QGenicamSource)
-from .QGenicamTree import QGenicamTree
+from ._camera import QGenicamCamera, QGenicamSource
+from ._tree import QGenicamTree
 
 
 __all__ = 'QGenicamCamera QGenicamSource QGenicamTree'.split()

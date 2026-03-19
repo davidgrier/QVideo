@@ -1,5 +1,5 @@
 from QVideo.cameras.Genicam import QGenicamTree
-from QVideo.cameras.MV.QMVCamera import QMVCamera
+from QVideo.cameras.MV import QMVCamera
 from QVideo.lib.QCameraTree import Source
 
 

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from pyqtgraph.Qt import QtWidgets, QtTest
-from QVideo.cameras.Noise.QNoiseCamera import QNoiseCamera, QNoiseSource
+from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -165,14 +165,14 @@ class TestProperties(unittest.TestCase):
 
     def test_blacklevel_rejected_when_gte_whitelevel(self):
         cam = make_camera(blacklevel=48, whitelevel=128)
-        with self.assertLogs('QVideo.cameras.Noise.QNoiseCamera',
+        with self.assertLogs('QVideo.cameras.Noise._camera',
                              level='WARNING'):
             cam.set('blacklevel', 128)
         self.assertEqual(cam.blacklevel, 48)
 
     def test_whitelevel_rejected_when_lte_blacklevel(self):
         cam = make_camera(blacklevel=48, whitelevel=128)
-        with self.assertLogs('QVideo.cameras.Noise.QNoiseCamera',
+        with self.assertLogs('QVideo.cameras.Noise._camera',
                              level='WARNING'):
             cam.set('whitelevel', 48)
         self.assertEqual(cam.whitelevel, 128)

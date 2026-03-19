@@ -5,14 +5,11 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from pyqtgraph.Qt import QtWidgets, QtTest
 
-from QVideo.cameras.Picamera.QPicamera import QPicamera, QPicameraSource
+from QVideo.cameras.Picamera._camera import QPicamera, QPicameraSource
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-# cameras/Picamera/__init__.py re-exports QPicamera (the class), so
-# `import QVideo.cameras.Picamera.QPicamera` resolves to the class,
-# not the module.  Use sys.modules to get the actual module object.
-_MODULE = sys.modules['QVideo.cameras.Picamera.QPicamera']
+_MODULE = sys.modules['QVideo.cameras.Picamera._camera']
 
 _FRAME_RGB = np.zeros((960, 1280, 3), dtype=np.uint8)
 
@@ -79,20 +76,13 @@ def make_camera(cameraID=0, width=1280, height=960,
 class TestAll(unittest.TestCase):
 
     def test_all_defined(self):
-        import QVideo.cameras.Picamera.QPicamera as m
-        import sys
-        m = sys.modules['QVideo.cameras.Picamera.QPicamera']
-        self.assertTrue(hasattr(m, '__all__'))
+        self.assertTrue(hasattr(_MODULE, '__all__'))
 
     def test_all_contains_qpicamera(self):
-        import sys
-        m = sys.modules['QVideo.cameras.Picamera.QPicamera']
-        self.assertIn('QPicamera', m.__all__)
+        self.assertIn('QPicamera', _MODULE.__all__)
 
     def test_all_contains_qpicamerasource(self):
-        import sys
-        m = sys.modules['QVideo.cameras.Picamera.QPicamera']
-        self.assertIn('QPicameraSource', m.__all__)
+        self.assertIn('QPicameraSource', _MODULE.__all__)
 
 
 class TestInit(unittest.TestCase):

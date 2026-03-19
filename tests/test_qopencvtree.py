@@ -3,8 +3,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 from pyqtgraph.Qt import QtWidgets
-from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera
-from QVideo.cameras.OpenCV.QOpenCVTree import QOpenCVTree
+from QVideo.cameras.OpenCV._camera import QOpenCVCamera
+from QVideo.cameras.OpenCV._tree import QOpenCVTree
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 

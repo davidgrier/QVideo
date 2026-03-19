@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from pyqtgraph.Qt import QtWidgets, QtTest
-from QVideo.cameras.Noise.QNoiseTree import QNoiseTree
+from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.ROIdemo import ROIFilter, ROIDemo
 
 

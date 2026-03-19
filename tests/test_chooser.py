@@ -13,7 +13,7 @@ _FRAME_BGR = np.zeros((480, 640, 3), dtype=np.uint8)
 
 
 def make_mock_cv2_device(width=640, height=480, fps=30., read_ok=True):
-    from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera
+    from QVideo.cameras.OpenCV._camera import QOpenCVCamera
     device = MagicMock()
     device.read.return_value = (read_ok, _FRAME_BGR.copy())
 
@@ -234,7 +234,7 @@ class TestChooseCameraOpenCV(unittest.TestCase):
     def test_opencv_resolution_flag_returns_resolution_tree(self):
         from QVideo.cameras.OpenCV import QOpenCVResolutionTree
         import sys as _sys
-        _MODULE = _sys.modules['QVideo.cameras.OpenCV.QOpenCVResolutionTree']
+        _MODULE = _sys.modules['QVideo.cameras.OpenCV._resolution_tree']
         device = make_mock_cv2_device()
         with patch('sys.argv', ['prog', '-r']):
             with patch('cv2.VideoCapture', return_value=device):
@@ -246,7 +246,7 @@ class TestChooseCameraOpenCV(unittest.TestCase):
 
     def test_opencv_resolution_flag_forwards_cameraID(self):
         import sys as _sys
-        _MODULE = _sys.modules['QVideo.cameras.OpenCV.QOpenCVResolutionTree']
+        _MODULE = _sys.modules['QVideo.cameras.OpenCV._resolution_tree']
         device = make_mock_cv2_device()
         with patch('sys.argv', ['prog', '-r', '2']):
             with patch('cv2.VideoCapture', return_value=device) as mock_cap:

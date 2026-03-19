@@ -75,10 +75,10 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
     sys.modules.setdefault(_name, _mod)
 
 # Import directly from the submodule to avoid pulling in QVimbaXTree
-from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera
-from QVideo.cameras.Vimbax.QVimbaXCamera import QVimbaXCamera, QVimbaXSource
+from QVideo.cameras.Genicam._camera import QGenicamCamera
+from QVideo.cameras.Vimbax._camera import QVimbaXCamera, QVimbaXSource
 
-_cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
+_cam_module = sys.modules['QVideo.cameras.Genicam._camera']
 
 FAKE_PRODUCER = '/fake/VimbaUSBTL.cti'
 

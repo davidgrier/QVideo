@@ -1,7 +1,7 @@
 import warnings
 import cv2
 from QVideo.lib import QListCameras
-from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera
+from QVideo.cameras.OpenCV import QOpenCVCamera
 
 try:
     from cv2_enumerate_cameras import enumerate_cameras as _enumerate_cameras

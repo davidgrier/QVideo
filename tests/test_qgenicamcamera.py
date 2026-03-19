@@ -80,10 +80,10 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
     sys.modules.setdefault(_name, _mod)
 
 
-from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam._camera import QGenicamCamera, QGenicamSource
 # Retrieve the module object directly — the `import ... as` form resolves
 # through attribute access and lands on the class (shadowed by __init__.py).
-_cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
+_cam_module = sys.modules['QVideo.cameras.Genicam._camera']
 
 # Use the exact class objects that the loaded camera module references.
 # If test_qgenicamtree.py ran first it may have placed different stubs in
@@ -248,7 +248,7 @@ class TestInitialize(unittest.TestCase):
             "    return _real_import(name, *args, **kwargs)\n"
             "builtins.__import__ = _blocking_import\n"
             "try:\n"
-            "    from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera\n"
+            "    from QVideo.cameras.Genicam._camera import QGenicamCamera\n"
             "    raise AssertionError('ImportError not raised')\n"
             "except ImportError as e:\n"
             "    assert 'pip install' in str(e), f'missing install hint: {e}'\n"
@@ -469,7 +469,7 @@ class TestNode(unittest.TestCase):
     def test_returns_none_when_not_found(self):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = False
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             result = cam.node('Nonexistent')
         self.assertIsNone(result)
@@ -509,7 +509,7 @@ class TestHasNode(unittest.TestCase):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = False
         import logging
-        with self.assertNoLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertNoLogs('QVideo.cameras.Genicam._camera',
                                level=logging.WARNING):
             cam.has_node('Nonexistent')
 
@@ -535,7 +535,7 @@ class TestRead(unittest.TestCase):
         device = _make_device()
         device.fetch.return_value.__enter__.side_effect = _TimeoutException
         cam, _, _ = make_camera(device=device)
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             ok, frame = cam.read()
         self.assertFalse(ok)
@@ -545,7 +545,7 @@ class TestRead(unittest.TestCase):
         device = _make_device()
         device.fetch.return_value.__enter__.side_effect = RuntimeError('driver crash')
         cam, _, _ = make_camera(device=device)
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             ok, frame = cam.read()
         self.assertFalse(ok)
@@ -560,7 +560,7 @@ class TestRead(unittest.TestCase):
         cm.__exit__ = MagicMock(return_value=False)
         device.fetch.return_value = cm
         cam, _, _ = make_camera(device=device)
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             ok, frame = cam.read()
         self.assertFalse(ok)
@@ -614,7 +614,7 @@ class TestSet(unittest.TestCase):
         entry.symbolic = 'Mono8'
         feature.entries = [entry]
         cam, _, _ = make_camera_with_node(feature)
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             cam.set('PixelFormat', 'BadValue')
 
@@ -658,7 +658,7 @@ class TestSet(unittest.TestCase):
             _EAccessMode.RO,  # setter runtime check → should warn and skip
         ]
         cam, _, _ = make_camera_with_node(feature)
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             cam.set('Gamma', 2)
         self.assertNotEqual(feature.value, 2)
@@ -759,7 +759,7 @@ class TestIsReadwrite(unittest.TestCase):
     def test_unknown_node_returns_false(self):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = False
-        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
             result = cam.is_readwrite('Nonexistent')
         self.assertFalse(result)

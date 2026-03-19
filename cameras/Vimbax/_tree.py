@@ -1,5 +1,5 @@
-from QVideo.cameras.Genicam.QGenicamTree import QGenicamTree
-from QVideo.cameras.Vimbax.QVimbaXCamera import QVimbaXCamera
+from QVideo.cameras.Genicam import QGenicamTree
+from QVideo.cameras.Vimbax import QVimbaXCamera
 from QVideo.lib.QCameraTree import Source
 
 import logging

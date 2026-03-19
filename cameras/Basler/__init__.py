@@ -1,5 +1,5 @@
-from .QBaslerCamera import QBaslerCamera, QBaslerSource
-from .QBaslerTree import QBaslerTree
+from ._camera import QBaslerCamera, QBaslerSource
+from ._tree import QBaslerTree
 
 
 __all__ = ['QBaslerCamera', 'QBaslerSource', 'QBaslerTree']

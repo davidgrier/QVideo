@@ -1,6 +1,6 @@
 from QVideo.lib import QListCameras
 from harvesters.core import Harvester
-from QVideo.cameras.Flir.QFlirCamera import QFlirCamera
+from QVideo.cameras.Flir import QFlirCamera
 
 
 __all__ = ['QListFlirCameras']

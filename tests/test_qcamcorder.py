@@ -2,7 +2,7 @@
 import unittest
 from pyqtgraph.Qt import QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
-from QVideo.cameras.Noise.QNoiseTree import QNoiseTree
+from QVideo.cameras.Noise._tree import QNoiseTree
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

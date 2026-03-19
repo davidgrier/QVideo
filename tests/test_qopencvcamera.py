@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from pyqtgraph.Qt import QtWidgets, QtCore, QtTest
-from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera, QOpenCVSource
+from QVideo.cameras.OpenCV._camera import QOpenCVCamera, QOpenCVSource
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -280,7 +280,7 @@ class TestRead(unittest.TestCase):
     def test_read_device_exception_returns_false_none(self):
         cam = make_camera()
         cam.device.read.side_effect = RuntimeError('device error')
-        with self.assertLogs('QVideo.cameras.OpenCV.QOpenCVCamera', level='WARNING'):
+        with self.assertLogs('QVideo.cameras.OpenCV._camera', level='WARNING'):
             success, frame = cam.read()
         self.assertFalse(success)
         self.assertIsNone(frame)

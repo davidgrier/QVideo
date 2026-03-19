@@ -322,6 +322,35 @@ class TestInitialize(unittest.TestCase):
         device.destroy.assert_called_once()
         harvester.reset.assert_called_once()
 
+    def test_cleanup_called_when_device_start_raises(self):
+        # device.start() raises: exception propagates to caller after cleanup.
+        # device was created but never started, so _cleanup still attempts
+        # stop() (guarded) then destroy(), then harvester.reset().
+        device = _make_device()
+        device.start.side_effect = RuntimeError('driver error')
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertRaises(RuntimeError):
+                _ConcreteCamera()
+        device.destroy.assert_called_once()
+        harvester.reset.assert_called_once()
+
+    def test_cleanup_called_when_register_features_raises(self):
+        # Exception raised after device.start() has succeeded.
+        # _cleanup() must call device.stop() before destroy().
+        device = _make_device()
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with patch.object(QGenicamCamera, '_register_features',
+                              side_effect=RuntimeError('node error')):
+                with self.assertRaises(RuntimeError):
+                    _ConcreteCamera()
+        device.stop.assert_called()
+        device.destroy.assert_called_once()
+        harvester.reset.assert_called_once()
+
     def test_name_returns_class_name(self):
         cam, _, _ = make_camera()
         self.assertEqual(cam.name, '_ConcreteCamera')

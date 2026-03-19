@@ -69,11 +69,11 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
-from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera
-from QVideo.cameras.Basler.QBaslerCamera import QBaslerCamera, QBaslerSource
+from QVideo.cameras.Genicam._camera import QGenicamCamera
+from QVideo.cameras.Basler._camera import QBaslerCamera, QBaslerSource
 
-_cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
-_MODULE = sys.modules['QVideo.cameras.Basler.QBaslerCamera']
+_cam_module = sys.modules['QVideo.cameras.Genicam._camera']
+_MODULE = sys.modules['QVideo.cameras.Basler._camera']
 _ICategory = _cam_module.ICategory
 _PRODUCER = '/fake/ProducerU3V.cti'
 

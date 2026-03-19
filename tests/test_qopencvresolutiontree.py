@@ -4,15 +4,15 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 from pyqtgraph.Qt import QtWidgets
-from QVideo.cameras.OpenCV.QOpenCVCamera import QOpenCVCamera
-from QVideo.cameras.OpenCV.QOpenCVResolutionTree import QOpenCVResolutionTree
+from QVideo.cameras.OpenCV._camera import QOpenCVCamera
+from QVideo.cameras.OpenCV._resolution_tree import QOpenCVResolutionTree
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 # cameras/OpenCV/__init__.py re-exports QOpenCVResolutionTree (the class), so
 # `import QVideo.cameras.OpenCV.QOpenCVResolutionTree` resolves to the class,
 # not the module.  Use sys.modules to get the actual module object.
-_MODULE = sys.modules['QVideo.cameras.OpenCV.QOpenCVResolutionTree']
+_MODULE = sys.modules['QVideo.cameras.OpenCV._resolution_tree']
 
 _FRAME_BGR = np.zeros((480, 640, 3), dtype=np.uint8)
 _RESOLUTIONS_MULTI = [(640, 480), (1280, 720)]

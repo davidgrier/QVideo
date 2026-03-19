@@ -69,18 +69,11 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
-from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera
+from QVideo.cameras.Genicam._camera import QGenicamCamera
+from QVideo.cameras.MV._camera import QMVCamera, QMVSource
 
-# Pre-register the Tree submodule as a mock to prevent an import-ordering issue:
-# test_qgenicamtree.py re-imports QGenicamTree, causing Python to overwrite the
-# class reference in the Genicam package namespace with the module object.  If
-# QMVTree is imported after that happens it fails to subclass QGenicamTree.
-sys.modules.setdefault('QVideo.cameras.MV.QMVTree', MagicMock())
-
-from QVideo.cameras.MV.QMVCamera import QMVCamera, QMVSource
-
-_cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
-_MODULE = sys.modules['QVideo.cameras.MV.QMVCamera']
+_cam_module = sys.modules['QVideo.cameras.Genicam._camera']
+_MODULE = sys.modules['QVideo.cameras.MV._camera']
 _ICategory = _cam_module.ICategory
 _PRODUCER = '/fake/mvGenTLProducer.cti'
 

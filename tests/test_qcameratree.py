@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 from pyqtgraph.Qt import QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
-from QVideo.cameras.Noise.QNoiseCamera import QNoiseCamera, QNoiseSource
+from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

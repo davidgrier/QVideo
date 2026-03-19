@@ -1,25 +1,25 @@
 from QVideo.cameras.Genicam import QGenicamTree
-from QVideo.cameras.IDS.QIDSCamera import QIDSCamera
+from QVideo.cameras.Flir import QFlirCamera
 from QVideo.lib.QCameraTree import Source
 
 
-__all__ = ['QIDSTree']
+__all__ = ['QFlirTree']
 
 
-class QIDSTree(QGenicamTree):
+class QFlirTree(QGenicamTree):
 
-    '''Camera property tree for :class:`~QVideo.cameras.IDS.QIDSCamera`.
+    '''Camera property tree for :class:`~QVideo.cameras.Flir.QFlirCamera`.
 
     Builds a :class:`~QVideo.lib.QCameraTree.QCameraTree` with a curated
-    set of controls and sensible default settings for IDS Imaging cameras.
+    set of controls and sensible default settings for FLIR cameras.
 
     Parameters
     ----------
-    camera : QIDSCamera or None
-        Camera instance to use.  If ``None``, a new :class:`QIDSCamera`
+    camera : QFlirCamera or None
+        Camera instance to use.  If ``None``, a new :class:`QFlirCamera`
         is created from ``cameraID``.
     cameraID : int
-        Index of the IDS camera to open.  Used only when *camera* is
+        Index of the FLIR camera to open.  Used only when *camera* is
         ``None``.  Default: ``0``.
     controls : list of str or None
         Names of GenICam nodes to show.  Default: :attr:`_DEFAULT_CONTROLS`.
@@ -44,7 +44,12 @@ class QIDSTree(QGenicamTree):
 
     _DEFAULT_SETTINGS = dict(
         AcquisitionFrameRateEnable=True,
+        BlackLevelSelector='All',
+        GammaEnable=True,
+        AutoExposureControlPriority='Gain',
         ExposureAuto='Off',
+        ExposureMode='Timed',
+        ExposureTimeMode='Common',
         GainAuto='Off',
     )
 
@@ -53,7 +58,7 @@ class QIDSTree(QGenicamTree):
                  cameraID: int = 0,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
-        camera = camera or QIDSCamera(cameraID=cameraID)
+        camera = camera or QFlirCamera(cameraID=cameraID)
         camera.setSettings(self._DEFAULT_SETTINGS)
         super().__init__(*args,
                          camera=camera,
@@ -62,4 +67,4 @@ class QIDSTree(QGenicamTree):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    QIDSTree.example()
+    QFlirTree.example()

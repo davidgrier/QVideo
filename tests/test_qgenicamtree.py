@@ -91,16 +91,16 @@ def _install_genapi_stubs() -> None:
 
 _install_genapi_stubs()
 
-# Remove any MagicMock stub for QGenicamTree so the real class is loaded.
+# Remove any MagicMock stub for _tree so the real class is loaded.
 for _key in list(sys.modules):
-    if 'QGenicamTree' in _key:
+    if 'Genicam._tree' in _key:
         del sys.modules[_key]
 
-from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera  # noqa: E402
-from QVideo.cameras.Genicam.QGenicamTree import QGenicamTree      # noqa: E402
+from QVideo.cameras.Genicam._camera import QGenicamCamera  # noqa: E402
+from QVideo.cameras.Genicam._tree import QGenicamTree      # noqa: E402
 
-_cam_module  = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
-_tree_module = sys.modules['QVideo.cameras.Genicam.QGenicamTree']
+_cam_module  = sys.modules['QVideo.cameras.Genicam._camera']
+_tree_module = sys.modules['QVideo.cameras.Genicam._tree']
 
 # Use the exact class objects that the loaded modules reference.
 _ICategory    = _tree_module.ICategory
@@ -422,7 +422,7 @@ class TestUpdateEnabled(unittest.TestCase):
         tree, cam, nm = make_tree(features=[_int_feature('Width')])
         nm.has_node.side_effect = lambda n: False
         import logging
-        with self.assertNoLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertNoLogs('QVideo.cameras.Genicam._camera',
                                level=logging.WARNING):
             tree._updateEnabled()
 
@@ -492,7 +492,7 @@ class TestUpdateLimits(unittest.TestCase):
         tree, cam, nm = make_tree(features=[_int_feature('Width')])
         nm.has_node.side_effect = lambda n: False
         import logging
-        with self.assertNoLogs('QVideo.cameras.Genicam.QGenicamCamera',
+        with self.assertNoLogs('QVideo.cameras.Genicam._camera',
                                level=logging.WARNING):
             tree._updateLimits()
 

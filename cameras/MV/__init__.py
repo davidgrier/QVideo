@@ -1,5 +1,5 @@
-from .QMVCamera import QMVCamera, QMVSource
-from .QMVTree import QMVTree
+from ._camera import QMVCamera, QMVSource
+from ._tree import QMVTree
 
 
 __all__ = ['QMVCamera', 'QMVSource', 'QMVTree']

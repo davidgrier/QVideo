@@ -1,4 +1,4 @@
-from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 import logging
 
 logger = logging.getLogger(__name__)

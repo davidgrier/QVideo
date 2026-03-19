@@ -196,7 +196,8 @@ class QGenicamCamera(QCamera):
             except Exception as ex:
                 logger.warning(f'No camera found at index {self.cameraID}: {ex}')
                 return False
-            self.nodeMap = self.device.remote_device.node_map
+            remote_device = self.device.remote_device
+            self.nodeMap = remote_device.node_map if remote_device is not None else None
             if self.nodeMap is None:
                 logger.warning('Camera node map is not available')
                 return False
@@ -248,9 +249,7 @@ class QGenicamCamera(QCamera):
 
     def _deinitialize(self) -> None:
         '''Stop acquisition and release the GenICam device.'''
-        self.device.stop()
-        self.device.destroy()
-        self.harvester.reset()
+        self._cleanup()
 
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
@@ -275,7 +274,29 @@ class QGenicamCamera(QCamera):
             frame = frame.reshape(height, width, channels).squeeze()
         except TimeoutException:
             logger.warning('camera acquisition timed out')
+        except Exception as e:
+            logger.warning(f'camera read failed: {e}')
         return frame is not None, frame
+
+    def has_node(self, name: str) -> bool:
+        '''Return ``True`` if the named node exists in the node map.
+
+        Unlike :meth:`node`, this never logs a warning for missing names.
+        Use it to guard calls to :meth:`node` or :meth:`is_readwrite` in
+        reactive code paths (e.g. UI update loops) where absent names are
+        expected and not an error.
+
+        Parameters
+        ----------
+        name : str
+            GenICam node name to look up.
+
+        Returns
+        -------
+        bool
+            ``True`` if the node map is available and contains *name*.
+        '''
+        return self.nodeMap is not None and self.nodeMap.has_node(name)
 
     def node(self, name: str = 'Root') -> 'IValue | None':
         '''Return the GenICam node with the given name.

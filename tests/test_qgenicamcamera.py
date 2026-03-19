@@ -282,6 +282,26 @@ class TestInitialize(unittest.TestCase):
                 cam = _ConcreteCamera()
         self.assertFalse(cam.isOpen())
 
+    def test_returns_false_when_remote_device_is_none(self):
+        device = _make_device()
+        device.remote_device = None
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.isOpen())
+
+    def test_cleanup_called_when_remote_device_is_none(self):
+        device = _make_device()
+        device.remote_device = None
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                _ConcreteCamera()
+        harvester.reset.assert_called_once()
+
     def test_returns_false_when_node_map_is_none(self):
         device = _make_device()
         device.remote_device.node_map = None
@@ -437,6 +457,39 @@ class TestNode(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestHasNode
+# ---------------------------------------------------------------------------
+
+class TestHasNode(unittest.TestCase):
+
+    def test_returns_true_when_node_exists(self):
+        cam, _, device = make_camera()
+        device.remote_device.node_map.has_node.return_value = True
+        self.assertTrue(cam.has_node('Width'))
+
+    def test_returns_false_when_node_not_found(self):
+        cam, _, device = make_camera()
+        device.remote_device.node_map.has_node.return_value = False
+        self.assertFalse(cam.has_node('Nonexistent'))
+
+    def test_returns_false_when_node_map_is_none(self):
+        harvester = MagicMock()
+        harvester.create.side_effect = ValueError('no camera')
+        with patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertLogs(level='WARNING'):
+                cam = _ConcreteCamera()
+        self.assertFalse(cam.has_node('Width'))
+
+    def test_does_not_log_warning_for_unknown_node(self):
+        cam, _, device = make_camera()
+        device.remote_device.node_map.has_node.return_value = False
+        import logging
+        with self.assertNoLogs('QVideo.cameras.Genicam.QGenicamCamera',
+                               level=logging.WARNING):
+            cam.has_node('Nonexistent')
+
+
+# ---------------------------------------------------------------------------
 # TestRead
 # ---------------------------------------------------------------------------
 
@@ -456,6 +509,16 @@ class TestRead(unittest.TestCase):
     def test_returns_false_none_on_timeout(self):
         device = _make_device()
         device.fetch.return_value.__enter__.side_effect = _TimeoutException
+        cam, _, _ = make_camera(device=device)
+        with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
+                             level='WARNING'):
+            ok, frame = cam.read()
+        self.assertFalse(ok)
+        self.assertIsNone(frame)
+
+    def test_returns_false_none_on_general_exception(self):
+        device = _make_device()
+        device.fetch.return_value.__enter__.side_effect = RuntimeError('driver crash')
         cam, _, _ = make_camera(device=device)
         with self.assertLogs('QVideo.cameras.Genicam.QGenicamCamera',
                              level='WARNING'):

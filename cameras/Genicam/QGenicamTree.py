@@ -137,7 +137,8 @@ class QGenicamTree(QCameraTree):
             p = item.param
             if p.opts.get('visible', False):
                 name = p.opts['name']
-                p.setOpts(enabled=self.camera.is_readwrite(name))
+                if self.camera.has_node(name):
+                    p.setOpts(enabled=self.camera.is_readwrite(name))
 
     def _updateLimits(self) -> None:
         '''Refresh Parameter constraints from the live GenICam node values.
@@ -151,9 +152,9 @@ class QGenicamTree(QCameraTree):
             if not p.opts.get('visible', False):
                 continue
             name = p.opts.get('name')
-            node = self.camera.node(name)
-            if node is None:
+            if not self.camera.has_node(name):
                 continue
+            node = self.camera.node(name)
             if isinstance(node, IInteger):
                 p.setOpts(limits=(node.min, node.max), step=node.inc)
             elif isinstance(node, IFloat):
@@ -175,7 +176,8 @@ class QGenicamTree(QCameraTree):
             p = item.param
             name = p.opts['name']
             if (controls is None) or (name in controls):
-                visibility = self.camera.node(name).node.visibility
+                node = self.camera.node(name)
+                visibility = node.node.visibility if node is not None else EVisibility.Invisible
             else:
                 visibility = EVisibility.Invisible
             p.opts['visibility'] = visibility

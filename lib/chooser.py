@@ -27,6 +27,9 @@ _CAMERAS: dict[str, _CameraEntry] = {
     'spinnaker': _CameraEntry('-s', 'QVideo.cameras.Spinnaker',
                               'QSpinnakerTree', 'Spinnaker SDK',
                               'Spinnaker SDK camera'),
+    'vimbax':    _CameraEntry('-v', 'QVideo.cameras.Vimbax',
+                              'QVimbaXTree', 'VimbaX',
+                              'Allied Vision VimbaX camera'),
 }
 
 
@@ -51,6 +54,7 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
             -c -> OpenCV
             -f -> Flir
             -s -> Spinnaker
+            -v -> Allied Vision VimbaX
         The flag can be followed by an optional positional
         cameraID argument.
     '''
@@ -73,7 +77,7 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
 
     Tries to import and instantiate the camera backend selected by the
     command-line flags.  Falls back to :class:`QNoiseTree` if the
-    requested backend cannot be imported.
+    requested backend cannot be imported or instantiated.
 
     Parameters
     ----------
@@ -94,8 +98,8 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
                 module = importlib.import_module(entry.module)
                 Camera = getattr(module, entry.cls)
                 return Camera(cameraID=args.cameraID)
-            except ImportError as ex:
-                logger.warning(f'Could not import {entry.label}: {ex}')
+            except Exception as ex:
+                logger.warning(f'Could not open {entry.label}: {ex}')
             break
     return QNoiseTree(cameraID=args.cameraID)
 

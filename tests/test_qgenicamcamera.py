@@ -82,6 +82,11 @@ _cam_module = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']
 PRODUCER = '/fake/producer.cti'
 
 
+class _ConcreteCamera(QGenicamCamera):
+    '''Minimal concrete subclass with a fixed producer for testing.'''
+    producer = PRODUCER
+
+
 def _make_node_map(model_name='TestCamera'):
     nm = MagicMock()
     nm.DeviceModelName.value = model_name
@@ -113,14 +118,14 @@ def _make_device(node_map=None, is_valid=True):
     return device
 
 
-def make_camera(producer=PRODUCER, cameraID=0, device=None):
+def make_camera(cameraID=0, device=None):
     '''Return (camera, harvester_instance, device) with mocked hardware.'''
     if device is None:
         device = _make_device()
     harvester = MagicMock()
     harvester.create.return_value = device
     with patch.object(_cam_module, 'Harvester', return_value=harvester):
-        cam = QGenicamCamera(producer, cameraID=cameraID)
+        cam = _ConcreteCamera(cameraID=cameraID)
     return cam, harvester, device
 
 
@@ -161,9 +166,13 @@ def _make_feature(ftype, name='Prop', mode=_EAccessMode.RW, **kw):
 
 class TestInit(unittest.TestCase):
 
-    def test_producer_stored(self):
-        cam, _, _ = make_camera(producer=PRODUCER)
+    def test_producer_class_attribute(self):
+        cam, _, _ = make_camera()
         self.assertEqual(cam.producer, PRODUCER)
+
+    def test_raises_when_producer_is_none(self):
+        with self.assertRaises(TypeError):
+            QGenicamCamera()
 
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()
@@ -185,7 +194,7 @@ class TestInit(unittest.TestCase):
 class TestInitialize(unittest.TestCase):
 
     def test_harvester_add_file_called_with_producer(self):
-        _, h, _ = make_camera(producer=PRODUCER)
+        _, h, _ = make_camera()
         h.add_file.assert_called_once_with(PRODUCER)
 
     def test_harvester_update_called(self):
@@ -200,27 +209,12 @@ class TestInitialize(unittest.TestCase):
         _, _, device = make_camera()
         device.start.assert_called()
 
-    def test_returns_false_when_harvester_unavailable(self):
-        saved = _cam_module.Harvester
-        try:
-            _cam_module.Harvester = None
-            with self.assertLogs(level='WARNING'):
-                cam = QGenicamCamera(PRODUCER)
-            self.assertFalse(cam.isOpen())
-        finally:
-            _cam_module.Harvester = saved
-
-    def test_module_imports_cleanly_without_dependencies(self):
-        '''Module import succeeds and QGenicamCamera is defined when
-        harvesters/genicam are absent (the except-branch stubs prevent
-        NameError on type annotations and isinstance checks).
+    def test_module_raises_import_error_without_dependencies(self):
+        '''Module import raises ImportError with an install hint when
+        harvesters/genicam are absent.
         '''
         script = (
             "import builtins, sys\n"
-            "from unittest.mock import MagicMock\n"
-            "# Stub tree widget to avoid its hard genicam import at class body time\n"
-            "sys.modules['QVideo.cameras.Genicam.QGenicamTree'] = MagicMock()\n"
-            "# Block the optional dependencies so the except branch runs\n"
             "_real_import = builtins.__import__\n"
             "def _blocking_import(name, *args, **kwargs):\n"
             "    if name in ('harvesters', 'harvesters.core',\n"
@@ -228,15 +222,11 @@ class TestInitialize(unittest.TestCase):
             "        raise ImportError(f'blocked: {name}')\n"
             "    return _real_import(name, *args, **kwargs)\n"
             "builtins.__import__ = _blocking_import\n"
-            "from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera\n"
-            "builtins.__import__ = _real_import\n"
-            "# Class must be defined and Harvester must be None (not installed)\n"
-            "assert QGenicamCamera is not None\n"
-            "_mod = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']\n"
-            "assert _mod.Harvester is None\n"
-            "# Fallback stubs must be real classes so isinstance checks work\n"
-            "assert isinstance(_mod.IValue(), _mod.IValue)\n"
-            "assert issubclass(_mod.IInteger, _mod.IValue)\n"
+            "try:\n"
+            "    from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera\n"
+            "    raise AssertionError('ImportError not raised')\n"
+            "except ImportError as e:\n"
+            "    assert 'pip install' in str(e), f'missing install hint: {e}'\n"
         )
         result = subprocess.run(
             [sys.executable, '-c', script],
@@ -249,12 +239,12 @@ class TestInitialize(unittest.TestCase):
         harvester.create.side_effect = ValueError('no camera')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
             with self.assertLogs(level='WARNING'):
-                cam = QGenicamCamera(PRODUCER)
+                cam = _ConcreteCamera()
         self.assertFalse(cam.isOpen())
 
     def test_name_returns_class_name(self):
         cam, _, _ = make_camera()
-        self.assertEqual(cam.name, 'QGenicamCamera')
+        self.assertEqual(cam.name, '_ConcreteCamera')
 
     def test_properties_list_populated(self):
         feature = _make_feature(_IInteger, name='Width',
@@ -319,7 +309,7 @@ class TestNode(unittest.TestCase):
         harvester.create.side_effect = ValueError('no camera')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
             with self.assertLogs(level='WARNING'):
-                cam = QGenicamCamera(PRODUCER)
+                cam = _ConcreteCamera()
         self.assertIsNone(cam.node('Width'))
 
     def test_returns_none_when_not_found(self):
@@ -608,14 +598,6 @@ class TestQGenicamSource(unittest.TestCase):
         cam, _, _ = make_camera()
         src = QGenicamSource(camera=cam)
         self.assertIs(src.source, cam)
-
-    def test_creates_camera_if_none_given(self):
-        device = _make_device()
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            src = QGenicamSource(PRODUCER)
-        self.assertIsInstance(src.source, QGenicamCamera)
 
 
 if __name__ == '__main__':

@@ -9,26 +9,11 @@ try:
                                 IBoolean, IInteger, IFloat, IString)
     from genicam.gentl import TimeoutException
     IProperty = IEnumeration | IBoolean | IInteger | IFloat | IString
-except (ImportError, ModuleNotFoundError):
-    Harvester = None
-    TimeoutException = Exception
-
-    class IValue:         pass  # noqa: E701
-    class ICategory(IValue): pass  # noqa: E701
-    class ICommand(IValue):  pass  # noqa: E701
-    class IEnumeration(IValue): pass  # noqa: E701
-    class IBoolean(IValue):    pass  # noqa: E701
-    class IInteger(IValue):    pass  # noqa: E701
-    class IFloat(IValue):      pass  # noqa: E701
-    class IString(IValue):     pass  # noqa: E701
-
-    class EAccessMode:
-        RW = 'RW'
-        RO = 'RO'
-        WO = 'WO'
-        NI = 'NI'
-
-    IProperty = IEnumeration | IBoolean | IInteger | IFloat | IString
+except (ImportError, ModuleNotFoundError) as exc:
+    raise ImportError(
+        "QGenicamCamera requires the 'genicam' and 'harvesters' packages. "
+        "Install them with: pip install genicam harvesters"
+    ) from exc
 
 
 logger = logging.getLogger(__name__)
@@ -39,21 +24,28 @@ __all__ = ['QGenicamCamera', 'QGenicamSource']
 
 class QGenicamCamera(QCamera):
 
-    '''Camera backed by a GenICam-compliant device via Harvesters.
+    '''Abstract base for GenICam-compliant cameras accessed via Harvesters.
 
     `GenICam <https://www.emva.org/standards-technology/genicam/>`_ is a
     standardized machine-vision interface maintained by the European Machine
     Vision Association.  Communication with the physical device is handled by
     a GenTL producer — a ``.cti`` binary supplied by the camera manufacturer.
 
+    Subclasses **must** set the :attr:`producer` class attribute to the path
+    of the appropriate ``.cti`` file before instantiating.  Attempting to
+    instantiate :class:`QGenicamCamera` directly raises :exc:`TypeError`.
+
     Requires the ``genicam`` and ``harvesters`` packages
-    (``pip install genicam harvesters``).  If either package is absent the
-    class is still importable but :meth:`_initialize` will return ``False``.
+    (``pip install genicam harvesters``).
+
+    Attributes
+    ----------
+    producer : str or None
+        Path to the GenTL producer ``.cti`` file.  Must be overridden by
+        concrete subclasses.
 
     Parameters
     ----------
-    producer : str
-        Path to the GenTL producer ``.cti`` file.
     cameraID : int
         Index of the camera to open.  Default: ``0``.
     *args :
@@ -61,6 +53,8 @@ class QGenicamCamera(QCamera):
     **kwargs :
         Forwarded to :class:`~QVideo.lib.QCamera`.
     '''
+
+    producer: str | None = None
 
     @staticmethod
     def _set_feature(feature: IValue, value: QCamera.PropertyValue) -> None:
@@ -168,12 +162,13 @@ class QGenicamCamera(QCamera):
                                   ptype=self._feature_ptype(feature),
                                   **self._feature_meta(feature))
 
-    def __init__(self, producer: str,
-                 *args,
-                 cameraID: int = 0,
-                 **kwargs) -> None:
+    def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.producer = producer
+        if type(self).producer is None:
+            raise TypeError(
+                f"{type(self).__name__} must define a 'producer' class "
+                "attribute pointing to a GenTL producer .cti file."
+            )
         self.cameraID = cameraID
         self.nodeMap = None
         self.open()
@@ -186,10 +181,6 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        if Harvester is None:
-            logger.warning('Could not import harvesters: '
-                           'Genicam camera support is not available')
-            return False
         self.harvester = Harvester()
         self.harvester.add_file(self.producer)
         self.harvester.update()
@@ -291,19 +282,11 @@ class QGenicamSource(QVideoSource):
 
     Parameters
     ----------
-    camera : QGenicamCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QGenicamCamera` is created from the remaining arguments.
-    *args :
-        Forwarded to :class:`QGenicamCamera` when ``camera`` is ``None``.
-    **kwargs :
-        Forwarded to :class:`QGenicamCamera` when ``camera`` is ``None``.
+    camera : QGenicamCamera
+        Camera instance to wrap.
     '''
 
-    def __init__(self, *args,
-                 camera: QGenicamCamera | None = None,
-                 **kwargs) -> None:
-        camera = camera or QGenicamCamera(*args, **kwargs)
+    def __init__(self, camera: QGenicamCamera) -> None:
         super().__init__(camera)
 
 

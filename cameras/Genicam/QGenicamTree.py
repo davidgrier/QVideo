@@ -24,13 +24,8 @@ class QGenicamTree(QCameraTree):
 
     Parameters
     ----------
-    camera : QGenicamCamera or None
-        Camera instance to use.  If ``None``, a new
-        :class:`~QVideo.cameras.Genicam.QGenicamCamera.QGenicamCamera` is
-        created from ``cameraID`` and the remaining arguments.
-    cameraID : int
-        Index of the camera device to open.  Used only when *camera* is
-        ``None``.  Default: ``0``.
+    camera : QGenicamCamera
+        Camera instance to use.
     visibility : EVisibility
         Maximum GenICam visibility level to display.
         Default: ``EVisibility.Guru``.
@@ -44,13 +39,10 @@ class QGenicamTree(QCameraTree):
     '''
 
     def __init__(self, *args,
-                 camera: Source | None = None,
-                 cameraID: int = 0,
+                 camera: Source,
                  visibility: EVisibility = EVisibility.Guru,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
-        camera = camera or QGenicamCamera(*args, cameraID=cameraID,
-                                          **kwargs)
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
         self.controls = controls

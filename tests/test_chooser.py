@@ -106,6 +106,14 @@ class TestCameraParser(unittest.TestCase):
         args, _ = camera_parser().parse_known_args(['-s'])
         self.assertTrue(args.spinnaker)
 
+    def test_vimbax_flag_false_by_default(self):
+        args, _ = camera_parser().parse_known_args([])
+        self.assertFalse(args.vimbax)
+
+    def test_vimbax_flag_set_by_minus_v(self):
+        args, _ = camera_parser().parse_known_args(['-v'])
+        self.assertTrue(args.vimbax)
+
     def test_unknown_args_are_ignored(self):
         _, unknown = camera_parser().parse_known_args(['--unknown'])
         self.assertIn('--unknown', unknown)
@@ -212,6 +220,30 @@ class TestChooseCameraFallback(unittest.TestCase):
             with patch('QVideo.lib.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.Spinnaker': None}):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QNoiseTree)
+        mock_logger.warning.assert_called_once()
+        camera.close()
+
+    def test_vimbax_import_failure_falls_back_to_noise(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        with patch('sys.argv', ['prog', '-v']):
+            with patch('QVideo.lib.chooser.logger') as mock_logger:
+                with patch.dict('sys.modules',
+                                {'QVideo.cameras.Vimbax': None}):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QNoiseTree)
+        mock_logger.warning.assert_called_once()
+        camera.close()
+
+    def test_runtime_error_falls_back_to_noise(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        mock_module = MagicMock()
+        mock_module.QOpenCVTree.side_effect = TypeError('no producer')
+        with patch('sys.argv', ['prog', '-c']):
+            with patch('QVideo.lib.chooser.logger') as mock_logger:
+                with patch.dict('sys.modules',
+                                {'QVideo.cameras.OpenCV': mock_module}):
                     camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
         mock_logger.warning.assert_called_once()

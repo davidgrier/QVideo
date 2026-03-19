@@ -1,0 +1,4 @@
+# GenTL producer binaries are supplied by camera SDK installers
+# and discovered at runtime via GENICAM_GENTL64_PATH.
+*.cti
+*.cti.*

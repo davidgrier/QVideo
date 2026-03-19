@@ -112,6 +112,8 @@ class QOpenCVCamera(QCamera):
             self.registerProperty('color', getter=self._getColor,
                                   setter=self._setColor, ptype=bool)
             self._probeProperties()
+        else:
+            self.device.release()
         return ready
 
     def _probeProperties(self) -> None:

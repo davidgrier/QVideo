@@ -107,6 +107,13 @@ class TestInitialize(unittest.TestCase):
             cam = make_camera(read_ok=False)
         self.assertFalse(cam.isOpen())
 
+    def test_device_released_when_initialize_fails(self):
+        device = make_mock_device(read_ok=False)
+        with patch('cv2.VideoCapture', return_value=device):
+            with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                QOpenCVCamera()
+        device.release.assert_called_once()
+
     def test_device_properties_registered_on_open(self):
         cam = make_camera()
         for name in ('width', 'height', 'fps', 'color'):

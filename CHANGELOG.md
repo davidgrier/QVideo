@@ -7,6 +7,38 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.2.0] — 2026-03-19
+
+### Changed
+- **Camera module files renamed** — implementation files in each backend are
+  now named `_camera.py`, `_tree.py`, and (for OpenCV) `_resolution_tree.py`
+  instead of the old `Q<Name>Camera.py` / `Q<Name>Tree.py` names.  This
+  eliminates a class/module name collision where importing a backend module
+  via its full dotted path caused Python to overwrite the exported class
+  reference in the parent package namespace with the module object.
+
+  The **public API is unchanged** — `from QVideo.cameras.X import Q<Name>Camera`
+  continues to work exactly as before.  Only code that imported directly from
+  the private module path is affected:
+
+  ```python
+  # Old (broken):
+  from QVideo.cameras.Noise.QNoiseCamera import QNoiseCamera
+
+  # New (correct, and already the documented form):
+  from QVideo.cameras.Noise import QNoiseCamera
+  ```
+
+### Added
+- **`CONTRIBUTING.md`** — developer guide covering environment setup, test
+  conventions, backend and filter authoring, and the pull-request workflow.
+
+### Infrastructure
+- GitHub Actions workflows opt into Node.js 24 ahead of the June 2026
+  forced migration.
+
+---
+
 ## [3.1.0] — 2026-03-19
 
 ### Added

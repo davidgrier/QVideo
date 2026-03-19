@@ -41,6 +41,4 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run tests
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: python -m pytest --tb=short -q
+        run: xvfb-run python -m pytest --tb=short -q

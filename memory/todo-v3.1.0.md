@@ -26,17 +26,10 @@ type: project
 
 ## Test coverage
 
-- [ ] **Tests for QBaslerCamera** (`cameras/Basler/`)
-      Follow pattern in `tests/test_qgenicamcamera.py`
-
-- [ ] **Tests for QFlirCamera** (`cameras/Flir/`)
-      Follow pattern in `tests/test_qgenicamcamera.py`
-
-- [ ] **Tests for QIDSCamera** (`cameras/IDS/`)
-      Follow pattern in `tests/test_qgenicamcamera.py`
-
-- [ ] **Tests for QMVCamera** (`cameras/MV/`)
-      Follow pattern in `tests/test_qgenicamcamera.py`
+- [x] **Tests for QBaslerCamera** (`cameras/Basler/`)
+- [x] **Tests for QFlirCamera** (`cameras/Flir/`)
+- [x] **Tests for QIDSCamera** (`cameras/IDS/`)
+- [x] **Tests for QMVCamera** (`cameras/MV/`)
 
 ## Filter promotion from devel/
 

@@ -9,9 +9,12 @@ from .QVideoWriter import QVideoWriter
 from .QVideoScreen import QVideoScreen
 from .chooser import choose_camera
 from .QListCameras import QListCameras
+from .QFPSMeter import QFPSMeter
+from .VideoFilter import VideoFilter
 
 
 __all__ = '''Image
 clickable choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank
-QVideoReader QVideoWriter QVideoScreen'''.split()
+QVideoReader QVideoWriter QVideoScreen
+QFPSMeter VideoFilter'''.split()

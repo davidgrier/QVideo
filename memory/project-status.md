@@ -8,7 +8,7 @@ type: project
 
 ## Current state (as of 2026-03-19)
 
-- 1090 tests passing (+ 16 subtests)
+- 1138 tests passing (+ 16 subtests)
 - Main branch: `main`
 - **v3.0.0 published to PyPI**: https://pypi.org/project/QVideo/
 - v3.1.0 in progress

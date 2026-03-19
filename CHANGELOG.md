@@ -7,6 +7,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.1.0] — 2026-03-19
+
+### Added
+- **`QPicamera.fps`** — frame-rate property via `FrameDurationLimits`; pinning
+  both elements to the same value locks the sensor to a fixed frame rate.
+  `read()` now uses `capture_request()` for improved capture efficiency.
+- **`QOpenCVResolutionTree`** — new tree widget that replaces the separate
+  `width` / `height` spinboxes with a `"W×H"` drop-down populated by probing
+  the hardware at startup.  Falls back to spinboxes when only one resolution
+  is available.  Accessible via the `-r` flag in `lib/chooser.py`.
+- **`QFPSMeter` and `VideoFilter`** added to `lib.__all__`.
+
+### Tests
+- Added 48 tests covering `QBaslerCamera`, `QFlirCamera`, `QIDSCamera`, and
+  `QMVCamera` / `QMVSource` (12 tests per backend).  Total: 1138 tests.
+
+### Removed
+- All `.py~` editor backup files deleted from the repository.
+
+---
+
 ## [3.0.0] — 2026-03-18
 
 ### Added

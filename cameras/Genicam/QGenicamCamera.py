@@ -59,7 +59,7 @@ class QGenicamCamera(QCamera):
     producer: str | None = None
 
     @staticmethod
-    def _find_producer(*filenames: str) -> 'str | None':
+    def _findProducer(*filenames: str) -> 'str | None':
         '''Search GENICAM_GENTL64_PATH for the first matching GenTL producer.
 
         Parameters

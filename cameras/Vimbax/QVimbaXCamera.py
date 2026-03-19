@@ -23,7 +23,7 @@ class QVimbaXCamera(QGenicamCamera):
         Index of the Allied Vision camera to open.  Default: ``0``.
     '''
 
-    producer = QGenicamCamera._find_producer(
+    producer = QGenicamCamera._findProducer(
         'VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
 
 

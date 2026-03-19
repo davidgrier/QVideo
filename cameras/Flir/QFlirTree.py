@@ -28,6 +28,7 @@ class QFlirTree(QGenicamTree):
         'ReverseX',
         'ReverseY',
         'AcquisitionFrameRate',
+        'AcquisitionResultingFrameRate',
         'ExposureTime',
         'ExposureAuto',
         'Gain',

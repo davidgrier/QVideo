@@ -114,6 +114,7 @@ class QGenicamTree(QCameraTree):
         self._updateVisible()
         self._updateEnabled()
         self._updateLimits()
+        self._updateValues()
 
     def _updateVisible(self) -> None:
         for item in self.listAllItems()[1:]:
@@ -136,6 +137,36 @@ class QGenicamTree(QCameraTree):
                 name = p.opts['name']
                 if self.camera.has_node(name):
                     p.setOpts(enabled=self.camera.is_readwrite(name))
+
+    def _updateValues(self) -> None:
+        '''Refresh read-only Parameter values from the live GenICam node map.
+
+        Called after every property change so that derived read-only nodes
+        (e.g. ``AcquisitionResultingFrameRate``) reflect the current hardware
+        state in the UI.  Only visible read-only leaf parameters are updated.
+        Signals are blocked during the update to prevent re-entrant calls.
+        '''
+        for item in self.listAllItems()[1:]:
+            p = item.param
+            if not p.opts.get('visible', False):
+                continue
+            name = p.opts.get('name')
+            if not self.camera.has_node(name):
+                continue
+            node = self.camera.node(name)
+            if node.node.get_access_mode() != EAccessMode.RO:
+                continue
+            if isinstance(node, IEnumeration):
+                value = node.to_string()
+            elif isinstance(node, (IBoolean, IInteger, IFloat, IString)):
+                value = node.value
+            else:
+                continue
+            p.blockSignals(True)
+            try:
+                p.setValue(value)
+            finally:
+                p.blockSignals(False)
 
     def _updateLimits(self) -> None:
         '''Refresh Parameter constraints from the live GenICam node values.

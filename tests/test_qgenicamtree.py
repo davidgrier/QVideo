@@ -503,6 +503,57 @@ class TestUpdateLimits(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestUpdateValues
+# ---------------------------------------------------------------------------
+
+class TestUpdateValues(unittest.TestCase):
+
+    def test_ro_float_value_is_refreshed(self):
+        feat = _float_feature('ResultFPS', value=30.0, mode=_EAccessMode.RO)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.get_node('ResultFPS').value = 60.0
+        tree._updateValues()
+        self.assertAlmostEqual(tree._parameters['ResultFPS'].value(), 60.0)
+
+    def test_ro_integer_value_is_refreshed(self):
+        feat = _int_feature('Width', value=640, mode=_EAccessMode.RO)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.get_node('Width').value = 1280
+        tree._updateValues()
+        self.assertEqual(tree._parameters['Width'].value(), 1280)
+
+    def test_ro_enumeration_value_is_refreshed(self):
+        feat = _enum_feature('PixelFormat', value='Mono8',
+                             entries=('Mono8', 'RGB8'), mode=_EAccessMode.RO)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.get_node('PixelFormat').to_string.return_value = 'RGB8'
+        tree._updateValues()
+        self.assertEqual(tree._parameters['PixelFormat'].value(), 'RGB8')
+
+    def test_rw_node_value_not_refreshed(self):
+        feat = _float_feature('Gamma', value=1.0, mode=_EAccessMode.RW)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.get_node('Gamma').value = 2.0
+        tree._updateValues()
+        self.assertAlmostEqual(tree._parameters['Gamma'].value(), 1.0)
+
+    def test_invisible_node_skipped(self):
+        feat = _float_feature('ResultFPS', value=1.5, min=0.5, max=120.0,
+                              mode=_EAccessMode.RO,
+                              visibility=_EVisibility.Invisible)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.get_node('ResultFPS').value = 3.0
+        tree._updateValues()
+        self.assertAlmostEqual(tree._parameters['ResultFPS'].value(), 1.5)
+
+    def test_unknown_node_does_not_raise(self):
+        feat = _float_feature('ResultFPS', value=30.0, mode=_EAccessMode.RO)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.has_node.side_effect = lambda n: False
+        tree._updateValues()  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # TestControls
 # ---------------------------------------------------------------------------
 

@@ -98,13 +98,29 @@ class TestCameraParser(unittest.TestCase):
         args, _ = camera_parser().parse_known_args(['-f'])
         self.assertTrue(args.flir)
 
-    def test_spinnaker_flag_false_by_default(self):
+    def test_basler_flag_false_by_default(self):
         args, _ = camera_parser().parse_known_args([])
-        self.assertFalse(args.spinnaker)
+        self.assertFalse(args.basler)
 
-    def test_spinnaker_flag_set_by_minus_s(self):
-        args, _ = camera_parser().parse_known_args(['-s'])
-        self.assertTrue(args.spinnaker)
+    def test_basler_flag_set_by_minus_b(self):
+        args, _ = camera_parser().parse_known_args(['-b'])
+        self.assertTrue(args.basler)
+
+    def test_ids_flag_false_by_default(self):
+        args, _ = camera_parser().parse_known_args([])
+        self.assertFalse(args.ids)
+
+    def test_ids_flag_set_by_minus_i(self):
+        args, _ = camera_parser().parse_known_args(['-i'])
+        self.assertTrue(args.ids)
+
+    def test_mv_flag_false_by_default(self):
+        args, _ = camera_parser().parse_known_args([])
+        self.assertFalse(args.mv)
+
+    def test_mv_flag_set_by_minus_m(self):
+        args, _ = camera_parser().parse_known_args(['-m'])
+        self.assertTrue(args.mv)
 
     def test_vimbax_flag_false_by_default(self):
         args, _ = camera_parser().parse_known_args([])
@@ -214,12 +230,34 @@ class TestChooseCameraFallback(unittest.TestCase):
         mock_logger.warning.assert_called_once()
         camera.close()
 
-    def test_spinnaker_import_failure_falls_back_to_noise(self):
+    def test_basler_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
-        with patch('sys.argv', ['prog', '-s']):
+        with patch('sys.argv', ['prog', '-b']):
             with patch('QVideo.lib.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
-                                {'QVideo.cameras.Spinnaker': None}):
+                                {'QVideo.cameras.Basler': None}):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QNoiseTree)
+        mock_logger.warning.assert_called_once()
+        camera.close()
+
+    def test_ids_import_failure_falls_back_to_noise(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        with patch('sys.argv', ['prog', '-i']):
+            with patch('QVideo.lib.chooser.logger') as mock_logger:
+                with patch.dict('sys.modules',
+                                {'QVideo.cameras.IDS': None}):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QNoiseTree)
+        mock_logger.warning.assert_called_once()
+        camera.close()
+
+    def test_mv_import_failure_falls_back_to_noise(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        with patch('sys.argv', ['prog', '-m']):
+            with patch('QVideo.lib.chooser.logger') as mock_logger:
+                with patch.dict('sys.modules',
+                                {'QVideo.cameras.MV': None}):
                     camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
         mock_logger.warning.assert_called_once()

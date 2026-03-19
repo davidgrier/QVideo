@@ -37,8 +37,6 @@ packages = [
     "QVideo.cameras.Noise",
     "QVideo.cameras.OpenCV",
     "QVideo.cameras.Picamera",
-    "QVideo.cameras.Spinnaker",
-    "QVideo.cameras.Spinnaker2",
     "QVideo.cameras.Vimbax",
     "QVideo.dvr",
     "QVideo.filters",
@@ -56,8 +54,6 @@ packages = [
 "QVideo.cameras.Noise"      = "cameras/Noise"
 "QVideo.cameras.OpenCV"     = "cameras/OpenCV"
 "QVideo.cameras.Picamera"   = "cameras/Picamera"
-"QVideo.cameras.Spinnaker"  = "cameras/Spinnaker"
-"QVideo.cameras.Spinnaker2" = "cameras/Spinnaker2"
 "QVideo.cameras.Vimbax"     = "cameras/Vimbax"
 "QVideo.dvr"                = "dvr"
 "QVideo.filters"            = "filters"

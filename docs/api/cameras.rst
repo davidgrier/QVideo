@@ -43,8 +43,8 @@ GenICam (base)
 .. automodule:: QVideo.cameras.Genicam.QGenicamTree
    :members:
 
-FLIR / Spinnaker
-----------------
+FLIR
+----
 
 .. automodule:: QVideo.cameras.Flir
    :members:

@@ -31,9 +31,6 @@ _CAMERAS: dict[str, _CameraEntry] = {
     'mv':        _CameraEntry('-m', 'QVideo.cameras.MV',
                               'QMVTree', 'mvGenTLProducer',
                               'MATRIX VISION mvGenTLProducer (universal GenICam)'),
-    'spinnaker': _CameraEntry('-s', 'QVideo.cameras.Spinnaker',
-                              'QSpinnakerTree', 'Spinnaker SDK',
-                              'Spinnaker SDK camera'),
     'vimbax':    _CameraEntry('-v', 'QVideo.cameras.Vimbax',
                               'QVimbaXTree', 'VimbaX',
                               'Allied Vision VimbaX camera'),
@@ -63,7 +60,6 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
             -f -> Flir
             -i -> IDS Imaging
             -m -> MATRIX VISION mvGenTLProducer (universal GenICam)
-            -s -> Spinnaker
             -v -> Allied Vision VimbaX
         The flag can be followed by an optional positional
         cameraID argument.

@@ -14,7 +14,6 @@ Camera flags (mutually exclusive):
     -f [cameraID]   FLIR camera (requires Spinnaker SDK)
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
-    -s [cameraID]   Spinnaker SDK camera
     -v [cameraID]   Allied Vision VimbaX camera
 
 If no flag is given, a noise camera is used as a fallback.

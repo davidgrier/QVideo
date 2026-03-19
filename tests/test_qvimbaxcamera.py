@@ -58,7 +58,7 @@ _mock_genapi.IFloat       = _IFloat
 _mock_genapi.IString      = _IString
 _mock_genapi.EAccessMode  = _EAccessMode
 _mock_genapi.EVisibility  = _EVisibility
-_mock_genapi.IProperty = _IEnumeration | _IBoolean | _IInteger | _IFloat | _IString
+_mock_genapi.IProperty = (_IEnumeration, _IBoolean, _IInteger, _IFloat, _IString)
 
 _mock_gentl                  = MagicMock()
 _mock_gentl.TimeoutException = _TimeoutException

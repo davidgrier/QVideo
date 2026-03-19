@@ -10,7 +10,7 @@ try:
                                 ICategory, ICommand, IEnumeration,
                                 IBoolean, IInteger, IFloat, IString)
     from genicam.gentl import TimeoutException
-    IProperty = IEnumeration | IBoolean | IInteger | IFloat | IString
+    IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
 except (ImportError, ModuleNotFoundError) as exc:
     raise ImportError(
         "QGenicamCamera requires the 'genicam' and 'harvesters' packages. "

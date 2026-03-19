@@ -1,5 +1,6 @@
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.Flir.QFlirCamera import QFlirCamera
+from QVideo.lib.QCameraTree import Source
 
 
 __all__ = ['QFlirTree']
@@ -53,7 +54,7 @@ class QFlirTree(QGenicamTree):
     )
 
     def __init__(self, *args,
-                 camera: QGenicamTree.Source | None = None,
+                 camera: Source | None = None,
                  cameraID: int = 0,
                  controls: list[str] | None = None,
                  **kwargs) -> None:

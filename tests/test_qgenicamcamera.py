@@ -63,7 +63,7 @@ _EVisibility.Invisible = _EVisibility(99)
 
 _mock_genapi.EVisibility  = _EVisibility
 # IProperty union — mirrors the camera module definition
-_mock_genapi.IProperty = _IEnumeration | _IBoolean | _IInteger | _IFloat | _IString
+_mock_genapi.IProperty = (_IEnumeration, _IBoolean, _IInteger, _IFloat, _IString)
 
 _mock_gentl                  = MagicMock()
 _mock_gentl.TimeoutException = _TimeoutException

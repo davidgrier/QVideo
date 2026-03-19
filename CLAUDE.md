@@ -16,6 +16,9 @@ python -m pytest tests/test_qgenicamcamera.py::TestRead::test_frame_shape
 
 # Run with coverage report
 python -m pytest --cov=. --cov-report=term-missing
+
+# Build HTML documentation  (output: docs/_build/html/index.html)
+sphinx-build -b html docs docs/_build/html
 ```
 
 No build step is required. The package is used directly from the source tree.

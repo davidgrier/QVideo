@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+'''Minimal demo: live video screen alongside a camera control tree.
+
+Run directly::
+
+    python -m QVideo.demos.demo
+'''
 
 from QVideo.lib import QVideoScreen
 from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout
@@ -38,6 +44,7 @@ class Demo(QWidget):
 
 
 def main() -> None:  # pragma: no cover
+    '''Launch the demo with an interactively chosen camera.'''
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+'''Camcorder demo with a draggable ROI for recording a cropped video region.
+
+Run directly::
+
+    python -m QVideo.demos.ROIdemo
+'''
 
 from QVideo.QCamcorder import QCamcorder
 from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot
@@ -125,6 +131,7 @@ class ROIDemo(QCamcorder):
 
 
 def main() -> None:  # pragma: no cover
+    '''Launch the ROI demo with an interactively chosen camera.'''
     from QVideo.lib import choose_camera
 
     pg.mkQApp()

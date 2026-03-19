@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+'''Demo combining a live video feed, camera controls, and an image-filter bank.
+
+Run directly::
+
+    python -m QVideo.demos.filterdemo
+'''
 
 from QVideo.lib import QVideoScreen
 from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
@@ -59,6 +65,7 @@ class Demo(QWidget):
 
 
 def main() -> None:  # pragma: no cover
+    '''Launch the filter demo with an interactively chosen camera.'''
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 

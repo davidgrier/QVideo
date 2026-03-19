@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+'''Composite camcorder widget combining a video screen, camera controls, and DVR.
+
+Run directly to launch a full camcorder application with camera selection::
+
+    python -m QVideo.QCamcorder
+'''
 
 from pyqtgraph.Qt.QtWidgets import QWidget
 from pyqtgraph.Qt.QtCore import pyqtSlot
@@ -87,6 +93,7 @@ class QCamcorder(QWidget):
 
 
 def main() -> None:  # pragma: no cover
+    '''Launch the camcorder with an interactively chosen camera.'''
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 

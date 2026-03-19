@@ -25,20 +25,6 @@ picamera = ["picamera2"]
 dev = ["pytest", "pytest-cov"]
 
 [tool.setuptools]
-package-dir = {
-    "QVideo"                    = ".",
-    "QVideo.cameras"            = "cameras",
-    "QVideo.cameras.Flir"       = "cameras/Flir",
-    "QVideo.cameras.Genicam"    = "cameras/Genicam",
-    "QVideo.cameras.Noise"      = "cameras/Noise",
-    "QVideo.cameras.OpenCV"     = "cameras/OpenCV",
-    "QVideo.cameras.Picamera"   = "cameras/Picamera",
-    "QVideo.cameras.Spinnaker"  = "cameras/Spinnaker",
-    "QVideo.cameras.Spinnaker2" = "cameras/Spinnaker2",
-    "QVideo.dvr"                = "dvr",
-    "QVideo.filters"            = "filters",
-    "QVideo.lib"                = "lib",
-}
 packages = [
     "QVideo",
     "QVideo.cameras",
@@ -49,10 +35,26 @@ packages = [
     "QVideo.cameras.Picamera",
     "QVideo.cameras.Spinnaker",
     "QVideo.cameras.Spinnaker2",
+    "QVideo.cameras.Vimbax",
     "QVideo.dvr",
     "QVideo.filters",
     "QVideo.lib",
 ]
+
+[tool.setuptools.package-dir]
+"QVideo"                    = "."
+"QVideo.cameras"            = "cameras"
+"QVideo.cameras.Flir"       = "cameras/Flir"
+"QVideo.cameras.Genicam"    = "cameras/Genicam"
+"QVideo.cameras.Noise"      = "cameras/Noise"
+"QVideo.cameras.OpenCV"     = "cameras/OpenCV"
+"QVideo.cameras.Picamera"   = "cameras/Picamera"
+"QVideo.cameras.Spinnaker"  = "cameras/Spinnaker"
+"QVideo.cameras.Spinnaker2" = "cameras/Spinnaker2"
+"QVideo.cameras.Vimbax"     = "cameras/Vimbax"
+"QVideo.dvr"                = "dvr"
+"QVideo.filters"            = "filters"
+"QVideo.lib"                = "lib"
 
 
 [tool.pytest.ini_options]

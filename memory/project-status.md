@@ -10,8 +10,9 @@ type: project
 
 - 1138 tests passing (+ 16 subtests)
 - Main branch: `main`
-- **v3.0.0 published to PyPI**: https://pypi.org/project/QVideo/
-- v3.1.0 in progress
+- **v3.1.0 published to PyPI**: https://pypi.org/project/QVideo/
+- CONTRIBUTING.md added
+- GitHub Actions workflows opted into Node.js 24
 
 ## Recent commits (v3.1.0 work)
 

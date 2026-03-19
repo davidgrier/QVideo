@@ -14,8 +14,7 @@ type: project
 - [ ] **IRegister node support in QGenicamTree** (`cameras/Genicam/QGenicamTree.py:101`)
       FIXME comment already in place; GenICam register nodes currently absent from control tree
 
-- [ ] **SobelFilter** (`filters/SobelFilter.py`)
-      Stub exists as `filters/SobelFilter.py~`; model on `QEdgeFilter` and `QBlurFilter`
+- [x] ~~**SobelFilter**~~ — superseded by `QEdgeFilter` (Canny); not needed
 
 - [ ] **QFlirListCameras** (`cameras/Flir/`)
       Camera enumeration widget; partial implementation in `QListFlirCameras.py~`
@@ -39,6 +38,6 @@ type: project
 
 ## Cleanup
 
-- [ ] Delete all `.py~` backup files throughout the repo
-- [ ] Add `QFPSMeter` and `VideoFilter` to `lib/__init__.__all__`
-- [ ] Replace account-scoped PyPI token with project-scoped token
+- [x] Delete all `.py~` backup files throughout the repo
+- [x] Add `QFPSMeter` and `VideoFilter` to `lib/__init__.__all__`
+- [x] Replace account-scoped PyPI token with project-scoped token

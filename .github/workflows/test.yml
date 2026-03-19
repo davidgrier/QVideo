@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      QT_QPA_PLATFORM: offscreen
 
     strategy:
       fail-fast: false
@@ -33,34 +34,13 @@ jobs:
             libgl1 \
             libegl1 \
             libglib2.0-0 \
-            libxcb-cursor0 \
-            libxcb-icccm4 \
-            libxcb-image0 \
-            libxcb-keysyms1 \
-            libxcb-randr0 \
-            libxcb-render-util0 \
-            libxcb-xinerama0 \
-            libxcb-xfixes0 \
-            libxkbcommon-x11-0 \
-            xvfb
+            libxkbcommon0
 
       - name: Install package and test dependencies
         run: pip install -e ".[dev]"
 
-      - name: Diagnose Qt environment
-        continue-on-error: true
-        env:
-          QT_DEBUG_PLUGINS: 1
-        run: |
-          python -c "import PyQt5; print('PyQt5 ok')"
-          xvfb-run python -c "
-          from pyqtgraph.Qt import QtWidgets
-          app = QtWidgets.QApplication([])
-          print('QApplication ok')
-          "
-
       - name: Run tests
-        run: xvfb-run python -m pytest --tb=long -q --cov --cov-report=xml
+        run: python -m pytest --tb=short -q --cov --cov-report=xml
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.10'

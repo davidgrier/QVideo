@@ -122,6 +122,14 @@ class TestCameraParser(unittest.TestCase):
         args, _ = camera_parser().parse_known_args(['-m'])
         self.assertTrue(args.mv)
 
+    def test_picamera_flag_false_by_default(self):
+        args, _ = camera_parser().parse_known_args([])
+        self.assertFalse(args.picamera)
+
+    def test_picamera_flag_set_by_minus_p(self):
+        args, _ = camera_parser().parse_known_args(['-p'])
+        self.assertTrue(args.picamera)
+
     def test_vimbax_flag_false_by_default(self):
         args, _ = camera_parser().parse_known_args([])
         self.assertFalse(args.vimbax)
@@ -258,6 +266,17 @@ class TestChooseCameraFallback(unittest.TestCase):
             with patch('QVideo.lib.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.MV': None}):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QNoiseTree)
+        mock_logger.warning.assert_called_once()
+        camera.close()
+
+    def test_picamera_import_failure_falls_back_to_noise(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        with patch('sys.argv', ['prog', '-p']):
+            with patch('QVideo.lib.chooser.logger') as mock_logger:
+                with patch.dict('sys.modules',
+                                {'QVideo.cameras.Picamera': None}):
                     camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
         mock_logger.warning.assert_called_once()

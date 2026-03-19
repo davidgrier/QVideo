@@ -76,7 +76,7 @@ Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilte
   # ...
   from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera
   ```
-- **Module vs class name collision**: `cameras/Genicam/__init__.py` re-exports `QGenicamCamera` (the class), so `import QVideo.cameras.Genicam.QGenicamCamera as m` resolves to the class, not the module. Use `sys.modules['QVideo.cameras.Genicam.QGenicamCamera']` to get the actual module object when `patch.object` is needed on module-level names.
+- **Module vs class name collision**: When a `__init__.py` re-exports a class with the same name as its submodule (e.g. `cameras/Genicam/__init__.py` re-exports `QGenicamCamera`, `cameras/Picamera/__init__.py` re-exports `QPicamera`), both `import QVideo.cameras.X.Y as m` and `patch('QVideo.cameras.X.Y.attr', ...)` resolve to the class, not the module. Use `sys.modules['QVideo.cameras.X.Y']` to get the actual module object, then `patch.object(module, 'attr', ...)`.
 - Patch hardware classes with `patch.object(module, 'Harvester', return_value=mock_harvester)`.
 - `# pragma: no cover` on all `if __name__ == '__main__':` guards.
 - Docstrings use NumPy style.

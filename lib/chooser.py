@@ -34,6 +34,9 @@ _CAMERAS: dict[str, _CameraEntry] = {
     'vimbax':    _CameraEntry('-v', 'QVideo.cameras.Vimbax',
                               'QVimbaXTree', 'VimbaX',
                               'Allied Vision VimbaX camera'),
+    'picamera':  _CameraEntry('-p', 'QVideo.cameras.Picamera',
+                              'QPicameraTree', 'Picamera',
+                              'Raspberry Pi camera module'),
 }
 
 
@@ -60,6 +63,7 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
             -f -> Flir
             -i -> IDS Imaging
             -m -> MATRIX VISION mvGenTLProducer (universal GenICam)
+            -p -> Raspberry Pi camera module
             -v -> Allied Vision VimbaX
         The flag can be followed by an optional positional
         cameraID argument.

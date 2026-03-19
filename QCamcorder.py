@@ -14,6 +14,7 @@ Camera flags (mutually exclusive):
     -f [cameraID]   FLIR camera (requires Spinnaker SDK)
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
+    -p [cameraID]   Raspberry Pi camera module (requires picamera2)
     -v [cameraID]   Allied Vision VimbaX camera
 
 If no flag is given, a noise camera is used as a fallback.

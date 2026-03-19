@@ -1,4 +1,5 @@
-from .QPicamera import QPicamera
+from .QPicamera import QPicamera, QPicameraSource
+from .QPicameraTree import QPicameraTree
 
 
-__all__ = ['QPicamera']
+__all__ = ['QPicamera', 'QPicameraSource', 'QPicameraTree']

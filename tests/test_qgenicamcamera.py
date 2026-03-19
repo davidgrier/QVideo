@@ -1,4 +1,5 @@
 '''Unit tests for QGenicamCamera and QGenicamSource.'''
+import subprocess
 import sys
 import unittest
 import numpy as np
@@ -208,6 +209,40 @@ class TestInitialize(unittest.TestCase):
             self.assertFalse(cam.isOpen())
         finally:
             _cam_module.Harvester = saved
+
+    def test_module_imports_cleanly_without_dependencies(self):
+        '''Module import succeeds and QGenicamCamera is defined when
+        harvesters/genicam are absent (the except-branch stubs prevent
+        NameError on type annotations and isinstance checks).
+        '''
+        script = (
+            "import builtins, sys\n"
+            "from unittest.mock import MagicMock\n"
+            "# Stub tree widget to avoid its hard genicam import at class body time\n"
+            "sys.modules['QVideo.cameras.Genicam.QGenicamTree'] = MagicMock()\n"
+            "# Block the optional dependencies so the except branch runs\n"
+            "_real_import = builtins.__import__\n"
+            "def _blocking_import(name, *args, **kwargs):\n"
+            "    if name in ('harvesters', 'harvesters.core',\n"
+            "                'genicam', 'genicam.genapi', 'genicam.gentl'):\n"
+            "        raise ImportError(f'blocked: {name}')\n"
+            "    return _real_import(name, *args, **kwargs)\n"
+            "builtins.__import__ = _blocking_import\n"
+            "from QVideo.cameras.Genicam.QGenicamCamera import QGenicamCamera\n"
+            "builtins.__import__ = _real_import\n"
+            "# Class must be defined and Harvester must be None (not installed)\n"
+            "assert QGenicamCamera is not None\n"
+            "_mod = sys.modules['QVideo.cameras.Genicam.QGenicamCamera']\n"
+            "assert _mod.Harvester is None\n"
+            "# Fallback stubs must be real classes so isinstance checks work\n"
+            "assert isinstance(_mod.IValue(), _mod.IValue)\n"
+            "assert issubclass(_mod.IInteger, _mod.IValue)\n"
+        )
+        result = subprocess.run(
+            [sys.executable, '-c', script],
+            capture_output=True, text=True
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
 
     def test_returns_false_when_no_camera_found(self):
         harvester = MagicMock()

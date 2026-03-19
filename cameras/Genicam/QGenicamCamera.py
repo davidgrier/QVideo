@@ -13,6 +13,23 @@ except (ImportError, ModuleNotFoundError):
     Harvester = None
     TimeoutException = Exception
 
+    class IValue:         pass  # noqa: E701
+    class ICategory(IValue): pass  # noqa: E701
+    class ICommand(IValue):  pass  # noqa: E701
+    class IEnumeration(IValue): pass  # noqa: E701
+    class IBoolean(IValue):    pass  # noqa: E701
+    class IInteger(IValue):    pass  # noqa: E701
+    class IFloat(IValue):      pass  # noqa: E701
+    class IString(IValue):     pass  # noqa: E701
+
+    class EAccessMode:
+        RW = 'RW'
+        RO = 'RO'
+        WO = 'WO'
+        NI = 'NI'
+
+    IProperty = IEnumeration | IBoolean | IInteger | IFloat | IString
+
 
 logger = logging.getLogger(__name__)
 

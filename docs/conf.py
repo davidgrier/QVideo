@@ -64,5 +64,17 @@ exclude_patterns = ['_build']
 
 # -- HTML output -------------------------------------------------------------
 
-html_theme = 'furo'
+html_theme = 'pydata_sphinx_theme'
 html_title = 'QVideo'
+html_static_path = ['_static']
+html_css_files = ['nyu.css']
+
+html_theme_options = {
+    'github_url': 'https://github.com/davidgrier/QVideo',
+    'show_toc_level': 2,
+    'navigation_with_keys': True,
+    'show_nav_level': 2,
+    'navbar_end': ['navbar-icon-links', 'theme-switcher'],
+    'footer_start': ['copyright'],
+    'footer_end': ['sphinx-version'],
+}

@@ -46,7 +46,7 @@ Repository = "https://github.com/davidgrier/QVideo"
 genicam = ["harvesters", "genicam"]
 picamera = ["picamera2"]
 dev = ["pytest", "pytest-cov"]
-docs = ["furo", "sphinx", "sphinx-autodoc-typehints"]
+docs = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 
 [tool.setuptools]
 packages = [

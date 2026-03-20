@@ -39,7 +39,11 @@ type: project
 - ✅ `numba` removed from required dependencies and `autodoc_mock_imports`
 - ✅ `.gitignore`: added `devel/` and `.claude/`
 - ✅ ReadTheDocs configured and badge added to README
-- ✅ CLAUDE.md: single quotes preferred for strings and docstrings
+- ✅ CLAUDE.md: single quotes preferred; documentation toolchain and NYU theme choices recorded
+- ✅ PyData Sphinx Theme with NYU brand colours (`docs/_static/nyu.css`)
+- ✅ `QVideo.demos` added to pyproject.toml packages (fixes blank Demos page on RTD)
+- ✅ Copyright `2026, David G. Grier` added to `docs/conf.py`
+- ✅ Stale `templates_path` removed from `docs/conf.py` (fixed blank left sidebar)
 
 ## Remaining TODO (low priority)
 

@@ -37,10 +37,7 @@ All 14 files below have class/function docstrings but no module-level docstring:
 `"Programming Language :: Python :: 3.13"` classifier. Add once CI is tested
 on 3.13 (add `"3.13"` to the matrix in `test.yml` first).
 
-### Inconsistent `__all__` formatting in camera backends
-- Noise, Genicam, Flir, Vimbax, OpenCV use: `'QXxxCamera QXxxSource QXxxTree'.split()`
-- Basler, IDS, MV, Picamera use: `['QXxxCamera', 'QXxxSource', 'QXxxTree']`
-Standardize to one form across all nine backends.
+~~**`__all__` formatting**: All nine backends now use split-string form (2026-03-20).~~
 
 ### No test file for lib/types.py
 `lib/types.py` is the only lib module without a corresponding test file.

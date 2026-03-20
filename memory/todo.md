@@ -8,17 +8,7 @@ type: project
 
 ## High priority
 
-### Version files stuck at 3.0.0
-- `version.py` line 3: `__version__ = '3.0.0'` → should be `'3.2.1'`
-- `docs/conf.py` line 14: `release = '3.0.0'` → should be `'3.2.1'`
-- These should be kept in sync with `pyproject.toml` on every release.
-  Consider reading version dynamically from pyproject.toml via
-  `importlib.metadata.version('QVideo')` in both files.
-
-### Broken Sphinx directive
-- `docs/api/cameras.rst` line 34: `.. automodule:: QVideo.cameras.OpenCV.QOpenCVResolutionTree`
-  This references a non-existent module path (it was renamed to `_resolution_tree`).
-  Fix: remove the line or replace with `.. automodule:: QVideo.cameras.OpenCV._resolution_tree`
+~~All high-priority items resolved (2026-03-20).~~
 
 ## Medium priority
 

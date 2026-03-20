@@ -11,7 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 project = 'QVideo'
 author = 'David Grier'
-release = '3.0.0'
+from importlib.metadata import version as _get_version
+release = _get_version('QVideo')
 
 # -- General configuration ---------------------------------------------------
 
@@ -43,7 +44,6 @@ autodoc_mock_imports = [
     'genicam',
     'PySpin',
     'picamera2',
-    'numba',
 ]
 
 # intersphinx: link to external package docs

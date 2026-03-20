@@ -2,6 +2,9 @@
 
 This directory stores persistent notes about the QVideo project for use across Claude Code sessions.
 
+## TODO
+See [todo.md](todo.md) for the full deficiency list from the 2026-03-20 polish assessment.
+
 ## Files
 
 | File | Contents |
@@ -10,6 +13,7 @@ This directory stores persistent notes about the QVideo project for use across C
 | `conventions.md` | camelCase naming convention, renamed attributes, test conventions, soft dependency pattern |
 | `genicam.md` | QGenicamCamera-specific notes: stubs, dynamic accessibility, protected list, import collision |
 | `project-status.md` | Current test count, recent commits, pending tasks |
+| `todo.md` | Deficiency list from 2026-03-20 polish assessment |
 | `pypi-publish-guide.md` | Step-by-step guide for publishing to PyPI via GitHub Actions (API token method) |
 | `related-projects.md` | Python projects with similar camera/lab-instrument capabilities (pylablib, pymmcore-plus, python-microscope, napari, Harvesters) |
 

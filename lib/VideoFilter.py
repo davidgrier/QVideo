@@ -1,3 +1,4 @@
+"""Base classes for image-processing filters in the QVideo filter pipeline."""
 from pyqtgraph.Qt import QtWidgets
 from QVideo.lib.types import Image
 

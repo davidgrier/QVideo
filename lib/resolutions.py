@@ -1,3 +1,4 @@
+"""Utilities for probing supported camera resolutions via OpenCV."""
 import cv2
 
 

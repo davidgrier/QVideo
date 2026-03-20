@@ -7,6 +7,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.2.1] — 2026-03-20
+
+### Fixed
+- **`numba` removed from required dependencies** — `numba` was listed as a
+  core dependency but is only used in an experimental development file
+  (`filters/devel/FastMedian.py`) that is not part of the installed package.
+  Removing it eliminates an unnecessary ~200 MB download (LLVM) from every
+  `pip install QVideo`.
+
+---
+
 ## [3.2.0] — 2026-03-19
 
 ### Changed

@@ -23,7 +23,4 @@ on 3.13 (add `"3.13"` to the matrix in `test.yml` first).
 
 ~~**`__all__` formatting**: All nine backends now use split-string form (2026-03-20).~~
 
-### No test file for lib/types.py
-`lib/types.py` is the only lib module without a corresponding test file.
-It is a small module (type aliases only), but a `test_types.py` would
-complete coverage.
+~~**No test for lib/types.py**: Removed — a single type alias has nothing to test.~~

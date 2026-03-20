@@ -1,7 +1,12 @@
 """Sphinx configuration for QVideo."""
 
+import os
 import sys
 from pathlib import Path
+
+# Use Qt's offscreen platform so pyqtgraph can be imported by autodoc
+# without a display (required on ReadTheDocs and other headless build hosts).
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 # The repo root is one level up from docs/.  Adding it to sys.path lets
 # autodoc import QVideo without requiring an editable install.

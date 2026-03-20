@@ -1,4 +1,4 @@
-"""Abstract base class for all QVideo camera backends."""
+'''Abstract base class for all QVideo camera backends.'''
 from abc import ABCMeta, abstractmethod
 from pyqtgraph.Qt import QtCore
 from QVideo.lib.types import Image

@@ -1,4 +1,4 @@
-"""Abstract base class for video file writers."""
+'''Abstract base class for video file writers.'''
 from abc import (ABCMeta, abstractmethod)
 from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot)
 from QVideo.lib.types import Image

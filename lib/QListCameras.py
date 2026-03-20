@@ -1,4 +1,4 @@
-"""Abstract base for QComboBox widgets that enumerate available cameras."""
+'''Abstract base for QComboBox widgets that enumerate available cameras.'''
 from pyqtgraph import ComboBox
 from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot
 

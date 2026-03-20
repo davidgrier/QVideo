@@ -1,4 +1,4 @@
-"""Composable pipeline of VideoFilter stages between a source and a display."""
+'''Composable pipeline of VideoFilter stages between a source and a display.'''
 from typing import Iterator
 
 from pyqtgraph.Qt import QtWidgets

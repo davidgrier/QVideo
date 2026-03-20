@@ -1,4 +1,4 @@
-"""Abstract base class for video file readers."""
+'''Abstract base class for video file readers.'''
 from abc import ABCMeta, abstractmethod
 from pyqtgraph.Qt import QtCore
 from QVideo.lib import QCamera

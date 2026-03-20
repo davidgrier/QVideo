@@ -1,4 +1,4 @@
-"""Auto-building pyqtgraph parameter tree for QCamera property inspection."""
+'''Auto-building pyqtgraph parameter tree for QCamera property inspection.'''
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from QVideo.lib import QCamera, QVideoSource

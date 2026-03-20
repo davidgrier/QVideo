@@ -1,4 +1,4 @@
-"""Shared type aliases used across QVideo."""
+'''Shared type aliases used across QVideo.'''
 from numpy.typing import NDArray
 import numpy as np
 

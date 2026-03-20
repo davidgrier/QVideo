@@ -1,4 +1,4 @@
-"""Command-line camera selection utility for QVideo applications."""
+'''Command-line camera selection utility for QVideo applications.'''
 import importlib
 import logging
 from argparse import ArgumentParser

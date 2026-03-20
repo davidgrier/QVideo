@@ -1,4 +1,4 @@
-"""Sliding-window frame-rate meter emitted as a Qt signal."""
+'''Sliding-window frame-rate meter emitted as a Qt signal.'''
 from pyqtgraph.Qt import QtCore
 from collections import deque
 import time

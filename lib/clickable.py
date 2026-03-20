@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Factory that adds a clicked() signal to any QWidget subclass."""
+'''Factory that adds a clicked() signal to any QWidget subclass.'''
 
 from pyqtgraph.Qt.QtCore import QEvent, QObject, pyqtSignal
 from pyqtgraph.Qt.QtGui import QMouseEvent

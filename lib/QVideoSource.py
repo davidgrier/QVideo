@@ -1,4 +1,4 @@
-"""QThread wrapper that drives a QCamera and emits newFrame signals."""
+'''QThread wrapper that drives a QCamera and emits newFrame signals.'''
 from pyqtgraph.Qt import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader

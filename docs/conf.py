@@ -59,7 +59,6 @@ intersphinx_mapping = {
     'pyqtgraph': ('https://pyqtgraph.readthedocs.io/en/latest', None),
 }
 
-templates_path = ['_templates']
 exclude_patterns = ['_build']
 
 # -- HTML output -------------------------------------------------------------

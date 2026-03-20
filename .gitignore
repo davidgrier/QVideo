@@ -47,6 +47,10 @@ creds.js
 requirements.txt.bak
 cameras/Genicam/vimbax/tmp/
 cameras/Spinnaker2/Untitled.ipynb
+devel/
+
+# Claude Code internal files
+.claude/
 
 
 # Byte-compiled / optimized / DLL files

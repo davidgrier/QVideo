@@ -30,7 +30,6 @@ classifiers = [
 ]
 dependencies = [
     "h5py",
-    "numba",
     "numpy",
     "opencv-python",
     "PyQt5",

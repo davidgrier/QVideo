@@ -10,38 +10,44 @@ type: project
 
 - 1138 tests passing (+ 16 subtests)
 - Main branch: `main`
-- **v3.2.0 tagged and pushed**; GitHub Actions publish workflow triggered
-- v3.1.0 previously published to PyPI: https://pypi.org/project/QVideo/
+- **v3.2.0 tagged and published to PyPI**
+- CI passing on Python 3.10, 3.11, 3.12 (GitHub Actions)
+- Codecov integration active; coverage badge in README.md
 
-## Recent commits (v3.1.0 work)
+## Recent commits (post-v3.2.0 CI fixes)
 
 | Hash | Description |
 |---|---|
-| (pending) | QOpenCVResolutionTree: resolution drop-down selector for OpenCV cameras |
-| (pending) | QPicamera: fps property via FrameDurationLimits; capture_request() for read() |
-| `037e010` | Revert to pypa/gh-action-pypi-publish with API token; upgrade pip/build |
-| `69cf931` | Change license from MIT to GPL v3 |
-| `4bcded4` | Prepare v3.0.0 for PyPI release |
+| `086c7bf` | Guard cv2.getLogLevel/setLogLevel with getattr for older OpenCV |
+| `1a323d7` | Switch CI from xvfb/xcb to QT_QPA_PLATFORM=offscreen |
+| `c47fafc` | Add conftest.py to create QApplication before test collection |
+| `d6099ff` | Fix CI crash: create QApplication before importing chooser module |
+| `d87b116` | (v3.2.0 release commit) |
+
+## CI configuration (current)
+
+- **Platform**: `QT_QPA_PLATFORM=offscreen` — no X server or xvfb needed
+- **System deps**: `libgl1 libegl1 libglib2.0-0 libxkbcommon0` (xcb/xvfb packages removed)
+- **conftest.py**: creates `QApplication` before any test module is imported (prevents SIGABRT)
+- **Coverage**: uploaded to Codecov from Python 3.10 job only; badge in README.md
+- **Codecov token**: stored as `CODECOV_TOKEN` GitHub repo secret
+
+## Key CI lessons learned
+
+- xvfb + xcb causes fatal SIGABRT (exit 134) in GitHub Actions Ubuntu — use `QT_QPA_PLATFORM=offscreen` instead
+- `QApplication` must be created in `conftest.py` (before test collection), not inside individual test files, because pytest collects `test_chooser.py` first and importing pyqtgraph tree widgets before QApplication exists triggers the abort
+- `cv2.getLogLevel`/`setLogLevel` require OpenCV >= 4.5.2; guard with `getattr`
 
 ## Release checklist (completed)
 
-- ✅ License changed MIT → GPL v3 (required: PyQt5 is GPL v3)
+- ✅ License changed MIT → GPL v3
 - ✅ pyproject.toml: authors, keywords, classifiers, [project.urls]
-- ✅ pyproject.toml: `license = { text = "GPL-3.0-or-later" }` (SPDX text form avoids License-File metadata issue)
-- ✅ README.md: correct slot name, updated camera table, GPL badge
-- ✅ CHANGELOG.md: test count 1050+, all new backends documented
-- ✅ logging.basicConfig() removed from lib/QVideoWriter.py
-- ✅ dvr/__init__.py: duplicate QOpenCVWriter removed
-- ✅ __all__ added to all lib/ modules and QCamcorder.py
 - ✅ GitHub Actions: test.yml (3.10/3.11/3.12) and publish.yml in place
-- ✅ QPicamera rewritten with full property registration and 56 tests
-- ✅ Sphinx documentation complete
-- ✅ PyPI API token stored as `PYPI_API_TOKEN` GitHub secret
-- ✅ v3.0.0 successfully published to PyPI
-
-## Pending tasks
-
-- Replace account-scoped PyPI token with project-scoped token for better security
+- ✅ All backend files renamed _camera.py/_tree.py (eliminates class/module name collision)
+- ✅ CONTRIBUTING.md added
+- ✅ Codecov coverage badge in README.md
+- ✅ PyPI project-scoped API token stored as `PYPI_API_TOKEN` GitHub secret
+- ✅ v3.2.0 successfully published to PyPI
 
 ## Package structure: camera backends
 

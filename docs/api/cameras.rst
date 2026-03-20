@@ -31,19 +31,10 @@ OpenCV
 .. automodule:: QVideo.cameras.OpenCV
    :members:
 
-.. automodule:: QVideo.cameras.OpenCV.QOpenCVResolutionTree
-   :members:
-
 GenICam (base)
 --------------
 
 .. automodule:: QVideo.cameras.Genicam
-   :members:
-
-.. automodule:: QVideo.cameras.Genicam.QGenicamCamera
-   :members:
-
-.. automodule:: QVideo.cameras.Genicam.QGenicamTree
    :members:
 
 FLIR

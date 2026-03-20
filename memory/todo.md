@@ -12,23 +12,7 @@ type: project
 
 ## Medium priority
 
-### Missing module docstrings in lib/
-Sphinx autodoc cannot generate module-level summaries without module docstrings.
-All 14 files below have class/function docstrings but no module-level docstring:
-- `lib/QCamera.py`
-- `lib/QCameraTree.py`
-- `lib/QFPSMeter.py`
-- `lib/QFilterBank.py`
-- `lib/QListCameras.py`
-- `lib/QVideoReader.py`
-- `lib/QVideoScreen.py`
-- `lib/QVideoSource.py`
-- `lib/QVideoWriter.py`
-- `lib/VideoFilter.py`
-- `lib/chooser.py`
-- `lib/clickable.py`
-- `lib/resolutions.py`
-- `lib/types.py`
+~~**Module docstrings**: All 14 lib/ modules now have module-level docstrings (2026-03-20).~~
 
 ## Low priority
 

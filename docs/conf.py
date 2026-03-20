@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # -- Project information -----------------------------------------------------
 
 project = 'QVideo'
-author = 'David Grier'
+author = 'David G. Grier'
+copyright = '2026, David G. Grier'
 from importlib.metadata import version as _get_version
 release = _get_version('QVideo')
 

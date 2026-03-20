@@ -61,6 +61,7 @@ packages = [
     "QVideo.cameras.OpenCV",
     "QVideo.cameras.Picamera",
     "QVideo.cameras.Vimbax",
+    "QVideo.demos",
     "QVideo.dvr",
     "QVideo.filters",
     "QVideo.lib",
@@ -78,6 +79,7 @@ packages = [
 "QVideo.cameras.OpenCV"     = "cameras/OpenCV"
 "QVideo.cameras.Picamera"   = "cameras/Picamera"
 "QVideo.cameras.Vimbax"     = "cameras/Vimbax"
+"QVideo.demos"              = "demos"
 "QVideo.dvr"                = "dvr"
 "QVideo.filters"            = "filters"
 "QVideo.lib"                = "lib"

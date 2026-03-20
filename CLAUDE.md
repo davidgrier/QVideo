@@ -81,6 +81,30 @@ Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilte
 - `# pragma: no cover` on all `if __name__ == '__main__':` guards.
 - Docstrings use NumPy style.
 
+## Documentation
+
+Sphinx documentation uses the **PyData Sphinx Theme** (`pydata-sphinx-theme`)
+with NYU brand colours applied via `docs/_static/nyu.css`:
+
+- Primary: NYU purple `#57068c`
+- Accent/hover: NYU violet `#8900e1`
+
+`docs/conf.py` key settings:
+- `html_theme = 'pydata_sphinx_theme'`
+- `html_static_path = ['_static']` + `html_css_files = ['nyu.css']`
+- `html_theme_options`: GitHub URL, `show_toc_level: 2`, theme switcher in navbar
+- `os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')` at the top, before any imports, for headless autodoc builds
+- `copyright = '2026, David G. Grier'`
+- Version read via `importlib.metadata.version('PackageName')`
+- Docstrings: NumPy style
+
+ReadTheDocs config (`.readthedocs.yaml`):
+- `os: ubuntu-22.04`, `python: '3.12'`
+- apt packages: `libgl1 libegl1 libglib2.0-0 libxkbcommon0`
+- Install: `pip install -e ".[docs]"`
+
+`[project.optional-dependencies]` docs group: `pydata-sphinx-theme`, `sphinx`, `sphinx-autodoc-typehints`.
+
 ## Style
 
 - Prefer single quotes over double quotes for strings, including docstrings.

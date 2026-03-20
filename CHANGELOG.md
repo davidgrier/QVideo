@@ -7,6 +7,31 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.2.2] — 2026-03-20
+
+### Changed
+- **`QVideo.__version__`** now reads from installed package metadata via
+  `importlib.metadata`; `version.py` is deleted.  `pyproject.toml` is
+  the single source of truth for the version string.
+- **`docs/conf.py`** reads the release version via `importlib.metadata`
+  and sets `QT_QPA_PLATFORM=offscreen` for headless autodoc builds.
+- **ReadTheDocs** support added (`.readthedocs.yaml`).
+
+### Fixed
+- Broken `automodule` directives in `docs/api/cameras.rst` left over
+  from the v3.2.0 rename (`QOpenCVResolutionTree`, `QGenicamCamera`,
+  `QGenicamTree` → removed; covered by package-level directives).
+
+### Documentation
+- Module-level docstrings added to all 14 `lib/` modules.
+
+### Housekeeping
+- `__all__` style unified to split-string form across all camera backends.
+- `numba` removed from `autodoc_mock_imports` (no longer a dependency).
+- `.gitignore`: added `devel/` and `.claude/`.
+
+---
+
 ## [3.2.1] — 2026-03-20
 
 ### Fixed

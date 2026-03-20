@@ -81,6 +81,10 @@ Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilte
 - `# pragma: no cover` on all `if __name__ == '__main__':` guards.
 - Docstrings use NumPy style.
 
+## Style
+
+- Prefer single quotes over double quotes for strings, including docstrings.
+
 ## Naming conventions
 
 Follow the PyQt camelCase convention for all instance attributes on Qt classes:

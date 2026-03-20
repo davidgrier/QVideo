@@ -105,6 +105,8 @@ ReadTheDocs config (`.readthedocs.yaml`):
 
 `[project.optional-dependencies]` docs group: `pydata-sphinx-theme`, `sphinx`, `sphinx-autodoc-typehints`.
 
+Add `html_sidebars = {'**': []}` to suppress the empty left sidebar on leaf pages — the top navbar handles navigation for small sites.
+
 ## Style
 
 - Prefer single quotes over double quotes for strings, including docstrings.

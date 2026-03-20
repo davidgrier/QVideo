@@ -77,3 +77,8 @@ html_theme_options = {
     'footer_start': ['copyright'],
     'footer_end': ['sphinx-version'],
 }
+
+# The site is small enough that the top navbar covers all navigation.
+# Suppress the primary (left) sidebar so it doesn't appear empty on
+# leaf pages that have no toctree children.
+html_sidebars = {'**': []}

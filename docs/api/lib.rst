@@ -1,9 +1,6 @@
 Core library
 ============
 
-.. automodule:: QVideo.lib
-   :members:
-
 QCamera
 -------
 

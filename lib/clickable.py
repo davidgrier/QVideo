@@ -10,20 +10,26 @@ __all__ = ['clickable']
 
 
 def clickable(widget: QWidget):
-    '''Adds a clicked() signal to a widget such as QLineEdit that
-    ordinarily does not provide notifications of clicks.
+    '''Add a ``clicked()`` signal to a widget that does not ordinarily emit one.
 
-    Example:
+    Installs an event filter on *widget* that intercepts
+    ``MouseButtonRelease`` events and emits a ``clicked()`` signal.
+
+    Parameters
+    ----------
+    widget : QWidget
+        The widget to make clickable.
+
+    Returns
     -------
-    myWidget = QWidget()
-    widgetClicked = clickable(myWidget)
-    widgetClicked.connect(lambda: print("clicked"))
+    pyqtSignal
+        The ``clicked()`` signal attached to *widget*.
 
-    Explanation:
-    -----------
-    After the call to clickable(), myWidget now processes
-    MouseButtonRelease events by emitting the clicked() signal.
-    clickable() returns the signal itself for convenience.
+    Examples
+    --------
+    >>> myWidget = QWidget()
+    >>> widgetClicked = clickable(myWidget)
+    >>> widgetClicked.connect(lambda: print('clicked'))
     '''
 
     class Filter(QObject):

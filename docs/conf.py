@@ -39,7 +39,6 @@ napoleon_use_rtype = False
 # autodoc settings
 autodoc_member_order = 'bysource'
 autodoc_default_options = {
-    'members': True,
     'undoc-members': False,
     'show-inheritance': True,
 }
@@ -60,6 +59,32 @@ intersphinx_mapping = {
 }
 
 exclude_patterns = ['_build']
+
+
+def setup(app):
+    '''Suppress spurious duplicate-object warnings from Sphinx 8.x.
+
+    Sphinx 8.x's ObjectDescription generates class member directives both
+    inside the class body (via parse_content_to_nodes) and as a separate
+    top-level list.  This causes every method/attribute to be registered
+    twice, triggering "duplicate object description" warnings.  The fix
+    marks the second registration as an alias so it silently defers to the
+    first without emitting a warning.
+    '''
+    from sphinx.domains.python import PythonDomain
+    _orig = PythonDomain.note_object
+    _seen = {}
+
+    def _dedup(self, name, objtype, node_id, aliased=False, location=None):
+        if not aliased and name in _seen:
+            # Second occurrence: register as alias to suppress duplicate warning
+            return _orig(self, name, objtype, node_id, aliased=True,
+                         location=location)
+        if not aliased:
+            _seen[name] = self.env.docname
+        return _orig(self, name, objtype, node_id, aliased, location)
+
+    PythonDomain.note_object = _dedup
 
 # -- HTML output -------------------------------------------------------------
 

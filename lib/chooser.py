@@ -61,7 +61,8 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     Returns
     -------
     ArgumentParser
-        Parser with mutually exclusive flags:
+        Parser with mutually exclusive flags::
+
             -b -> Basler (pylon)
             -c -> OpenCV (separate width/height spinboxes)
             -f -> Flir
@@ -70,6 +71,7 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
             -p -> Raspberry Pi camera module
             -r -> OpenCV with resolution drop-down selector
             -v -> Allied Vision VimbaX
+
         The flag can be followed by an optional positional
         cameraID argument.
     '''

@@ -60,8 +60,11 @@ class QDVRWidget(QtWidgets.QFrame):
         Emitted when playback starts (``True``) or stops (``False``).
     '''
 
+    #: Emitted for each frame during playback.
     newFrame = QtCore.pyqtSignal(np.ndarray)
+    #: Emitted when recording starts (``True``) or stops (``False``).
     recording = QtCore.pyqtSignal(bool)
+    #: Emitted when playback starts (``True``) or stops (``False``).
     playing = QtCore.pyqtSignal(bool)
 
     UIFILE = Path(__file__).parent / 'QDVRWidget.ui'

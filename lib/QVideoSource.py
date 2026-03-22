@@ -64,6 +64,7 @@ class QVideoSource(QtCore.QThread):
 
     Source = QCamera | QVideoReader
 
+    #: Emitted when a new video frame is available.
     newFrame = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self, source: Source) -> None:

@@ -6,15 +6,15 @@ layers below it, so individual components can be used in isolation.
 
 .. code-block:: text
 
-   ┌─────────────────────────────────────────┐
-   │  Demos / QCamcorder  (application layer)│
-   ├──────────────┬──────────────────────────┤
-   │  QCameraTree │  QFilterBank / DVR       │  UI layer
-   ├──────────────┴──────────────────────────┤
-   │  QVideoSource  (QThread)                │  threading layer
-   ├─────────────────────────────────────────┤
-   │  QCamera  (hardware abstraction)        │  camera layer
-   └─────────────────────────────────────────┘
+   ┌──────────────────────────────────────────────────┐
+   │  QCamcorder  Demo  FilterDemo  ROIDemo           │  application layer
+   ├──────────────┬───────────────────────────────────┤
+   │  QCameraTree │  QVideoScreen  QFilterBank  DVR   │  UI layer
+   ├──────────────┴───────────────────────────────────┤
+   │  QVideoSource  (QThread)                         │  threading layer
+   ├──────────────────────────────────────────────────┤
+   │  QCamera  (hardware abstraction)                 │  camera layer
+   └──────────────────────────────────────────────────┘
 
 Camera layer — ``QVideo.lib.QCamera``
 --------------------------------------
@@ -52,6 +52,11 @@ UI layer
 ``pyqtgraph.ParameterTree`` widget that reads ``camera._properties`` to
 auto-build a control panel — no manual UI code is needed per camera.
 
+:class:`~QVideo.lib.QVideoScreen.QVideoScreen` displays live frames from
+a :class:`~QVideo.lib.QVideoSource.QVideoSource`.  It maintains the
+video aspect ratio by resizing its containing window whenever the frame
+dimensions change.
+
 :class:`~QVideo.lib.QFilterBank.QFilterBank` and
 :class:`~QVideo.lib.VideoFilter.VideoFilter` provide a composable
 image-processing pipeline that sits between a source and a display widget.
@@ -62,10 +67,16 @@ Application layer
 :class:`~QVideo.QCamcorder.QCamcorder` composes a
 :class:`~QVideo.lib.QVideoScreen.QVideoScreen`,
 :class:`~QVideo.lib.QCameraTree.QCameraTree`, and
-:class:`~QVideo.dvr.QDVRWidget.QDVRWidget` into a single widget.
+:class:`~QVideo.dvr.QDVRWidget.QDVRWidget` into a single reusable widget.
 
 The :mod:`~QVideo.demos` package provides three ready-to-run applications
-that demonstrate different configurations of the framework.
+built on the framework, following two inheritance chains:
+
+* :class:`~QVideo.demos.demo.Demo` — minimal layout: screen + camera tree.
+  :class:`~QVideo.demos.filterdemo.FilterDemo` extends it with a
+  :class:`~QVideo.lib.QFilterBank.QFilterBank` panel.
+* :class:`~QVideo.demos.ROIdemo.ROIDemo` extends
+  :class:`~QVideo.QCamcorder.QCamcorder` with a draggable ROI overlay.
 
 Camera backends
 ---------------

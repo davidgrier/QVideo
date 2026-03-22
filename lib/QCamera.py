@@ -76,7 +76,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     Settings = dict[str, PropertyValue]
     CameraData = tuple[bool, Image | None]
 
+    #: Emitted by subclasses when the image dimensions change.
     shapeChanged = QtCore.pyqtSignal(QtCore.QSize)
+    #: Emitted by :meth:`get` with the property name and current value.
     propertyValue = QtCore.pyqtSignal(str, object)
 
     def __init__(self, *args, **kwargs) -> None:

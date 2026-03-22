@@ -54,6 +54,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
 
     CameraData = QCamera.CameraData
 
+    #: Emitted when the file is opened and the frame dimensions are known.
     shapeChanged = QtCore.pyqtSignal(QtCore.QSize)
 
     def __init__(self, filename: str) -> None:

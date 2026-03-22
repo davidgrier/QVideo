@@ -36,10 +36,10 @@ class Median(_MedianBase):
 
     References
     ----------
-    .. [1] P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
-       averaging method for large data sets", *Journal of the American
-       Statistical Association*, 85(409):97–104, 1990.
-       :doi:`10.1080/01621459.1990.10475311`
+    P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
+    averaging method for large data sets", *Journal of the American
+    Statistical Association*, 85(409):97–104, 1990.
+    `doi:10.1080/01621459.1990.10475311 <https://doi.org/10.1080/01621459.1990.10475311>`_
     '''
 
     def add(self, data: Image) -> None:

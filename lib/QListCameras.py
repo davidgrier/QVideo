@@ -30,6 +30,7 @@ class QListCameras(ComboBox):
         Clear and repopulate the list of available cameras.
     '''
 
+    #: Emitted when a camera entry is selected.
     cameraSelected = pyqtSignal(type, int)
 
     def __init__(self, *args, **kwargs) -> None:

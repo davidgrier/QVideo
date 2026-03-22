@@ -25,18 +25,20 @@ class MoMedian(_MedianBase):
         If ``None`` the buffers are allocated on the first call to
         :meth:`add`.  Default: ``None``.
 
+    Notes
+    -----
+    :class:`MoMedian` is a rolling variant of the remedian [R90]_: rather than
+    waiting for a complete triplet, it uses the two most recently stored
+    frames together with the current frame to produce a new estimate on
+    every call.  This reduces latency at the cost of slight accuracy loss
+    relative to the strict remedian.
+
     References
     ----------
-    .. [1] P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
+    .. [R90] P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
        averaging method for large data sets", *Journal of the American
        Statistical Association*, 85(409):97–104, 1990.
-       :doi:`10.1080/01621459.1990.10475311`
-
-       :class:`MoMedian` is a rolling variant of the remedian: rather than
-       waiting for a complete triplet, it uses the two most recently stored
-       frames together with the current frame to produce a new estimate on
-       every call.  This reduces latency at the cost of slight accuracy loss
-       relative to the strict remedian.
+       `doi:10.1080/01621459.1990.10475311 <https://doi.org/10.1080/01621459.1990.10475311>`_
     '''
 
     def add(self, data: Image) -> None:

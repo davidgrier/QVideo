@@ -631,11 +631,14 @@ class TestSet(unittest.TestCase):
         # Mode changes: RW before start → RO after start (protected),
         # then RO during registration.  The setter also checks access mode
         # at runtime (4th call) but proceeds because Width is protected.
+        # The width getter is then called via self.shape inside _shape_setter
+        # (5th call).
         feature.node.get_access_mode.side_effect = [
             _EAccessMode.RW,  # _scan_modes pre-start
             _EAccessMode.RO,  # _scan_modes post-start → protected
             _EAccessMode.RO,  # _register_features
             _EAccessMode.RO,  # setter runtime check
+            _EAccessMode.RW,  # getter called via self.shape in _shape_setter
         ]
         device = _make_device()
         root = MagicMock(spec=_ICategory)

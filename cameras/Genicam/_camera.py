@@ -103,10 +103,25 @@ class QGenicamCamera(QCamera):
 
     @staticmethod
     def _make_getter(feature: IValue):
-        '''Return a zero-argument callable that reads the feature value.'''
+        '''Return a zero-argument callable that reads the feature value.
+
+        The returned callable checks the current access mode before reading,
+        returning ``None`` for features that are not readable at call time
+        (e.g. enumeration nodes whose access mode changes after acquisition
+        starts).
+        '''
         if isinstance(feature, IEnumeration):
-            return lambda: feature.to_string()
-        return lambda: feature.value
+            def getter():
+                if feature.node.get_access_mode() in (EAccessMode.RO, EAccessMode.RW):
+                    return feature.to_string()
+                return None
+            return getter
+
+        def getter():
+            if feature.node.get_access_mode() in (EAccessMode.RO, EAccessMode.RW):
+                return feature.value
+            return None
+        return getter
 
     @staticmethod
     def _feature_ptype(feature: IValue) -> type:
@@ -179,8 +194,7 @@ class QGenicamCamera(QCamera):
                 return
             name = feature.node.name
             getter = self._make_getter(feature)
-            writable = (mode == EAccessMode.RW) or (name in self.protected)
-            setter = self._make_setter(feature, name) if writable else None
+            setter = self._make_setter(feature, name)
             self.registerProperty(name,
                                   getter=getter,
                                   setter=setter,
@@ -271,6 +285,7 @@ class QGenicamCamera(QCamera):
             self.harvester.reset()
         except Exception:
             pass
+        self.nodeMap = None
 
     def _deinitialize(self) -> None:
         '''Stop acquisition and release the GenICam device.'''
@@ -342,6 +357,28 @@ class QGenicamCamera(QCamera):
             return self.nodeMap.get_node(name)
         logger.warning(f'node {name} is unknown')
         return None
+
+    _SHAPE_ALIASES = frozenset(('width', 'height'))
+
+    @property
+    def settings(self) -> QCamera.Settings:
+        '''All registered property values, excluding lowercase shape aliases.
+
+        GenICam cameras register ``width``/``height`` as lowercase aliases for
+        ``Width``/``Height`` so that :attr:`~QVideo.lib.QCamera.QCamera.shape`
+        and attribute access (``camera.width``) work the same as on other
+        backends.  Those aliases are excluded here so that
+        :class:`~QVideo.cameras.Genicam._tree.QGenicamTree` does not try to
+        sync them to tree parameters (which use the canonical GenICam names).
+        '''
+        return {name: spec['getter']()
+                for name, spec in self._properties.items()
+                if name not in self._SHAPE_ALIASES}
+
+    @settings.setter
+    def settings(self, settings: QCamera.Settings) -> None:
+        for key, value in settings.items():
+            self.set(key, value)
 
     def is_readwrite(self, feature: str) -> bool:
         '''Return ``True`` if the named feature is currently writable.

@@ -114,12 +114,12 @@ class QCameraTree(ParameterTree):
     def _setupUi(self) -> None:
         header = self.header()
         self.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
-        policy = header.ResizeMode.Interactive
-        header.setSectionResizeMode(policy)
-        header.setStretchLastSection(False)
-        for n in range(self.columnCount()):
-            hint = self.sizeHintForColumn(n)
-            header.resizeSection(n, hint + 20)
+        self.setIndentation(10)
+        count = self.columnCount()
+        for n in range(count - 1):
+            header.setSectionResizeMode(n, header.ResizeMode.Interactive)
+            self.resizeColumnToContents(n)
+        header.setSectionResizeMode(count - 1, header.ResizeMode.Stretch)
         self.adjustSize()
         self.setMinimumWidth(self.width())
 

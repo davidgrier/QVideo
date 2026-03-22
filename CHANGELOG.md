@@ -7,6 +7,79 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.2.3] — 2026-03-21
+
+### Fixed
+
+- **`QGenicamTree` auto-control updates** — a 500 ms poll timer now refreshes
+  all visible GenICam node values from the camera so that autonomous
+  camera-side changes (e.g. `GainAuto` reverting from `"Once"` to `"Off"`,
+  `Gain` being adjusted during auto-exposure) are reflected in the UI without
+  requiring host-side notifications.  `PyNodeCallback` is not used because it
+  fires only on host writes, not on camera-internal value changes.
+- **`AcquisitionResultingFrameRate` (and similar derived read-only nodes) not
+  updating** — `_updateLimits` is now called before the value loop in
+  `_pollCamera`, so pyqtgraph's float/int parameter limits are current before
+  `setValue` is called.  Previously the stale max bound caused the new value
+  to be silently clipped, leaving the display stuck at the old reading.
+- **Segfault on exit after adjusting GenICam controls** — three-layer fix:
+  (1) `_cleanup()` now nulls `nodeMap` immediately after the harvester is
+  reset, so `has_node()` returns `False` for any access after teardown;
+  (2) `_pollCamera()` returns early if the camera is no longer open;
+  (3) `_pollTimer.stop` is connected to `aboutToQuit`, stopping the timer
+  within the same signal dispatch that triggers camera cleanup, eliminating
+  the window in which a queued timer event could fire against a freed C++
+  genapi object.
+- **`QGenicamCamera` startup warnings** (`Unknown property`, `Unsupported
+  property`) — `QFlirTree` now filters `_DEFAULT_SETTINGS` to only apply
+  keys that are registered on the connected camera, eliminating warnings for
+  model-specific nodes absent on a given device.  The `width`/`height`
+  lowercase aliases are excluded from `QGenicamCamera.settings` so they are
+  never forwarded to the tree.
+- **`ExposureTime` read-only after `ExposureAuto="Once"` sweep** —
+  `_register_features` now always creates a setter; the setter checks the
+  current access mode dynamically at call time so features that are
+  temporarily read-only during an auto sweep become writable again once the
+  sweep completes, without requiring re-registration.
+- **`QGenicamCamera` getter access-mode check** — getters now check the
+  current access mode before reading and return `None` for features that are
+  not readable at call time, preventing stale reads from nodes whose mode
+  changes after acquisition starts.
+- **`camera.settings =` interface for GenICam backends** — `Basler`, `IDS`,
+  and `MV` trees updated from the removed `setSettings()` call to the
+  standard `camera.settings = ...` property assignment.
+- **`QCameraTree` column layout** — name column now uses
+  `resizeColumnToContents` (more accurate than `sizeHintForColumn + 20`) and
+  the value column stretches to fill remaining width.  Tree indentation
+  reduced from 20 px to 10 px, significantly narrowing the widget for cameras
+  with long property names.
+- **`QVideoScreen` aspect ratio** — a `resizeEvent` override and deferred
+  `_fitToVideo` slot keep the containing window height consistent with the
+  video aspect ratio as the window is resized or the source changes.
+
+### Added
+
+- **`QFlirCamera` Spinnaker 4.3 warning** — docstring `.. warning::` directs
+  users to downgrade to Spinnaker 4.1.0.172 if they experience a hang on exit
+  caused by a `DevClose()` bug in 4.3.0.189 (confirmed by FLIR support).
+- **`FilterDemo`** — `demos/filterdemo.py` refactored: the class is renamed
+  from `Demo` to `FilterDemo` and now subclasses `Demo` (DRY).
+
+### Documentation
+
+- Sphinx 8.x duplicate-object description warnings eliminated via a
+  `PythonDomain.note_object` patch in `docs/conf.py setup()`.
+- `docs/api/dvr.rst` and `docs/api/demos.rst` expanded with per-module
+  sections and usage examples.
+- Architecture diagram and prose updated to reflect `QVideoScreen`,
+  `FilterDemo`, and `ROIDemo`.
+- `#:` attribute doc-comments added to all PyQt signals across `lib/` and
+  `dvr/` to suppress Sphinx emphasis-in-signature warnings.
+- `:doi:` roles converted to plain URL hyperlinks in `filters/Median.py` and
+  `filters/MoMedian.py`; footnote labels deduplicated.
+
+---
+
 ## [3.2.2] — 2026-03-20
 
 ### Changed

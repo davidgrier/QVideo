@@ -530,12 +530,19 @@ class TestUpdateValues(unittest.TestCase):
         tree._updateValues()
         self.assertEqual(tree._parameters['PixelFormat'].value(), 'RGB8')
 
-    def test_rw_node_value_not_refreshed(self):
+    def test_rw_node_value_not_refreshed_by_update(self):
         feat = _float_feature('Gamma', value=1.0, mode=_EAccessMode.RW)
         tree, cam, nm = make_tree(features=[feat])
         nm.get_node('Gamma').value = 2.0
         tree._updateValues()
         self.assertAlmostEqual(tree._parameters['Gamma'].value(), 1.0)
+
+    def test_rw_node_value_refreshed_by_poll(self):
+        feat = _float_feature('Gamma', value=1.0, mode=_EAccessMode.RW)
+        tree, cam, nm = make_tree(features=[feat])
+        nm.get_node('Gamma').value = 2.0
+        tree._pollCamera()
+        self.assertAlmostEqual(tree._parameters['Gamma'].value(), 2.0)
 
     def test_invisible_node_skipped(self):
         feat = _float_feature('ResultFPS', value=1.5, min=0.5, max=120.0,

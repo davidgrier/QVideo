@@ -4,6 +4,7 @@ from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
                             IBoolean, IInteger, IFloat, IString)
+from pyqtgraph.Qt import QtCore
 import logging
 
 
@@ -20,6 +21,12 @@ class QGenicamTree(QCameraTree):
     Builds a :class:`~QVideo.lib.QCameraTree.QCameraTree` from the camera's
     GenICam node map and exposes visibility and per-feature enable/disable
     controls.
+
+    A timer polls the camera periodically so that autonomous camera-side
+    changes (e.g. ``Gain`` being adjusted by auto-exposure, ``GainAuto``
+    reverting from ``"Once"`` to ``"Off"``) are reflected in the UI.
+    ``PyNodeCallback`` is not used because it only fires when the **host**
+    writes a node, not when the camera changes a value autonomously.
 
     Parameters
     ----------
@@ -48,12 +55,23 @@ class QGenicamTree(QCameraTree):
         self.controls = controls
         self.visibility = visibility
         self._updateEnabled()
+        self._pollTimer = QtCore.QTimer(self)
+        self._pollTimer.setInterval(500)
+        self._pollTimer.timeout.connect(self._pollCamera)
+        self._pollTimer.start()
+        QtCore.QCoreApplication.instance().aboutToQuit.connect(self._pollTimer.stop)
+
+    def closeEvent(self, event) -> None:
+        self._pollTimer.stop()
+        super().closeEvent(event)
 
     def description(self, camera: QGenicamCamera) -> dict:
         '''Return a dictionary describing the node map of the camera'''
         root = camera.node('Root')
+        if root is None:
+            return []
         description = self.describe(root)
-        return description['children']
+        return description.get('children', [])
 
     def describe(self, feature: IValue) -> dict[str, object]:
         '''Return a dictionary describing the specified feature'''
@@ -110,6 +128,8 @@ class QGenicamTree(QCameraTree):
             p.sigValueChanged.connect(self._handleItemChanges)
 
     def _handleItemChanges(self) -> None:
+        if self._ignoreSync:
+            return
         logger.debug('Handling item changes')
         self._updateVisible()
         self._updateEnabled()
@@ -167,6 +187,53 @@ class QGenicamTree(QCameraTree):
                 p.setValue(value)
             finally:
                 p.blockSignals(False)
+
+    def _pollCamera(self) -> None:
+        '''Refresh all readable Parameter values and enabled states.
+
+        Called by the poll timer to pick up autonomous camera-side changes
+        that do not generate host-side notifications — e.g. ``Gain`` being
+        adjusted during auto-exposure, or ``GainAuto`` reverting from
+        ``"Once"`` to ``"Off"`` after the sweep completes.
+
+        Returns immediately if the camera is no longer open (e.g. during
+        application shutdown) to prevent accessing freed C++ genapi objects.
+
+        Signals are not blocked so that the visual widgets update and
+        ``_handleItemChanges`` fires when a value changes.
+        :attr:`_ignoreSync` is set for the duration so that the resulting
+        ``sigTreeStateChanged`` emissions do not send values back to the
+        camera.  :meth:`_updateEnabled` is called unconditionally so that
+        access-mode changes (e.g. ``ExposureTime`` becoming writable again
+        after the sweep) are reflected even when the controlling node value
+        has not changed.
+        '''
+        if not self.camera.isOpen():
+            return
+        self._ignoreSync = True
+        try:
+            self._updateLimits()
+            for item in self.listAllItems()[1:]:
+                p = item.param
+                if not p.opts.get('visible', False):
+                    continue
+                name = p.opts.get('name')
+                if not self.camera.has_node(name):
+                    continue
+                node = self.camera.node(name)
+                mode = node.node.get_access_mode()
+                if mode not in (EAccessMode.RO, EAccessMode.RW):
+                    continue
+                if isinstance(node, IEnumeration):
+                    value = node.to_string()
+                elif isinstance(node, (IBoolean, IInteger, IFloat, IString)):
+                    value = node.value
+                else:
+                    continue
+                p.setValue(value)
+            self._updateEnabled()
+        finally:
+            self._ignoreSync = False
 
     def _updateLimits(self) -> None:
         '''Refresh Parameter constraints from the live GenICam node values.

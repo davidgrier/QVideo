@@ -41,6 +41,8 @@ class Demo(QWidget):
         layout = QHBoxLayout(self)
         layout.addWidget(self.screen)
         layout.addWidget(self.cameraTree)
+        layout.setStretch(0, 1)  # screen takes all surplus horizontal space
+        layout.setStretch(1, 0)  # controls stay at their natural width
 
 
 def main() -> None:  # pragma: no cover

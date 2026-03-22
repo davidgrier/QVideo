@@ -6,16 +6,20 @@ Run directly::
     python -m QVideo.demos.filterdemo
 '''
 
-from QVideo.lib import QVideoScreen, QCameraTree
-from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
+from QVideo.demos.demo import Demo
+from QVideo.lib import QCameraTree
+from pyqtgraph.Qt.QtWidgets import QHBoxLayout, QVBoxLayout
 
 
-__all__ = ['Demo']
+__all__ = ['FilterDemo']
 
 
-class Demo(QWidget):
-    '''A demo widget that displays a video feed from a camera
-    alongside a camera control tree and filter bank.
+class FilterDemo(Demo):
+    '''Extends :class:`~QVideo.demos.demo.Demo` with an image-filter bank.
+
+    Adds a :class:`~QVideo.lib.QFilterBank.QFilterBank` panel below the
+    camera control tree so that image-processing filters can be toggled
+    and adjusted alongside the live feed.
 
     Parameters
     ----------
@@ -24,23 +28,14 @@ class Demo(QWidget):
     filters : list[str]
         Names of filter classes to register from :mod:`QVideo.filters`.
     **kwargs :
-        Additional keyword arguments forwarded to :class:`QWidget`.
-
-    Notes
-    -----
-    Sets up a horizontal layout containing a video screen on the left
-    and a vertical layout on the right for camera controls and filters.
+        Additional keyword arguments forwarded to :class:`~QVideo.demos.demo.Demo`.
     '''
 
     def __init__(self,
                  cameraTree: QCameraTree,
                  filters: list[str],
                  **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.screen = QVideoScreen()
-        self.cameraTree = cameraTree
-        self._setupUi()
-        self.screen.source = self.cameraTree.source
+        super().__init__(cameraTree, **kwargs)
         self.addFilters(filters)
 
     def _setupUi(self) -> None:
@@ -48,6 +43,8 @@ class Demo(QWidget):
         layout.addWidget(self.screen)
         self._controls = QVBoxLayout()
         layout.addLayout(self._controls)
+        layout.setStretch(0, 1)  # screen takes all surplus horizontal space
+        layout.setStretch(1, 0)  # controls stay at their natural width
         self._controls.addWidget(self.cameraTree)
 
     def addFilters(self, filters: list[str]) -> None:
@@ -72,7 +69,7 @@ def main() -> None:  # pragma: no cover
     pg.mkQApp()
     camera = choose_camera().start()
     filters = 'QRGBFilter QBlurFilter QSampleHold QEdgeFilter'.split()
-    widget = Demo(camera, filters)
+    widget = FilterDemo(camera, filters)
     widget.show()
     pg.exec()
 

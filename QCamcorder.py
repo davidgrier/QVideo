@@ -3,7 +3,7 @@
 
 Run directly to launch a full camcorder application with camera selection::
 
-    python -m QVideo.QCamcorder [-c|-f|-s|-v] [cameraID]
+    python -m QVideo.QCamcorder [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
 
 Camera flags (mutually exclusive):
 
@@ -15,7 +15,9 @@ Camera flags (mutually exclusive):
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
+    -r [cameraID]   OpenCV camera with resolution drop-down selector
     -v [cameraID]   Allied Vision VimbaX camera
+    -h              Show help and exit
 
 If no flag is given, a noise camera is used as a fallback.
 '''
@@ -67,6 +69,8 @@ class QCamcorder(QWidget):
     def _setupUi(self) -> None:
         uic.loadUi(str(self.UIFILE), self)
         self.controls.layout().addWidget(self.cameraWidget)
+        self.layout().setStretch(0, 1)  # screen takes all surplus horizontal space
+        self.layout().setStretch(1, 0)  # controls stay at their natural width
 
     def _connectSignals(self) -> None:
         self.dvr.playing.connect(self.dvrPlayback)

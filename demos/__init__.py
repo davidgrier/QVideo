@@ -42,7 +42,9 @@ If no flag is given, a noise camera is used as a fallback.
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
+    -r [cameraID]   OpenCV camera with resolution drop-down selector
     -v [cameraID]   Allied Vision VimbaX camera
+    -h              Show help and exit
 
 ``cameraID`` is an optional integer index (default ``0``) used when
 multiple cameras of the same type are connected.  The flags are mutually
@@ -55,5 +57,6 @@ Example::
 '''
 
 from .demo import Demo
-from .filterdemo import Demo as FilterDemo
+from .filterdemo import FilterDemo
 from .ROIdemo import ROIFilter, ROIDemo
+

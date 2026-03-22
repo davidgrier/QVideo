@@ -43,6 +43,7 @@ class ROIFilter(pg.RectROI):
         Emitted with the cropped frame each time :meth:`crop` is called.
     '''
 
+    #: Emitted with the cropped frame each time :meth:`crop` is called.
     newFrame = pyqtSignal(np.ndarray)
 
     def __init__(self, fps: float, *args, **kwargs) -> None:

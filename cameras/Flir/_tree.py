@@ -10,7 +10,7 @@ class QFlirTree(QGenicamTree):
 
     '''Camera property tree for :class:`~QVideo.cameras.Flir.QFlirCamera`.
 
-    Builds a :class:`~QVideo.lib.QCameraTree.QCameraTree` with a curated
+    Builds a :class:`~QVideo.lib.QcameraTree.QCameraTree` with a curated
     set of controls and sensible default settings for FLIR cameras.
 
     Parameters
@@ -59,7 +59,8 @@ class QFlirTree(QGenicamTree):
                  controls: list[str] | None = None,
                  **kwargs) -> None:
         camera = camera or QFlirCamera(cameraID=cameraID)
-        camera.setSettings(self._DEFAULT_SETTINGS)
+        camera.settings = {k: v for k, v in self._DEFAULT_SETTINGS.items()
+                           if k in camera.properties}
         super().__init__(*args,
                          camera=camera,
                          controls=controls or self._DEFAULT_CONTROLS,

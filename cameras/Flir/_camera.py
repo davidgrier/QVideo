@@ -15,6 +15,14 @@ class QFlirCamera(QGenicamCamera):
 
     If Spinnaker is not installed, instantiation raises :exc:`TypeError`.
 
+    .. warning::
+
+        Spinnaker GenTL producer **4.3.0.189** contains a bug in which
+        ``DevClose()`` hangs indefinitely when the camera is released.
+        This causes the application to hang on exit.  FLIR customer
+        support has confirmed the bug.  If you experience this issue,
+        downgrade to Spinnaker **4.1.0.172** or earlier.
+
     Parameters
     ----------
     cameraID : int

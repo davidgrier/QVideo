@@ -56,7 +56,7 @@ class QBaslerTree(QGenicamTree):
                  controls: list[str] | None = None,
                  **kwargs) -> None:
         camera = camera or QBaslerCamera(cameraID=cameraID)
-        camera.setSettings(self._DEFAULT_SETTINGS)
+        camera.settings = self._DEFAULT_SETTINGS
         super().__init__(*args,
                          camera=camera,
                          controls=controls or self._DEFAULT_CONTROLS,

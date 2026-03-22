@@ -155,6 +155,30 @@ class QVideoScreen(GraphicsLayoutWidget):
                            padding=0, update=True)
         self.setMinimumSize(shape / 2)
         self.updateGeometry()
+        QtCore.QTimer.singleShot(0, self._fitToVideo)
+
+    def resizeEvent(self, event) -> None:
+        '''Queue an aspect-ratio correction after the layout reflows.'''
+        super().resizeEvent(event)
+        QtCore.QTimer.singleShot(0, self._fitToVideo)
+
+    @QtCore.pyqtSlot()
+    def _fitToVideo(self) -> None:
+        '''Resize the containing window so this widget matches the video aspect ratio.
+
+        Computes the height the widget should have given its current width and
+        the source aspect ratio, then adjusts the top-level window height by
+        the difference.  Has no effect when no source is connected.
+        '''
+        if not self.hasHeightForWidth():
+            return
+        target_h = self.heightForWidth(self.width())
+        if target_h <= 0:
+            return
+        window = self.window()
+        needed = window.height() + target_h - self.height()
+        if needed != window.height():
+            window.resize(window.width(), needed)
 
     @classmethod
     def example(cls: 'QVideoScreen') -> None:  # pragma: no cover

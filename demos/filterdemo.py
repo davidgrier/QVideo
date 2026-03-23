@@ -68,7 +68,7 @@ def main() -> None:  # pragma: no cover
 
     pg.mkQApp()
     camera = choose_camera().start()
-    filters = 'QRGBFilter QBlurFilter QSampleHold QEdgeFilter'.split()
+    filters = 'QYOLOFilter QRGBFilter QSampleHold QBlurFilter QEdgeFilter'.split()
     widget = FilterDemo(camera, filters)
     widget.show()
     pg.exec()

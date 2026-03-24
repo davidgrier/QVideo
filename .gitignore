@@ -190,3 +190,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# YOLO model weights (large binary files)
+*.pt

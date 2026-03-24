@@ -29,8 +29,8 @@ class YOLOFilter(VideoFilter):
 
     Signals
     -------
-    featuresReady: pandas.DataFrame
-        Bounding boxes of YOLO detections
+    featuresReady(numpy.ndarray)
+        Bounding boxes of detected features
     '''
 
     featuresReady = QtCore.pyqtSignal(np.ndarray)

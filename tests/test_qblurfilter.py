@@ -95,7 +95,7 @@ class TestBlurFilter(unittest.TestCase):
 class TestQBlurFilter(unittest.TestCase):
 
     def test_is_qvideofilter(self):
-        from QVideo.lib.VideoFilter import QVideoFilter
+        from QVideo.lib.QVideoFilter import QVideoFilter
         widget = make_widget()
         self.assertIsInstance(widget, QVideoFilter)
 

@@ -93,7 +93,7 @@ class TestSampleHold(unittest.TestCase):
 class TestQSampleHold(unittest.TestCase):
 
     def test_is_qvideofilter(self):
-        from QVideo.lib.VideoFilter import QVideoFilter
+        from QVideo.lib.QVideoFilter import QVideoFilter
         widget = make_widget()
         self.assertIsInstance(widget, QVideoFilter)
 

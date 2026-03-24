@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from pyqtgraph.Qt import QtWidgets
-from QVideo.lib.VideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -16,7 +16,7 @@ def make_filter() -> VideoFilter:
 
 
 def make_widget(checked=False) -> QVideoFilter:
-    widget = QVideoFilter('Test', None, make_filter())
+    widget = QVideoFilter(None, 'Test', make_filter())
     widget.setChecked(checked)
     return widget
 
@@ -97,7 +97,7 @@ class TestQVideoFilter(unittest.TestCase):
 
     def test_filter_stored(self):
         f = make_filter()
-        widget = QVideoFilter('Test', None, f)
+        widget = QVideoFilter(None, 'Test', f)
         self.assertIs(widget.filter, f)
 
     def test_call_when_unchecked_returns_image_unchanged(self):
@@ -115,7 +115,7 @@ class TestQVideoFilter(unittest.TestCase):
             def get(self):
                 return _OTHER
 
-        widget = QVideoFilter('Test', None, ConstantFilter())
+        widget = QVideoFilter(None, 'Test', ConstantFilter())
         widget.setChecked(True)
         result = widget(_FRAME)
         np.testing.assert_array_equal(result, _OTHER)
@@ -128,7 +128,7 @@ class TestQVideoFilter(unittest.TestCase):
                 called.append(data)
                 super().add(data)
 
-        widget = QVideoFilter('Test', None, TrackingFilter())
+        widget = QVideoFilter(None, 'Test', TrackingFilter())
         widget.setChecked(False)
         widget(_FRAME)
         self.assertEqual(len(called), 0)
@@ -159,7 +159,7 @@ class TestQVideoFilter(unittest.TestCase):
         self.assertIsInstance(widget._layout, QtWidgets.QHBoxLayout)
 
     def test_title_set(self):
-        widget = QVideoFilter('My Filter', None, make_filter())
+        widget = QVideoFilter(None, 'My Filter', make_filter())
         self.assertEqual(widget.title(), 'My Filter')
 
 

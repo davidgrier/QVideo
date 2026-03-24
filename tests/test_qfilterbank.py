@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from pyqtgraph.Qt import QtWidgets
 from QVideo.lib.QFilterBank import QFilterBank
-from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -16,7 +16,7 @@ def make_bank() -> QFilterBank:
 
 
 def make_filter() -> QVideoFilter:
-    return QVideoFilter('Test', None, VideoFilter())
+    return QVideoFilter(None, 'Test', VideoFilter())
 
 
 class TestQFilterBank(unittest.TestCase):
@@ -94,7 +94,7 @@ class TestQFilterBank(unittest.TestCase):
                 self.data = data
 
         for tag in ('a', 'b', 'c'):
-            f = QVideoFilter(tag, None, LogFilter(tag))
+            f = QVideoFilter(None, tag, LogFilter(tag))
             f.setChecked(True)
             bank.register(f)
 

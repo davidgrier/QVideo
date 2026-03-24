@@ -1,6 +1,6 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.types import Image
 import cv2
 
@@ -67,7 +67,7 @@ class QBlurFilter(QVideoFilter):
     '''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__('Gaussian Blur', parent, BlurFilter())
+        super().__init__(parent, 'Gaussian Blur', BlurFilter())
 
     def _setupUi(self) -> None:
         super()._setupUi()

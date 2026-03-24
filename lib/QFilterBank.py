@@ -2,7 +2,7 @@
 from typing import Iterator
 
 from pyqtgraph.Qt import QtWidgets
-from QVideo.lib.VideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.types import Image
 import QVideo.filters as videofilters
 

@@ -1,7 +1,7 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
-from QVideo.lib.VideoFilter import QVideoFilter
-from QVideo.lib.types import Image
 from QVideo.filters.Normalize import Normalize
+from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.types import Image
 
 
 __all__ = ['SampleHold', 'QSampleHold']
@@ -87,14 +87,16 @@ class QSampleHold(QVideoFilter):
     '''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__('Sample and Hold', parent, SampleHold())
+        super().__init__(parent, 'Sample and Hold', SampleHold())
 
     def _setupUi(self) -> None:
         super()._setupUi()
         self._layout.addWidget(QtWidgets.QLabel('order'))
-        self._orderButtons = [QtWidgets.QRadioButton(str(n)) for n in (1, 2, 3)]
+        self._orderButtons = [
+            QtWidgets.QRadioButton(str(n)) for n in (1, 2, 3)]
         for n, button in enumerate(self._orderButtons, start=1):
-            button.toggled.connect(lambda checked, n=n: self.setOrder(checked, n))
+            button.toggled.connect(
+                lambda checked, n=n: self.setOrder(checked, n))
             self._layout.addWidget(button)
         self._orderButtons[self.filter.order - 1].setChecked(True)
         self._resetButton = QtWidgets.QPushButton('Reset', self)

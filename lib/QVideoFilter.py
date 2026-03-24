@@ -1,12 +1,12 @@
 '''Base classes for image-processing filters in the QVideo filter pipeline.'''
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets
 from QVideo.lib.types import Image
 
 
 __all__ = ['VideoFilter', 'QVideoFilter']
 
 
-class VideoFilter:
+class VideoFilter(QtCore.QObject):
 
     '''Base class for video filters.
 
@@ -20,6 +20,7 @@ class VideoFilter:
     '''
 
     def __init__(self) -> None:
+        super().__init__()
         self.data: Image | None = None
 
     def __call__(self, data: Image) -> Image:
@@ -80,21 +81,20 @@ class QVideoFilter(QtWidgets.QGroupBox):
 
     Parameters
     ----------
+    parent : QtWidgets.QWidget
+        Parent widget.
     title : str
         Label displayed in the group box border.
-    parent : QtWidgets.QWidget or None
-        Parent widget.
-    video_filter : VideoFilter or None
-        The filter to apply when enabled.  Defaults to a passthrough
-        :class:`VideoFilter` if not provided.
+    videoFilter : VideoFilter
+        The filter to apply when enabled.
     '''
 
     def __init__(self,
+                 parent: QtWidgets.QWidget,
                  title: str,
-                 parent: QtWidgets.QWidget | None = None,
-                 video_filter: VideoFilter | None = None) -> None:
+                 videoFilter: VideoFilter) -> None:
         super().__init__(title, parent)
-        self._filter = VideoFilter() if video_filter is None else video_filter
+        self._filter = videoFilter
         self._setupUi()
 
     @property
@@ -103,10 +103,10 @@ class QVideoFilter(QtWidgets.QGroupBox):
         return self._filter
 
     @filter.setter
-    def filter(self, video_filter: VideoFilter) -> None:
-        if not isinstance(video_filter, VideoFilter):
-            raise TypeError(f'expected VideoFilter, got {type(video_filter).__name__}')
-        self._filter = video_filter
+    def filter(self, videoFilter: VideoFilter) -> None:
+        if not isinstance(videoFilter, VideoFilter):
+            raise TypeError(f'expected VideoFilter, got {type(videoFilter).__name__}')
+        self._filter = videoFilter
 
     def __call__(self, image: Image) -> Image:
         '''Apply the filter if enabled, otherwise return *image* unchanged.

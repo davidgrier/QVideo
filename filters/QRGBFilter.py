@@ -1,5 +1,5 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
-from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.types import Image
 
 
@@ -61,7 +61,7 @@ class QRGBFilter(QVideoFilter):
     '''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__('Color Channel', parent, RGBFilter())
+        super().__init__(parent, 'Color Channel', RGBFilter())
 
     def _setupUi(self) -> None:
         super()._setupUi()

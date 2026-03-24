@@ -1,4 +1,4 @@
-from QVideo.lib.VideoFilter import VideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.types import Image
 import numpy as np
 

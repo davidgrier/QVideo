@@ -1,5 +1,6 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
-from QVideo.lib import QVideoSource, QFilterBank
+from QVideo.lib.QVideoSource import QVideoSource
+from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.types import Image
 from pyqtgraph.Qt import QtCore
 import numpy as np

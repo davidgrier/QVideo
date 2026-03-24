@@ -1,6 +1,6 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.VideoFilter import QVideoFilter, VideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.types import Image
 import cv2
 import logging
@@ -49,8 +49,8 @@ class EdgeFilter(VideoFilter):
     def low(self, low: int) -> None:
         low = max(1, int(low))
         if low >= self._high:
-            logger.warning('low (%d) must be less than high (%d); '
-                           'ignoring', low, self._high)
+            logger.warning(f'low ({low}) must be less than '
+                           f'high ({self._high}); ignoring')
             return
         self._low = low
 
@@ -63,8 +63,8 @@ class EdgeFilter(VideoFilter):
     def high(self, high: int) -> None:
         high = max(2, int(high))
         if high <= self._low:
-            logger.warning('high (%d) must be greater than low (%d); '
-                           'ignoring', high, self._low)
+            logger.warning(f'high ({high}) must be greater than '
+                           f'low ({self._low}); ignoring')
             return
         self._high = high
 
@@ -106,7 +106,7 @@ class QEdgeFilter(QVideoFilter):
     '''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__('Canny Edge Detection', parent, EdgeFilter())
+        super().__init__(parent, 'Canny Edge Detection', EdgeFilter())
 
     def _setupUi(self) -> None:
         super()._setupUi()

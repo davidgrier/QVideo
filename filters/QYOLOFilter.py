@@ -22,7 +22,7 @@ class YOLOFilter(VideoFilter):
     ----------
     model_name: str
         Name of the YOLO model weights file.
-        Default: ``'yolov8n.pt'``.
+        Default: ``'yolo11n.pt'``.
     passthrough: bool
         If True, return the input image.
         If False, mark up the image with bounding box data
@@ -36,14 +36,24 @@ class YOLOFilter(VideoFilter):
     featuresReady = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self,
-                 model_name: str = 'yolov8n.pt',
+                 model_name: str = 'yolo11n.pt',
                  passthrough: bool = False) -> None:
         super().__init__()
         if YOLO is None:
             raise ImportError(
-                'YOLO is required for QYOLOFilter. '
-                'Install it with: pip install ultralytics')
-        self.model = YOLO(model_name)
+                'YOLO is required for QYOLOFilter.'
+                '\n\tInstall it with: pip install ultralytics'
+                '\n\tSee https://docs.ultralytics.com/ '
+                'for more information.')
+        try:
+            self.model = YOLO(model_name)
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f'YOLO model "{model_name}" not found.'
+                '\n\tProvide the name of a pretrained ultralytics model'
+                '\n\tor the full path to a custom YOLO weights file.'
+                '\n\tSee https://docs.ultralytics.com/models/ '
+                'for available pretrained models.')
         self._passthrough = passthrough
 
     def add(self, image: Image) -> None:

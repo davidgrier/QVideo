@@ -120,7 +120,7 @@ class QDVRWidget(QtWidgets.QFrame):
     def __init__(self,
                  *args,
                  source: QVideoSource | None = None,
-                 filename: str | None = None,
+                 filename: str = '',
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._source = None
@@ -130,7 +130,7 @@ class QDVRWidget(QtWidgets.QFrame):
         self._setupUi()
         self._connectSignals()
         self.source = source
-        self.filename = filename if filename is not None else str(
+        self.filename = filename if filename else str(
             Path.home() / self.FILENAME)
 
     def _setupUi(self) -> None:

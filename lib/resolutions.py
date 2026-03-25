@@ -21,7 +21,7 @@ def probe_resolutions(device: cv2.VideoCapture) -> list[tuple[int, int]]:
 
     Probes each entry in :data:`COMMON_RESOLUTIONS` by writing width and
     height to the device and reading back what it actually accepted.
-    Restores the original resolution when done.
+    Restores the original resolution and frame rate when done.
 
     Parameters
     ----------
@@ -35,6 +35,7 @@ def probe_resolutions(device: cv2.VideoCapture) -> list[tuple[int, int]]:
     '''
     original = (int(device.get(cv2.CAP_PROP_FRAME_WIDTH)),
                 int(device.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    original_fps = device.get(cv2.CAP_PROP_FPS)
     supported: set[tuple[int, int]] = set()
     for w, h in COMMON_RESOLUTIONS:
         device.set(cv2.CAP_PROP_FRAME_WIDTH, w)
@@ -44,4 +45,5 @@ def probe_resolutions(device: cv2.VideoCapture) -> list[tuple[int, int]]:
         supported.add(actual)
     device.set(cv2.CAP_PROP_FRAME_WIDTH, original[0])
     device.set(cv2.CAP_PROP_FRAME_HEIGHT, original[1])
+    device.set(cv2.CAP_PROP_FPS, original_fps)
     return sorted(supported)

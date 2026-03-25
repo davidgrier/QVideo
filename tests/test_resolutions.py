@@ -6,7 +6,8 @@ from QVideo.lib.resolutions import probe_resolutions, COMMON_RESOLUTIONS
 
 
 def make_device(accepted: tuple[int, int] | None = None,
-                original: tuple[int, int] = (640, 480)):
+                original: tuple[int, int] = (640, 480),
+                fps: float = 30.0):
     '''Return a mock cv2.VideoCapture.
 
     Parameters
@@ -16,20 +17,28 @@ def make_device(accepted: tuple[int, int] | None = None,
         If None, the device accepts whatever is set.
     original : tuple[int, int]
         Width and height returned before any set() calls.
+    fps : float
+        Initial frame rate returned before any set() calls.
     '''
     device = MagicMock(spec=cv2.VideoCapture)
-    state = {'w': original[0], 'h': original[1]}
+    state = {'w': original[0], 'h': original[1], 'fps': fps}
 
     def _get(prop):
         if prop == cv2.CAP_PROP_FRAME_WIDTH:
             return float(state['w'])
         if prop == cv2.CAP_PROP_FRAME_HEIGHT:
             return float(state['h'])
+        if prop == cv2.CAP_PROP_FPS:
+            return state['fps']
         return 0.0
 
     def _set(prop, value):
+        if prop == cv2.CAP_PROP_FPS:
+            state['fps'] = float(value)
+            return
         if accepted is not None:
             state['w'], state['h'] = accepted
+            state['fps'] = 5.0   # simulate driver lowering fps on format change
         else:
             if prop == cv2.CAP_PROP_FRAME_WIDTH:
                 state['w'] = int(value)
@@ -83,6 +92,12 @@ class TestProbeResolutions(unittest.TestCase):
         probe_resolutions(device)
         self.assertEqual((state['w'], state['h']), original)
 
+    def test_original_fps_restored(self):
+        '''probe_resolutions must leave the device at its original frame rate.'''
+        device, state = make_device(accepted=(640, 480), fps=30.0)
+        probe_resolutions(device)
+        self.assertAlmostEqual(state['fps'], 30.0)
+
     def test_elements_are_integers(self):
         device, _ = make_device()
         for w, h in probe_resolutions(device):
@@ -93,8 +108,9 @@ class TestProbeResolutions(unittest.TestCase):
         '''Width and height must be set once per candidate resolution.'''
         device, _ = make_device()
         probe_resolutions(device)
-        # Two set() calls per candidate (width + height), plus two restore calls
-        expected_calls = len(COMMON_RESOLUTIONS) * 2 + 2
+        # Two set() calls per candidate (width + height), plus three restore calls
+        # (width, height, fps)
+        expected_calls = len(COMMON_RESOLUTIONS) * 2 + 3
         self.assertEqual(device.set.call_count, expected_calls)
 
 

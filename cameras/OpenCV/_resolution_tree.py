@@ -117,8 +117,12 @@ class QOpenCVResolutionTree(QCameraTree):
             if change == 'value' and param.name() == 'resolution':
                 if value in self._resolutionMap:
                     w, h = self._resolutionMap[value]
+                    fps = (self.camera.fps
+                           if 'fps' in self.camera._properties else None)
                     self.camera.set('width', w)
                     self.camera.set('height', h)
+                    if fps is not None:
+                        self.camera.set('fps', fps)
                 return
         super()._sync(root, changes)
 

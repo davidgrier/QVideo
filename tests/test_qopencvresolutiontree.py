@@ -33,7 +33,11 @@ def make_mock_device(width=640, height=480, fps=30., read_ok=True):
 
 
 def make_stateful_mock_device(width=640, height=480, fps=30.):
-    '''Device that reflects set() calls in subsequent get() calls.'''
+    '''Device that reflects set() calls in subsequent get() calls.
+
+    Simulates V4L2 behaviour: setting width or height resets fps to a
+    low fallback value (5.0), as the real V4L2 driver does.
+    '''
     device = MagicMock()
     state = [width, height, fps]
 
@@ -45,8 +49,12 @@ def make_stateful_mock_device(width=640, height=480, fps=30.):
     def _set(prop, value):
         if prop == QOpenCVCamera.WIDTH:
             state[0] = int(value)
+            state[2] = 5.0   # V4L2 resets fps on resolution change
         elif prop == QOpenCVCamera.HEIGHT:
             state[1] = int(value)
+            state[2] = 5.0   # V4L2 resets fps on resolution change
+        elif prop == QOpenCVCamera.FPS:
+            state[2] = float(value)
         return True
 
     device.read.return_value = (True, _FRAME_BGR.copy())
@@ -202,6 +210,12 @@ class TestMultiResolutionSelector(unittest.TestCase):
         params = list(self.tree._parameters.keys())
         if 'fps' in params:
             self.assertLess(params.index('resolution'), params.index('fps'))
+
+    def test_fps_preserved_after_resolution_change(self):
+        '''V4L2 resets fps when resolution changes; the tree must restore it.'''
+        initial_fps = self.cam.fps
+        self.tree._parameters['resolution'].setValue('1280\u00d7720')
+        self.assertEqual(self.cam.fps, initial_fps)
 
     def test_unknown_resolution_does_not_crash(self):
         self.tree.set('width', 9999)

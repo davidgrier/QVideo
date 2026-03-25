@@ -72,13 +72,17 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @property
     def framerate(self) -> int | None:
-        '''Maximum display frame rate [fps], or ``None`` for no throttling.'''
+        '''Maximum display frame rate [fps].
+
+        Accommodate high-speed cameras by throttling the rate at
+        which frames are displayed. ``None`` for no throttling.'''
         return self._framerate
 
     @framerate.setter
     def framerate(self, framerate: int | None) -> None:
         if framerate is not None and framerate <= 0:
-            raise ValueError(f'framerate must be positive, got {framerate}')
+            raise ValueError('framerate must be positive, '
+                             f'got {framerate}')
         self._framerate = framerate
         self._interval = 0 if framerate is None else int(1000 / framerate)
 
@@ -125,7 +129,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             self._pending = image
 
     def sizeHint(self) -> QtCore.QSize:
-        '''Return the source's natural frame size as the preferred widget size.'''
+        '''Return the source frame size as the preferred widget size.'''
         if self.source is not None:
             return self.source.shape
         return super().sizeHint()
@@ -165,11 +169,12 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @QtCore.pyqtSlot()
     def _fitToVideo(self) -> None:
-        '''Resize the containing window so this widget matches the video aspect ratio.
+        '''Resize the containing window to match the video aspect ratio.
 
-        Computes the height the widget should have given its current width and
-        the source aspect ratio, then adjusts the top-level window height by
-        the difference.  Has no effect when no source is connected.
+        Computes the height the widget should have given its current
+        width and the source aspect ratio, then adjusts the top-level
+        window height by the difference. Only has effect when a source
+        is connected.
         '''
         if not self.hasHeightForWidth():
             return

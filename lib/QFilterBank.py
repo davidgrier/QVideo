@@ -72,7 +72,8 @@ class QFilterBank(QtWidgets.QGroupBox):
             If *video_filter* is not a :class:`~QVideo.lib.VideoFilter.QVideoFilter`.
         '''
         if not isinstance(video_filter, QVideoFilter):
-            raise TypeError(f'expected QVideoFilter, got {type(video_filter).__name__}')
+            raise TypeError('expected QVideoFilter, '
+                            f'got {type(video_filter).__name__}')
         self._filters.append(video_filter)
         self._layout.addWidget(video_filter)
 
@@ -116,4 +117,7 @@ class QFilterBank(QtWidgets.QGroupBox):
         if cls is None or not (isinstance(cls, type) and
                                issubclass(cls, QVideoFilter)):
             raise ValueError(f'{name!r} is not a known filter')
-        self.register(cls())
+        try:
+            self.register(cls())
+        except Exception as e:
+            pass

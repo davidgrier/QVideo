@@ -1,4 +1,5 @@
 '''Composable pipeline of VideoFilter stages between a source and a display.'''
+import logging
 from typing import Iterator
 
 from pyqtgraph.Qt import QtWidgets
@@ -8,6 +9,8 @@ import QVideo.filters as videofilters
 
 
 __all__ = ['QFilterBank']
+
+logger = logging.getLogger(__name__)
 
 
 class QFilterBank(QtWidgets.QGroupBox):
@@ -120,4 +123,4 @@ class QFilterBank(QtWidgets.QGroupBox):
         try:
             self.register(cls())
         except Exception as e:
-            pass
+            logger.warning(f'Failed to instantiate filter {name!r}: {e}')

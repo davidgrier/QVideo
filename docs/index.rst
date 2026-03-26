@@ -15,6 +15,7 @@ boilerplate.
    api/lib
    api/cameras
    api/filters
+   api/overlays
    api/dvr
    api/demos
 

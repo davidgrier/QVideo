@@ -2,13 +2,13 @@
 
 References
 ----------
-.. [1] Allan, D. B., Caswell, T., Keim, N. C., van der Wel, C. M., &
-   Verweij, R. W. trackpy: Fast, Friendly Particle Tracking in Python.
-   Zenodo. https://doi.org/10.5281/zenodo.9971
+Allan, D. B., Caswell, T., Keim, N. C., van der Wel, C. M., &
+Verweij, R. W. trackpy: Fast, Friendly Particle Tracking in Python.
+Zenodo. https://doi.org/10.5281/zenodo.9971
 
-.. [2] Crocker, J. C., & Grier, D. G. (1996). Methods of digital video
-   microscopy for colloidal studies. Journal of Colloid and Interface
-   Science, 179(1), 298-310. https://doi.org/10.1006/jcis.1996.0217
+Crocker, J. C., & Grier, D. G. (1996). Methods of digital video
+microscopy for colloidal studies. Journal of Colloid and Interface
+Science, 179(1), 298-310. https://doi.org/10.1006/jcis.1996.0217
 '''
 
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
@@ -144,14 +144,10 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
     minmass : float
         Initial minimum integrated brightness. Default: ``100``.
 
-    Signals
-    -------
-    newData(object)
-        Emitted for each processed frame with the
-        :func:`trackpy.locate` :class:`~pandas.DataFrame`
-        (or ``None`` on error).
     '''
 
+    #: Emitted for each processed frame with the :func:`trackpy.locate`
+    #: :class:`~pandas.DataFrame`, or ``None`` on error.
     newData = QtCore.pyqtSignal(object)
     _locate = QtCore.pyqtSignal(np.ndarray)
 

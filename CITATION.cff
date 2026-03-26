@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: 'If you use this software, please cite it as below.'
+type: software
+title: QVideo
+abstract: >-
+  PyQt-based framework for integrating scientific cameras into
+  research applications. Provides hardware abstraction, threading,
+  property introspection, UI generation, image filtering, and
+  digital video recording.
+authors:
+  - family-names: Grier
+    given-names: David G.
+    orcid: https://orcid.org/0000-0002-4275-3218
+    affiliation: New York University
+repository-code: https://github.com/davidgrier/QVideo
+license: GPL-3.0-or-later
+doi: 10.5281/zenodo.19239402
+url: https://github.com/davidgrier/QVideo
+keywords:
+  - camera
+  - video
+  - imaging
+  - PyQt5
+  - scientific
+  - GenICam
+  - GigE Vision

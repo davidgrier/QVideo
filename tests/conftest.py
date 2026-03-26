@@ -7,6 +7,6 @@ guarantees every test module sees an existing instance via
 QApplication.instance() and never calls the constructor a second time.
 """
 import sys
-from PyQt5.QtWidgets import QApplication
+from pyqtgraph.Qt import QtWidgets
 
-_app = QApplication.instance() or QApplication(sys.argv[:1])
+_app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv[:1])

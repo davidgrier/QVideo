@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} / ${{ matrix.qt }}
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -18,6 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
+        qt: ["pyqt5"]
+        include:
+          - python-version: "3.12"
+            qt: "pyqt6"
 
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +41,7 @@ jobs:
             libxkbcommon0
 
       - name: Install package and test dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev-${{ matrix.qt }}]"
 
       - name: Run tests
         run: python -m pytest --tb=short -q

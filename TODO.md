@@ -96,34 +96,18 @@ Potential additions:
 
 ---
 
-## PyQt6 Support
+## PyQt6 Support  **Done** (v3.4.x)
 
-QVideo currently hard-depends on PyQt5.  PyQt6 / PySide6 are the future,
-and many users are on platforms where PyQt5 is difficult or impossible to
-install (e.g. Apple Silicon Macs running Python 3.13+).
-
-Almost all QVideo code already uses `pyqtgraph`'s Qt abstraction layer
-(`from pyqtgraph.Qt import QtCore, QtGui, QtWidgets`), which transparently
-supports PyQt5, PyQt6, PySide2, and PySide6 via the `PYQTGRAPH_QT_LIB`
-environment variable.  The remaining work is small but requires care:
-
-- **`conftest.py`** — the one direct `from PyQt5.QtWidgets import QApplication`
-  must be replaced with `from pyqtgraph.Qt.QtWidgets import QApplication`
-  (or the pyqtgraph `mkQApp()` helper) so the test suite runs under either
-  Qt binding.
-- **`pyproject.toml`** — replace the hard `PyQt5` / `PyQt5-sip` core
-  dependencies with optional groups (`pyqt5 = ["PyQt5", "PyQt5-sip"]`,
-  `pyqt6 = ["PyQt6"]`) and remove them from the default install.  Users
-  choose their binding; the package itself is binding-agnostic.
-- **DVR icons** — `dvr/icons_rc_qt6.py` already exists; verify that
-  `QDVRWidget` selects the correct resource module at runtime based on the
-  active Qt binding.
-- **Signal / slot syntax** — PyQt6 removed the deprecated
-  `pyqtSignal` / `pyqtSlot` aliases in some edge cases and tightened
-  enum scoping (`Qt.AlignLeft` → `Qt.AlignmentFlag.AlignLeft`).  A sweep
-  for scoped-enum usage is needed once the binding abstraction is in place.
-- **CI matrix** — add a PyQt6 job alongside the existing PyQt5 jobs so
-  regressions are caught automatically.
+- ~~`conftest.py` direct `from PyQt5.QtWidgets import QApplication`~~ — replaced
+  with `from pyqtgraph.Qt import QtWidgets` so the test suite is binding-agnostic.
+- ~~`PyQt5` / `PyQt5-sip` hard core dependencies~~ — moved to an optional `pyqt5`
+  extra; `pyqt6 = ["PyQt6"]` extra added.  Users choose their binding at install
+  time; the package itself makes no assumption.
+- ~~DVR icons (`icons_rc_qt6.py`)~~ — the misnamed C file was removed; `icons_rc.py`
+  already imports through `pyqtgraph.Qt` and uses the version-3 resource format,
+  so it works with both bindings unchanged.
+- ~~Enum scoping~~ — the codebase already used fully-scoped enums throughout.
+- ~~CI matrix~~ — PyQt6 / Python 3.12 job added alongside the three PyQt5 jobs.
 
 ---
 

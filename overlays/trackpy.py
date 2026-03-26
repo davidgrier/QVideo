@@ -1,4 +1,15 @@
-'''Real-time particle tracking overlay using trackpy.'''
+'''Real-time particle tracking overlay using trackpy.
+
+References
+----------
+.. [1] Allan, D. B., Caswell, T., Keim, N. C., van der Wel, C. M., &
+   Verweij, R. W. trackpy: Fast, Friendly Particle Tracking in Python.
+   Zenodo. https://doi.org/10.5281/zenodo.9971
+
+.. [2] Crocker, J. C., & Grier, D. G. (1996). Methods of digital video
+   microscopy for colloidal studies. Journal of Colloid and Interface
+   Science, 179(1), 298-310. https://doi.org/10.1006/jcis.1996.0217
+'''
 
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg

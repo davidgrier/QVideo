@@ -335,6 +335,7 @@ class QDVRWidget(QtWidgets.QFrame):
             return
         if not (self.isRecording() or self.isPlaying()):
             self.saveEdit.setText(filename)
+            self.playname = filename
 
     @QtCore.pyqtProperty(str)
     def playname(self) -> str:

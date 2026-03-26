@@ -470,13 +470,12 @@ class TestQDVRWidgetGetFileName(unittest.TestCase):
             widget.getFileName(save=False)
         self.assertEqual(widget.filename, 'original.avi')
 
-    def test_save_dialog_does_not_overwrite_playname(self):
+    def test_save_dialog_updates_playname(self):
         widget = make_widget()
-        widget.playname = 'play.avi'
         with patch.dict(QDVRWidget.GetFileName,
                         {True: MagicMock(return_value=('save.avi', ''))}):
             widget.getFileName(save=True)
-        self.assertEqual(widget.playname, 'play.avi')
+        self.assertEqual(widget.playname, 'save.avi')
 
     def test_returns_empty_when_dialog_cancelled(self):
         widget = make_widget()

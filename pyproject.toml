@@ -32,6 +32,7 @@ dependencies = [
     "h5py",
     "numpy",
     "opencv-python",
+    "pandas",
     "PyQt5",
     "PyQt5-sip",
     "pyqtgraph",

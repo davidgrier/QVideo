@@ -33,12 +33,17 @@ class TestDemo(unittest.TestCase):
         widget = Demo(tree)
         self.assertIs(widget.screen.source, tree.source)
 
-    def test_layout_contains_screen_and_tree(self):
-        tree = QNoiseTree()
-        widget = Demo(tree)
+    def test_layout_contains_screen(self):
+        widget = make_demo()
         layout = widget.layout()
         items = [layout.itemAt(i).widget() for i in range(layout.count())]
         self.assertIn(widget.screen, items)
+
+    def test_controls_contains_tree(self):
+        tree = QNoiseTree()
+        widget = Demo(tree)
+        items = [widget._controls.itemAt(i).widget()
+                 for i in range(widget._controls.count())]
         self.assertIn(tree, items)
 
 

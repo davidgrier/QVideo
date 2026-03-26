@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from QVideo.lib import QVideoScreen, QCameraTree
-from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout
+from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 
 
 __all__ = ['Demo']
@@ -40,9 +40,11 @@ class Demo(QWidget):
     def _setupUi(self) -> None:
         layout = QHBoxLayout(self)
         layout.addWidget(self.screen)
-        layout.addWidget(self.cameraTree)
+        self._controls = QVBoxLayout()
+        layout.addLayout(self._controls)
         layout.setStretch(0, 1)  # screen takes all surplus horizontal space
         layout.setStretch(1, 0)  # controls stay at their natural width
+        self._controls.addWidget(self.cameraTree)
 
 
 def main() -> None:  # pragma: no cover

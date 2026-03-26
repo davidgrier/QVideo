@@ -8,7 +8,6 @@ Run directly::
 
 from QVideo.demos.demo import Demo
 from QVideo.lib import QCameraTree
-from pyqtgraph.Qt.QtWidgets import QHBoxLayout, QVBoxLayout
 
 
 __all__ = ['FilterDemo']
@@ -37,15 +36,6 @@ class FilterDemo(Demo):
                  **kwargs) -> None:
         super().__init__(cameraTree, **kwargs)
         self.addFilters(filters)
-
-    def _setupUi(self) -> None:
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.screen)
-        self._controls = QVBoxLayout()
-        layout.addLayout(self._controls)
-        layout.setStretch(0, 1)  # screen takes all surplus horizontal space
-        layout.setStretch(1, 0)  # controls stay at their natural width
-        self._controls.addWidget(self.cameraTree)
 
     def addFilters(self, filters: list[str]) -> None:
         '''Register filters by name and show the filter bank.

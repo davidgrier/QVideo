@@ -21,6 +21,11 @@ ROIdemo
     rectangular ROI overlay.  Only the cropped region is saved when
     the DVR records, making it easy to capture a sub-region of interest.
 
+trackpydemo
+    Extends :mod:`demo` with a :class:`~QVideo.overlays.trackpy.QTrackpyWidget`
+    panel so that trackpy particle positions are overlaid on the live feed
+    in real time and locate results are available via a signal.
+
 Running
 -------
 Each demo can be launched directly::
@@ -28,6 +33,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.demo
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.ROIdemo
+    python -m QVideo.demos.trackpydemo
 
 Camera selection
 ----------------
@@ -59,4 +65,5 @@ Example::
 from .demo import Demo
 from .filterdemo import FilterDemo
 from .ROIdemo import ROIFilter, ROIDemo
+from .trackpydemo import TrackpyDemo
 

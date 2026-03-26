@@ -14,6 +14,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
+    python -m QVideo.demos.yolodemo
 
 All demos accept the same command-line flags to select a camera backend.
 If no flag is given, a noise camera is used as a fallback.
@@ -52,4 +53,10 @@ TrackpyDemo
 -----------
 
 .. automodule:: QVideo.demos.trackpydemo
+   :members:
+
+YoloDemo
+--------
+
+.. automodule:: QVideo.demos.yolodemo
    :members:

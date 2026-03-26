@@ -26,6 +26,11 @@ trackpydemo
     panel so that trackpy particle positions are overlaid on the live feed
     in real time and locate results are available via a signal.
 
+yolodemo
+    Extends :mod:`demo` with a :class:`~QVideo.overlays.yolo.QYoloWidget`
+    panel so that YOLO object-detection bounding boxes are overlaid on the
+    live feed in real time and detection results are available via a signal.
+
 Running
 -------
 Each demo can be launched directly::
@@ -34,6 +39,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
+    python -m QVideo.demos.yolodemo
 
 Camera selection
 ----------------
@@ -66,4 +72,5 @@ from .demo import Demo
 from .filterdemo import FilterDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
+from .yolodemo import YoloDemo
 

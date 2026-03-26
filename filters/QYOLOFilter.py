@@ -1,4 +1,15 @@
-'''Real-time object detection with YOLO.'''
+'''Real-time object detection with YOLO.
+
+References
+----------
+.. [1] Jocher, G., Chaurasia, A., & Qiu, J. (2023). Ultralytics YOLO.
+   https://github.com/ultralytics/ultralytics
+
+.. [2] Redmon, J., Divvala, S., Girshick, R., & Farhadi, A. (2016).
+   You only look once: Unified, real-time object detection.
+   Proceedings of the IEEE Conference on Computer Vision and Pattern
+   Recognition, 779-788. https://doi.org/10.1109/CVPR.2016.91
+'''
 
 from pyqtgraph.Qt import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter

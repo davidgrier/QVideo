@@ -4,6 +4,8 @@
 Run directly::
 
     python -m QVideo.demos.trackpydemo
+
+See :mod:`QVideo.overlays.trackpy` for literature references.
 '''
 
 from QVideo.demos.demo import Demo

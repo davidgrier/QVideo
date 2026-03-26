@@ -96,6 +96,85 @@ Potential additions:
 
 ---
 
+## PyQt6 Support
+
+QVideo currently hard-depends on PyQt5.  PyQt6 / PySide6 are the future,
+and many users are on platforms where PyQt5 is difficult or impossible to
+install (e.g. Apple Silicon Macs running Python 3.13+).
+
+Almost all QVideo code already uses `pyqtgraph`'s Qt abstraction layer
+(`from pyqtgraph.Qt import QtCore, QtGui, QtWidgets`), which transparently
+supports PyQt5, PyQt6, PySide2, and PySide6 via the `PYQTGRAPH_QT_LIB`
+environment variable.  The remaining work is small but requires care:
+
+- **`conftest.py`** — the one direct `from PyQt5.QtWidgets import QApplication`
+  must be replaced with `from pyqtgraph.Qt.QtWidgets import QApplication`
+  (or the pyqtgraph `mkQApp()` helper) so the test suite runs under either
+  Qt binding.
+- **`pyproject.toml`** — replace the hard `PyQt5` / `PyQt5-sip` core
+  dependencies with optional groups (`pyqt5 = ["PyQt5", "PyQt5-sip"]`,
+  `pyqt6 = ["PyQt6"]`) and remove them from the default install.  Users
+  choose their binding; the package itself is binding-agnostic.
+- **DVR icons** — `dvr/icons_rc_qt6.py` already exists; verify that
+  `QDVRWidget` selects the correct resource module at runtime based on the
+  active Qt binding.
+- **Signal / slot syntax** — PyQt6 removed the deprecated
+  `pyqtSignal` / `pyqtSlot` aliases in some edge cases and tightened
+  enum scoping (`Qt.AlignLeft` → `Qt.AlignmentFlag.AlignLeft`).  A sweep
+  for scoped-enum usage is needed once the binding abstraction is in place.
+- **CI matrix** — add a PyQt6 job alongside the existing PyQt5 jobs so
+  regressions are caught automatically.
+
+---
+
+## Reduce Core Dependencies
+
+The current core install requires `h5py`, `opencv-python`, and `pandas`
+even for users who only want basic camera display with no DVR, no filters,
+and no overlays.  Moving niche packages to optional groups lowers the
+barrier to entry and avoids pulling in large binary wheels unnecessarily.
+
+Candidates for optional groups:
+
+- **`pandas`** — used only by `overlays/trackpy.py` and `overlays/yolo.py`
+  to carry detection results.  Move to an `overlays` optional group.
+  Both modules currently import pandas unconditionally at the top level;
+  they would need to adopt the project's soft-import pattern
+  (`try: import pandas as pd / except ImportError: pd = None`) and emit
+  a helpful error message when a user enables the overlay without pandas
+  installed.
+- **`h5py`** — used only by `dvr/HDF5Writer.py` and `dvr/HDF5Reader.py`.
+  Move to a `dvr` optional group.  The DVR widget already falls back
+  gracefully to OpenCV video formats when `h5py` is absent at runtime;
+  the dependency can simply be removed from the core list.
+- **`opencv-python`** — pervasive (OpenCV camera backend, DVR video
+  writer/reader, several filters, resolution probing), so it cannot
+  easily be made fully optional.  However, `opencv-python` ships a heavy
+  GUI build; consider accepting `opencv-python-headless` as an alternative
+  for server / headless deployments by loosening the requirement to
+  `opencv-python | opencv-python-headless` (PEP 508 `or` syntax not yet
+  widely supported, but achievable via extras or documentation note).
+- **`PyQt5` / `PyQt5-sip`** — see PyQt6 section above; these should
+  become optional once the binding abstraction is complete.
+
+Suggested revised dependency structure:
+
+```toml
+dependencies = ["numpy", "pyqtgraph"]
+
+[project.optional-dependencies]
+pyqt5    = ["PyQt5", "PyQt5-sip"]
+pyqt6    = ["PyQt6"]
+dvr      = ["h5py", "opencv-python"]
+overlays = ["pandas"]
+genicam  = ["harvesters", "genicam"]
+picamera = ["picamera2"]
+full     = ["QVideo[pyqt5,dvr,overlays,genicam]"]
+dev      = ["QVideo[pyqt5,dvr,overlays]", "pytest", "pytest-cov"]
+```
+
+---
+
 ## Testing and Quality
 
 - **Hardware-in-the-loop tests** — optional test suite (skipped when

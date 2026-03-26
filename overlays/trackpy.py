@@ -4,6 +4,7 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from QVideo.lib.types import Image
 import numpy as np
+import warnings
 import logging
 
 
@@ -70,7 +71,9 @@ class _TrackpyWorker(QtCore.QObject):
         frame = (np.mean(image, axis=2).astype(np.uint8)
                  if image.ndim == 3 else image)
         try:
-            features = tp.locate(frame, self._diameter, minmass=self.minmass)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                features = tp.locate(frame, self._diameter, minmass=self.minmass)
         except Exception as exc:
             logger.warning(f'trackpy.locate() failed: {exc}')
             features = None

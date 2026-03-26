@@ -26,13 +26,9 @@ class YOLOFilter(VideoFilter):
     passthrough: bool
         If True, return the input image.
         If False, mark up the image with bounding box data
-
-    Signals
-    -------
-    featuresReady(numpy.ndarray)
-        Bounding boxes of detected features
     '''
 
+    #: Emitted with bounding boxes of detected features.
     featuresReady = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self,

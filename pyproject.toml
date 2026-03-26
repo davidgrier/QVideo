@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "QVideo"
-version = "3.3.0"
+version = "3.4.0"
 description = "PyQt-based framework for integrating video cameras into research applications"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -65,6 +65,7 @@ packages = [
     "QVideo.dvr",
     "QVideo.filters",
     "QVideo.lib",
+    "QVideo.overlays",
 ]
 
 [tool.setuptools.package-dir]
@@ -83,6 +84,7 @@ packages = [
 "QVideo.dvr"                = "dvr"
 "QVideo.filters"            = "filters"
 "QVideo.lib"                = "lib"
+"QVideo.overlays"           = "overlays"
 
 
 [tool.pytest.ini_options]

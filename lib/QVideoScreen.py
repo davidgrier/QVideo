@@ -195,11 +195,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.updateGeometry()
         QtCore.QTimer.singleShot(0, self._fitToVideo)
 
-    def resizeEvent(self, event) -> None:
-        '''Queue an aspect-ratio correction after the layout reflows.'''
-        super().resizeEvent(event)
-        QtCore.QTimer.singleShot(0, self._fitToVideo)
-
     @QtCore.pyqtSlot()
     def _fitToVideo(self) -> None:
         '''Resize the containing window to match the video aspect ratio.

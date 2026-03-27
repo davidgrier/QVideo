@@ -85,6 +85,46 @@ def make_multi_resolution_tree(resolutions=None):
     return tree, cam, device
 
 
+def make_clamped_fps_tree():
+    '''Return (tree, camera, device) where higher resolution caps fps to 15.
+
+    Simulates real V4L2 behaviour on Ubuntu 24.04: the driver accepts the
+    fps set() call but silently clamps to the maximum the sensor supports at
+    the requested resolution.
+    '''
+    _MAX_FPS = {(640, 480): 30.0, (1280, 720): 15.0}
+    device = MagicMock()
+    state = {'width': 640, 'height': 480, 'fps': 30.0}
+
+    def _get(prop):
+        return {QOpenCVCamera.WIDTH: state['width'],
+                QOpenCVCamera.HEIGHT: state['height'],
+                QOpenCVCamera.FPS: state['fps']}.get(prop, 0)
+
+    def _set(prop, value):
+        if prop == QOpenCVCamera.WIDTH:
+            state['width'] = int(value)
+            state['fps'] = 5.0
+        elif prop == QOpenCVCamera.HEIGHT:
+            state['height'] = int(value)
+            state['fps'] = 5.0
+        elif prop == QOpenCVCamera.FPS:
+            limit = _MAX_FPS.get((state['width'], state['height']), 30.0)
+            state['fps'] = min(float(value), limit)
+        return True
+
+    device.read.return_value = (True, _FRAME_BGR.copy())
+    device.get.side_effect = _get
+    device.set.side_effect = _set
+
+    with patch('cv2.VideoCapture', return_value=device):
+        cam = QOpenCVCamera()
+    with patch.object(_MODULE, 'probe_resolutions',
+                      return_value=[(640, 480), (1280, 720)]):
+        tree = QOpenCVResolutionTree(camera=cam)
+    return tree, cam, device
+
+
 class TestQOpenCVResolutionTreeInit(unittest.TestCase):
 
     def test_creates_successfully_with_provided_camera(self):
@@ -216,6 +256,30 @@ class TestMultiResolutionSelector(unittest.TestCase):
         initial_fps = self.cam.fps
         self.tree._parameters['resolution'].setValue('1280\u00d7720')
         self.assertEqual(self.cam.fps, initial_fps)
+
+    def test_fps_display_updated_when_driver_clamps_fps(self):
+        '''When V4L2 silently caps fps at higher resolution, the tree display
+        must show the clamped value, not the pre-change requested value.'''
+        tree, cam, _ = make_clamped_fps_tree()
+        self.assertEqual(tree._parameters['fps'].value(), 30.0)
+        tree._parameters['resolution'].setValue('1280\u00d7720')
+        self.assertEqual(tree._parameters['fps'].value(), cam.fps)  # 15.0
+
+    def test_fps_restored_after_first_frame_when_source_running(self):
+        '''When the source is running the fps restore is deferred until the
+        first newFrame signal so that the V4L2 format change is committed
+        before VIDIOC_S_PARM is issued.'''
+        tree, cam, _ = make_multi_resolution_tree()
+        # Simulate a running source by making isRunning() return True.
+        tree.source.isRunning = lambda: True
+        initial_fps = cam.fps
+        tree._parameters['resolution'].setValue('1280\u00d7720')
+        # fps must NOT be restored yet (deferred)
+        self.assertNotEqual(cam.fps, initial_fps)
+        # Simulate the first frame arriving at the new resolution
+        tree.source.newFrame.emit(np.zeros((720, 1280, 3), dtype=np.uint8))
+        # fps must now be restored
+        self.assertEqual(cam.fps, initial_fps)
 
     def test_unknown_resolution_does_not_crash(self):
         self.tree.set('width', 9999)

@@ -268,6 +268,18 @@ class TestSizeHints(unittest.TestCase):
         self.assertIsInstance(result, QtCore.QSize)
 
 
+class TestResizeEvent(unittest.TestCase):
+
+    def test_resize_event_does_not_call_fit_to_video(self):
+        '''resizeEvent must not queue _fitToVideo; doing so creates a
+        resize→fitToVideo→resize feedback loop that causes visible jitter
+        when the user drags the window border.'''
+        screen = make_screen()
+        with patch.object(screen, '_fitToVideo') as mock_fit:
+            screen.resizeEvent(MagicMock())
+        mock_fit.assert_not_called()
+
+
 class TestUpdateShape(unittest.TestCase):
 
     def test_updateshape_sets_range(self):

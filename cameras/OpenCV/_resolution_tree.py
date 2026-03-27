@@ -122,9 +122,34 @@ class QOpenCVResolutionTree(QCameraTree):
                     self.camera.set('width', w)
                     self.camera.set('height', h)
                     if fps is not None:
-                        self.camera.set('fps', fps)
+                        if self.source.isRunning():
+                            self._deferFpsRestore(fps)
+                        else:
+                            self._restoreFps(fps)
                 return
         super()._sync(root, changes)
+
+    def _deferFpsRestore(self, fps: float) -> None:
+        '''Restore *fps* after the first frame at the new resolution.
+
+        The V4L2 driver commits the new format (VIDIOC_S_FMT) only when
+        the first frame is dequeued at that resolution.  Calling
+        VIDIOC_S_PARM before that commit is silently ignored on Ubuntu
+        24.04.  Connecting to :attr:`~QVideo.lib.QVideoSource.newFrame`
+        defers the set until the format is stable.
+        '''
+        def _on_frame(frame, _fps=fps):
+            self.source.newFrame.disconnect(_on_frame)
+            self._restoreFps(_fps)
+        self.source.newFrame.connect(_on_frame)
+
+    def _restoreFps(self, fps: float) -> None:
+        '''Set *fps* on the camera and refresh the tree display.'''
+        self.camera.set('fps', fps)
+        if 'fps' in self._parameters:
+            self._ignoreSync = True
+            self._parameters['fps'].setValue(self.camera.fps)
+            self._ignoreSync = False
 
     @QtCore.pyqtSlot(str, object)
     def set(self, key: str, value) -> None:

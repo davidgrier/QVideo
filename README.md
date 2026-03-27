@@ -49,11 +49,11 @@ pip install QVideo
 ## Quick start
 
 ```python
-from pyqtgraph.Qt import QtWidgets
+import pyqtgraph as pg
 from QVideo.cameras.Noise import QNoiseSource
 from QVideo.lib import QVideoScreen
 
-app = QtWidgets.QApplication([])
+pg.mkApp()
 
 source = QNoiseSource()          # synthetic noise — no hardware needed
 screen = QVideoScreen()
@@ -61,7 +61,7 @@ source.newFrame.connect(screen.setImage)
 
 screen.show()
 source.start()
-app.exec()
+pg.exec()
 ```
 
 Replace `QNoiseSource` with `QOpenCVSource`, `QGenicamSource`, etc. to switch

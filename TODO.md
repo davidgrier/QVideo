@@ -68,6 +68,16 @@ additions:
 - **Azure Kinect / Intel RealSense** — depth + colour cameras useful
   for 3-D tracking experiments; would add a `depth` frame type
   alongside the existing `Image` type alias.
+- **Aravis** — [Aravis](https://github.com/AravisProject/aravis) (LGPL-2.1)
+  is an open-source C library for GigE Vision and USB3 Vision cameras.
+  Version 0.9.0 (May 2025) introduced an experimental GenTL producer
+  `.cti`; the stable 0.8.x series does not yet include it.  Once the
+  0.9.x GenTL producer stabilises, add a `cameras/Aravis` backend (or
+  extend `_findProducer` to locate the Aravis `.cti`) to give users a
+  fully open-source, zero-cost path to GigE and USB3 cameras without
+  a vendor SDK.  The Aravis simulated camera is also a candidate for
+  use in CI tests as an alternative to the existing `cameras/Noise`
+  reference implementation.
 - **GenICam catch-all** — any camera shipping with a GenTL producer
   `.cti` file can already be used via `cameras/MV`.  Improve
   `_findProducer` to search additional standard paths

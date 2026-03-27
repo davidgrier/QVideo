@@ -360,6 +360,24 @@ class TestOverlays(unittest.TestCase):
         for item in items:
             item.setVisible.assert_called_once_with(False)
 
+    def test_remove_overlay_removes_from_list(self):
+        screen = make_screen()
+        item = self._make_mock_item()
+        with patch.object(screen.view, 'addItem'):
+            screen.addOverlay(item)
+        with patch.object(screen.view, 'removeItem'):
+            screen.removeOverlay(item)
+        self.assertNotIn(item, screen._overlays)
+
+    def test_remove_overlay_calls_view_remove_item(self):
+        screen = make_screen()
+        item = self._make_mock_item()
+        with patch.object(screen.view, 'addItem'):
+            screen.addOverlay(item)
+        with patch.object(screen.view, 'removeItem') as mock_remove:
+            screen.removeOverlay(item)
+        mock_remove.assert_called_once_with(item)
+
 
 if __name__ == '__main__':
     unittest.main()

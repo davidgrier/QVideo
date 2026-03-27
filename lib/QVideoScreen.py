@@ -82,6 +82,17 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.addItem(item)
         self._overlays.append(item)
 
+    def removeOverlay(self, item) -> None:
+        '''Remove a previously added graphics item from the view.
+
+        Parameters
+        ----------
+        item : pyqtgraph.GraphicsObject
+            The overlay item to remove.
+        '''
+        self.view.removeItem(item)
+        self._overlays.remove(item)
+
     @property
     def overlaysVisible(self) -> bool:
         '''Whether any registered overlay is currently visible.'''

@@ -45,6 +45,7 @@ class MockScreen:
     def __init__(self):
         self.view = MagicMock()
         self.addOverlay = MagicMock()
+        self.removeOverlay = MagicMock()
 
 
 # ---------------------------------------------------------------------------
@@ -296,6 +297,12 @@ class TestQTrackpyWidgetAttachTo(unittest.TestCase):
         screen = MockScreen()
         w.attachTo(screen)
         screen.addOverlay.assert_called_once_with(w._overlay)
+
+    def test_detach_from_removes_overlay(self):
+        w = _make_widget()
+        screen = MockScreen()
+        w.detachFrom(screen)
+        screen.removeOverlay.assert_called_once_with(w._overlay)
 
 
 class TestQTrackpyWidgetDiameter(unittest.TestCase):

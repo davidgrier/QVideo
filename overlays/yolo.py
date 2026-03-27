@@ -231,6 +231,16 @@ class QYoloWidget(QtWidgets.QGroupBox):
         '''
         screen.addOverlay(self._overlay)
 
+    def detachFrom(self, screen) -> None:
+        '''Remove the overlay graphics item from *screen*.
+
+        Parameters
+        ----------
+        screen : QVideoScreen
+            The screen currently hosting the overlay.
+        '''
+        screen.removeOverlay(self._overlay)
+
     @QtCore.pyqtSlot(np.ndarray)
     def _onNewFrame(self, image: Image) -> None:
         if self._ready and self.isChecked():

@@ -23,6 +23,19 @@ sphinx-build -b html docs docs/_build/html
 
 No build step is required. The package is used directly from the source tree.
 
+## Releasing
+
+When pushing a new version, always create a GitHub Release (not just a tag) so
+that Zenodo's webhook fires and mints a DOI:
+
+```bash
+git tag vX.Y.Z && git push origin vX.Y.Z
+gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
+```
+
+Pushing the tag alone is not sufficient — Zenodo listens for the GitHub
+`release` event, not a raw tag push.
+
 ## Architecture
 
 QVideo is a PyQt5 framework for integrating scientific cameras into research applications. The design separates hardware communication, threading, property introspection, and UI into distinct layers.

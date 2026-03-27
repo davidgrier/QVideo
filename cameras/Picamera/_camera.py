@@ -268,7 +268,7 @@ class QPicamera(QCamera):
             return False, None
         if self._gray:
             # Convert YUV420 to grayscale by taking the Y channel.
-            frame = frame[..., 0]
+            frame = frame[:self.height, :self.width]
         return True, frame
 
 

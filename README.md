@@ -45,7 +45,6 @@ pip install QVideo
 |---------|-------|-------|
 | GenICam cameras (Vimba, etc.) | `pip install QVideo[genicam]` | Requires a vendor-supplied `.cti` producer file |
 | Raspberry Pi camera | `pip install QVideo[picamera]` | Requires `picamera2` |
-| FLIR / Spinnaker cameras | — | Requires the proprietary PySpin SDK; install that separately |
 
 ## Quick start
 

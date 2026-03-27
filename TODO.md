@@ -34,6 +34,15 @@ scientific cameras that support a large range of sensor modes.
 
 ---
 
+## Restore Spinnaker PySpin Backend  **Blocked until June 2026**
+
+The `devel/Spinnaker` and `devel/Spinnaker2` backends use the FLIR PySpin SDK
+directly.  They are excluded from the release package pending a fix from FLIR.
+Restore and re-integrate once the next FLIR software release (expected June 2026)
+resolves the current compatibility issues.
+
+---
+
 ## New Camera Backends
 
 QVideo currently supports OpenCV, GenICam (Basler, FLIR, IDS, MATRIX VISION,

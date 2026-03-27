@@ -58,6 +58,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._source = None
         self.filter = QFilterBank(self)
         self.filter.setVisible(False)
+        self._overlays = []
 
     def _setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -69,6 +70,27 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.updateShape(self.size())
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
+
+    def addOverlay(self, item) -> None:
+        '''Add a graphics item to the view and register it for visibility control.
+
+        Parameters
+        ----------
+        item : pyqtgraph.GraphicsObject
+            The overlay item to add.
+        '''
+        self.view.addItem(item)
+        self._overlays.append(item)
+
+    @property
+    def overlaysVisible(self) -> bool:
+        '''Whether any registered overlay is currently visible.'''
+        return any(item.isVisible() for item in self._overlays)
+
+    @overlaysVisible.setter
+    def overlaysVisible(self, visible: bool) -> None:
+        for item in self._overlays:
+            item.setVisible(visible)
 
     @property
     def framerate(self) -> int | None:

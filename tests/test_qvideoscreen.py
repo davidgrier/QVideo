@@ -297,5 +297,69 @@ class TestUpdateShape(unittest.TestCase):
         mock_geom.assert_called_once()
 
 
+class TestOverlays(unittest.TestCase):
+
+    def _make_mock_item(self, visible=True):
+        item = MagicMock()
+        item.isVisible.return_value = visible
+        return item
+
+    def test_overlays_empty_on_init(self):
+        screen = make_screen()
+        self.assertEqual(screen._overlays, [])
+
+    def test_add_overlay_appends_to_list(self):
+        screen = make_screen()
+        item = self._make_mock_item()
+        with patch.object(screen.view, 'addItem'):
+            screen.addOverlay(item)
+        self.assertIn(item, screen._overlays)
+
+    def test_add_overlay_calls_view_add_item(self):
+        screen = make_screen()
+        item = self._make_mock_item()
+        with patch.object(screen.view, 'addItem') as mock_add:
+            screen.addOverlay(item)
+        mock_add.assert_called_once_with(item)
+
+    def test_overlays_visible_false_when_none_registered(self):
+        screen = make_screen()
+        self.assertFalse(screen.overlaysVisible)
+
+    def test_overlays_visible_true_when_any_visible(self):
+        screen = make_screen()
+        with patch.object(screen.view, 'addItem'):
+            screen.addOverlay(self._make_mock_item(visible=False))
+            screen.addOverlay(self._make_mock_item(visible=True))
+        self.assertTrue(screen.overlaysVisible)
+
+    def test_overlays_visible_false_when_all_hidden(self):
+        screen = make_screen()
+        with patch.object(screen.view, 'addItem'):
+            screen.addOverlay(self._make_mock_item(visible=False))
+            screen.addOverlay(self._make_mock_item(visible=False))
+        self.assertFalse(screen.overlaysVisible)
+
+    def test_set_overlays_visible_true(self):
+        screen = make_screen()
+        items = [self._make_mock_item(visible=False) for _ in range(3)]
+        with patch.object(screen.view, 'addItem'):
+            for item in items:
+                screen.addOverlay(item)
+        screen.overlaysVisible = True
+        for item in items:
+            item.setVisible.assert_called_once_with(True)
+
+    def test_set_overlays_visible_false(self):
+        screen = make_screen()
+        items = [self._make_mock_item(visible=True) for _ in range(3)]
+        with patch.object(screen.view, 'addItem'):
+            for item in items:
+                screen.addOverlay(item)
+        screen.overlaysVisible = False
+        for item in items:
+            item.setVisible.assert_called_once_with(False)
+
+
 if __name__ == '__main__':
     unittest.main()

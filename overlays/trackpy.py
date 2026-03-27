@@ -210,9 +210,9 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
         Parameters
         ----------
         screen : QVideoScreen
-            The screen whose :attr:`view` will host the overlay.
+            The screen that will host the overlay.
         '''
-        screen.view.addItem(self._overlay)
+        screen.addOverlay(self._overlay)
 
     @QtCore.pyqtSlot(np.ndarray)
     def _onNewFrame(self, image: Image) -> None:

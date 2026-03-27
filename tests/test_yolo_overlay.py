@@ -61,6 +61,7 @@ class MockSource(QtCore.QObject):
 class MockScreen:
     def __init__(self):
         self.view = MagicMock()
+        self.addOverlay = MagicMock()
 
 
 def _make_widget(**kwargs):
@@ -283,7 +284,7 @@ class TestQYoloWidgetAttachTo(unittest.TestCase):
         w = _make_widget()
         screen = MockScreen()
         w.attachTo(screen)
-        screen.view.addItem.assert_called_once_with(w._overlay)
+        screen.addOverlay.assert_called_once_with(w._overlay)
 
 
 class TestQYoloWidgetConfidence(unittest.TestCase):

@@ -49,6 +49,9 @@ class QPicamera(QCamera):
         Initial frame width in pixels.  Default: ``1280``.
     height : int
         Initial frame height in pixels.  Default: ``960``.
+    gray : bool
+        ``True`` convert frames to grayscale.
+        Default: ``False``.
     *args :
         Forwarded to :class:`~QVideo.lib.QCamera`.
     **kwargs :
@@ -59,11 +62,13 @@ class QPicamera(QCamera):
                  cameraID: int = 0,
                  width: int = 1280,
                  height: int = 960,
+                 gray: bool = False,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraID = cameraID
         self._width = int(width)
         self._height = int(height)
+        self._gray = bool(gray)
         self._controlValues: dict = {}
         self.open()
 
@@ -83,11 +88,12 @@ class QPicamera(QCamera):
         try:
             self.device = Picamera2(camera_num=self.cameraID)
         except Exception as ex:
-            logger.warning(
-                f'Could not open Raspberry Pi camera {self.cameraID}: {ex}')
+            logger.warning('Could not open Raspberry Pi camera'
+                           f'{self.cameraID}: {ex}')
             return False
+        fmt = 'YUV420' if self._gray else 'BGR888'
         config = self.device.create_preview_configuration(
-            main={'size': (self._width, self._height), 'format': 'RGB888'})
+            main={'size': (self._width, self._height), 'format': fmt})
         self.device.configure(config)
         self.device.start()
         try:
@@ -97,12 +103,13 @@ class QPicamera(QCamera):
             self.device.stop()
             self.device.close()
             return False
-        self.registerProperty('width', getter=self._getWidth,
-                              setter=self._setWidth, ptype=int)
-        self.registerProperty('height', getter=self._getHeight,
-                              setter=self._setHeight, ptype=int)
-        self.registerProperty('color', getter=lambda: True,
-                              setter=None, ptype=bool)
+        register = self.registerProperty
+        register('width', getter=self._getWidth,
+                 setter=self._setWidth, ptype=int)
+        register('height', getter=self._getHeight,
+                 setter=self._setHeight, ptype=int)
+        register('color', getter=self._getColor,
+                 setter=self._setColor, ptype=bool)
         metadata = self.device.capture_metadata()
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
@@ -178,9 +185,17 @@ class QPicamera(QCamera):
         self._setControl('FrameDurationLimits', (duration, duration))
 
     def _setControl(self, name: str, value) -> None:
-        '''Apply a control value to the camera and update the local cache.'''
+        '''Apply a control value and update the local cache.'''
         self.device.set_controls({name: value})
         self._controlValues[name] = value
+
+    def _getColor(self) -> bool:
+        return not self._gray
+
+    def _setColor(self, value: bool) -> None:
+        self._gray = not bool(value)
+        self._reconfigure()
+        self.shapeChanged.emit(self.shape)
 
     def _getWidth(self) -> int:
         return self.device.camera_config['main']['size'][0]
@@ -217,8 +232,9 @@ class QPicamera(QCamera):
         if height is not None:
             h = int(height)
         self.device.stop()
+        fmt = 'YUV420' if self._gray else 'BGR888'
         config = self.device.create_preview_configuration(
-            main={'size': (w, h), 'format': 'RGB888'})
+            main={'size': (w, h), 'format': fmt})
         self.device.configure(config)
         self.device.start()
         if self._controlValues:
@@ -250,6 +266,9 @@ class QPicamera(QCamera):
         except Exception as ex:
             logger.warning(f'Frame read failed: {ex}')
             return False, None
+        if self._gray:
+            # Convert YUV420 to grayscale by taking the Y channel.
+            frame = frame[..., 0]
         return True, frame
 
 

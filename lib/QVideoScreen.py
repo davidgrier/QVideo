@@ -53,12 +53,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.framerate = framerate
         self._ready = True
         self._pending = None
+        self._overlays = []
         self._setupUi()
         self._timer = QtCore.QTimer()
         self._source = None
         self.filter = QFilterBank(self)
         self.filter.setVisible(False)
-        self._overlays = []
 
     def _setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)

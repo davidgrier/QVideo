@@ -69,7 +69,7 @@ class YOLOFilter(VideoFilter):
         Emits featuresReady with bounding-box data
         '''
         results = self.model(image, verbose=False)
-        boxes = results[0].boxes.xyxy.numpy()
+        boxes = results[0].boxes.xyxy.cpu().numpy()
         self.featuresReady.emit(boxes)
         self.data = image if self._passthrough else results[0].plot()
 

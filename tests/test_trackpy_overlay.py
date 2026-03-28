@@ -41,16 +41,17 @@ class MockSource(QtCore.QObject):
     newFrame = QtCore.pyqtSignal(np.ndarray)
 
 
-class MockScreen:
-    def __init__(self):
-        self.view = MagicMock()
-        self.addOverlay = MagicMock()
-        self.removeOverlay = MagicMock()
-
-
 # ---------------------------------------------------------------------------
 # _TrackpyWorker
 # ---------------------------------------------------------------------------
+
+class TestTrackpyWorkerInit(unittest.TestCase):
+
+    def test_raises_when_trackpy_missing(self):
+        with patch.object(_mod, 'tp', None):
+            with self.assertRaises(ImportError):
+                _TrackpyWorker()
+
 
 class TestTrackpyWorkerDiameter(unittest.TestCase):
 
@@ -114,13 +115,6 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         mock_tp.locate.side_effect = RuntimeError('oops')
         spy = self._collect()
         self._worker.locate(_make_frame())
-        self.assertEqual(len(spy), 1)
-        self.assertIsNone(spy[0][0])
-
-    def test_locate_emits_none_when_trackpy_missing(self):
-        spy = self._collect()
-        with patch.object(_mod, 'tp', None):
-            self._worker.locate(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
@@ -290,19 +284,11 @@ class TestQTrackpyWidgetNewData(unittest.TestCase):
         self.assertEqual(len(pts[0]), 0)
 
 
-class TestQTrackpyWidgetAttachTo(unittest.TestCase):
+class TestQTrackpyWidgetOverlay(unittest.TestCase):
 
-    def test_attach_to_adds_item_to_view(self):
+    def test_overlay_returns_qtrackpyoverlay(self):
         w = _make_widget()
-        screen = MockScreen()
-        w.attachTo(screen)
-        screen.addOverlay.assert_called_once_with(w._overlay)
-
-    def test_detach_from_removes_overlay(self):
-        w = _make_widget()
-        screen = MockScreen()
-        w.detachFrom(screen)
-        screen.removeOverlay.assert_called_once_with(w._overlay)
+        self.assertIsInstance(w.overlay, QTrackpyOverlay)
 
 
 class TestQTrackpyWidgetDiameter(unittest.TestCase):

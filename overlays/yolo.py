@@ -15,8 +15,12 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from QVideo.lib.types import Image
 import numpy as np
-import pandas as pd
 import logging
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 
 logger = logging.getLogger(__name__)
@@ -56,6 +60,11 @@ class _YoloWorker(QtCore.QObject):
                  model_name: str = 'yolo11n.pt',
                  confidence: float = 0.25) -> None:
         super().__init__()
+        if pd is None:
+            raise ImportError(
+                'pandas is required for QYoloWidget.'
+                '\n\tInstall it with: pip install pandas'
+                '\n\tor: pip install "QVideo[overlays]"')
         if YOLO is None:
             raise ImportError(
                 'ultralytics is required for QYoloWidget.'
@@ -111,7 +120,7 @@ class QYoloOverlay(pg.GraphicsObject):
     A :class:`pyqtgraph.GraphicsObject` that draws axis-aligned
     bounding boxes over detected objects.  Add it to a
     :class:`~QVideo.lib.QVideoScreen.QVideoScreen` via
-    ``screen.view.addItem(overlay)``, or use :meth:`QYoloWidget.attachTo`.
+    ``screen.addOverlay(widget.overlay)``.
     '''
 
     def __init__(self) -> None:
@@ -155,8 +164,8 @@ class QYoloWidget(QtWidgets.QGroupBox):
     object bounding boxes as a :class:`QYoloOverlay` on a
     :class:`~QVideo.lib.QVideoScreen.QVideoScreen`.
 
-    Use :meth:`attachTo` to register the overlay graphics item with a
-    screen, and set :attr:`source` to supply video frames.
+    Use ``screen.addOverlay(widget.overlay)`` to register the overlay
+    graphics item with a screen, and set :attr:`source` to supply video frames.
 
     Parameters
     ----------
@@ -221,25 +230,10 @@ class QYoloWidget(QtWidgets.QGroupBox):
         if source is not None:
             source.newFrame.connect(self._onNewFrame)
 
-    def attachTo(self, screen) -> None:
-        '''Add the overlay graphics item to *screen*.
-
-        Parameters
-        ----------
-        screen : QVideoScreen
-            The screen that will host the overlay.
-        '''
-        screen.addOverlay(self._overlay)
-
-    def detachFrom(self, screen) -> None:
-        '''Remove the overlay graphics item from *screen*.
-
-        Parameters
-        ----------
-        screen : QVideoScreen
-            The screen currently hosting the overlay.
-        '''
-        screen.removeOverlay(self._overlay)
+    @property
+    def overlay(self) -> QYoloOverlay:
+        '''The :class:`QYoloOverlay` graphics item for this widget.'''
+        return self._overlay
 
     @QtCore.pyqtSlot(np.ndarray)
     def _onNewFrame(self, image: Image) -> None:

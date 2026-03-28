@@ -35,7 +35,7 @@ class TrackpyDemo(Demo):
         super().__init__(cameraTree, **kwargs)
         self.trackpy = QTrackpyWidget(self)
         self.trackpy.source = self.screen.source
-        self.trackpy.attachTo(self.screen)
+        self.screen.addOverlay(self.trackpy.overlay)
         self._controls.addWidget(self.trackpy)
 
 

@@ -119,11 +119,11 @@ class TestInit(unittest.TestCase):
         self.assertEqual(cam.height, 960)
         cam.close()
 
-    def test_configure_called_with_rgb888(self):
+    def test_configure_called_with_bgr888(self):
         cam, device = make_camera()
         config_args = device.create_preview_configuration.call_args
         main = config_args.kwargs.get('main', config_args[1].get('main'))
-        self.assertEqual(main['format'], 'RGB888')
+        self.assertEqual(main['format'], 'BGR888')
         cam.close()
 
 
@@ -164,8 +164,8 @@ class TestProperties(unittest.TestCase):
     def test_color_is_true(self):
         self.assertTrue(self.cam.color)
 
-    def test_color_is_readonly(self):
-        self.assertIsNone(self.cam._properties['color']['setter'])
+    def test_color_is_settable(self):
+        self.assertIsNotNone(self.cam._properties['color']['setter'])
 
     def test_brightness_registered(self):
         self.assertIn('Brightness', self.cam.properties)
@@ -291,12 +291,12 @@ class TestReconfigure(unittest.TestCase):
         self.cam.set('width', 640)
         self.device.set_controls.assert_called()
 
-    def test_reconfigure_uses_rgb888_format(self):
+    def test_reconfigure_uses_bgr888_format(self):
         self.device.reset_mock()
         self.cam.set('width', 640)
         config_args = self.device.create_preview_configuration.call_args
         main = config_args.kwargs.get('main', config_args[1].get('main'))
-        self.assertEqual(main['format'], 'RGB888')
+        self.assertEqual(main['format'], 'BGR888')
 
 
 class TestRead(unittest.TestCase):

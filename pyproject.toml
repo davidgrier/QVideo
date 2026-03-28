@@ -29,10 +29,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "h5py",
     "numpy",
     "opencv-python",
-    "pandas",
     "pyqtgraph",
 ]
 
@@ -44,11 +42,13 @@ Repository = "https://github.com/davidgrier/QVideo"
 [project.optional-dependencies]
 pyqt5    = ["PyQt5", "PyQt5-sip"]
 pyqt6    = ["PyQt6"]
+dvr      = ["h5py"]
+overlays = ["pandas"]
 genicam  = ["harvesters", "genicam"]
 picamera = ["picamera2"]
-dev-pyqt5 = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov"]
-dev-pyqt6 = ["PyQt6", "pytest", "pytest-cov"]
-dev       = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov"]
+dev-pyqt5 = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas"]
+dev-pyqt6 = ["PyQt6", "pytest", "pytest-cov", "h5py", "pandas"]
+dev       = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas"]
 docs     = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 
 [tool.setuptools]

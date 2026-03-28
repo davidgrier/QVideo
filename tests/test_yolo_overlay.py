@@ -58,13 +58,6 @@ class MockSource(QtCore.QObject):
     newFrame = QtCore.pyqtSignal(np.ndarray)
 
 
-class MockScreen:
-    def __init__(self):
-        self.view = MagicMock()
-        self.addOverlay = MagicMock()
-        self.removeOverlay = MagicMock()
-
-
 def _make_widget(**kwargs):
     '''Create a QYoloWidget with the background thread neutralised.'''
     with patch.object(_YoloWorker, 'moveToThread'), \
@@ -89,6 +82,11 @@ class TestYoloWorkerInit(unittest.TestCase):
     def test_custom_model_name(self):
         _YoloWorker(model_name='yolo11s.pt')
         mock_YOLO_cls.assert_called_once_with('yolo11s.pt')
+
+    def test_raises_when_pandas_missing(self):
+        with patch.object(_mod, 'pd', None):
+            with self.assertRaises(ImportError):
+                _YoloWorker()
 
     def test_raises_when_yolo_missing(self):
         with patch.object(_mod, 'YOLO', None):
@@ -279,19 +277,11 @@ class TestQYoloWidgetNewData(unittest.TestCase):
         self.assertIsNone(self._w._overlay._features)
 
 
-class TestQYoloWidgetAttachTo(unittest.TestCase):
+class TestQYoloWidgetOverlay(unittest.TestCase):
 
-    def test_attach_adds_overlay_to_view(self):
+    def test_overlay_returns_qyolooverlay(self):
         w = _make_widget()
-        screen = MockScreen()
-        w.attachTo(screen)
-        screen.addOverlay.assert_called_once_with(w._overlay)
-
-    def test_detach_from_removes_overlay(self):
-        w = _make_widget()
-        screen = MockScreen()
-        w.detachFrom(screen)
-        screen.removeOverlay.assert_called_once_with(w._overlay)
+        self.assertIsInstance(w.overlay, QYoloOverlay)
 
 
 class TestQYoloWidgetConfidence(unittest.TestCase):

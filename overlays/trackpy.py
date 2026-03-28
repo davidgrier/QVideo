@@ -51,6 +51,10 @@ class _TrackpyWorker(QtCore.QObject):
 
     def __init__(self, diameter: int = 11, minmass: float = 100.) -> None:
         super().__init__()
+        if tp is None:
+            raise ImportError(
+                'trackpy is required for QTrackpyWidget.'
+                '\n\tInstall it with: pip install trackpy')
         self.diameter = diameter
         self.minmass = minmass
 
@@ -73,12 +77,6 @@ class _TrackpyWorker(QtCore.QObject):
             Video frame to analyse.  Colour frames are converted to
             greyscale before processing.
         '''
-        if tp is None:
-            logger.error(
-                'trackpy is not installed.'
-                '\n\tInstall it with: pip install trackpy')
-            self.newData.emit(None)
-            return
         frame = (np.mean(image, axis=2).astype(np.uint8)
                  if image.ndim == 3 else image)
         try:
@@ -97,7 +95,7 @@ class QTrackpyOverlay(pg.ScatterPlotItem):
     A :class:`pyqtgraph.ScatterPlotItem` pre-configured for particle
     display.  Add it to a :class:`~QVideo.lib.QVideoScreen.QVideoScreen`
     via ``screen.view.addItem(overlay)``, or use
-    :meth:`QTrackpyWidget.attachTo`.
+    ``screen.addOverlay(widget.overlay)``.
     '''
 
     def __init__(self, **kwargs) -> None:
@@ -131,8 +129,8 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
     detected particle positions as a :class:`QTrackpyOverlay` scatter
     plot on a :class:`~QVideo.lib.QVideoScreen.QVideoScreen`.
 
-    Use :meth:`attachTo` to register the overlay graphics item with a
-    screen, and set :attr:`source` to supply video frames.
+    Use ``screen.addOverlay(widget.overlay)`` to register the overlay
+    graphics item with a screen, and set :attr:`source` to supply video frames.
 
     Parameters
     ----------
@@ -204,25 +202,10 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
         if source is not None:
             source.newFrame.connect(self._onNewFrame)
 
-    def attachTo(self, screen) -> None:
-        '''Add the overlay graphics item to *screen*.
-
-        Parameters
-        ----------
-        screen : QVideoScreen
-            The screen that will host the overlay.
-        '''
-        screen.addOverlay(self._overlay)
-
-    def detachFrom(self, screen) -> None:
-        '''Remove the overlay graphics item from *screen*.
-
-        Parameters
-        ----------
-        screen : QVideoScreen
-            The screen currently hosting the overlay.
-        '''
-        screen.removeOverlay(self._overlay)
+    @property
+    def overlay(self) -> QTrackpyOverlay:
+        '''The :class:`QTrackpyOverlay` graphics item for this widget.'''
+        return self._overlay
 
     @QtCore.pyqtSlot(np.ndarray)
     def _onNewFrame(self, image: Image) -> None:

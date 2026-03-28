@@ -41,7 +41,7 @@ class YoloDemo(Demo):
         super().__init__(cameraTree, **kwargs)
         self.yolo = QYoloWidget(self, model_name=model_name)
         self.yolo.source = self.screen.source
-        self.yolo.attachTo(self.screen)
+        self.screen.addOverlay(self.yolo.overlay)
         self._controls.addWidget(self.yolo)
 
 

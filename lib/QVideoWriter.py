@@ -74,7 +74,9 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
         Close the video file.
     '''
 
+    #: Emitted when a new frame is written, with the current frame number.
     frameNumber = pyqtSignal(int)
+    #: Emitted when video writing is complete.
     finished = pyqtSignal()
 
     def __init__(self,

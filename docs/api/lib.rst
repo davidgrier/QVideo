@@ -40,6 +40,30 @@ Camera chooser
 .. automodule:: QVideo.lib.chooser
    :members:
 
+QVideoReader
+------------
+
+.. automodule:: QVideo.lib.QVideoReader
+   :members:
+
+QVideoWriter
+------------
+
+.. automodule:: QVideo.lib.QVideoWriter
+   :members:
+
+QFPSMeter
+---------
+
+.. automodule:: QVideo.lib.QFPSMeter
+   :members:
+
+QListCameras
+------------
+
+.. automodule:: QVideo.lib.QListCameras
+   :members:
+
 QCamcorder
 ----------
 

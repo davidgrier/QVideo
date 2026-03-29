@@ -46,6 +46,7 @@ class QFPSMeter(QtCore.QObject):
         Clear the timestamp buffer and cached value.
     '''
 
+    #: Emitted on every :meth:`tick` once the buffer is full.
     fpsReady = QtCore.pyqtSignal(float)
 
     def __init__(self, window: int = 10) -> None:

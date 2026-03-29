@@ -31,6 +31,13 @@ OpenCV
 .. automodule:: QVideo.cameras.OpenCV
    :members:
 
+OpenCV device utilities
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: QVideo.cameras.OpenCV._devices
+   :members:
+   :member-order: bysource
+
 GenICam (base)
 --------------
 

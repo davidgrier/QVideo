@@ -13,8 +13,10 @@ try:
     IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
 except (ImportError, ModuleNotFoundError) as exc:
     raise ImportError(
-        "QGenicamCamera requires the 'genicam' and 'harvesters' packages. "
-        "Install them with: pip install genicam harvesters"
+        f"QGenicamCamera could not import 'genicam' or 'harvesters': {exc}\n"
+        '\tInstall them with: pip install genicam harvesters\n'
+        '\tIf the packages are installed, a NumPy version mismatch may be the cause:\n'
+        '\t  pip install "numpy<2"'
     ) from exc
 
 

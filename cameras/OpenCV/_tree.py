@@ -12,9 +12,11 @@ class QOpenCVTree(QCameraTree):
     Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
     that automatically creates and opens a
     :class:`~QVideo.cameras.OpenCV.QOpenCVCamera.QOpenCVCamera`
-    if one is not provided.  Width and height are exposed as independent
-    integer spinboxes.  For a resolution drop-down selector, use
-    :class:`~QVideo.cameras.OpenCV.QOpenCVResolutionTree.QOpenCVResolutionTree`.
+    if one is not provided.  Width and height are disabled in the
+    parameter tree — they are writable via
+    :meth:`~QVideo.lib.QCamera.QCamera.set` (used by
+    :class:`~QVideo.lib.QResolutionControl.QResolutionControl`) but
+    must not be changed without stopping the video source first.
 
     Parameters
     ----------
@@ -55,6 +57,9 @@ class QOpenCVTree(QCameraTree):
                                    flipped=flipped,
                                    gray=gray)
         super().__init__(camera, *args, **kwargs)
+        for key in ('width', 'height'):
+            if key in self._parameters:
+                self._parameters[key].setOpts(enabled=False)
 
 
 if __name__ == '__main__':  # pragma: no cover

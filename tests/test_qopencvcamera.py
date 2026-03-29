@@ -32,12 +32,18 @@ def make_mock_device(width=640, height=480, fps=30.,
 def make_camera(cameraID=0, mirrored=False, flipped=False, gray=False,
                 width=640, height=480, fps=30.,
                 read_ok=True, frame=None):
-    '''Return a QOpenCVCamera with a mocked VideoCapture device.'''
+    '''Return a QOpenCVCamera with a mocked VideoCapture device.
+
+    *width*, *height*, and *fps* control the values the mock device
+    returns from ``get()`` — they do not configure the camera itself.
+    ``configure`` is patched out so no resolution probing occurs.
+    '''
     device = make_mock_device(width=width, height=height, fps=fps,
                               read_ok=read_ok, frame=frame)
     with patch('cv2.VideoCapture', return_value=device):
-        cam = QOpenCVCamera(cameraID=cameraID, mirrored=mirrored,
-                            flipped=flipped, gray=gray)
+        with patch('QVideo.cameras.OpenCV._camera.configure'):
+            cam = QOpenCVCamera(cameraID=cameraID, mirrored=mirrored,
+                                flipped=flipped, gray=gray)
     return cam
 
 
@@ -91,7 +97,8 @@ class TestInitialize(unittest.TestCase):
         device = make_mock_device()
         with patch('platform.system', return_value='Linux'):
             with patch('cv2.VideoCapture', return_value=device) as mock_cap:
-                QOpenCVCamera()
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    QOpenCVCamera()
         mock_cap.assert_called_with(0, cv2.CAP_V4L2)
 
     def test_uses_cap_any_on_macos(self):
@@ -99,7 +106,8 @@ class TestInitialize(unittest.TestCase):
         device = make_mock_device()
         with patch('platform.system', return_value='Darwin'):
             with patch('cv2.VideoCapture', return_value=device) as mock_cap:
-                QOpenCVCamera()
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    QOpenCVCamera()
         mock_cap.assert_called_with(0, cv2.CAP_ANY)
 
     def test_initialize_fails_if_no_frame(self):
@@ -110,8 +118,9 @@ class TestInitialize(unittest.TestCase):
     def test_device_released_when_initialize_fails(self):
         device = make_mock_device(read_ok=False)
         with patch('cv2.VideoCapture', return_value=device):
-            with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
-                QOpenCVCamera()
+            with patch('QVideo.cameras.OpenCV._camera.configure'):
+                with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                    QOpenCVCamera()
         device.release.assert_called_once()
 
     def test_device_properties_registered_on_open(self):
@@ -123,10 +132,34 @@ class TestInitialize(unittest.TestCase):
         # mirrored/flipped are registered in __init__, not _initialize
         device = make_mock_device(read_ok=False)
         with patch('cv2.VideoCapture', return_value=device):
-            with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
-                cam = QOpenCVCamera()
+            with patch('QVideo.cameras.OpenCV._camera.configure'):
+                with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                    cam = QOpenCVCamera()
         for name in ('mirrored', 'flipped'):
             self.assertIn(name, cam.properties)
+
+    def test_configure_called_with_default_params(self):
+        '''Default constructor passes None, None, 30. to configure.'''
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device):
+            with patch('QVideo.cameras.OpenCV._camera.configure') as mock_cfg:
+                QOpenCVCamera()
+        mock_cfg.assert_called_once_with(device, None, None, 30.)
+
+    def test_configure_called_with_explicit_width_height_fps(self):
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device):
+            with patch('QVideo.cameras.OpenCV._camera.configure') as mock_cfg:
+                QOpenCVCamera(width=1280, height=720, fps=15.)
+        mock_cfg.assert_called_once_with(device, 1280, 720, 15.)
+
+    def test_configure_called_with_performance_mode(self):
+        '''fps=None triggers performance (slo-mo) mode.'''
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device):
+            with patch('QVideo.cameras.OpenCV._camera.configure') as mock_cfg:
+                QOpenCVCamera(fps=None)
+        mock_cfg.assert_called_once_with(device, None, None, None)
 
 
 class TestDeinitialize(unittest.TestCase):
@@ -158,32 +191,41 @@ class TestProperties(unittest.TestCase):
         self.assertIsInstance(cam.fps, float)
         self.assertAlmostEqual(cam.fps, 30.)
 
-    def test_width_setter(self):
+    def test_width_setter_updates_config(self):
         cam = make_camera()
-        cam.set('width', 320)
-        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, 320)
+        cam.set('width', 1280)
+        self.assertEqual(cam._configWidth, 1280)
 
-    def test_height_setter(self):
+    def test_width_setter_does_not_call_device_set(self):
         cam = make_camera()
-        cam.set('height', 240)
-        cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, 240)
+        cam.device.set.reset_mock()
+        cam.set('width', 1280)
+        calls = [c for c in cam.device.set.call_args_list
+                 if c.args[0] == QOpenCVCamera.WIDTH]
+        self.assertEqual(calls, [])
 
-    def test_fps_setter(self):
+    def test_height_setter_updates_config(self):
+        cam = make_camera()
+        cam.set('height', 720)
+        self.assertEqual(cam._configHeight, 720)
+
+    def test_height_setter_does_not_call_device_set(self):
+        cam = make_camera()
+        cam.device.set.reset_mock()
+        cam.set('height', 720)
+        calls = [c for c in cam.device.set.call_args_list
+                 if c.args[0] == QOpenCVCamera.HEIGHT]
+        self.assertEqual(calls, [])
+
+    def test_fps_setter_calls_device_set(self):
         cam = make_camera()
         cam.set('fps', 60.)
         cam.device.set.assert_any_call(QOpenCVCamera.FPS, 60.)
 
-    def test_width_setter_emits_shape_changed(self):
+    def test_fps_setter_updates_config(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
-        cam.set('width', 320)
-        self.assertEqual(len(spy), 1)
-
-    def test_height_setter_emits_shape_changed(self):
-        cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
-        cam.set('height', 240)
-        self.assertEqual(len(spy), 1)
+        cam.set('fps', 60.)
+        self.assertAlmostEqual(cam._configFps, 60.)
 
     def test_color_true_when_not_gray(self):
         cam = make_camera(gray=False)
@@ -296,7 +338,7 @@ class TestRead(unittest.TestCase):
 class TestProbeProperties(unittest.TestCase):
 
     def test_unsupported_property_not_registered(self):
-        '''device.set returning False skips registration (line 129).'''
+        '''device.set returning False skips registration.'''
         device = make_mock_device()
         device.set.return_value = False
         with patch('cv2.VideoCapture', return_value=device):
@@ -318,7 +360,8 @@ class TestQOpenCVSource(unittest.TestCase):
     def test_creates_camera_if_none_given(self):
         device = make_mock_device()
         with patch('cv2.VideoCapture', return_value=device):
-            src = QOpenCVSource()
+            with patch('QVideo.cameras.OpenCV._camera.configure'):
+                src = QOpenCVSource()
         self.assertIsInstance(src.source, QOpenCVCamera)
 
     def test_uses_provided_camera(self):

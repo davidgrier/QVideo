@@ -13,7 +13,7 @@ Recognition, 779-788. https://doi.org/10.1109/CVPR.2016.91
 
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
 

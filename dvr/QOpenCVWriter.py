@@ -1,5 +1,5 @@
 from QVideo.lib import QVideoWriter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 from pyqtgraph.Qt import QtCore
 from pathlib import Path
 import cv2

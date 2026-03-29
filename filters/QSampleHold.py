@@ -1,7 +1,7 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from QVideo.filters.Normalize import Normalize
 from QVideo.lib.QVideoFilter import QVideoFilter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 
 
 __all__ = ['SampleHold', 'QSampleHold']

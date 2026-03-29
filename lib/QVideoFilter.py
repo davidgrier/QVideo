@@ -1,6 +1,6 @@
 '''Base classes for image-processing filters in the QVideo filter pipeline.'''
 from pyqtgraph.Qt import QtCore, QtWidgets
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 
 
 __all__ = ['VideoFilter', 'QVideoFilter']

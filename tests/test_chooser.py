@@ -207,7 +207,8 @@ class TestChooseCameraOpenCV(unittest.TestCase):
         device = make_mock_cv2_device()
         with patch('sys.argv', ['prog', '-c']):
             with patch('cv2.VideoCapture', return_value=device):
-                camera = choose_camera()
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    camera = choose_camera()
         self.assertIsInstance(camera, QOpenCVTree)
         camera.close()
 
@@ -215,7 +216,28 @@ class TestChooseCameraOpenCV(unittest.TestCase):
         device = make_mock_cv2_device()
         with patch('sys.argv', ['prog', '-c', '2']):
             with patch('cv2.VideoCapture', return_value=device) as mock_cap:
-                camera = choose_camera()
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    camera = choose_camera()
+        args, _ = mock_cap.call_args
+        self.assertEqual(args[0], 2)
+        camera.close()
+
+    def test_opencv_resolution_flag_returns_opencv_tree(self):
+        from QVideo.cameras.OpenCV import QOpenCVTree
+        device = make_mock_cv2_device()
+        with patch('sys.argv', ['prog', '-r']):
+            with patch('cv2.VideoCapture', return_value=device):
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QOpenCVTree)
+        camera.close()
+
+    def test_opencv_resolution_flag_forwards_cameraID(self):
+        device = make_mock_cv2_device()
+        with patch('sys.argv', ['prog', '-r', '2']):
+            with patch('cv2.VideoCapture', return_value=device) as mock_cap:
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    camera = choose_camera()
         args, _ = mock_cap.call_args
         self.assertEqual(args[0], 2)
         camera.close()
@@ -229,32 +251,6 @@ class TestChooseCameraOpenCV(unittest.TestCase):
                     camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
         mock_logger.warning.assert_called_once()
-        camera.close()
-
-    def test_opencv_resolution_flag_returns_resolution_tree(self):
-        from QVideo.cameras.OpenCV import QOpenCVResolutionTree
-        import sys as _sys
-        _MODULE = _sys.modules['QVideo.cameras.OpenCV._resolution_tree']
-        device = make_mock_cv2_device()
-        with patch('sys.argv', ['prog', '-r']):
-            with patch('cv2.VideoCapture', return_value=device):
-                with patch.object(_MODULE, 'probe_resolutions',
-                                  return_value=[(640, 480)]):
-                    camera = choose_camera()
-        self.assertIsInstance(camera, QOpenCVResolutionTree)
-        camera.close()
-
-    def test_opencv_resolution_flag_forwards_cameraID(self):
-        import sys as _sys
-        _MODULE = _sys.modules['QVideo.cameras.OpenCV._resolution_tree']
-        device = make_mock_cv2_device()
-        with patch('sys.argv', ['prog', '-r', '2']):
-            with patch('cv2.VideoCapture', return_value=device) as mock_cap:
-                with patch.object(_MODULE, 'probe_resolutions',
-                                  return_value=[(640, 480)]):
-                    camera = choose_camera()
-        args, _ = mock_cap.call_args
-        self.assertEqual(args[0], 2)
         camera.close()
 
 

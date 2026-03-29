@@ -27,7 +27,8 @@ def make_mock_device(width=640, height=480, fps=30., read_ok=True):
 def make_camera(**kwargs):
     device = make_mock_device()
     with patch('cv2.VideoCapture', return_value=device):
-        cam = QOpenCVCamera(**kwargs)
+        with patch('QVideo.cameras.OpenCV._camera.configure'):
+            cam = QOpenCVCamera(**kwargs)
     return cam
 
 

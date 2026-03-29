@@ -70,6 +70,7 @@ class QPicamera(QCamera):
         self._height = int(height)
         self._gray = bool(gray)
         self._controlValues: dict = {}
+        self._deviceOpen: bool = False
         self.open()
 
     def _initialize(self) -> bool:
@@ -91,15 +92,22 @@ class QPicamera(QCamera):
             logger.warning('Could not open Raspberry Pi camera'
                            f'{self.cameraID}: {ex}')
             return False
+        # Save controls set before this restart (e.g. fps changed via
+        # QResolutionControl while the device was closed).  _probeControls
+        # will overwrite _controlValues from fresh metadata, so we save
+        # them here and re-apply them afterwards.
+        prior_controls = dict(self._controlValues)
         fmt = 'YUV420' if self._gray else 'BGR888'
         config = self.device.create_preview_configuration(
             main={'size': (self._width, self._height), 'format': fmt})
         self.device.configure(config)
         self.device.start()
+        self._deviceOpen = True
         try:
             self.device.capture_array()
         except Exception as ex:
             logger.warning(f'Camera did not deliver a frame: {ex}')
+            self._deviceOpen = False
             self.device.stop()
             self.device.close()
             return False
@@ -113,6 +121,13 @@ class QPicamera(QCamera):
         metadata = self.device.capture_metadata()
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
+        # Re-apply any controls the user set before this restart.
+        # Filter to keys still valid under the new configuration.
+        pending = {k: v for k, v in prior_controls.items()
+                   if k in self._controlValues}
+        if pending:
+            self.device.set_controls(pending)
+            self._controlValues.update(pending)
         return True
 
     def _probeControls(self, metadata: dict) -> None:
@@ -185,9 +200,16 @@ class QPicamera(QCamera):
         self._setControl('FrameDurationLimits', (duration, duration))
 
     def _setControl(self, name: str, value) -> None:
-        '''Apply a control value and update the local cache.'''
-        self.device.set_controls({name: value})
+        '''Update the control cache and apply to the device if it is open.
+
+        When called while the device is closed (e.g. fps changed via
+        :class:`~QVideo.lib.QResolutionControl.QResolutionControl` between
+        stop and restart), the value is stored so that :meth:`_initialize`
+        can re-apply it once the device is reopened.
+        '''
         self._controlValues[name] = value
+        if self._deviceOpen:
+            self.device.set_controls({name: value})
 
     def _getColor(self) -> bool:
         return not self._gray
@@ -201,15 +223,24 @@ class QPicamera(QCamera):
         return self.device.camera_config['main']['size'][0]
 
     def _setWidth(self, value: int) -> None:
-        self._reconfigure(width=int(value))
-        self.shapeChanged.emit(self.shape)
+        '''Store the requested width so the next :meth:`_initialize` applies it.
+
+        Resolution changes require stopping and restarting the picamera2
+        stream, which is handled by the :class:`~QVideo.lib.QVideoSource.QVideoSource`
+        context manager.  Storing the value here lets :meth:`_initialize`
+        apply it on restart via :meth:`~picamera2.Picamera2.create_preview_configuration`.
+        '''
+        self._width = int(value)
 
     def _getHeight(self) -> int:
         return self.device.camera_config['main']['size'][1]
 
     def _setHeight(self, value: int) -> None:
-        self._reconfigure(height=int(value))
-        self.shapeChanged.emit(self.shape)
+        '''Store the requested height so the next :meth:`_initialize` applies it.
+
+        See :meth:`_setWidth` for rationale.
+        '''
+        self._height = int(value)
 
     def _reconfigure(self,
                      width: int | None = None,
@@ -242,6 +273,7 @@ class QPicamera(QCamera):
 
     def _deinitialize(self) -> None:
         '''Stop acquisition and close the Raspberry Pi camera.'''
+        self._deviceOpen = False
         self.device.stop()
         self.device.close()
 

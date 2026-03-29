@@ -1,6 +1,6 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 
 
 __all__ = ['RGBFilter', 'QRGBFilter']

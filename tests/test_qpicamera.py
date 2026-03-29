@@ -256,6 +256,8 @@ class TestSetControl(unittest.TestCase):
 
 
 class TestReconfigure(unittest.TestCase):
+    '''_reconfigure() is still used by _setColor; width/height now only
+    update stored config for the next _initialize().'''
 
     def setUp(self):
         self.cam, self.device = make_camera()
@@ -263,37 +265,35 @@ class TestReconfigure(unittest.TestCase):
     def tearDown(self):
         self.cam.close()
 
-    def test_set_width_calls_stop_and_start(self):
+    def test_set_width_stores_config(self):
+        self.cam.set('width', 640)
+        self.assertEqual(self.cam._width, 640)
+
+    def test_set_width_does_not_call_stop(self):
         self.device.reset_mock()
         self.cam.set('width', 640)
-        self.device.stop.assert_called()
-        self.device.start.assert_called()
+        self.device.stop.assert_not_called()
 
-    def test_set_height_calls_stop_and_start(self):
+    def test_set_height_stores_config(self):
+        self.cam.set('height', 480)
+        self.assertEqual(self.cam._height, 480)
+
+    def test_set_height_does_not_call_stop(self):
         self.device.reset_mock()
         self.cam.set('height', 480)
-        self.device.stop.assert_called()
-        self.device.start.assert_called()
-
-    def test_set_width_emits_shape_changed(self):
-        spy = QtTest.QSignalSpy(self.cam.shapeChanged)
-        self.cam.set('width', 640)
-        self.assertGreater(len(spy), 0)
-
-    def test_set_height_emits_shape_changed(self):
-        spy = QtTest.QSignalSpy(self.cam.shapeChanged)
-        self.cam.set('height', 480)
-        self.assertGreater(len(spy), 0)
+        self.device.stop.assert_not_called()
 
     def test_reconfigure_reapplies_controls(self):
+        '''_reconfigure() (called by _setColor) re-applies cached controls.'''
         self.cam.set('Brightness', 0.3)
         self.device.reset_mock()
-        self.cam.set('width', 640)
+        self.cam._reconfigure()
         self.device.set_controls.assert_called()
 
     def test_reconfigure_uses_bgr888_format(self):
+        '''_reconfigure() preserves the current pixel format.'''
         self.device.reset_mock()
-        self.cam.set('width', 640)
+        self.cam._reconfigure()
         config_args = self.device.create_preview_configuration.call_args
         main = config_args.kwargs.get('main', config_args[1].get('main'))
         self.assertEqual(main['format'], 'BGR888')
@@ -383,11 +383,32 @@ class TestFrameRate(unittest.TestCase):
         self.assertNotIn('fps', cam.properties)
         cam.close()
 
-    def test_fps_reapplied_after_reconfigure(self):
+    def test_fps_stored_when_device_closed(self):
+        '''set('fps') while device is closed stores to _controlValues only.'''
+        self.cam._deviceOpen = False
+        self.device.reset_mock()
+        self.cam.set('fps', 15.0)
+        duration = int(1_000_000 / 15.0)
+        self.assertEqual(self.cam._controlValues['FrameDurationLimits'],
+                         (duration, duration))
+        self.device.set_controls.assert_not_called()
+
+    def test_fps_reapplied_on_reinitialize(self):
+        '''Controls stored before restart are re-applied by _initialize().'''
+        self.cam._deviceOpen = False
         self.cam.set('fps', 15.0)
         self.device.reset_mock()
-        self.cam.set('width', 640)
-        self.device.set_controls.assert_called()
+        # Simulate restart: _initialize() is called by the context manager
+        # when QVideoSource restarts.  Patch Picamera2 so it returns the
+        # same mock device, then verify the pending fps is re-applied.
+        with patch.object(_MODULE, 'Picamera2', return_value=self.device):
+            self.cam._initialize()
+        duration = int(1_000_000 / 15.0)
+        applied = [c.args[0] for c in self.device.set_controls.call_args_list]
+        self.assertTrue(
+            any(c.get('FrameDurationLimits') == (duration, duration)
+                for c in applied),
+            msg='FrameDurationLimits not re-applied after reinitialize')
 
 
 class TestDeinitialize(unittest.TestCase):

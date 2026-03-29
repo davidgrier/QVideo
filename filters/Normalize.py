@@ -1,6 +1,6 @@
 from QVideo.filters.Median import Median
 from QVideo.filters.MoMedian import MoMedian
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 
 

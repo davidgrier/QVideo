@@ -1,5 +1,5 @@
 from QVideo.lib.QVideoFilter import VideoFilter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 
 

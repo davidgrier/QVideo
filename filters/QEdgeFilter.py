@@ -1,7 +1,7 @@
 from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import cv2
 import logging
 

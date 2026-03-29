@@ -1,7 +1,7 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFilterBank import QFilterBank
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 from pyqtgraph.Qt import QtCore
 import numpy as np
 from pyqtgraph import GraphicsLayoutWidget, ImageItem
@@ -54,6 +54,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._ready = True
         self._pending = None
         self._overlays = []
+        self._videoShape = None
         self._setupUi()
         self._timer = QtCore.QTimer()
         self._source = None
@@ -163,18 +164,22 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     def sizeHint(self) -> QtCore.QSize:
         '''Return the source frame size as the preferred widget size.'''
+        if self._videoShape is not None:
+            return self._videoShape
         if self.source is not None:
             return self.source.shape
         return super().sizeHint()
 
     def hasHeightForWidth(self) -> bool:
-        '''Return True when the source frame size is known.'''
+        '''Return True when a source is connected.'''
         return self.source is not None
 
     def heightForWidth(self, width: int) -> int:
         '''Return the height that preserves the source aspect ratio.'''
-        if self.source is not None:
+        shape = self._videoShape
+        if shape is None and self.source is not None:
             shape = self.source.shape
+        if shape is not None and shape.width() > 0:
             return width * shape.height() // shape.width()
         return super().heightForWidth(width)
 
@@ -188,6 +193,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             New frame dimensions.
         '''
         logger.debug(f'Resizing to {shape}')
+        self._videoShape = shape
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
                            padding=0, update=True)

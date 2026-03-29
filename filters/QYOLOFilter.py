@@ -13,7 +13,7 @@ References
 
 from pyqtgraph.Qt import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 
 try:

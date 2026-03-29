@@ -41,6 +41,9 @@ class QPicameraTree(QCameraTree):
         if camera is None:
             camera = QPicamera(cameraID=cameraID, width=width, height=height)
         super().__init__(camera, *args, **kwargs)
+        for key in ('width', 'height'):
+            if key in self._parameters:
+                self._parameters[key].setOpts(enabled=False)
 
 
 if __name__ == '__main__':  # pragma: no cover

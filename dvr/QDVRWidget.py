@@ -2,7 +2,7 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets, uic
 from pathlib import Path
 import numpy as np
 from QVideo.lib import clickable, QVideoSource
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVSource
 from .QHDF5Writer import QHDF5Writer

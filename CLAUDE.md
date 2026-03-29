@@ -120,6 +120,80 @@ ReadTheDocs config (`.readthedocs.yaml`):
 
 Add `html_sidebars = {'**': []}` to suppress the empty left sidebar on leaf pages — the top navbar handles navigation for small sites.
 
+## OpenCV camera configuration
+
+`QOpenCVCamera` configures resolution and frame rate once at device-open time via
+`lib/resolutions.configure()`. Three modes:
+
+- **Quality** (default): `QOpenCVCamera()` — probes supported resolutions, selects
+  the largest that achieves ≥ 90 % of the target fps (default 30 fps).
+- **Performance**: `QOpenCVCamera(fps=None)` — probes resolutions, selects the
+  smallest (maximizes frame rate; slo-mo mode).
+- **Explicit**: `QOpenCVCamera(width=W, height=H, fps=F)` — applies values directly
+  without probing.
+
+`width` and `height` are registered as **read-only** properties; runtime resolution
+changes are not supported for OpenCV cameras. The `-c` and `-r` CLI flags both open
+`QOpenCVTree` in quality mode.
+
+## Planned: QResolutionControl
+
+A backend-agnostic widget for cameras that support runtime resolution changes
+(primarily GenICam). **Not yet implemented.** Design decisions agreed upon:
+
+### Background
+
+Survey of Micro-Manager, OBS Studio, Basler Pylon Viewer, Allied Vision Vimba X,
+FLIR SpinView, Qt5/Qt6 `QCamera`, and GStreamer-based tools established these
+universal patterns:
+
+- **Stop-before-write is universal** for payload-affecting parameters (width, height,
+  pixel format, binning, ROI offsets). GenICam enforces this via `TLParamsLocked`;
+  V4L2 enforces it behaviorally. Any setter for these parameters must trigger a
+  stop/restart cycle of `QVideoSource`.
+- **The stop/restart should be transparent to the user** — no manual Stop/Start
+  buttons. The widget intercepts the change, stops the thread, applies it, and
+  restarts (Micro-Manager's `setSuspended()` model).
+- **Enumerate supported modes at initialization**, not on demand (Qt6
+  `QCameraDevice.videoFormats()`, Basler feature tree, OBS capability enumeration).
+- **Resolution and frame rate are linked in hardware but displayed as independent
+  controls.** Show a read-only `ResultingFrameRate` field (Basler Pylon Viewer
+  pattern) that reflects what the driver actually delivered after restart.
+- **Commit on Apply, not on every keystroke.** Changes accumulate until the user
+  presses Apply (or Enter), then a single stop/restart cycle applies them all.
+
+### Planned API
+
+```python
+class QResolutionControl(QtWidgets.QWidget):
+    '''Stop-transparent resolution and frame-rate control for a QVideoSource.'''
+    changed = QtCore.pyqtSignal(int, int, object)  # width, height, actual_fps
+```
+
+### Planned layout
+
+```
+[ Resolution: 1280×720 ▼ ]  [ FPS: 30.0 ]  [ Resulting: 28.4 fps ]  [ Apply ]
+```
+
+- Dropdown populated from `probe_resolutions()` at startup; selecting an entry
+  populates independent Width/Height/FPS spinboxes (for cameras that accept
+  arbitrary ROI sizes).
+- **Apply** button triggers stop/restart; controls are disabled with a
+  'Restarting…' label during the cycle.
+- After restart, `ResultingFrameRate` is updated by reading back `camera.fps`.
+- Emits `changed(width, height, actual_fps)` after successful restart.
+
+### Relationship to existing classes
+
+- Does **not** replace `QCameraTree` — live-settable properties (gain, exposure,
+  color, mirror/flip) stay there.
+- Does **not** handle ROI offsets (a separate `QROIControl` may follow).
+- `QCameraTree._ignoreSync` remains necessary to break the readback re-entrancy
+  loop (setValue → sigTreeStateChanged → _sync → setValue …).
+- GenICam cameras already have a `protected` list for features locked during
+  acquisition (`TLParamsLocked`); `QResolutionControl` will respect that list.
+
 ## Style
 
 - Prefer single quotes over double quotes for strings, including docstrings.

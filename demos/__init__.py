@@ -11,6 +11,12 @@ demo
     Minimal layout: live video screen alongside a camera control tree.
     The starting point for building a custom camera application.
 
+resdemo
+    Extends :mod:`demo` with a :class:`~QVideo.lib.QResolutionControl.QResolutionControl`
+    bar at the top of the window.  Demonstrates runtime resolution and
+    frame-rate changes on cameras that support writable width/height
+    properties (e.g. GenICam cameras and the noise camera).
+
 filterdemo
     Extends :mod:`demo` with a :class:`~QVideo.lib.QFilterBank.QFilterBank`
     panel so that image-processing filters can be toggled and adjusted
@@ -36,6 +42,7 @@ Running
 Each demo can be launched directly::
 
     python -m QVideo.demos.demo
+    python -m QVideo.demos.resdemo
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
@@ -69,6 +76,7 @@ Example::
 '''
 
 from .demo import Demo
+from .resdemo import ResolutionDemo
 from .filterdemo import FilterDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo

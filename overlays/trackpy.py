@@ -13,7 +13,7 @@ Science, 179(1), 298-310. https://doi.org/10.1006/jcis.1996.0217
 
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 import warnings
 import logging

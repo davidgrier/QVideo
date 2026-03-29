@@ -1,5 +1,5 @@
 from QVideo.filters._MedianBase import _MedianBase
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 
 

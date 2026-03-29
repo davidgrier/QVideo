@@ -1,6 +1,6 @@
 from pyqtgraph.Qt import QtCore
 from QVideo.lib import QVideoWriter
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import h5py
 from time import time
 import logging

@@ -1,7 +1,7 @@
 '''Abstract base class for all QVideo camera backends.'''
 from abc import ABCMeta, abstractmethod
 from pyqtgraph.Qt import QtCore
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
 

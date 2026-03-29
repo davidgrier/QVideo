@@ -2,7 +2,7 @@
 from pyqtgraph.Qt import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
-from QVideo.lib.types import Image
+from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
 
@@ -139,6 +139,10 @@ class QVideoSource(QtCore.QThread):
     def start(self) -> 'QVideoSource':
         '''Start the capture thread.
 
+        Safe to call after :meth:`stop` / :meth:`wait` to restart the source.
+        Resets internal running state before launching the thread so that a
+        previously-stopped source can be started again.
+
         Returns
         -------
         QVideoSource
@@ -146,6 +150,9 @@ class QVideoSource(QtCore.QThread):
             e.g. ``src = QVideoSource(cam).start()``.
         '''
         logger.debug('starting')
+        with QtCore.QMutexLocker(self.mutex):
+            self._running = True
+            self._paused = False
         super().start()
         return self
 

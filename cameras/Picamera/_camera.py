@@ -92,10 +92,10 @@ class QPicamera(QCamera):
             logger.warning('Could not open Raspberry Pi camera'
                            f'{self.cameraID}: {ex}')
             return False
-        # Save controls set before this restart (e.g. fps changed via
-        # QResolutionControl while the device was closed).  _probeControls
-        # will overwrite _controlValues from fresh metadata, so we save
-        # them here and re-apply them afterwards.
+        # Save controls set before this restart (e.g. fps changed while
+        # the device was closed).  _probeControls will overwrite
+        # _controlValues from fresh metadata, so we save them here and
+        # re-apply them afterwards.
         prior_controls = dict(self._controlValues)
         fmt = 'YUV420' if self._gray else 'BGR888'
         config = self.device.create_preview_configuration(
@@ -202,8 +202,7 @@ class QPicamera(QCamera):
     def _setControl(self, name: str, value) -> None:
         '''Update the control cache and apply to the device if it is open.
 
-        When called while the device is closed (e.g. fps changed via
-        :class:`~QVideo.lib.QResolutionControl.QResolutionControl` between
+        When called while the device is closed (e.g. fps changed between
         stop and restart), the value is stored so that :meth:`_initialize`
         can re-apply it once the device is reopened.
         '''

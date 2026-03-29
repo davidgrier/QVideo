@@ -1,6 +1,5 @@
 from QVideo.lib import QCamera, QVideoSource
-from QVideo.lib.resolutions import configure
-from pyqtgraph.Qt import QtCore
+from QVideo.cameras.OpenCV._devices import configure, probe_formats
 import cv2
 import platform
 import logging
@@ -45,7 +44,7 @@ class QOpenCVCamera(QCamera):
     platforms use ``CAP_ANY``.
 
     Resolution and frame rate are configured once at device open time
-    via :func:`~QVideo.lib.resolutions.configure`.  Three modes are
+    via :func:`~QVideo.cameras.OpenCV._devices.configure`.  Three modes are
     supported:
 
     - **Quality** (default): probes the device, selects the largest
@@ -56,14 +55,14 @@ class QOpenCVCamera(QCamera):
     - **Explicit** (*width* and *height* both given): applies the
       requested dimensions and *fps* directly.
 
-    ``width`` and ``height`` are registered as writable properties so that
-    :class:`~QVideo.lib.QResolutionControl.QResolutionControl` can apply
-    runtime changes.  Because V4L2 only accepts format changes when no
-    frames are in flight, callers must stop the video source before
-    invoking :meth:`~QVideo.lib.QCamera.QCamera.set` for these properties
-    (``QResolutionControl.apply()`` guarantees this).  The
-    :class:`~QVideo.cameras.OpenCV.QOpenCVTree.QOpenCVTree` keeps them
-    disabled in the parameter tree so they cannot be edited interactively.
+    ``width`` and ``height`` are registered as writable properties.
+    Changes are applied to the open device via OpenCV's V4L2 backend, which
+    handles the required ``VIDIOC_STREAMOFF`` / ``VIDIOC_S_FMT`` /
+    ``VIDIOC_STREAMON`` cycle internally.  The camera mutex serialises these
+    writes against concurrent reads, so no source stop/restart is needed.
+    :class:`~QVideo.cameras.OpenCV.QOpenCVTree.QOpenCVTree` exposes them as
+    read-only display fields; the ``resolution`` enum in that tree changes
+    width, height, and fps together.
     Transform properties (``mirrored``, ``flipped``) are registered
     immediately on construction.  Device properties (``color``, and any
     properties in :data:`_PROBED_PROPS` that the device supports) are
@@ -127,7 +126,7 @@ class QOpenCVCamera(QCamera):
         '''Open the OpenCV VideoCapture device and register device properties.
 
         Configures resolution and frame rate via
-        :func:`~QVideo.lib.resolutions.configure` using the values supplied
+        :func:`~QVideo.cameras.OpenCV._devices.configure` using the values supplied
         at construction time.  Registers ``width`` and ``height`` as
         writable properties, ``color`` as read-write, then probes the
         device for each property in :data:`_PROBED_PROPS` and registers
@@ -140,8 +139,13 @@ class QOpenCVCamera(QCamera):
         '''
         api = cv2.CAP_V4L2 if platform.system() == 'Linux' else cv2.CAP_ANY
         self.device = cv2.VideoCapture(self.cameraID, api)
+        # Probe supported resolutions and their actual maximum frame rates on
+        # the live device before configuring.  QtMultimedia nominal fps values
+        # are unreliable; reading back what the V4L2 driver accepts is accurate.
+        self._formats = probe_formats(self.device)
+        resolutions = [(w, h) for w, h, *_ in self._formats] or None
         configure(self.device, self._configWidth, self._configHeight,
-                  self._configFps)
+                  self._configFps, resolutions=resolutions)
         for _ in range(5):
             if (ready := self.device.read()[0]):
                 break
@@ -190,26 +194,30 @@ class QOpenCVCamera(QCamera):
         return int(self.device.get(self.WIDTH))
 
     def _setWidth(self, value: int) -> None:
-        '''Store the requested width so the next :meth:`_initialize` applies it.
+        '''Set the frame width on the open device.
 
-        Resolution changes require a full device close/reopen cycle
-        (V4L2 ``VIDIOC_S_FMT`` is only reliable before streaming starts).
-        Updating :attr:`_configWidth` here means that when
-        :class:`~QVideo.lib.QResolutionControl.QResolutionControl` restarts
-        the source, :meth:`_initialize` will call
-        :func:`~QVideo.lib.resolutions.configure` with the new value.
+        Stores the value for the next :meth:`_initialize` and writes it to
+        the device immediately.  OpenCV's V4L2 backend handles the required
+        ``VIDIOC_STREAMOFF`` / ``VIDIOC_S_FMT`` / ``VIDIOC_STREAMON`` cycle
+        internally, so no device close/reopen is needed.  The caller must not
+        be holding :attr:`~QVideo.lib.QCamera.QCamera.mutex` — use
+        :meth:`~QVideo.lib.QCamera.QCamera.set` which acquires it.
         '''
         self._configWidth = int(value)
+        self.device.set(self.WIDTH, self._configWidth)
+        self.shapeChanged.emit(self.shape)
 
     def _getHeight(self) -> int:
         return int(self.device.get(self.HEIGHT))
 
     def _setHeight(self, value: int) -> None:
-        '''Store the requested height so the next :meth:`_initialize` applies it.
+        '''Set the frame height on the open device.
 
         See :meth:`_setWidth` for rationale.
         '''
         self._configHeight = int(value)
+        self.device.set(self.HEIGHT, self._configHeight)
+        self.shapeChanged.emit(self.shape)
 
     def _setFps(self, value: float) -> None:
         '''Store the requested frame rate and apply it to the open device.

@@ -31,7 +31,7 @@ QFilterBank and VideoFilter
 .. automodule:: QVideo.lib.QFilterBank
    :members:
 
-.. automodule:: QVideo.lib.VideoFilter
+.. automodule:: QVideo.lib.QVideoFilter
    :members:
 
 Camera chooser

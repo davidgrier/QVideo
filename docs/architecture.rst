@@ -90,13 +90,14 @@ Each backend lives in ``cameras/<Name>/`` and follows the pattern:
   :class:`~QVideo.lib.QCameraTree.QCameraTree` when extra UI logic is
   needed.
 
-The OpenCV backend provides two tree widgets:
-:class:`~QVideo.cameras.OpenCV.QOpenCVTree.QOpenCVTree` exposes width and
-height as independent integer spinboxes (``-c``);
-:class:`~QVideo.cameras.OpenCV.QOpenCVResolutionTree.QOpenCVResolutionTree`
-replaces them with a ``"W×H"`` drop-down selector populated by probing the
-hardware at startup (``-r``), falling back to spinboxes when only one
-resolution is available.
+:class:`~QVideo.cameras.OpenCV.QOpenCVTree.QOpenCVTree` (``-c``) probes the
+connected device at startup to discover its supported resolutions and actual
+maximum frame rates, then presents a ``"W×H @ N Hz"`` dropdown.  Selecting
+an entry atomically updates width, height, and frame rate on the live device
+without stopping the video source.  Width, height, and fps are shown as
+read-only fields; all format changes go through the dropdown.  When probing
+yields no format information the dropdown is omitted and width/height are
+displayed as plain read-only values.
 
 Hardware-specific packages are soft dependencies: the import is wrapped in
 ``try/except (ImportError, ModuleNotFoundError)``.

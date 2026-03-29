@@ -41,12 +41,17 @@ class TrackpyDemo(Demo):
 
 def main() -> None:  # pragma: no cover
     '''Launch the trackpy demo with an interactively chosen camera.'''
+    import sys
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
     pg.mkQApp()
     camera = choose_camera().start()
-    widget = TrackpyDemo(camera)
+    try:
+        widget = TrackpyDemo(camera)
+    except ImportError as e:
+        print(f'Error: {e}', file=sys.stderr)
+        sys.exit(1)
     widget.show()
     pg.exec()
 

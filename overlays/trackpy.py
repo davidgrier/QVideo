@@ -153,6 +153,10 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
                  parent: QtWidgets.QWidget | None = None,
                  diameter: int = 11,
                  minmass: float = 100.) -> None:
+        if tp is None:
+            raise ImportError(
+                'trackpy is required for QTrackpyWidget.'
+                '\n\tInstall it with: pip install trackpy')
         super().__init__('Trackpy', parent)
         self._source = None
         self._ready = True

@@ -187,6 +187,16 @@ class QYoloWidget(QtWidgets.QGroupBox):
                  parent: QtWidgets.QWidget | None = None,
                  model_name: str = 'yolo11n.pt',
                  confidence: float = 0.25) -> None:
+        if pd is None:
+            raise ImportError(
+                'pandas is required for QYoloWidget.'
+                '\n\tInstall it with: pip install pandas'
+                '\n\tor: pip install "QVideo[overlays]"')
+        if YOLO is None:
+            raise ImportError(
+                'ultralytics is required for QYoloWidget.'
+                '\n\tInstall it with: pip install ultralytics'
+                '\n\tSee https://docs.ultralytics.com/ for more information.')
         super().__init__('YOLO', parent)
         self._source = None
         self._ready = True

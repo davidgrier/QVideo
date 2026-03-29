@@ -11,12 +11,6 @@ demo
     Minimal layout: live video screen alongside a camera control tree.
     The starting point for building a custom camera application.
 
-resdemo
-    Extends :mod:`demo` with a :class:`~QVideo.lib.QResolutionControl.QResolutionControl`
-    bar at the top of the window.  Demonstrates runtime resolution and
-    frame-rate changes on cameras that support writable width/height
-    properties (e.g. GenICam cameras and the noise camera).
-
 filterdemo
     Extends :mod:`demo` with a :class:`~QVideo.lib.QFilterBank.QFilterBank`
     panel so that image-processing filters can be toggled and adjusted
@@ -42,7 +36,6 @@ Running
 Each demo can be launched directly::
 
     python -m QVideo.demos.demo
-    python -m QVideo.demos.resdemo
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
@@ -61,7 +54,6 @@ If no flag is given, a noise camera is used as a fallback.
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
-    -r [cameraID]   OpenCV camera with resolution drop-down selector
     -v [cameraID]   Allied Vision VimbaX camera
     -h              Show help and exit
 
@@ -76,7 +68,6 @@ Example::
 '''
 
 from .demo import Demo
-from .resdemo import ResolutionDemo
 from .filterdemo import FilterDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo

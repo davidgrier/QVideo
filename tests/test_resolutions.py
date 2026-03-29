@@ -2,8 +2,8 @@
 import unittest
 import cv2
 from unittest.mock import MagicMock, patch
-import QVideo.lib.resolutions as resolutions_module
-from QVideo.lib.resolutions import probe_resolutions, configure, COMMON_RESOLUTIONS
+import QVideo.cameras.OpenCV._devices as resolutions_module
+from QVideo.cameras.OpenCV._devices import probe_resolutions, probe_formats, configure, COMMON_RESOLUTIONS
 
 
 def make_fps_clamped_device(fps_limits: dict,
@@ -157,6 +157,85 @@ class TestProbeResolutions(unittest.TestCase):
         self.assertEqual(device.set.call_count, expected_calls)
 
 
+class TestProbeFormats(unittest.TestCase):
+
+    def _make_device(self, fps_by_res: dict) -> object:
+        '''Stateful mock: set(WIDTH/HEIGHT/FPS) updates state; get reads back.'''
+        state = {'w': 640, 'h': 480, 'fps': 30.}
+
+        def _get(prop):
+            return {cv2.CAP_PROP_FRAME_WIDTH: float(state['w']),
+                    cv2.CAP_PROP_FRAME_HEIGHT: float(state['h']),
+                    cv2.CAP_PROP_FPS: state['fps']}.get(prop, 0.)
+
+        def _set(prop, value):
+            if prop == cv2.CAP_PROP_FRAME_WIDTH:
+                state['w'] = int(value)
+            elif prop == cv2.CAP_PROP_FRAME_HEIGHT:
+                state['h'] = int(value)
+            elif prop == cv2.CAP_PROP_FPS:
+                state['fps'] = min(float(value),
+                                   fps_by_res.get((state['w'], state['h']), 30.))
+
+        device = MagicMock(spec=cv2.VideoCapture)
+        device.get.side_effect = _get
+        device.set.side_effect = _set
+        return device, state
+
+    def test_returns_list(self):
+        device, _ = self._make_device({})
+        result = probe_formats(device, [(640, 480)])
+        self.assertIsInstance(result, list)
+
+    def test_entry_format(self):
+        device, _ = self._make_device({})
+        result = probe_formats(device, [(640, 480)])
+        self.assertEqual(len(result), 1)
+        w, h, lo, hi = result[0]
+        self.assertEqual((w, h), (640, 480))
+        self.assertAlmostEqual(lo, 1.)
+        self.assertGreater(hi, 0.)
+
+    def test_probes_max_fps_per_resolution(self):
+        '''Requesting 120 fps; driver clamps to its maximum.'''
+        fps_limits = {(640, 480): 30., (1280, 720): 15.}
+        device, _ = self._make_device(fps_limits)
+        result = probe_formats(device, [(640, 480), (1280, 720)])
+        by_res = {(w, h): hi for w, h, _, hi in result}
+        self.assertAlmostEqual(by_res[(640, 480)], 30.)
+        self.assertAlmostEqual(by_res[(1280, 720)], 15.)
+
+    def test_deduplicates_resolutions(self):
+        '''Multiple probe requests that clamp to the same size → one entry.'''
+        device, _ = self._make_device({})  # always clamps to 640×480
+        result = probe_formats(device, [(160, 120), (320, 240), (640, 480)])
+        widths = [w for w, *_ in result]
+        self.assertEqual(len(widths), len(set(widths)))
+
+    def test_restores_original_state(self):
+        device, state = self._make_device({(1280, 720): 30.})
+        # Set a non-default initial state
+        device.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        device.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        device.set(cv2.CAP_PROP_FPS, 30.)
+        probe_formats(device, [(640, 480)])
+        self.assertEqual(state['w'], 1280)
+        self.assertEqual(state['h'], 720)
+        self.assertAlmostEqual(state['fps'], 30.)
+
+    def test_uses_common_resolutions_when_none_given(self):
+        device, _ = self._make_device({})
+        with patch.object(resolutions_module, 'COMMON_RESOLUTIONS',
+                          [(640, 480)]):
+            result = probe_formats(device)
+        self.assertEqual(len(result), 1)
+
+    def test_empty_resolutions_returns_empty(self):
+        device, _ = self._make_device({})
+        result = probe_formats(device, [])
+        self.assertEqual(result, [])
+
+
 class TestConfigure(unittest.TestCase):
 
     _RESOLUTIONS = [(640, 480), (1280, 720), (1920, 1080)]
@@ -235,6 +314,34 @@ class TestConfigure(unittest.TestCase):
         with self._patch_probe(resolutions=[]):
             configure(device, fps=30.)
         # device state unchanged — no set() call for width/height
+
+    def test_resolutions_param_skips_probe(self):
+        '''Passing resolutions= skips probe_resolutions.'''
+        device, state = make_fps_clamped_device({})
+        with patch.object(resolutions_module, 'probe_resolutions') as mock_probe:
+            configure(device, fps=30., resolutions=self._RESOLUTIONS)
+        mock_probe.assert_not_called()
+
+    def test_resolutions_param_used_for_quality_mode(self):
+        '''Quality mode picks the largest resolution from the provided list.'''
+        fps_limits = {}
+        device, state = make_fps_clamped_device(fps_limits)
+        configure(device, fps=30., resolutions=self._RESOLUTIONS)
+        self.assertEqual(state['w'], 1920)
+        self.assertEqual(state['h'], 1080)
+
+    def test_resolutions_param_used_for_performance_mode(self):
+        '''Performance mode picks the smallest resolution from the provided list.'''
+        device, state = make_fps_clamped_device({})
+        configure(device, fps=None, resolutions=self._RESOLUTIONS)
+        self.assertEqual(state['w'], 640)
+        self.assertEqual(state['h'], 480)
+
+    def test_empty_resolutions_param_returns_without_error(self):
+        '''An empty resolutions list returns immediately without device calls.'''
+        device, state = make_fps_clamped_device({})
+        configure(device, fps=30., resolutions=[])
+        # no width/height set
 
 
 if __name__ == '__main__':

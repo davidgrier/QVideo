@@ -31,6 +31,11 @@ yolodemo
     panel so that YOLO object-detection bounding boxes are overlaid on the
     live feed in real time and detection results are available via a signal.
 
+compositedemo
+    Extends :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy overlay
+    and a "Composite" checkbox.  When checked, the DVR records the rendered
+    scene (video + overlay markers) instead of raw camera frames.
+
 Running
 -------
 Each demo can be launched directly::
@@ -40,6 +45,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
+    python -m QVideo.demos.compositedemo
 
 Camera selection
 ----------------
@@ -72,4 +78,5 @@ from .filterdemo import FilterDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo
+from .compositedemo import CompositeDemo
 

@@ -2,7 +2,7 @@
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.videotypes import Image
-from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 from pyqtgraph import GraphicsLayoutWidget, ImageItem
 import logging
@@ -41,9 +41,26 @@ class QVideoScreen(GraphicsLayoutWidget):
         Maximum display frame rate [fps]. Setting this updates the throttle
         interval.
     source : QVideoSource
-        The video source. Setting this connects :attr:`newFrame` and
-        :attr:`shapeChanged` to the display.
+        The video source. Setting this connects the source to the display.
+    fps : float | None
+        Frame rate of the connected source [fps]. ``None`` when no source
+        is connected. Read-only.
+    composite : bool
+        Controls what :attr:`newFrame` emits.  When ``False`` (default),
+        :attr:`newFrame` carries the filtered video frame.  When ``True``,
+        it carries the rendered ViewBox scene (video + overlays) as an
+        ``(H, W, 4)`` RGBA uint8 array.
+
+    Signals
+    -------
+    newFrame(numpy.ndarray)
+        Emitted after each displayed frame.  Carries either the filtered
+        video frame or the rendered composite scene, depending on
+        :attr:`composite`.
     '''
+
+    #: Emitted after each displayed frame.
+    newFrame = QtCore.pyqtSignal(np.ndarray)
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
@@ -54,6 +71,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._ready = True
         self._pending = None
         self._overlays = []
+        self._composite = False
         self._videoShape = None
         self._setupUi()
         self._timer = QtCore.QTimer()
@@ -140,14 +158,61 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._source.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
 
+    @property
+    def fps(self) -> float | None:
+        '''Frame rate of the connected source [frames per second].'''
+        if self._source is not None:
+            return self._source.fps
+        return None
+
+    @property
+    def composite(self) -> bool:
+        '''Emit the rendered scene via :attr:`newFrame` instead of the raw frame.'''
+        return self._composite
+
+    @composite.setter
+    def composite(self, value: bool) -> None:
+        self._composite = bool(value)
+
+    def _renderComposite(self) -> Image:
+        '''Render the ViewBox scene (video + overlays) to an RGBA numpy array.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of shape ``(H, W, 4)`` and dtype ``uint8``.
+            Returns an empty ``(0, 0, 4)`` array if the view has no size yet.
+        '''
+        rect = self.view.sceneBoundingRect()
+        w, h = int(rect.width()), int(rect.height())
+        if w <= 0 or h <= 0:
+            return np.empty((0, 0, 4), dtype=np.uint8)
+        try:
+            fmt = QtGui.QImage.Format.Format_RGBA8888
+        except AttributeError:
+            fmt = QtGui.QImage.Format_RGBA8888
+        qimage = QtGui.QImage(w, h, fmt)
+        qimage.fill(0)
+        painter = QtGui.QPainter(qimage)
+        self.view.scene().render(painter,
+                                 target=QtCore.QRectF(0, 0, w, h),
+                                 source=rect)
+        painter.end()
+        ptr = qimage.bits()
+        ptr.setsize(h * w * 4)
+        return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()
+
     @QtCore.pyqtSlot(np.ndarray)
     def setImage(self, image: Image) -> None:
-        '''Display a new video frame, subject to frame-rate throttling.
+        '''Display a new video frame and emit :attr:`newFrame`.
 
         Passes the frame through :attr:`filter` before display.  If the
         throttle interval has not yet elapsed, the frame is buffered as the
         most recent pending frame; when the interval expires the buffered
         frame is displayed immediately so no extra latency accumulates.
+
+        :attr:`newFrame` is emitted with the filtered frame, or with the
+        rendered composite scene when :attr:`composite` is ``True``.
 
         Parameters
         ----------
@@ -155,7 +220,10 @@ class QVideoScreen(GraphicsLayoutWidget):
             The frame to display.
         '''
         if self._ready:
-            self.image.setImage(self.filter(image), autoLevels=False)
+            filtered = self.filter(image)
+            self.image.setImage(filtered, autoLevels=False)
+            self.newFrame.emit(
+                self._renderComposite() if self._composite else filtered)
             self._ready = False
             self._pending = None
             self._timer.singleShot(self._interval, self._setready)

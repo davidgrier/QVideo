@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from pyqtgraph.Qt import QtCore, QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets, QtTest
 from QVideo.lib.QVideoScreen import QVideoScreen
 from QVideo.lib.QFilterBank import QFilterBank
 
@@ -18,6 +18,10 @@ def make_mock_source(fps=30., width=640, height=480):
     source.shape = QtCore.QSize(width, height)
     source.fps = fps
     return source
+
+
+def _spy(screen, signal_name='newFrame'):
+    return QtTest.QSignalSpy(getattr(screen, signal_name))
 
 
 def make_screen(**kwargs) -> QVideoScreen:
@@ -389,6 +393,78 @@ class TestOverlays(unittest.TestCase):
         with patch.object(screen.view, 'removeItem') as mock_remove:
             screen.removeOverlay(item)
         mock_remove.assert_called_once_with(item)
+
+
+class TestFps(unittest.TestCase):
+
+    def test_fps_none_without_source(self):
+        screen = make_screen()
+        self.assertIsNone(screen.fps)
+
+    def test_fps_mirrors_source(self):
+        screen = make_screen()
+        source = make_mock_source(fps=60.)
+        with patch.object(screen, 'updateShape'):
+            screen._source = source
+        self.assertEqual(screen.fps, 60.)
+
+
+class TestNewFrame(unittest.TestCase):
+
+    def test_setimage_emits_newFrame_when_ready(self):
+        screen = make_screen()
+        spy = _spy(screen)
+        with patch.object(screen.filter, '__call__', return_value=_FRAME):
+            with patch.object(screen.image, 'setImage'):
+                screen.setImage(_FRAME)
+        self.assertEqual(len(spy), 1)
+
+    def test_setimage_does_not_call_render_composite_when_not_composite(self):
+        screen = make_screen()
+        with patch.object(screen.filter, '__call__', return_value=_FRAME):
+            with patch.object(screen.image, 'setImage'):
+                with patch.object(screen, '_renderComposite') as mock_render:
+                    screen.setImage(_FRAME)
+        mock_render.assert_not_called()
+
+    def test_setimage_calls_render_composite_when_composite_true(self):
+        screen = make_screen()
+        screen._composite = True
+        with patch.object(screen.filter, '__call__', return_value=_FRAME):
+            with patch.object(screen.image, 'setImage'):
+                with patch.object(screen, '_renderComposite', return_value=_FRAME) as mock_render:
+                    screen.setImage(_FRAME)
+        mock_render.assert_called_once()
+
+    def test_setimage_does_not_emit_newFrame_when_not_ready(self):
+        screen = make_screen()
+        screen._ready = False
+        spy = _spy(screen)
+        screen.setImage(_FRAME)
+        self.assertEqual(len(spy), 0)
+
+
+class TestComposite(unittest.TestCase):
+
+    def test_composite_false_on_init(self):
+        screen = make_screen()
+        self.assertFalse(screen._composite)
+
+    def test_composite_getter(self):
+        screen = make_screen()
+        screen._composite = True
+        self.assertTrue(screen.composite)
+
+    def test_composite_setter(self):
+        screen = make_screen()
+        screen.composite = True
+        self.assertTrue(screen._composite)
+
+    def test_composite_setter_false(self):
+        screen = make_screen()
+        screen.composite = True
+        screen.composite = False
+        self.assertFalse(screen._composite)
 
 
 if __name__ == '__main__':

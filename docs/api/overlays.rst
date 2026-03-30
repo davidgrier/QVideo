@@ -13,7 +13,7 @@ Typical usage::
 
     widget = QTrackpyWidget(parent)   # or QYoloWidget
     widget.source = camera_source
-    widget.attachTo(screen)
+    screen.addOverlay(widget.overlay)
     widget.newData.connect(my_slot)
 
 Trackpy

@@ -89,6 +89,8 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         self.assertEqual(args[0].ndim, 2)
         self.assertEqual(args[1], 11)
         self.assertEqual(kwargs['minmass'], 50.)
+        self.assertFalse(kwargs['characterize'])
+        self.assertFalse(kwargs['invert'])
 
     def test_locate_emits_features(self):
         features = _make_features()
@@ -309,12 +311,115 @@ class TestQTrackpyWidgetDiameter(unittest.TestCase):
         self.assertEqual(w._diameterSpinBox.value(), 13)
 
 
+class TestTrackpyWorkerOpts(unittest.TestCase):
+
+    def test_characterize_false_by_default(self):
+        w = _TrackpyWorker()
+        self.assertFalse(w._opts['characterize'])
+
+    def test_separation_none_by_default(self):
+        w = _TrackpyWorker()
+        self.assertIsNone(w._opts['separation'])
+
+    def test_noise_size_one_by_default(self):
+        w = _TrackpyWorker()
+        self.assertEqual(w._opts['noise_size'], 1)
+
+    def test_invert_false_by_default(self):
+        w = _TrackpyWorker()
+        self.assertFalse(w._opts['invert'])
+
+    def test_minmass_in_opts(self):
+        w = _TrackpyWorker(minmass=75.)
+        self.assertAlmostEqual(w._opts['minmass'], 75.)
+
+    def test_minmass_property_reads_opts(self):
+        w = _TrackpyWorker(minmass=50.)
+        w._opts['minmass'] = 99.
+        self.assertAlmostEqual(w.minmass, 99.)
+
+    def test_minmass_property_writes_opts(self):
+        w = _TrackpyWorker()
+        w.minmass = 42.
+        self.assertAlmostEqual(w._opts['minmass'], 42.)
+
+
 class TestQTrackpyWidgetMinmass(unittest.TestCase):
 
     def test_set_minmass(self):
         w = _make_widget()
         w._setMinmass(250.)
         self.assertAlmostEqual(w._worker.minmass, 250.)
+
+
+class TestQTrackpyWidgetSeparation(unittest.TestCase):
+
+    def test_separation_spinbox_exists(self):
+        w = _make_widget()
+        self.assertIsInstance(w._separationSpinBox, QtWidgets.QDoubleSpinBox)
+
+    def test_separation_spinbox_zero_by_default(self):
+        w = _make_widget()
+        self.assertAlmostEqual(w._separationSpinBox.value(), 0.)
+
+    def test_separation_spinbox_init_value(self):
+        w = _make_widget(separation=8.)
+        self.assertAlmostEqual(w._separationSpinBox.value(), 8.)
+
+    def test_set_separation_zero_stores_none(self):
+        w = _make_widget()
+        w._setSeparation(0.)
+        self.assertIsNone(w._worker._opts['separation'])
+
+    def test_set_separation_nonzero(self):
+        w = _make_widget()
+        w._setSeparation(12.)
+        self.assertAlmostEqual(w._worker._opts['separation'], 12.)
+
+
+class TestQTrackpyWidgetNoiseSize(unittest.TestCase):
+
+    def test_noise_size_spinbox_exists(self):
+        w = _make_widget()
+        self.assertIsInstance(w._noiseSizeSpinBox, QtWidgets.QSpinBox)
+
+    def test_noise_size_spinbox_default(self):
+        w = _make_widget()
+        self.assertEqual(w._noiseSizeSpinBox.value(), 1)
+
+    def test_noise_size_spinbox_init_value(self):
+        w = _make_widget(noise_size=3)
+        self.assertEqual(w._noiseSizeSpinBox.value(), 3)
+
+    def test_set_noise_size(self):
+        w = _make_widget()
+        w._setNoiseSize(4)
+        self.assertEqual(w._worker._opts['noise_size'], 4)
+
+
+class TestQTrackpyWidgetInvert(unittest.TestCase):
+
+    def test_invert_checkbox_exists(self):
+        w = _make_widget()
+        self.assertIsInstance(w._invertCheckBox, QtWidgets.QCheckBox)
+
+    def test_invert_unchecked_by_default(self):
+        w = _make_widget()
+        self.assertFalse(w._invertCheckBox.isChecked())
+
+    def test_invert_checked_when_init_true(self):
+        w = _make_widget(invert=True)
+        self.assertTrue(w._invertCheckBox.isChecked())
+
+    def test_set_invert_true(self):
+        w = _make_widget()
+        w._setInvert(True)
+        self.assertTrue(w._worker._opts['invert'])
+
+    def test_set_invert_false(self):
+        w = _make_widget(invert=True)
+        w._setInvert(False)
+        self.assertFalse(w._worker._opts['invert'])
 
 
 class TestQTrackpyWidgetCleanup(unittest.TestCase):

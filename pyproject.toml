@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "QVideo"
-version = "3.5.0"
+version = "3.6.0"
 description = "PyQt-based framework for integrating video cameras into research applications"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -43,12 +43,12 @@ Repository = "https://github.com/davidgrier/QVideo"
 pyqt5    = ["PyQt5", "PyQt5-sip"]
 pyqt6    = ["PyQt6"]
 dvr      = ["h5py"]
-overlays = ["pandas"]
+overlays = ["pandas", "trackpy", "numba", "ultralytics"]
 genicam  = ["harvesters", "genicam"]
 picamera = ["picamera2"]
-dev-pyqt5 = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas"]
-dev-pyqt6 = ["PyQt6", "pytest", "pytest-cov", "h5py", "pandas"]
-dev       = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas"]
+dev-pyqt5 = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics"]
+dev-pyqt6 = ["PyQt6", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics"]
+dev       = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics"]
 docs     = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 
 [tool.setuptools]

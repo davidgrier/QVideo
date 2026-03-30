@@ -184,29 +184,28 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._composite = bool(value)
 
     def _renderComposite(self) -> Image:
-        '''Render the ViewBox scene (video + overlays) to an RGBA numpy array.
+        '''Capture the widget (video + overlays) as an RGBA numpy array.
+
+        Uses :meth:`QWidget.grab` to snapshot the widget's current visual
+        state.  This avoids painter conflicts that arise from rendering the
+        :class:`~pyqtgraph.GraphicsScene` directly while pyqtgraph may have
+        its own internal painter active.
 
         Returns
         -------
         numpy.ndarray
             Array of shape ``(H, W, 4)`` and dtype ``uint8``.
-            Returns an empty ``(0, 0, 4)`` array if the view has no size yet.
+            Returns an empty ``(0, 0, 4)`` array if the widget has no size.
         '''
-        rect = self.view.sceneBoundingRect()
-        w, h = int(rect.width()), int(rect.height())
-        if w <= 0 or h <= 0:
+        pixmap = self.grab()
+        if pixmap.isNull():
             return np.empty((0, 0, 4), dtype=np.uint8)
         try:
             fmt = QtGui.QImage.Format.Format_RGBA8888
         except AttributeError:
             fmt = QtGui.QImage.Format_RGBA8888
-        qimage = QtGui.QImage(w, h, fmt)
-        qimage.fill(0)
-        painter = QtGui.QPainter(qimage)
-        self.view.scene().render(painter,
-                                 target=QtCore.QRectF(0, 0, w, h),
-                                 source=rect)
-        painter.end()
+        qimage = pixmap.toImage().convertToFormat(fmt)
+        w, h = qimage.width(), qimage.height()
         ptr = qimage.bits()
         ptr.setsize(h * w * 4)
         return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()

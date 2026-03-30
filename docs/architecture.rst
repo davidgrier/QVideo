@@ -8,6 +8,7 @@ layers below it, so individual components can be used in isolation.
 
    ┌──────────────────────────────────────────────────┐
    │  QCamcorder  Demo  FilterDemo  ROIDemo           │  application layer
+   │  TrackpyDemo  YoloDemo  CompositeDemo            │
    ├──────────────┬───────────────────────────────────┤
    │  QCameraTree │  QVideoScreen  QFilterBank  DVR   │  UI layer
    ├──────────────┴───────────────────────────────────┤
@@ -55,7 +56,13 @@ auto-build a control panel — no manual UI code is needed per camera.
 :class:`~QVideo.lib.QVideoScreen.QVideoScreen` displays live frames from
 a :class:`~QVideo.lib.QVideoSource.QVideoSource`.  It maintains the
 video aspect ratio by resizing its containing window whenever the frame
-dimensions change.
+dimensions change.  After each displayed frame it emits ``newFrame``
+carrying either the filtered video frame or, when
+:attr:`~QVideo.lib.QVideoScreen.QVideoScreen.composite` is enabled, the
+rendered scene (video + overlays) as an RGBA array.  Its
+:attr:`~QVideo.lib.QVideoScreen.QVideoScreen.fps` property reports the
+effective display rate, so the screen can be used directly as a DVR
+source for composite recording.
 
 :class:`~QVideo.lib.QFilterBank.QFilterBank` and
 :class:`~QVideo.lib.VideoFilter.VideoFilter` provide a composable
@@ -69,14 +76,24 @@ Application layer
 :class:`~QVideo.lib.QCameraTree.QCameraTree`, and
 :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` into a single reusable widget.
 
-The :mod:`~QVideo.demos` package provides three ready-to-run applications
+The :mod:`~QVideo.demos` package provides ready-to-run applications
 built on the framework, following two inheritance chains:
 
 * :class:`~QVideo.demos.demo.Demo` — minimal layout: screen + camera tree.
   :class:`~QVideo.demos.filterdemo.FilterDemo` extends it with a
   :class:`~QVideo.lib.QFilterBank.QFilterBank` panel.
+  :class:`~QVideo.demos.trackpydemo.TrackpyDemo` extends it with a
+  :class:`~QVideo.overlays.trackpy.QTrackpyWidget` panel and live particle
+  markers.
+  :class:`~QVideo.demos.yolodemo.YoloDemo` extends it with a
+  :class:`~QVideo.overlays.yolo.QYoloWidget` panel and live YOLO
+  detection bounding boxes.
 * :class:`~QVideo.demos.ROIdemo.ROIDemo` extends
   :class:`~QVideo.QCamcorder.QCamcorder` with a draggable ROI overlay.
+  :class:`~QVideo.demos.compositedemo.CompositeDemo` extends it with a
+  :class:`~QVideo.overlays.trackpy.QTrackpyWidget` panel and a
+  ``Composite`` checkbox that switches the DVR between recording raw
+  frames and recording the rendered scene (video + overlay markers).
 
 Camera backends
 ---------------

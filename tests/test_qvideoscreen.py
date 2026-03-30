@@ -401,12 +401,23 @@ class TestFps(unittest.TestCase):
         screen = make_screen()
         self.assertIsNone(screen.fps)
 
-    def test_fps_mirrors_source(self):
+    def test_fps_returns_source_fps_when_no_throttle(self):
         screen = make_screen()
         source = make_mock_source(fps=60.)
         with patch.object(screen, 'updateShape'):
             screen._source = source
         self.assertEqual(screen.fps, 60.)
+
+    def test_fps_returns_framerate_when_throttled(self):
+        screen = make_screen(framerate=30)
+        source = make_mock_source(fps=120.)
+        with patch.object(screen, 'updateShape'):
+            screen._source = source
+        self.assertEqual(screen.fps, 30.)
+
+    def test_fps_returns_framerate_without_source_when_throttled(self):
+        screen = make_screen(framerate=25)
+        self.assertEqual(screen.fps, 25.)
 
 
 class TestNewFrame(unittest.TestCase):

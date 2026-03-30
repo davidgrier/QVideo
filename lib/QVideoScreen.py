@@ -160,7 +160,16 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @property
     def fps(self) -> float | None:
-        '''Frame rate of the connected source [frames per second].'''
+        '''Effective display frame rate [frames per second].
+
+        Returns :attr:`framerate` when display throttling is active, otherwise
+        delegates to the source frame rate.  This is the rate at which
+        :attr:`newFrame` fires, and therefore the correct value to use when
+        the screen is connected to a recorder.  Returns ``None`` when no
+        source is connected.
+        '''
+        if self._framerate is not None:
+            return float(self._framerate)
         if self._source is not None:
             return self._source.fps
         return None

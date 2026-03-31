@@ -255,15 +255,9 @@ class QGenicamCamera(QCamera):
         self.protected = {k for k, v in ma.items()
                           if k in mb and mb[k] != v}
         self._register_features(root)
-        for genicam_name, alias in (('Width', 'width'), ('Height', 'height')):
-            if genicam_name in self._properties:
-                orig_setter = self._properties[genicam_name]['setter']
-                if orig_setter is not None:
-                    def _shape_setter(v, s=orig_setter):
-                        s(v)
-                        self.shapeChanged.emit(self.shape)
-                    self._properties[genicam_name]['setter'] = _shape_setter
-                self._properties[alias] = self._properties[genicam_name]
+        for name in ('Width', 'Height'):
+            if name in self._properties:
+                self._properties[name.lower()] = self._properties[name]
         if not self.device.is_valid():
             logger.warning(
                 'Camera device reported invalid after initialization')
@@ -386,6 +380,11 @@ class QGenicamCamera(QCamera):
     def settings(self, settings: QCamera.Settings) -> None:
         for key, value in settings.items():
             self.set(key, value)
+
+    def set(self, key: str, value: QCamera.PropertyValue) -> None:
+        super().set(key, value)
+        if key.lower() in ('width', 'height'):
+            self.shapeChanged.emit(self.shape)
 
     def is_readwrite(self, feature: str) -> bool:
         '''Return ``True`` if the named feature is currently writable.

@@ -3,7 +3,7 @@
 # Created by: The Resource Compiler for Qt version 5.15.15
 # WARNING! All changes made in this file will be lost!
 
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 
 qt_resource_data = b"\
 \x00\x00\x0b \
@@ -1073,10 +1073,15 @@ qt_resource_struct = b"\
 \x00\x00\x01\x84\x14\x8d\xbf1\
 "
 
+
 def qInitResources():
-    QtCore.qRegisterResourceData(0x03, qt_resource_struct, qt_resource_name, qt_resource_data)
+    QtCore.qRegisterResourceData(
+        0x03, qt_resource_struct, qt_resource_name, qt_resource_data)
+
 
 def qCleanupResources():
-    QtCore.qUnregisterResourceData(0x03, qt_resource_struct, qt_resource_name, qt_resource_data)
+    QtCore.qUnregisterResourceData(
+        0x03, qt_resource_struct, qt_resource_name, qt_resource_data)
+
 
 qInitResources()

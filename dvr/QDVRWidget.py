@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets, uic
+from qtpy import QtCore, QtGui, QtWidgets, uic
 from pathlib import Path
 import numpy as np
 from QVideo.lib import clickable, QVideoSource
@@ -46,9 +46,9 @@ class QDVRWidget(QtWidgets.QFrame):
         Default file path for saving.  If ``None``, defaults to
         ``~/default.mkv``.
     *args :
-        Forwarded to :class:`~pyqtgraph.Qt.QtWidgets.QFrame`.
+        Forwarded to :class:`~qtpy.QtWidgets.QFrame`.
     **kwargs :
-        Forwarded to :class:`~pyqtgraph.Qt.QtWidgets.QFrame`.
+        Forwarded to :class:`~qtpy.QtWidgets.QFrame`.
 
     Signals
     -------
@@ -61,11 +61,11 @@ class QDVRWidget(QtWidgets.QFrame):
     '''
 
     #: Emitted for each frame during playback.
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
     #: Emitted when recording starts (``True``) or stops (``False``).
-    recording = QtCore.pyqtSignal(bool)
+    recording = QtCore.Signal(bool)
     #: Emitted when playback starts (``True``) or stops (``False``).
-    playing = QtCore.pyqtSignal(bool)
+    playing = QtCore.Signal(bool)
 
     UIFILE = Path(__file__).parent / 'QDVRWidget.ui'
     FILENAME = 'default.mkv'
@@ -187,7 +187,7 @@ class QDVRWidget(QtWidgets.QFrame):
                 self.playname = filename
         return filename
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def record(self) -> None:
         '''Start recording, or stop if already recording.
 
@@ -219,7 +219,7 @@ class QDVRWidget(QtWidgets.QFrame):
         self.source.newFrame.connect(self._writer.write)
         self.recording.emit(True)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def play(self) -> None:
         '''Start playback, or resume if paused.
 
@@ -250,7 +250,7 @@ class QDVRWidget(QtWidgets.QFrame):
         else:
             self._player = None
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def pause(self) -> None:
         '''Pause or resume playback.'''
         if self.isPlaying():
@@ -259,7 +259,7 @@ class QDVRWidget(QtWidgets.QFrame):
             else:
                 self._player.pause()
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def rewind(self) -> None:
         '''Rewind to the first frame and pause.'''
         if self.isPlaying():
@@ -267,7 +267,7 @@ class QDVRWidget(QtWidgets.QFrame):
             self._player.pause()
             self.framenumber = 0
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def stop(self) -> None:
         '''Stop recording or playback.'''
         if self.isRecording():
@@ -302,17 +302,17 @@ class QDVRWidget(QtWidgets.QFrame):
         self.stop()
         super().closeEvent(event)
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     def setFrameNumber(self, framenumber: int) -> None:
         '''Set the displayed frame number.'''
         self.framenumber = framenumber
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def stepFrameNumber(self) -> None:
         '''Increment the displayed frame number.'''
         self.framenumber += 1
 
-    @QtCore.pyqtProperty(QVideoSource)
+    @QtCore.Property(QVideoSource)
     def source(self) -> QVideoSource:
         '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being recorded.'''
         return self._source
@@ -324,7 +324,7 @@ class QDVRWidget(QtWidgets.QFrame):
         self._source = source
         self.recordButton.setDisabled(source is None)
 
-    @QtCore.pyqtProperty(str)
+    @QtCore.Property(str)
     def filename(self) -> str:
         '''Current save filename.'''
         return str(self.saveEdit.text())
@@ -337,7 +337,7 @@ class QDVRWidget(QtWidgets.QFrame):
             self.saveEdit.setText(filename)
             self.playname = filename
 
-    @QtCore.pyqtProperty(str)
+    @QtCore.Property(str)
     def playname(self) -> str:
         '''Current playback filename.'''
         return str(self.playEdit.text())
@@ -347,7 +347,7 @@ class QDVRWidget(QtWidgets.QFrame):
         if not self.isPlaying():
             self.playEdit.setText(filename)
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def framenumber(self) -> int:
         '''Current frame number displayed in the LCD.'''
         return self._framenumber

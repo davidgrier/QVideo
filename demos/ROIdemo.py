@@ -6,11 +6,11 @@ Run directly::
     python -m QVideo.demos.ROIdemo
 '''
 
-from QVideo.QCamcorder import QCamcorder
-from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot
+from qtpy import QtCore
 import pyqtgraph as pg
 import numpy as np
 from pathlib import Path
+from QVideo.QCamcorder import QCamcorder
 
 
 __all__ = ['ROIFilter', 'ROIDemo']
@@ -44,13 +44,13 @@ class ROIFilter(pg.RectROI):
     '''
 
     #: Emitted with the cropped frame each time :meth:`crop` is called.
-    newFrame = pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
     def __init__(self, fps: float, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fps = fps
 
-    @pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def crop(self, frame: np.ndarray) -> None:
         '''Crop *frame* to the current ROI bounds and emit :attr:`newFrame`.
 
@@ -111,7 +111,7 @@ class ROIDemo(QCamcorder):
         self.dvr.source = self.roi
         self.dvr.recording.connect(self.recording)
 
-    @pyqtSlot(bool)
+    @QtCore.Slot(bool)
     def recording(self, is_recording: bool) -> None:
         '''Respond to DVR recording state changes.
 
@@ -135,7 +135,7 @@ def main() -> None:  # pragma: no cover
     '''Launch the ROI demo with an interactively chosen camera.'''
     from QVideo.lib import choose_camera
 
-    pg.mkQApp()
+    pg.mkQApp('ROI Demo')
     camera = choose_camera().start()
     widget = ROIDemo(camera)
     widget.show()

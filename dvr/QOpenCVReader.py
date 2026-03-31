@@ -1,5 +1,5 @@
+from qtpy import QtCore
 from QVideo.lib import QVideoReader, QVideoSource
-from pyqtgraph.Qt import QtCore
 from pathlib import Path
 import cv2
 
@@ -50,29 +50,29 @@ class QOpenCVReader(QVideoReader):
         self._framenumber += 1
         return True, frame
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     def seek(self, framenumber: int) -> None:
         '''Seek to the specified frame number.'''
         self.reader.set(self.FRAMENUMBER, framenumber)
         self._framenumber = framenumber
 
-    @QtCore.pyqtProperty(float)
+    @QtCore.Property(float)
     def fps(self) -> float:
         return self.reader.get(self.FPS)
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def length(self) -> int:
         return int(self.reader.get(self.LENGTH))
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def framenumber(self) -> int:
         return self._framenumber
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def width(self) -> int:
         return int(self.reader.get(self.WIDTH))
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def height(self) -> int:
         return int(self.reader.get(self.HEIGHT))
 

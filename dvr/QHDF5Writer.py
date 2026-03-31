@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
 import h5py
@@ -79,7 +79,7 @@ class QHDF5Writer(QVideoWriter):
         now = time() - self._start
         self._writer.create_dataset(f'{now:.9f}', data=frame)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def close(self) -> None:
         '''Close the HDF5 file and reset internal state.'''
         if self.isOpen():

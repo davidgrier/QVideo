@@ -10,11 +10,10 @@ scene — video frame plus trackpy particle markers — instead of raw
 camera frames.
 '''
 
+from qtpy import QtCore, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.lib import QCameraTree
 from QVideo.overlays import QTrackpyWidget
-from pyqtgraph.Qt.QtCore import pyqtSlot
-from pyqtgraph.Qt.QtWidgets import QCheckBox
 
 
 __all__ = ['CompositeDemo']
@@ -47,12 +46,12 @@ class CompositeDemo(QCamcorder):
         self.trackpy = QTrackpyWidget(self)
         self.trackpy.source = self.source
         self.screen.addOverlay(self.trackpy.overlay)
-        self._compositeCheck = QCheckBox('Composite')
+        self._compositeCheck = QtWidgets.QCheckBox('Composite')
         self._compositeCheck.toggled.connect(self._onCompositeToggled)
         self.controls.layout().addWidget(self.trackpy)
         self.controls.layout().addWidget(self._compositeCheck)
 
-    @pyqtSlot(bool)
+    @QtCore.Slot(bool)
     def _onCompositeToggled(self, checked: bool) -> None:
         '''Switch between raw and composite recording.
 

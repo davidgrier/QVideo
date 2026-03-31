@@ -1,5 +1,5 @@
+from qtpy import QtCore
 from QVideo.lib import QVideoReader, QVideoSource
-from pyqtgraph.Qt import QtCore
 from pathlib import Path
 import h5py
 
@@ -45,12 +45,12 @@ class QHDF5Reader(QVideoReader):
         self._framenumber += 1
         return True, frame
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     def seek(self, framenumber: int) -> None:
         '''Advance playback to specified frame number.'''
         self._framenumber = framenumber
 
-    @QtCore.pyqtProperty(float)
+    @QtCore.Property(float)
     def fps(self) -> float:
         if len(self.keys) < 2:
             return 30.
@@ -59,19 +59,19 @@ class QHDF5Reader(QVideoReader):
             return 30.
         return (len(self.keys) - 1) / elapsed
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def length(self) -> int:
         return self._length
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def framenumber(self) -> int:
         return self._framenumber
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def width(self) -> int:
         return self._width
 
-    @QtCore.pyqtProperty(int)
+    @QtCore.Property(int)
     def height(self) -> int:
         return self._height
 

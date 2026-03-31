@@ -1,6 +1,6 @@
+from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
-from pyqtgraph.Qt import QtCore
 from pathlib import Path
 import cv2
 import logging
@@ -135,7 +135,7 @@ class QOpenCVWriter(QVideoWriter):
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         self._writer.write(frame)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def close(self) -> None:
         '''Release the video file and reset internal state.'''
         if self.isOpen():

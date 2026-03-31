@@ -6,14 +6,14 @@ Run directly::
     python -m QVideo.demos.demo
 '''
 
+from qtpy import QtWidgets
 from QVideo.lib import QVideoScreen, QCameraTree
-from pyqtgraph.Qt.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 
 
 __all__ = ['Demo']
 
 
-class Demo(QWidget):
+class Demo(QtWidgets.QWidget):
     '''A demo widget that displays a video feed from a camera
     alongside a camera control tree.
 
@@ -38,12 +38,12 @@ class Demo(QWidget):
         self.screen.source = self.cameraTree.source
 
     def _setupUi(self) -> None:
-        layout = QHBoxLayout(self)
+        layout = QtWidgets.QHBoxLayout(self)
         layout.addWidget(self.screen)
-        self._controls = QVBoxLayout()
+        self._controls = QtWidgets.QVBoxLayout()
         layout.addLayout(self._controls)
-        layout.setStretch(0, 1)  # screen takes all surplus horizontal space
-        layout.setStretch(1, 0)  # controls stay at their natural width
+        layout.setStretch(0, 1)  # screen fills horizontal space
+        layout.setStretch(1, 0)  # controls retain natural width
         self._controls.addWidget(self.cameraTree)
 
 
@@ -52,7 +52,7 @@ def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    pg.mkQApp()
+    pg.mkQApp('QVideo Demo')
     camera = choose_camera().start()
     widget = Demo(camera)
     widget.show()

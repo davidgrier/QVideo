@@ -205,13 +205,6 @@ class QGenicamCamera(QCamera):
                                   ptype=self._feature_ptype(feature),
                                   **self._feature_meta(feature))
 
-    def __init_subclass__(cls, **kwargs) -> None:
-        super().__init_subclass__(**kwargs)
-        if cls.producer is None:
-            raise TypeError(
-                f"{cls.__name__} must define a 'producer' class attribute "
-                'naming a GenTL producer .cti file.')
-
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraID = cameraID
@@ -226,6 +219,9 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
+        if self.producer is None:
+            logger.warning(f'{type(self).__name__}: no GenTL producer available')
+            return False
         self.harvester = Harvester()
         self.device = None
         try:

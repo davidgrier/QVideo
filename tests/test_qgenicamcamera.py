@@ -195,10 +195,12 @@ class TestInit(unittest.TestCase):
         cam, _, _ = make_camera()
         self.assertEqual(cam.producer, PRODUCER)
 
-    def test_raises_when_producer_is_none(self):
-        with self.assertRaises(TypeError):
-            class _NullProducer(QGenicamCamera):
-                producer = None
+    def test_returns_false_when_producer_is_none(self):
+        class _NullProducer(QGenicamCamera):
+            producer = None
+        with self.assertLogs(level='WARNING'):
+            cam = _NullProducer()
+        self.assertFalse(cam.isOpen())
 
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()

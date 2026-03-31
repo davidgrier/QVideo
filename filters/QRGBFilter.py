@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 
@@ -73,7 +73,7 @@ class QRGBFilter(QVideoFilter):
             self._layout.addWidget(button)
         self._buttons[self.filter.channel].setChecked(True)
 
-    @QtCore.pyqtSlot(bool, int)
+    @QtCore.Slot(bool, int)
     def setChannel(self, checked: bool, channel: int) -> None:
         '''Set the active color channel.
 

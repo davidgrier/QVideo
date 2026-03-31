@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from pyqtgraph.Qt import QtWidgets, QtCore, QtTest
+from qtpy import QtWidgets, QtCore, QtTest
 from QVideo.cameras.OpenCV._camera import QOpenCVCamera, QOpenCVSource
 
 
@@ -222,7 +222,7 @@ class TestProperties(unittest.TestCase):
         cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, 1280)
 
     def test_width_setter_emits_shape_changed(self):
-        from pyqtgraph.Qt import QtTest
+        from qtpy import QtTest
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.shapeChanged)
         cam.set('width', 1280)
@@ -240,7 +240,7 @@ class TestProperties(unittest.TestCase):
         cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, 720)
 
     def test_height_setter_emits_shape_changed(self):
-        from pyqtgraph.Qt import QtTest
+        from qtpy import QtTest
         cam = make_camera()
         spy = QtTest.QSignalSpy(cam.shapeChanged)
         cam.set('height', 720)

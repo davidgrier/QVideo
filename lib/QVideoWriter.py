@@ -1,7 +1,6 @@
 '''Abstract base class for video file writers.'''
 from abc import (ABCMeta, abstractmethod)
 from qtpy import QtCore
-from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot)
 from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
@@ -76,9 +75,9 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     '''
 
     #: Emitted when a new frame is written, with the current frame number.
-    frameNumber = pyqtSignal(int)
+    frameNumber = QtCore.Signal(int)
     #: Emitted when video writing is complete.
-    finished = pyqtSignal()
+    finished = QtCore.Signal()
 
     def __init__(self,
                  filename: str,

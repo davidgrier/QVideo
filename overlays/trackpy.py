@@ -11,7 +11,7 @@ microscopy for colloidal studies. Journal of Colloid and Interface
 Science, 179(1), 298-310. https://doi.org/10.1006/jcis.1996.0217
 '''
 
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -54,7 +54,7 @@ class _TrackpyWorker(QtCore.QObject):
         :class:`pandas.DataFrame`, or ``None`` on error.
     '''
 
-    newData = QtCore.pyqtSignal(object)
+    newData = QtCore.Signal(object)
 
     def __init__(self, diameter: int = 11, minmass: float = 100.) -> None:
         super().__init__()
@@ -84,7 +84,7 @@ class _TrackpyWorker(QtCore.QObject):
     def minmass(self, value: float) -> None:
         self._opts['minmass'] = value
 
-    @QtCore.pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def locate(self, image: Image) -> None:
         '''Run :func:`trackpy.locate` on *image* and emit :attr:`newData`.
 
@@ -121,7 +121,7 @@ class QTrackpyOverlay(pg.ScatterPlotItem):
         defaults.update(kwargs)
         super().__init__(**defaults)
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def setFeatures(self, features) -> None:
         '''Update scatter positions from a trackpy DataFrame.
 
@@ -172,8 +172,8 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
 
     #: Emitted for each processed frame with the :func:`trackpy.locate`
     #: :class:`~pandas.DataFrame`, or ``None`` on error.
-    newData = QtCore.pyqtSignal(object)
-    _locate = QtCore.pyqtSignal(np.ndarray)
+    newData = QtCore.Signal(object)
+    _locate = QtCore.Signal(np.ndarray)
 
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
@@ -263,19 +263,19 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
         '''The :class:`QTrackpyOverlay` graphics item for this widget.'''
         return self._overlay
 
-    @QtCore.pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def _onNewFrame(self, image: Image) -> None:
         if self._ready and self.isChecked():
             self._ready = False
             self._locate.emit(image)
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def _onNewData(self, features) -> None:
         self._ready = True
         self._overlay.setFeatures(features)
         self.newData.emit(features)
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     def _setDiameter(self, value: int) -> None:
         odd = value | 1
         if odd != value:
@@ -284,19 +284,19 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
             self._diameterSpinBox.blockSignals(False)
         self._worker.diameter = odd
 
-    @QtCore.pyqtSlot(float)
+    @QtCore.Slot(float)
     def _setMinmass(self, value: float) -> None:
         self._worker._opts['minmass'] = value
 
-    @QtCore.pyqtSlot(float)
+    @QtCore.Slot(float)
     def _setSeparation(self, value: float) -> None:
         self._worker._opts['separation'] = None if value == 0. else value
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     def _setNoiseSize(self, value: int) -> None:
         self._worker._opts['noise_size'] = value
 
-    @QtCore.pyqtSlot(bool)
+    @QtCore.Slot(bool)
     def _setInvert(self, checked: bool) -> None:
         self._worker._opts['invert'] = checked
 
@@ -305,7 +305,7 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
         self._cleanup()
         super().closeEvent(event)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def _cleanup(self) -> None:
         self.source = None
         self._thread.quit()

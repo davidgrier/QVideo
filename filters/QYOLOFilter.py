@@ -11,7 +11,7 @@ Proceedings of the IEEE Conference on Computer Vision and Pattern
 Recognition, 779-788. https://doi.org/10.1109/CVPR.2016.91
 '''
 
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -40,7 +40,7 @@ class YOLOFilter(VideoFilter):
     '''
 
     #: Emitted with bounding boxes of detected features.
-    featuresReady = QtCore.pyqtSignal(np.ndarray)
+    featuresReady = QtCore.Signal(np.ndarray)
 
     def __init__(self,
                  model_name: str = 'yolo11n.pt',
@@ -95,6 +95,6 @@ class QYOLOFilter(QVideoFilter):
         self._layout.addWidget(self._checkbox)
         self._checkbox.stateChanged.connect(self._setPassthrough)
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     def _setPassthrough(self, state: int) -> None:
         self.filter.passthrough = state

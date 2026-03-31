@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch
-from pyqtgraph.Qt import QtWidgets, QtTest
+from qtpy import QtWidgets, QtTest
 from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
 
 

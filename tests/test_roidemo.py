@@ -1,7 +1,7 @@
 '''Unit tests for demos.ROIDemo.'''
 import unittest
 import numpy as np
-from pyqtgraph.Qt import QtWidgets, QtTest
+from qtpy import QtWidgets, QtTest
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.ROIdemo import ROIFilter, ROIDemo
 

@@ -1,6 +1,6 @@
 '''Unit tests for dvr/icons_rc.py'''
 import unittest
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 import QVideo.dvr.icons_rc as icons_rc
 
 

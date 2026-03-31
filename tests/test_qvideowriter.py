@@ -1,7 +1,7 @@
 '''Unit tests for QVideoWriter.'''
 import unittest
 import numpy as np
-from pyqtgraph.Qt import QtWidgets, QtTest
+from qtpy import QtWidgets, QtTest
 from QVideo.lib.QVideoWriter import QVideoWriter
 
 

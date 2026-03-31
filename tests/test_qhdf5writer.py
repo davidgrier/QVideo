@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.dvr.QHDF5Writer import QHDF5Writer
 
 

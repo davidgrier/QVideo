@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
-from pyqtgraph.Qt import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets, QtTest
 
 
 import QVideo.overlays.trackpy as _mod  # noqa: E402
@@ -38,7 +38,7 @@ def _make_features(n: int = 3) -> pd.DataFrame:
 
 
 class MockSource(QtCore.QObject):
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
 
 # ---------------------------------------------------------------------------

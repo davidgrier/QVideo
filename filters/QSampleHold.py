@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.filters.Normalize import Normalize
 from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -103,7 +103,7 @@ class QSampleHold(QVideoFilter):
         self._resetButton.clicked.connect(self.reset)
         self._layout.addWidget(self._resetButton)
 
-    @QtCore.pyqtSlot(bool, int)
+    @QtCore.Slot(bool, int)
     def setOrder(self, checked: bool, order: int) -> None:
         '''Set the accumulation order and restart background sampling.
 
@@ -123,7 +123,7 @@ class QSampleHold(QVideoFilter):
             self.filter.order = order
             self.filter.reset()
 
-    @QtCore.pyqtSlot(bool)
+    @QtCore.Slot(bool)
     def reset(self, _checked: bool = False) -> None:
         '''Reset the background estimate.
 

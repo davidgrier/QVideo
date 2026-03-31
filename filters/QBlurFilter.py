@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -78,7 +78,7 @@ class QBlurFilter(QVideoFilter):
         self._spinbox.valueChanged.connect(self.setWidth)
         self._layout.addWidget(self._spinbox)
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def setWidth(self, width: int) -> None:
         '''Set the blur kernel width.
 

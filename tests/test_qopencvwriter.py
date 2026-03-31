@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 import cv2
 from QVideo.dvr.QOpenCVWriter import QOpenCVWriter
 from QVideo.lib import QVideoWriter

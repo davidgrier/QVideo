@@ -38,7 +38,7 @@ Pushing the tag alone is not sufficient — Zenodo listens for the GitHub
 
 ## Architecture
 
-QVideo is a PyQt5 framework for integrating scientific cameras into research applications. The design separates hardware communication, threading, property introspection, and UI into distinct layers.
+QVideo is a Qt framework — compatible with PyQt5, PyQt6, and PySide — for integrating scientific cameras into research applications. The design separates hardware communication, threading, property introspection, and UI into distinct layers.
 
 ### Core abstractions (`lib/`)
 

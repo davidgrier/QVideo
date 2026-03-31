@@ -209,7 +209,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         qimage = pixmap.toImage().convertToFormat(fmt)
         w, h = qimage.width(), qimage.height()
         ptr = qimage.bits()
-        ptr.setsize(h * w * 4)
+        if hasattr(ptr, 'setsize'):
+            ptr.setsize(h * w * 4)
         return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()
 
     @QtCore.Slot(np.ndarray)

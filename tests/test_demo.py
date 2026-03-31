@@ -1,6 +1,6 @@
 '''Unit tests for demos.demo.'''
 import unittest
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.lib import QVideoScreen
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.demo import Demo

@@ -3,7 +3,7 @@ import platform
 import cv2
 
 try:
-    from pyqtgraph.Qt import QtMultimedia as _QtMultimedia
+    from qtpy import QtMultimedia as _QtMultimedia
     _QMediaDevices = _QtMultimedia.QMediaDevices
 except (ImportError, AttributeError):
     _QMediaDevices = None

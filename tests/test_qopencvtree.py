@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import MagicMock, patch, call
 import numpy as np
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.cameras.OpenCV._camera import QOpenCVCamera
 from QVideo.cameras.OpenCV._tree import QOpenCVTree
 

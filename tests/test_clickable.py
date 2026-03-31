@@ -1,8 +1,8 @@
 '''Unit tests for clickable.'''
 import unittest
 from unittest.mock import MagicMock
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
-from pyqtgraph.Qt.QtCore import Qt
+from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import Qt
 from QVideo.lib.clickable import clickable
 
 

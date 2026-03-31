@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
-from pyqtgraph.Qt import QtWidgets, QtTest
+from qtpy import QtWidgets, QtTest
 
 import sys
 import QVideo.filters.QYOLOFilter  # ensure module is loaded  # noqa: E402

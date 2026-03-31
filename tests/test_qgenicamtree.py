@@ -2,7 +2,7 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

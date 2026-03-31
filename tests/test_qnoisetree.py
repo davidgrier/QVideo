@@ -1,6 +1,6 @@
 '''Unit tests for QNoiseTree.'''
 import unittest
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.cameras.Noise._tree import QNoiseTree
 
 

@@ -1,6 +1,6 @@
 '''Unit tests for QCamcorder.'''
 import unittest
-from pyqtgraph.Qt import QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
 

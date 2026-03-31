@@ -11,7 +11,7 @@ Proceedings of the IEEE Conference on Computer Vision and Pattern
 Recognition, 779-788. https://doi.org/10.1109/CVPR.2016.91
 '''
 
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -54,7 +54,7 @@ class _YoloWorker(QtCore.QObject):
         ``None`` on error or when no objects are detected.
     '''
 
-    newData = QtCore.pyqtSignal(object)
+    newData = QtCore.Signal(object)
 
     def __init__(self,
                  model_name: str = 'yolo11n.pt',
@@ -81,7 +81,7 @@ class _YoloWorker(QtCore.QObject):
                 'for available pretrained models.')
         self.confidence = confidence
 
-    @QtCore.pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def detect(self, image: Image) -> None:
         '''Run YOLO detection on *image* and emit :attr:`newData`.
 
@@ -142,7 +142,7 @@ class QYoloOverlay(pg.GraphicsObject):
                 row['x2'] - row['x1'],
                 row['y2'] - row['y1']))
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def setFeatures(self, features) -> None:
         '''Update bounding boxes from a YOLO detections DataFrame.
 
@@ -180,8 +180,8 @@ class QYoloWidget(QtWidgets.QGroupBox):
 
     #: Emitted for each processed frame with the detections
     #: :class:`~pandas.DataFrame`, or ``None`` on error / no detections.
-    newData = QtCore.pyqtSignal(object)
-    _detect = QtCore.pyqtSignal(np.ndarray)
+    newData = QtCore.Signal(object)
+    _detect = QtCore.Signal(np.ndarray)
 
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
@@ -245,19 +245,19 @@ class QYoloWidget(QtWidgets.QGroupBox):
         '''The :class:`QYoloOverlay` graphics item for this widget.'''
         return self._overlay
 
-    @QtCore.pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def _onNewFrame(self, image: Image) -> None:
         if self._ready and self.isChecked():
             self._ready = False
             self._detect.emit(image)
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def _onNewData(self, features) -> None:
         self._ready = True
         self._overlay.setFeatures(features)
         self.newData.emit(features)
 
-    @QtCore.pyqtSlot(float)
+    @QtCore.Slot(float)
     def _setConfidence(self, value: float) -> None:
         self._worker.confidence = value
 
@@ -266,7 +266,7 @@ class QYoloWidget(QtWidgets.QGroupBox):
         self._cleanup()
         super().closeEvent(event)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def _cleanup(self) -> None:
         self.source = None
         self._thread.quit()

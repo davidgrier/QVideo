@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import patch
 from collections import deque
-from pyqtgraph.Qt import QtTest, QtWidgets
+from qtpy import QtTest, QtWidgets
 from QVideo.lib.QFPSMeter import QFPSMeter
 
 

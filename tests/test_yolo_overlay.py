@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
-from pyqtgraph.Qt import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets, QtTest
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -55,7 +55,7 @@ def _make_mock_results(n: int = 2):
 
 
 class MockSource(QtCore.QObject):
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
 
 def _make_widget(**kwargs):

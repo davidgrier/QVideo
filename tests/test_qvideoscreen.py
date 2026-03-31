@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from pyqtgraph.Qt import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets, QtTest
 from QVideo.lib.QVideoScreen import QVideoScreen
 from QVideo.lib.QFilterBank import QFilterBank
 

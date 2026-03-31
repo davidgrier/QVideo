@@ -1,7 +1,7 @@
 '''Unit tests for QCameraTree.'''
 import unittest
 from unittest.mock import patch
-from pyqtgraph.Qt import QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
 from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
 

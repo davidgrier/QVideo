@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import numpy as np
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

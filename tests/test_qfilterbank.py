@@ -1,7 +1,7 @@
 '''Unit tests for QFilterBank.'''
 import unittest
 import numpy as np
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 

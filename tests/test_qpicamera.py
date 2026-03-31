@@ -3,7 +3,7 @@ import sys
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from pyqtgraph.Qt import QtWidgets, QtTest
+from qtpy import QtWidgets, QtTest
 
 from QVideo.cameras.Picamera._camera import QPicamera, QPicameraSource
 

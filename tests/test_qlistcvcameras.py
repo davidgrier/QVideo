@@ -5,7 +5,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import cv2
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.cameras.OpenCV.QListCVCameras import QListCVCameras, _probe_cameras
 from QVideo.cameras.OpenCV._camera import QOpenCVCamera
 

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.dvr.QHDF5Reader import QHDF5Reader, QHDF5Source
 
 

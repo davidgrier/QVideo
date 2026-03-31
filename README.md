@@ -1,4 +1,4 @@
-# QVideo: PyQt support for video cameras
+# QVideo: Qt framework for video cameras
 
 [![PyPI version](https://img.shields.io/pypi/v/QVideo)](https://pypi.org/project/QVideo/)
 [![Python](https://img.shields.io/pypi/pyversions/QVideo)](https://pypi.org/project/QVideo/)
@@ -7,8 +7,8 @@
 [![Documentation](https://readthedocs.org/projects/qvideo/badge/?version=latest)](https://qvideo.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19239402.svg)](https://doi.org/10.5281/zenodo.19239402)
 
-**QVideo** is a framework for integrating video cameras into PyQt projects
-for scientific research.  It provides a unified, registration-based property
+**QVideo** is a framework for integrating video cameras into Qt projects
+(PyQt5, PyQt6, or PySide) for scientific research.  It provides a unified, registration-based property
 system so that every camera backend — USB webcams, GenICam devices, FLIR
 cameras, Raspberry Pi cameras — is controlled through the same API.  Property
 trees, display widgets, and a digital video recorder are built on top of that
@@ -53,7 +53,7 @@ import pyqtgraph as pg
 from QVideo.cameras.Noise import QNoiseSource
 from QVideo.lib import QVideoScreen
 
-pg.mkApp()
+pg.mkQApp()
 
 source = QNoiseSource()          # synthetic noise — no hardware needed
 screen = QVideoScreen()

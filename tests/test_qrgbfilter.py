@@ -1,7 +1,7 @@
 '''Unit tests for RGBFilter and QRGBFilter.'''
 import unittest
 import numpy as np
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.filters.QRGBFilter import RGBFilter, QRGBFilter
 
 

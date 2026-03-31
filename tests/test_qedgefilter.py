@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.filters.QEdgeFilter import EdgeFilter, QEdgeFilter
 
 

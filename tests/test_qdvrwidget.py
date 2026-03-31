@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets, QtTest
+from qtpy import QtCore, QtGui, QtWidgets, QtTest
 from QVideo.dvr.QDVRWidget import QDVRWidget
 
 
@@ -11,7 +11,7 @@ app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 class MockSource(QtCore.QObject):
     '''Minimal video source with a real newFrame signal.'''
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
     def __init__(self):
         super().__init__()
@@ -20,8 +20,8 @@ class MockSource(QtCore.QObject):
 
 class MockWriter(QtCore.QObject):
     '''Minimal writer with real Qt signals.'''
-    frameNumber = QtCore.pyqtSignal(int)
-    finished = QtCore.pyqtSignal()
+    frameNumber = QtCore.Signal(int)
+    finished = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -38,7 +38,7 @@ class MockWriter(QtCore.QObject):
 
 class MockThread(QtCore.QObject):
     '''Stand-in for QThread without actually spawning a thread.'''
-    finished = QtCore.pyqtSignal()
+    finished = QtCore.Signal()
 
     def start(self):
         pass
@@ -52,7 +52,7 @@ class MockThread(QtCore.QObject):
 
 class MockPlayer(QtCore.QThread):
     '''Minimal player/source with real Qt signals.'''
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
     def __init__(self, filename=None):
         super().__init__()

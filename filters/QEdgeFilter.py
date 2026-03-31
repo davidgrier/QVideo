@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -121,7 +121,7 @@ class QEdgeFilter(QVideoFilter):
         self._highSpinbox.valueChanged.connect(self.setHigh)
         self._layout.addWidget(self._highSpinbox)
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def setLow(self, low: int) -> None:
         '''Set the lower Canny threshold.
 
@@ -139,7 +139,7 @@ class QEdgeFilter(QVideoFilter):
         self._lowSpinbox.setValue(self.filter.low)
         self._lowSpinbox.blockSignals(False)
 
-    @QtCore.pyqtSlot(object)
+    @QtCore.Slot(object)
     def setHigh(self, high: int) -> None:
         '''Set the upper Canny threshold.
 

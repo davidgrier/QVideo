@@ -3,7 +3,7 @@ import sys
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 

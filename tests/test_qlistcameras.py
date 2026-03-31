@@ -1,7 +1,7 @@
 '''Unit tests for QListCameras.'''
 import unittest
 from unittest.mock import MagicMock
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from QVideo.lib.QListCameras import QListCameras
 
 

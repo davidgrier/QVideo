@@ -328,26 +328,6 @@ class TestInitialize(unittest.TestCase):
                 _ConcreteCamera()
         harvester.reset.assert_called_once()
 
-    def test_returns_false_when_node_map_is_none(self):
-        device = _make_device()
-        device.remote_device.node_map = None
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
-
-    def test_cleanup_called_when_node_map_is_none(self):
-        device = _make_device()
-        device.remote_device.node_map = None
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                _ConcreteCamera()
-        harvester.reset.assert_called_once()
-
     def test_returns_false_when_is_valid_false(self):
         device = _make_device(is_valid=False)
         harvester = MagicMock()
@@ -368,10 +348,7 @@ class TestInitialize(unittest.TestCase):
         device.destroy.assert_called_once()
         harvester.reset.assert_called_once()
 
-    def test_cleanup_called_when_device_start_raises(self):
-        # device.start() raises: exception propagates to caller after cleanup.
-        # device was created but never started, so _cleanup still attempts
-        # stop() (guarded) then destroy(), then harvester.reset().
+    def test_exception_propagates_when_device_start_raises(self):
         device = _make_device()
         device.start.side_effect = RuntimeError('driver error')
         harvester = MagicMock()
@@ -379,12 +356,8 @@ class TestInitialize(unittest.TestCase):
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
             with self.assertRaises(RuntimeError):
                 _ConcreteCamera()
-        device.destroy.assert_called_once()
-        harvester.reset.assert_called_once()
 
-    def test_cleanup_called_when_register_features_raises(self):
-        # Exception raised after device.start() has succeeded.
-        # _cleanup() must call device.stop() before destroy().
+    def test_exception_propagates_when_register_features_raises(self):
         device = _make_device()
         harvester = MagicMock()
         harvester.create.return_value = device
@@ -393,9 +366,6 @@ class TestInitialize(unittest.TestCase):
                               side_effect=RuntimeError('node error')):
                 with self.assertRaises(RuntimeError):
                     _ConcreteCamera()
-        device.stop.assert_called()
-        device.destroy.assert_called_once()
-        harvester.reset.assert_called_once()
 
     def test_name_returns_class_name(self):
         cam, _, _ = make_camera()

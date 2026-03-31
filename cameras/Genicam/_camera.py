@@ -248,31 +248,27 @@ class QGenicamCamera(QCamera):
             self._cleanup()
             return False
         self.nodeMap = self.device.remote_device.node_map
-        try:
-            root = self.node()
-            ma = self._scan_modes(root)
-            self.device.start()
-            mb = self._scan_modes(root)
-            self.protected = {k for k, v in ma.items()
-                              if k in mb and mb[k] != v}
-            self._register_features(root)
-            for genicam_name, alias in (('Width', 'width'), ('Height', 'height')):
-                if genicam_name in self._properties:
-                    orig_setter = self._properties[genicam_name]['setter']
-                    if orig_setter is not None:
-                        def _shape_setter(v, s=orig_setter):
-                            s(v)
-                            self.shapeChanged.emit(self.shape)
-                        self._properties[genicam_name]['setter'] = _shape_setter
-                    self._properties[alias] = self._properties[genicam_name]
-            if not self.device.is_valid():
-                logger.warning(
-                    'Camera device reported invalid after initialization')
-                self._cleanup()
-                return False
-        except Exception:
+        root = self.node()
+        ma = self._scan_modes(root)
+        self.device.start()
+        mb = self._scan_modes(root)
+        self.protected = {k for k, v in ma.items()
+                          if k in mb and mb[k] != v}
+        self._register_features(root)
+        for genicam_name, alias in (('Width', 'width'), ('Height', 'height')):
+            if genicam_name in self._properties:
+                orig_setter = self._properties[genicam_name]['setter']
+                if orig_setter is not None:
+                    def _shape_setter(v, s=orig_setter):
+                        s(v)
+                        self.shapeChanged.emit(self.shape)
+                    self._properties[genicam_name]['setter'] = _shape_setter
+                self._properties[alias] = self._properties[genicam_name]
+        if not self.device.is_valid():
+            logger.warning(
+                'Camera device reported invalid after initialization')
             self._cleanup()
-            raise
+            return False
         return True
 
     def _cleanup(self) -> None:

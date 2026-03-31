@@ -22,9 +22,7 @@ Camera flags (mutually exclusive):
 If no flag is given, a noise camera is used as a fallback.
 '''
 
-from pyqtgraph.Qt.QtWidgets import QWidget
-from pyqtgraph.Qt.QtCore import pyqtSlot
-from pyqtgraph.Qt import QtGui, uic
+from qtpy import QtCore, QtWidgets, QtGui, uic
 from QVideo.lib import QCameraTree, QVideoSource
 from pathlib import Path
 
@@ -32,7 +30,7 @@ from pathlib import Path
 __all__ = ['QCamcorder']
 
 
-class QCamcorder(QWidget):
+class QCamcorder(QtWidgets.QWidget):
     '''A widget combining a video screen, camera controls, and DVR.
 
     Lays out a :class:`~QVideo.lib.QVideoScreen.QVideoScreen` alongside
@@ -69,8 +67,8 @@ class QCamcorder(QWidget):
     def _setupUi(self) -> None:
         uic.loadUi(str(self.UIFILE), self)
         self.controls.layout().addWidget(self.cameraWidget)
-        self.layout().setStretch(0, 1)  # screen takes all surplus horizontal space
-        self.layout().setStretch(1, 0)  # controls stay at their natural width
+        self.layout().setStretch(0, 1)  # screen fill horizontal space
+        self.layout().setStretch(1, 0)  # controls retain natural width
 
     def _connectSignals(self) -> None:
         self.dvr.playing.connect(self.dvrPlayback)
@@ -80,7 +78,7 @@ class QCamcorder(QWidget):
         self.cameraWidget.stop()
         super().closeEvent(event)
 
-    @pyqtSlot(bool)
+    @QtCore.Slot(bool)
     def dvrPlayback(self, playback: bool) -> None:
         '''Switch the screen source between live camera and DVR playback.
 
@@ -118,7 +116,7 @@ def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    pg.mkQApp()
+    pg.mkQApp('QCamcorder')
     camera = choose_camera()
     widget = QCamcorder(camera.start())
     widget.show()

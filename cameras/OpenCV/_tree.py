@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from QVideo.lib import QCameraTree
 from QVideo.cameras.OpenCV import QOpenCVCamera
 
@@ -101,7 +101,7 @@ class QOpenCVTree(QCameraTree):
                 'value': current_value,
                 'default': current_value}
 
-    @QtCore.pyqtSlot(object, object)
+    @QtCore.Slot(object, object)
     def _sync(self, root, changes) -> None:
         '''Handle parameter changes, routing ``resolution`` entries here.
 

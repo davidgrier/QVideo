@@ -31,6 +31,7 @@ classifiers = [
 dependencies = [
     "numpy",
     "opencv-python",
+    "qtpy",
     "pyqtgraph",
 ]
 

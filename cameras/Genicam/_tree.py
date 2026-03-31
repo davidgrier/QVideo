@@ -1,10 +1,10 @@
+from qtpy import QtCore
 from QVideo.lib import QCameraTree
 from QVideo.lib.QCameraTree import Source
 from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
                             IBoolean, IInteger, IFloat, IString)
-from pyqtgraph.Qt import QtCore
 import logging
 
 
@@ -55,14 +55,19 @@ class QGenicamTree(QCameraTree):
         self.controls = controls
         self.visibility = visibility
         self._updateEnabled()
-        self._pollTimer = QtCore.QTimer(self)
-        self._pollTimer.setInterval(500)
-        self._pollTimer.timeout.connect(self._pollCamera)
-        self._pollTimer.start()
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self._pollTimer.stop)
+        self._startTimer()
+
+    def _startTimer(self) -> None:
+        '''Start the timer to poll camera-side changes.'''
+        self._timer = QtCore.QTimer(self)
+        self._timer.setInterval(500)
+        self._timer.timeout.connect(self._pollCamera)
+        self._timer.start()
+        quitting = QtCore.QCoreApplication.instance().aboutToQuit
+        quitting.connect(self._timer.stop)
 
     def closeEvent(self, event) -> None:
-        self._pollTimer.stop()
+        self._timer.stop()
         super().closeEvent(event)
 
     def description(self, camera: QGenicamCamera) -> dict:
@@ -196,15 +201,15 @@ class QGenicamTree(QCameraTree):
         adjusted during auto-exposure, or ``GainAuto`` reverting from
         ``"Once"`` to ``"Off"`` after the sweep completes.
 
-        Returns immediately if the camera is no longer open (e.g. during
+        Returns immediately if the camera is no longer open(e.g. during
         application shutdown) to prevent accessing freed C++ genapi objects.
 
         Signals are not blocked so that the visual widgets update and
         ``_handleItemChanges`` fires when a value changes.
-        :attr:`_ignoreSync` is set for the duration so that the resulting
+        : attr: `_ignoreSync` is set for the duration so that the resulting
         ``sigTreeStateChanged`` emissions do not send values back to the
-        camera.  :meth:`_updateEnabled` is called unconditionally so that
-        access-mode changes (e.g. ``ExposureTime`` becoming writable again
+        camera.: meth: `_updateEnabled` is called unconditionally so that
+        access-mode changes(e.g. ``ExposureTime`` becoming writable again
         after the sweep) are reflected even when the controlling node value
         has not changed.
         '''
@@ -238,7 +243,7 @@ class QGenicamTree(QCameraTree):
     def _updateLimits(self) -> None:
         '''Refresh Parameter constraints from the live GenICam node values.
 
-        Called after every property change so that dependent nodes (e.g.
+        Called after every property change so that dependent nodes(e.g.
         ``OffsetX`` range after a ``Width`` change) reflect the current
         hardware state in the UI.  Only visible leaf parameters are updated.
         '''

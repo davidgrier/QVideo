@@ -328,26 +328,6 @@ class TestInitialize(unittest.TestCase):
                 _ConcreteCamera()
         harvester.reset.assert_called_once()
 
-    def test_returns_false_when_is_valid_false(self):
-        device = _make_device(is_valid=False)
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
-
-    def test_cleanup_called_when_is_valid_false(self):
-        device = _make_device(is_valid=False)
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                _ConcreteCamera()
-        device.stop.assert_called()
-        device.destroy.assert_called_once()
-        harvester.reset.assert_called_once()
-
     def test_exception_propagates_when_device_start_raises(self):
         device = _make_device()
         device.start.side_effect = RuntimeError('driver error')

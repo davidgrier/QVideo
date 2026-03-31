@@ -258,11 +258,6 @@ class QGenicamCamera(QCamera):
         for name in ('Width', 'Height'):
             if name in self._properties:
                 self._properties[name.lower()] = self._properties[name]
-        if not self.device.is_valid():
-            logger.warning(
-                'Camera device reported invalid after initialization')
-            self._cleanup()
-            return False
         return True
 
     def _cleanup(self) -> None:

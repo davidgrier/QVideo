@@ -131,10 +131,11 @@ class TestSubclass(unittest.TestCase):
 
 class TestProducer(unittest.TestCase):
 
-    def test_raises_without_producer(self):
+    def test_returns_false_without_producer(self):
         with patch.object(QIDSCamera, 'producer', None):
-            with self.assertRaises(TypeError):
-                QIDSCamera()
+            with self.assertLogs(level='WARNING'):
+                cam = QIDSCamera()
+        self.assertFalse(cam.isOpen())
 
     def test_opens_with_mocked_hardware(self):
         cam, _, _ = make_camera()

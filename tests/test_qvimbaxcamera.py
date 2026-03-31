@@ -199,14 +199,11 @@ class TestQVimbaXCamera(unittest.TestCase):
     def test_producer_is_class_attribute(self):
         self.assertIn('producer', QVimbaXCamera.__dict__)
 
-    def test_raises_type_error_when_producer_is_none(self):
-        saved = QVimbaXCamera.producer
-        try:
-            QVimbaXCamera.producer = None
-            with self.assertRaises(TypeError):
-                QVimbaXCamera()
-        finally:
-            QVimbaXCamera.producer = saved
+    def test_returns_false_when_producer_is_none(self):
+        with patch.object(QVimbaXCamera, 'producer', None):
+            with self.assertLogs(level='WARNING'):
+                cam = QVimbaXCamera()
+        self.assertFalse(cam.isOpen())
 
     def test_opens_on_init(self):
         cam, _, _ = make_camera()

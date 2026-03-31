@@ -1,6 +1,6 @@
 '''Abstract base for QComboBox widgets that enumerate available cameras.'''
+from qtpy import QtCore
 from pyqtgraph import ComboBox
-from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot
 
 
 __all__ = ['QListCameras']
@@ -31,7 +31,7 @@ class QListCameras(ComboBox):
     '''
 
     #: Emitted when a camera entry is selected.
-    cameraSelected = pyqtSignal(type, int)
+    cameraSelected = QtCore.Signal(type, int)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -59,7 +59,7 @@ class QListCameras(ComboBox):
         '''
         raise NotImplementedError
 
-    @pyqtSlot(int)
+    @QtCore.Slot(int)
     def cameraSelection(self, row: int) -> None:
         '''Emit :attr:`cameraSelected` for the current combo box entry.
 
@@ -78,7 +78,7 @@ class QListCameras(ComboBox):
     def example(cls):  # pragma: no cover
         import pyqtgraph as pg
 
-        @pyqtSlot(type, int)
+        @QtCore.Slot(type, int)
         def on_camera_changed(model: type, index: int) -> None:
             print(f'Selected {model.__name__} {index = }')
 

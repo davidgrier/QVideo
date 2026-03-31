@@ -1,8 +1,8 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
+from qtpy import QtCore, QtGui
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.videotypes import Image
-from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 from pyqtgraph import GraphicsLayoutWidget, ImageItem
 import logging
@@ -60,7 +60,7 @@ class QVideoScreen(GraphicsLayoutWidget):
     '''
 
     #: Emitted after each displayed frame.
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
@@ -91,7 +91,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.addItem(self.image)
 
     def addOverlay(self, item) -> None:
-        '''Add a graphics item to the view and register it for visibility control.
+        '''Add a graphics item to the view
+
+        Register overlays for visibility control.
 
         Parameters
         ----------
@@ -210,7 +212,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         ptr.setsize(h * w * 4)
         return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()
 
-    @QtCore.pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def setImage(self, image: Image) -> None:
         '''Display a new video frame and emit :attr:`newFrame`.
 
@@ -259,7 +261,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             return width * shape.height() // shape.width()
         return super().heightForWidth(width)
 
-    @QtCore.pyqtSlot(QtCore.QSize)
+    @QtCore.Slot(QtCore.QSize)
     def updateShape(self, shape: QtCore.QSize) -> None:
         '''Resize the display to match the video frame dimensions.
 
@@ -277,7 +279,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.updateGeometry()
         QtCore.QTimer.singleShot(0, self._fitToVideo)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def _fitToVideo(self) -> None:
         '''Resize the containing window to match the video aspect ratio.
 

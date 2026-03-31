@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 '''Factory that adds a clicked() signal to any QWidget subclass.'''
 
-from pyqtgraph.Qt.QtCore import QEvent, QObject, pyqtSignal
-from pyqtgraph.Qt.QtGui import QMouseEvent
-from pyqtgraph.Qt.QtWidgets import QWidget
+from qtpy import QtCore, QtGui, QtWidgets
 
 
 __all__ = ['clickable']
 
 
-def clickable(widget: QWidget):
+def clickable(widget: QtWidgets.QWidget) -> QtCore.SignalInstance:
     '''Add a ``clicked()`` signal to a widget that does not ordinarily emit one.
 
     Installs an event filter on *widget* that intercepts
@@ -32,18 +30,20 @@ def clickable(widget: QWidget):
     >>> widgetClicked.connect(lambda: print('clicked'))
     '''
 
-    class Filter(QObject):
+    class Filter(QtCore.QObject):
 
-        clicked = pyqtSignal()
+        clicked = QtCore.Signal()
 
-        def eventFilter(self, obj: QObject, event: QMouseEvent) -> bool:
-            if event.type() == QEvent.Type.MouseButtonRelease:
+        def eventFilter(self,
+                        wid: QtWidgets.QWidget,
+                        event: QtGui.QMouseEvent) -> bool:
+            if event.type() == QtCore.QEvent.Type.MouseButtonRelease:
                 pos = (event.position().toPoint()
                        if hasattr(event, 'position') else event.pos())
-                if obj.rect().contains(pos):
+                if widget.rect().contains(pos):
                     self.clicked.emit()
                     return True
-            return super().eventFilter(obj, event)
+            return super().eventFilter(wid, event)
 
     event_filter = Filter(widget)
     widget.installEventFilter(event_filter)

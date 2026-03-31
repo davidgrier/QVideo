@@ -1,5 +1,5 @@
 '''Auto-building pyqtgraph parameter tree for QCamera property inspection.'''
-from pyqtgraph.Qt import QtCore, QtGui
+from qtpy import QtCore, QtGui
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from QVideo.lib import QCamera, QVideoSource
 import logging
@@ -123,7 +123,7 @@ class QCameraTree(ParameterTree):
         self.adjustSize()
         self.setMinimumWidth(self.width())
 
-    @QtCore.pyqtSlot(object, object)
+    @QtCore.Slot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:
         if self._ignoreSync:
             return
@@ -137,7 +137,7 @@ class QCameraTree(ParameterTree):
             self.set(key, value)
         self._ignoreSync = False
 
-    @QtCore.pyqtSlot(str, object)
+    @QtCore.Slot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
         '''Set a camera property and update the tree.
 
@@ -172,17 +172,17 @@ class QCameraTree(ParameterTree):
         logger.warning(f'Unsupported property: {key}')
         return None
 
-    @QtCore.pyqtProperty(QVideoSource)
+    @QtCore.Property(QVideoSource)
     def source(self) -> QVideoSource:
         '''The underlying :class:`~QVideo.lib.QVideoSource.QVideoSource`.'''
         return self._source
 
-    @QtCore.pyqtProperty(QCamera)
+    @QtCore.Property(QCamera)
     def camera(self) -> QCamera:
         '''The :class:`~QVideo.lib.QCamera.QCamera` driven by this tree.'''
         return self.source.source
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def start(self) -> 'QCameraTree':
         '''Start the video source.
 
@@ -194,7 +194,7 @@ class QCameraTree(ParameterTree):
         self.source.start()
         return self
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def stop(self) -> None:
         '''Stop and join the video source thread.'''
         if self.source.isRunning():

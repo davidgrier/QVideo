@@ -1,6 +1,6 @@
 '''Abstract base class for all QVideo camera backends.'''
 from abc import ABCMeta, abstractmethod
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
@@ -77,9 +77,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     CameraData = tuple[bool, Image | None]
 
     #: Emitted by subclasses when the image dimensions change.
-    shapeChanged = QtCore.pyqtSignal(QtCore.QSize)
+    shapeChanged = QtCore.Signal(QtCore.QSize)
     #: Emitted by :meth:`get` with the property name and current value.
-    propertyValue = QtCore.pyqtSignal(str, object)
+    propertyValue = QtCore.Signal(str, object)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -179,7 +179,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
                 logger.warning(f'{self.name}: initialization failed')
         return self
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def close(self) -> None:
         '''Close the camera device.
 
@@ -249,7 +249,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         for key, value in settings.items():
             self.set(key, value)
 
-    @QtCore.pyqtSlot(str, object)
+    @QtCore.Slot(str, object)
     def set(self, key: str, value: PropertyValue) -> None:
         '''Set a registered property to the given value.
 
@@ -271,7 +271,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
                 logger.debug(f'Setting {key}: {value}')
                 setter(value)
 
-    @QtCore.pyqtSlot(str)
+    @QtCore.Slot(str)
     def get(self, key: str) -> PropertyValue | None:
         '''Return the current value of a registered property.
 
@@ -296,7 +296,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         self.propertyValue.emit(key, value)
         return value
 
-    @QtCore.pyqtSlot(str)
+    @QtCore.Slot(str)
     def execute(self, key: str) -> None:
         '''Call a registered method by name.
 

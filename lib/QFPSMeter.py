@@ -1,5 +1,5 @@
 '''Sliding-window frame-rate meter emitted as a Qt signal.'''
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from collections import deque
 import time
 import logging
@@ -47,7 +47,7 @@ class QFPSMeter(QtCore.QObject):
     '''
 
     #: Emitted on every :meth:`tick` once the buffer is full.
-    fpsReady = QtCore.pyqtSignal(float)
+    fpsReady = QtCore.Signal(float)
 
     def __init__(self, window: int = 10) -> None:
         super().__init__()
@@ -55,7 +55,7 @@ class QFPSMeter(QtCore.QObject):
         self._value = 0.
         self._timestamps = deque(maxlen=self.window)
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def tick(self) -> None:
         '''Record one frame arrival and update the FPS estimate.
 
@@ -75,7 +75,7 @@ class QFPSMeter(QtCore.QObject):
             else:
                 logger.warning('elapsed time is zero; skipping FPS update')
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def reset(self) -> None:
         '''Reset the meter to its initial state.
 

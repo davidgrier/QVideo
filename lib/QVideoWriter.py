@@ -1,5 +1,6 @@
 '''Abstract base class for video file writers.'''
 from abc import (ABCMeta, abstractmethod)
+from qtpy import QtCore
 from pyqtgraph.Qt.QtCore import (QObject, pyqtSignal, pyqtSlot)
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -11,11 +12,11 @@ logger = logging.getLogger(__name__)
 __all__ = ['QVideoWriter']
 
 
-class QVideoWriterMeta(type(QObject), ABCMeta):
+class QVideoWriterMeta(type(QtCore.QObject), ABCMeta):
     pass
 
 
-class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
+class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     '''Abstract base class for saving videos to files
 
     Parameters
@@ -101,7 +102,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
     def isOpen(self) -> bool:
         return False
 
-    @pyqtSlot(np.ndarray)
+    @QtCore.Slot(np.ndarray)
     def write(self, frame: Image) -> None:
         if not self.isOpen():
             if not self.open(frame):
@@ -120,7 +121,7 @@ class QVideoWriter(QObject, metaclass=QVideoWriterMeta):
     def _write(self, frame: Image) -> None:
         pass
 
-    @pyqtSlot()
+    @QtCore.Slot()
     @abstractmethod
     def close(self) -> None:
         pass

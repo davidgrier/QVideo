@@ -1,6 +1,6 @@
 '''Abstract base class for video file readers.'''
 from abc import ABCMeta, abstractmethod
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from QVideo.lib import QCamera
 import QVideo
 from pathlib import Path
@@ -55,7 +55,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     CameraData = QCamera.CameraData
 
     #: Emitted when the file is opened and the frame dimensions are known.
-    shapeChanged = QtCore.pyqtSignal(QtCore.QSize)
+    shapeChanged = QtCore.Signal(QtCore.QSize)
 
     def __init__(self, filename: str) -> None:
         '''Initialise and open the video reader.
@@ -76,7 +76,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def open(self) -> 'QVideoReader':
         '''Open the video file.
 
@@ -96,7 +96,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
                 logger.warning(f'{type(self).__name__}: initialization failed')
         return self
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def close(self) -> None:
         '''Close the video file.
 
@@ -184,7 +184,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
         '''Frame dimensions as ``QSize(width, height)``.'''
         return QtCore.QSize(int(self.width), int(self.height))
 
-    @QtCore.pyqtSlot(int)
+    @QtCore.Slot(int)
     @abstractmethod
     def seek(self, framenumber: int) -> None:
         '''Seek to the specified frame.
@@ -195,7 +195,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
             Target frame index (zero-based).
         '''
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def rewind(self) -> None:
         '''Seek to the first frame.'''
         self.seek(0)

@@ -11,6 +11,7 @@ from .QVideoWriter import QVideoWriter
 from .chooser import choose_camera
 from .QListCameras import QListCameras
 from .QFPSMeter import QFPSMeter
+
 __all__ = '''Image
 clickable choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank

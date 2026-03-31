@@ -1,5 +1,5 @@
 '''Base classes for image-processing filters in the QVideo filter pipeline.'''
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.lib.videotypes import Image
 
 
@@ -105,7 +105,8 @@ class QVideoFilter(QtWidgets.QGroupBox):
     @filter.setter
     def filter(self, videoFilter: VideoFilter) -> None:
         if not isinstance(videoFilter, VideoFilter):
-            raise TypeError(f'expected VideoFilter, got {type(videoFilter).__name__}')
+            raise TypeError(
+                f'expected VideoFilter, got {type(videoFilter).__name__}')
         self._filter = videoFilter
 
     def __call__(self, image: Image) -> Image:

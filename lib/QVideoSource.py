@@ -1,5 +1,5 @@
 '''QThread wrapper that drives a QCamera and emits newFrame signals.'''
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
 from QVideo.lib.videotypes import Image
@@ -65,7 +65,7 @@ class QVideoSource(QtCore.QThread):
     Source = QCamera | QVideoReader
 
     #: Emitted when a new video frame is available.
-    newFrame = QtCore.pyqtSignal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray)
 
     def __init__(self, source: Source) -> None:
         '''Initialise the video source thread.
@@ -135,7 +135,7 @@ class QVideoSource(QtCore.QThread):
                     self.newFrame.emit(frame)
         logger.debug('streaming finished')
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def start(self) -> 'QVideoSource':
         '''Start the capture thread.
 
@@ -156,7 +156,7 @@ class QVideoSource(QtCore.QThread):
         super().start()
         return self
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def stop(self) -> None:
         '''Stop the capture thread.
 
@@ -170,7 +170,7 @@ class QVideoSource(QtCore.QThread):
             self._paused = False
         self.waitcondition.wakeAll()
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def pause(self) -> None:
         '''Pause frame readout.
 
@@ -183,7 +183,7 @@ class QVideoSource(QtCore.QThread):
             if self._running:
                 self._paused = True
 
-    @QtCore.pyqtSlot()
+    @QtCore.Slot()
     def resume(self) -> None:
         '''Resume frame readout after :meth:`pause`.'''
         self.waitcondition.wakeAll()

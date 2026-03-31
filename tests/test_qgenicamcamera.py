@@ -197,7 +197,8 @@ class TestInit(unittest.TestCase):
 
     def test_raises_when_producer_is_none(self):
         with self.assertRaises(TypeError):
-            QGenicamCamera()
+            class _NullProducer(QGenicamCamera):
+                producer = None
 
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()

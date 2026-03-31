@@ -13,9 +13,9 @@ try:
     IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
 except (ImportError, ModuleNotFoundError) as exc:
     raise ImportError(
-        f"QGenicamCamera could not import 'genicam' or 'harvesters': {exc}\n"
-        '\tInstall them with: pip install genicam harvesters\n'
-        '\tIf the packages are installed, a NumPy version mismatch may be the cause:\n'
+        f"QGenicamCamera could not import 'genicam': {exc}\n"
+        '\tInstall it with: pip install genicam harvesters\n'
+        '\tIf the error persists, try downgrading to numpy 1.x:\n'
         '\t  pip install "numpy<2"'
     ) from exc
 
@@ -62,7 +62,7 @@ class QGenicamCamera(QCamera):
 
     @staticmethod
     def _findProducer(*filenames: str) -> 'str | None':
-        '''Search GENICAM_GENTL64_PATH for the first matching GenTL producer.
+        '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
 
         Parameters
         ----------
@@ -84,7 +84,8 @@ class QGenicamCamera(QCamera):
         return None
 
     @staticmethod
-    def _set_feature(feature: IValue, value: QCamera.PropertyValue) -> None:
+    def _set_feature(feature: IValue,
+                     value: QCamera.PropertyValue) -> None:
         '''Set the value of a feature node.'''
         logger.debug(f'Setting {feature.node.name}: {value}')
         if isinstance(feature, IEnumeration):
@@ -173,7 +174,8 @@ class QGenicamCamera(QCamera):
         def setter(value):
             mode = feature.node.get_access_mode()
             if mode != EAccessMode.RW and name not in self.protected:
-                logger.warning(f'{name} is not currently writable (mode={mode})')
+                logger.warning(
+                    f'{name} is not currently writable (mode={mode})')
                 return
             restart = name in self.protected and self.device.is_acquiring()
             if restart:
@@ -184,7 +186,7 @@ class QGenicamCamera(QCamera):
         return setter
 
     def _register_features(self, feature: IValue) -> None:
-        '''Recursively walk the node tree, registering properties and methods.'''
+        '''Recurse the node tree to register properties and methods.'''
         if isinstance(feature, ICategory):
             for f in feature.features:
                 self._register_features(f)
@@ -203,13 +205,15 @@ class QGenicamCamera(QCamera):
                                   ptype=self._feature_ptype(feature),
                                   **self._feature_meta(feature))
 
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        if cls.producer is None:
+            raise TypeError(
+                f"{cls.__name__} must define a 'producer' class attribute "
+                'naming a GenTL producer .cti file.')
+
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        if type(self).producer is None:
-            raise TypeError(
-                f"{type(self).__name__} must define a 'producer' class "
-                "attribute pointing to a GenTL producer .cti file."
-            )
         self.cameraID = cameraID
         self.nodeMap = None
         self.open()
@@ -222,26 +226,29 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        success = False
         self.harvester = Harvester()
         self.device = None
         try:
-            try:
-                self.harvester.add_file(self.producer)
-                self.harvester.update()
-            except Exception as ex:
-                logger.warning(f'Failed to load producer {self.producer!r}: {ex}')
-                return False
-            try:
-                self.device = self.harvester.create(self.cameraID)
-            except Exception as ex:
-                logger.warning(f'No camera found at index {self.cameraID}: {ex}')
-                return False
-            remote_device = self.device.remote_device
-            self.nodeMap = remote_device.node_map if remote_device is not None else None
-            if self.nodeMap is None:
-                logger.warning('Camera node map is not available')
-                return False
+            self.harvester.add_file(self.producer)
+            self.harvester.update()
+        except Exception as ex:
+            logger.warning(
+                f'Failed to load producer {self.producer!r}: {ex}')
+            self._cleanup()
+            return False
+        try:
+            self.device = self.harvester.create(self.cameraID)
+        except Exception as ex:
+            logger.warning(
+                f'No camera found at index {self.cameraID}: {ex}')
+            self._cleanup()
+            return False
+        if self.device.remote_device is None:
+            logger.warning('Camera remote device is not available')
+            self._cleanup()
+            return False
+        self.nodeMap = self.device.remote_device.node_map
+        try:
             root = self.node()
             ma = self._scan_modes(root)
             self.device.start()
@@ -258,13 +265,15 @@ class QGenicamCamera(QCamera):
                             self.shapeChanged.emit(self.shape)
                         self._properties[genicam_name]['setter'] = _shape_setter
                     self._properties[alias] = self._properties[genicam_name]
-            success = self.device.is_valid()
-            if not success:
-                logger.warning('Camera device reported invalid after initialization')
-            return success
-        finally:
-            if not success:
+            if not self.device.is_valid():
+                logger.warning(
+                    'Camera device reported invalid after initialization')
                 self._cleanup()
+                return False
+        except Exception:
+            self._cleanup()
+            raise
+        return True
 
     def _cleanup(self) -> None:
         '''Release partially initialized resources after a failed _initialize.

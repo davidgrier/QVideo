@@ -45,6 +45,18 @@ RGB channel selection
 .. automodule:: QVideo.filters.QRGBFilter
    :members:
 
+Threshold
+---------
+
+.. automodule:: QVideo.filters.QThresholdFilter
+   :members:
+
+Blob coloring
+-------------
+
+.. automodule:: QVideo.filters.QBlobFilter
+   :members:
+
 YOLO confidence threshold
 -------------------------
 

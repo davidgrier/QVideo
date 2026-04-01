@@ -92,9 +92,8 @@ class QBlurFilter(QVideoFilter):
             odd integer.
         '''
         self.filter.width = width
-        self._spinbox.blockSignals(True)
-        self._spinbox.setValue(self.filter.width)
-        self._spinbox.blockSignals(False)
+        with QtCore.QSignalBlocker(self._spinbox):
+            self._spinbox.setValue(self.filter.width)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -86,6 +86,59 @@ additions:
 
 ---
 
+## Unified Camera Discovery and Selection
+
+QVideo has per-backend listing widgets (`QListCVCameras`, `QListFlirCameras`,
+etc.) but no single surface that enumerates all available cameras regardless
+of backend.
+
+- **`QListCameras` unified API** — a single class (or factory function) that
+  queries every installed backend and returns a flat list of
+  `(backend, cameraID, display_name)` tuples.  Back-ends that are not
+  installed or whose hardware is absent should be silently skipped so the
+  caller never needs to guard against missing SDK imports.
+- **`QCameraChooser` widget** — a `QComboBox` (or tree view) populated from
+  the unified list.  Selecting an entry instantiates the matching
+  `Q<Backend>Camera` and `Q<Backend>Source` via the existing `chooser.py`
+  dispatch table, returning a ready-to-use source to the parent widget.
+  Should replace the current CLI flag approach (`-b/-c/-f/…`) with a
+  point-and-click workflow.
+- **Integration with `QCamcorder`** — replace the startup camera argument
+  with an optional embedded `QCameraChooser` panel so the user can switch
+  cameras without restarting the application.
+
+---
+
+## Hot-Plug Support
+
+Camera connections and disconnections during a running session are not
+currently handled; the application typically crashes or hangs when a camera
+is physically removed.
+
+- **Disconnect detection** — `QVideoSource` should catch the hardware error
+  (read failure, exception from `camera.saferead()`) and emit a
+  `cameraDisconnected` signal rather than propagating the exception.  The
+  source thread should stop gracefully and leave the UI in a recoverable
+  state.
+- **Reconnect / re-initialize** — after a disconnect signal, the source (or
+  a supervising widget) should periodically retry `camera._initialize()` and
+  emit `cameraReconnected` once the device is available again, automatically
+  resuming the live feed without user intervention.
+- **OS-level device notifications** — use `QFileSystemWatcher` (Linux
+  `/dev/video*`) or platform device-arrival events (Windows
+  `WM_DEVICECHANGE`, macOS IOKit) to trigger discovery when a new camera is
+  plugged in, rather than relying solely on read errors to detect changes.
+- **GenICam producer events** — Harvesters exposes `on_new_buffer` and
+  device-lost callbacks; wire these into the disconnect/reconnect machinery
+  so GenICam cameras benefit from the same hot-plug handling as OpenCV
+  cameras.
+- **UI feedback** — the `QCameraTree` (and `QCameraChooser` above) should
+  reflect device state visually: greyed-out controls when disconnected,
+  a status indicator, and an optional toast/notification when a camera
+  comes back online.
+
+---
+
 ## Analysis Overlays
 
 The new `overlays/` package provides `QTrackpyWidget` and `QYoloWidget`.

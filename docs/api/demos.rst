@@ -34,11 +34,20 @@ If no flag is given, a noise camera is used as a fallback.
 Demo
 ----
 
+The base demo displays a live video screen alongside a camera control tree.
+It is the common superclass for all other demos and can be used as a minimal
+starting point for custom applications.
+
 .. automodule:: QVideo.demos.demo
    :members:
 
 FilterDemo
 ----------
+
+Extends the base :class:`~QVideo.demos.demo.Demo` with an image-filter bank
+below the camera controls.  All filters registered in
+:mod:`QVideo.filters` can be toggled and configured while the camera
+is streaming.
 
 .. automodule:: QVideo.demos.filterdemo
    :members:
@@ -46,11 +55,22 @@ FilterDemo
 ROIdemo
 -------
 
+Extends :class:`~QVideo.QCamcorder.QCamcorder` with a draggable rectangular
+region-of-interest (ROI) overlay.  When active, only the pixels inside the
+ROI are passed to the DVR, enabling high-rate recording of a cropped region
+without capturing the full frame.
+
 .. automodule:: QVideo.demos.ROIdemo
    :members:
 
 TrackpyDemo
 -----------
+
+Extends the base :class:`~QVideo.demos.demo.Demo` with a
+:class:`~QVideo.overlays.trackpy.QTrackpyWidget` control panel.  Detected
+particle positions are rendered as a scatter-plot directly on the live video
+screen using the Crocker–Grier algorithm via
+`trackpy <https://soft-matter.github.io/trackpy/>`_.
 
 .. automodule:: QVideo.demos.trackpydemo
    :members:
@@ -58,11 +78,22 @@ TrackpyDemo
 YoloDemo
 --------
 
+Extends the base :class:`~QVideo.demos.demo.Demo` with a
+:class:`~QVideo.overlays.yolo.QYoloWidget` control panel.  Detected object
+bounding boxes are rendered as labeled rectangles on the live video screen
+using a YOLO model via the `Ultralytics <https://docs.ultralytics.com/>`_
+library.
+
 .. automodule:: QVideo.demos.yolodemo
    :members:
 
 CompositeDemo
 -------------
+
+Extends :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy particle-
+detection overlay and a *Composite* recording mode.  When the *Composite*
+checkbox is enabled, the DVR records the fully rendered scene — video frame
+plus particle markers — rather than the raw camera frames.
 
 .. automodule:: QVideo.demos.compositedemo
    :members:

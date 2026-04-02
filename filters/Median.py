@@ -1,3 +1,4 @@
+'''Batch median-of-medians background estimator (remedian algorithm).'''
 from QVideo.filters._MedianBase import _MedianBase
 from QVideo.lib.videotypes import Image
 import numpy as np

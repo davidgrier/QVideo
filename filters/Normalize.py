@@ -1,3 +1,4 @@
+'''Background-normalisation filters built on median background estimation.'''
 from QVideo.filters.Median import Median
 from QVideo.filters.MoMedian import MoMedian
 from QVideo.lib.videotypes import Image

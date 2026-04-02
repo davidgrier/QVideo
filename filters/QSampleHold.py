@@ -1,3 +1,4 @@
+'''Sample-and-hold background normalisation filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from QVideo.filters.Normalize import Normalize
 from QVideo.lib.QVideoFilter import QVideoFilter

@@ -1,3 +1,4 @@
+'''RGB color-channel selection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image

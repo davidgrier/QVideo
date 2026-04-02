@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 '''Composite camcorder widget combining a video screen, camera controls, and DVR.
 
 Run directly to launch a full camcorder application with camera selection::

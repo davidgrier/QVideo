@@ -6,9 +6,9 @@ from pathlib import Path
 
 try:
     from harvesters.core import Harvester
-    from genicam.genapi import (IValue, EAccessMode, EVisibility,
-                                ICategory, ICommand, IEnumeration,
-                                IBoolean, IInteger, IFloat, IString)
+    from genicam.genapi import (IValue, EAccessMode, ICategory, ICommand,
+                                IEnumeration, IBoolean, IInteger, IFloat,
+                                IString)
     from genicam.gentl import TimeoutException
     IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
 except (ImportError, ModuleNotFoundError) as exc:
@@ -115,13 +115,15 @@ class QGenicamCamera(QCamera):
         '''
         if isinstance(feature, IEnumeration):
             def getter():
-                if feature.node.get_access_mode() in (EAccessMode.RO, EAccessMode.RW):
+                mode = feature.node.get_access_mode()
+                if mode in (EAccessMode.RO, EAccessMode.RW):
                     return feature.to_string()
                 return None
             return getter
 
         def getter():
-            if feature.node.get_access_mode() in (EAccessMode.RO, EAccessMode.RW):
+            mode = feature.node.get_access_mode()
+            if mode in (EAccessMode.RO, EAccessMode.RW):
                 return feature.value
             return None
         return getter
@@ -220,7 +222,8 @@ class QGenicamCamera(QCamera):
             ``True`` if a valid camera device was opened successfully.
         '''
         if self.producer is None:
-            logger.warning(f'{type(self).__name__}: no GenTL producer available')
+            logger.warning(
+                f'{type(self).__name__}: no GenTL producer available')
             return False
         self.harvester = Harvester()
         self.device = None

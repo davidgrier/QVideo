@@ -72,6 +72,10 @@ packages = [
     "QVideo.overlays",
 ]
 
+[tool.setuptools.package-data]
+'QVideo'     = ['*.ui']
+'QVideo.dvr' = ['*.ui']
+
 [tool.setuptools.package-dir]
 "QVideo"                    = "."
 "QVideo.cameras"            = "cameras"

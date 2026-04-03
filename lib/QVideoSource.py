@@ -122,15 +122,14 @@ class QVideoSource(QtCore.QThread):
         '''
         logger.debug('streaming started')
         with self.source:
-            while self._running:
-                ok = False
+            while True:
                 with QtCore.QMutexLocker(self.mutex):
                     if self._paused:
                         self.waitcondition.wait(self.mutex)
                         self._paused = False
                     if not self._running:
                         break
-                    ok, frame = self.source.saferead()
+                ok, frame = self.source.saferead()
                 if ok:
                     self.newFrame.emit(frame)
         logger.debug('streaming finished')

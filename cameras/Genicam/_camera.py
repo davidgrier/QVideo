@@ -5,11 +5,10 @@ import logging
 from pathlib import Path
 
 try:
-    from harvesters.core import Harvester, ConcretePort
+    from harvesters.core import Harvester
     from genicam.genapi import (IValue, EAccessMode, ICategory, ICommand,
                                 IEnumeration, IBoolean, IInteger, IFloat,
-                                IString, NodeMap,
-                                GenericException as GenApi_GenericException)
+                                IString)
     from genicam.gentl import TimeoutException
     IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
 except (ImportError, ModuleNotFoundError) as exc:
@@ -156,14 +155,15 @@ class QGenicamCamera(QCamera):
         return {}
 
     @staticmethod
-    def _load_node_map(device) -> 'NodeMap | None':
-        '''Manually load and connect a node map from the device's remote port.
+    def _load_node_map(device):
+        '''Reload the node map by re-running harvesters' own loading logic.
 
         Called when harvesters' automatic node map loading fails due to a
         timing race: if the Spinnaker GenTL producer's port URL list is not
         yet populated at ``h.create()`` time, harvesters silently returns an
-        unconnected ``NodeMap``.  This method reads the XML directly from the
-        port and connects it, replicating what harvesters does internally.
+        unconnected ``NodeMap``.  Calling ``_create_node_map`` again once the
+        port has settled produces a connected map, which is then patched back
+        onto the device so that ``device.start()`` also uses it.
 
         Parameters
         ----------
@@ -175,32 +175,9 @@ class QGenicamCamera(QCamera):
         NodeMap or None
             A connected node map, or ``None`` if loading failed.
         '''
-        import tempfile
         try:
             port = device.remote_device.module.remote_port
-            urls = port.url_info_list
-            if not urls:
-                return None
-            url = urls[0].url
-            location, rest = url.split(':', 1)
-            if location.lower() != 'local':
-                return None
-            _file_name, address, size = rest.split(';')
-            address = int(address, 16)
-            size = int(size.split('?')[0], 16)
-            _nbytes, data = port.read(address, size)
-            nm = NodeMap()
-            with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as f:
-                f.write(data)
-                tmp_path = f.name
-            try:
-                nm.load_xml_from_zip_file(tmp_path)
-            except GenApi_GenericException:
-                nm.load_xml_from_file(tmp_path)
-            nm.connect(ConcretePort(port), port.name)
-            # Also patch harvesters' internal reference so device.start()
-            # (which reads device.remote_device.node_map.AcquisitionMode)
-            # uses the connected map.
+            nm = device.remote_device._create_node_map(port=port)
             device.remote_device._node_map = nm
             return nm
         except Exception as exc:
@@ -295,36 +272,24 @@ class QGenicamCamera(QCamera):
                 f'No camera found at index {self.cameraID}: {ex}')
             self._cleanup()
             return False
-        if self.device.remote_device is None:
-            logger.warning('Camera remote device is not available')
-            self._cleanup()
-            return False
-        try:
-            self.nodeMap = self.device.remote_device.node_map
-            try:
-                connected = self.nodeMap.has_node('Root')
-            except GenApi_GenericException:
-                connected = False
-            if not connected:
-                logger.warning('harvesters node map unconnected; '
-                               'loading manually from device port')
-                self.nodeMap = self._load_node_map(self.device)
-                if self.nodeMap is None:
-                    self._cleanup()
-                    return False
-            root = self.node()
-            ma = self._scan_modes(root)
-            self.device.start()
-            mb = self._scan_modes(root)
-            self.protected = {k for k, v in ma.items()
-                              if k in mb and mb[k] != v}
-            self._register_features(root)
-            for name in ('Width', 'Height'):
-                if name in self._properties:
-                    self._properties[name.lower()] = self._properties[name]
-        except Exception:
-            logger.exception('Failed during node map initialization')
-            raise
+        self.nodeMap = self.device.remote_device.node_map
+        if not self.nodeMap.has_node('Root'):
+            logger.warning('harvesters node map unconnected; '
+                           'loading manually from device port')
+            self.nodeMap = self._load_node_map(self.device)
+            if self.nodeMap is None:
+                self._cleanup()
+                return False
+        root = self.node()
+        ma = self._scan_modes(root)
+        self.device.start()
+        mb = self._scan_modes(root)
+        self.protected = {k for k, v in ma.items()
+                          if k in mb and mb[k] != v}
+        self._register_features(root)
+        for name in ('Width', 'Height'):
+            if name in self._properties:
+                self._properties[name.lower()] = self._properties[name]
         return True
 
     def _cleanup(self) -> None:

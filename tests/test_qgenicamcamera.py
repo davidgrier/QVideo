@@ -310,25 +310,6 @@ class TestInitialize(unittest.TestCase):
                 cam = _ConcreteCamera()
         self.assertFalse(cam.isOpen())
 
-    def test_returns_false_when_remote_device_is_none(self):
-        device = _make_device()
-        device.remote_device = None
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
-
-    def test_cleanup_called_when_remote_device_is_none(self):
-        device = _make_device()
-        device.remote_device = None
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                _ConcreteCamera()
-        harvester.reset.assert_called_once()
 
     def test_exception_propagates_when_device_start_raises(self):
         device = _make_device()

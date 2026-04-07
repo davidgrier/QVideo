@@ -7,6 +7,10 @@ separates hardware communication, threading, property introspection, and
 UI into distinct, composable layers so that adding a new camera backend
 or image-processing filter requires minimal boilerplate.
 
+Run the full camcorder application directly::
+
+    python -m QVideo [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents

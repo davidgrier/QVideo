@@ -8,7 +8,12 @@ or more QVideo widgets into a standalone window.  All demos use
 :func:`~QVideo.lib.chooser.choose_camera` to present a camera-selection
 dialog at startup, so no camera-specific code is needed in the demo itself.
 
-Each demo can be launched directly::
+The default application is :class:`~QVideo.QCamcorder.QCamcorder` and can
+be launched via the package entry point::
+
+    python -m QVideo [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
+
+Each demo can also be launched directly::
 
     python -m QVideo.demos.demo
     python -m QVideo.demos.filterdemo

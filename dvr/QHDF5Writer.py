@@ -1,7 +1,10 @@
 from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
-import h5py
+try:
+    import h5py
+except (ImportError, ModuleNotFoundError):
+    h5py = None
 from time import time
 import logging
 

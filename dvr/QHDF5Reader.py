@@ -1,7 +1,10 @@
 from qtpy import QtCore
 from QVideo.lib import QVideoReader, QVideoSource
 from pathlib import Path
-import h5py
+try:
+    import h5py
+except (ImportError, ModuleNotFoundError):
+    h5py = None
 
 
 __all__ = ['QHDF5Reader', 'QHDF5Source']

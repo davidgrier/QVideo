@@ -5,8 +5,15 @@ from QVideo.lib import clickable, QVideoSource
 from QVideo.lib.videotypes import Image
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVSource
+
 from .QHDF5Writer import QHDF5Writer
 from .QHDF5Reader import QHDF5Source
+
+try:
+    import h5py as _h5py
+    _h5py_available = True
+except (ImportError, ModuleNotFoundError):
+    _h5py_available = False
 import logging
 
 
@@ -31,8 +38,9 @@ class QDVRWidget(QtWidgets.QFrame):
     capture incoming frames to a file, and can play back previously
     recorded files.  Supported formats are determined by the
     :attr:`Writer` and :attr:`Player` class attributes; by default
-    AVI (``.avi``), MKV (``.mkv``), MP4 (``.mp4``), and HDF5 (``.h5``)
-    are supported.  Requesting an unsupported extension is logged
+    AVI (``.avi``), MKV (``.mkv``), and MP4 (``.mp4``) are supported;
+    HDF5 (``.h5``) is also supported when ``h5py`` is installed.
+    Requesting an unsupported extension is logged
     as an error and silently ignored.
 
     Recording and playback stop automatically when the widget is closed
@@ -75,15 +83,17 @@ class QDVRWidget(QtWidgets.QFrame):
 
     Writer = {'.avi': QOpenCVWriter,
               '.mkv': QOpenCVWriter,
-              '.mp4': QOpenCVWriter,
-              '.h5': QHDF5Writer}
+              '.mp4': QOpenCVWriter}
     Player = {'.avi': QOpenCVSource,
               '.mkv': QOpenCVSource,
-              '.mp4': QOpenCVSource,
-              '.h5': QHDF5Source}
+              '.mp4': QOpenCVSource}
 
-    FileGroups = {'Video files': {'.avi', '.mkv', '.mp4'},
-                  'HDF5 files': {'.h5'}}
+    FileGroups = {'Video files': {'.avi', '.mkv', '.mp4'}}
+
+    if _h5py_available:
+        Writer['.h5'] = QHDF5Writer
+        Player['.h5'] = QHDF5Source
+        FileGroups['HDF5 files'] = {'.h5'}
 
     @classmethod
     def _buildFilter(cls, save: bool) -> str:

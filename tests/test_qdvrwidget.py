@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtCore, QtGui, QtWidgets, QtTest
-from QVideo.dvr.QDVRWidget import QDVRWidget
+from QVideo.dvr.QDVRWidget import QDVRWidget, _h5py_available
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -510,7 +510,10 @@ class TestQDVRWidgetBuildFilter(unittest.TestCase):
     def test_known_extensions_appear_in_filter(self):
         f = QDVRWidget._buildFilter(save=True)
         self.assertIn('.avi', f)
-        self.assertIn('.h5', f)
+        if _h5py_available:
+            self.assertIn('.h5', f)
+        else:
+            self.assertNotIn('.h5', f)
 
     def test_ungrouped_extension_appears_in_other_group(self):
         class SubWidget(QDVRWidget):

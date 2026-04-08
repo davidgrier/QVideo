@@ -1,6 +1,6 @@
+from typing import Any
 from qtpy import QtCore
 from QVideo.lib import QCameraTree
-from QVideo.lib.QCameraTree import Source
 from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
@@ -10,13 +10,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+_US_UNITS = frozenset({'us', 'µs', 'μs'})
 
 __all__ = ['QGenicamTree']
 
 
 class QGenicamTree(QCameraTree):
 
-    '''Camera property tree for :class:`~QVideo.cameras.Genicam.QGenicamCamera`.
+    '''Camera property tree for
+    :class:`~QVideo.cameras.Genicam.QGenicamCamera`.
 
     Builds a :class:`~QVideo.lib.QCameraTree.QCameraTree` from the camera's
     GenICam node map and exposes visibility and per-feature enable/disable
@@ -45,10 +47,11 @@ class QGenicamTree(QCameraTree):
     '''
 
     def __init__(self, *args,
-                 camera: Source,
+                 camera: QGenicamCamera,
                  visibility: EVisibility = EVisibility.Guru,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
+        self._scaleFactors: dict[str, float] = {}
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
         self._visibility = visibility
@@ -63,23 +66,25 @@ class QGenicamTree(QCameraTree):
         self._timer.setInterval(500)
         self._timer.timeout.connect(self._pollCamera)
         self._timer.start()
-        quitting = QtCore.QCoreApplication.instance().aboutToQuit
+        instance = QtCore.QCoreApplication.instance()
+        quitting = instance.aboutToQuit
         quitting.connect(self._timer.stop)
 
     def closeEvent(self, event) -> None:
         self._timer.stop()
         super().closeEvent(event)
 
-    def description(self, camera: QGenicamCamera) -> dict:
-        '''Return a dictionary describing the node map of the camera'''
+    def description(self,
+                    camera: QGenicamCamera) -> list[dict]:
+        '''Return a list of dicts describing the node map'''
         root = camera.node('Root')
         if root is None:
             return []
         description = self.describe(root)
         return description.get('children', [])
 
-    def describe(self, feature: IValue) -> dict[str, object]:
-        '''Return a dictionary describing the specified feature'''
+    def describe(self, feature: IValue) -> dict[str, Any]:
+        '''Return a dictionary describing a feature'''
         this = dict(name=feature.node.name,
                     title=feature.node.display_name,
                     visibility=feature.node.visibility)
@@ -111,12 +116,20 @@ class QGenicamTree(QCameraTree):
             this['step'] = feature.inc
         elif isinstance(feature, IFloat):
             this['type'] = 'float'
-            this['value'] = this['default'] = feature.value
-            this['min'] = feature.min
-            this['max'] = feature.max
-            this['units'] = feature.unit
+            unit = feature.unit
+            if unit in _US_UNITS:
+                scale = 1e-6
+                self._scaleFactors[feature.node.name] = scale
+                this['siPrefix'] = True
+                unit = 's'
+            else:
+                scale = 1.0
+            this['value'] = this['default'] = feature.value * scale
+            this['min'] = feature.min * scale
+            this['max'] = feature.max * scale
+            this['units'] = unit
             if feature.has_inc():
-                this['step'] = feature.inc
+                this['step'] = feature.inc * scale
         elif isinstance(feature, IString):
             this['type'] = 'str'
             this['value'] = this['default'] = feature.value
@@ -131,6 +144,23 @@ class QGenicamTree(QCameraTree):
         for item in self.listAllItems():
             p = item.param
             p.sigValueChanged.connect(self._handleItemChanges)
+
+    @QtCore.Slot(object, object)
+    def _sync(self, root, changes) -> None:
+        if self._ignoreSync:
+            return
+        for param, change, value in changes:
+            if change == 'value':
+                key = param.name()
+                if key in self._scaleFactors:
+                    value = value / self._scaleFactors[key]  # type: ignore
+                self.camera.set(key, value)
+        self._ignoreSync = True
+        for key, value in self.camera.settings.items():
+            if key in self._scaleFactors:
+                value = value * self._scaleFactors[key]  # type: ignore
+            self.set(key, value)
+        self._ignoreSync = False
 
     def _handleItemChanges(self) -> None:
         if self._ignoreSync:
@@ -152,7 +182,8 @@ class QGenicamTree(QCameraTree):
             return False
         if ptype == 'group':
             return any(self.visible(c) for c in param.children())
-        visibility = param.opts.get('visibility', EVisibility.Invisible)
+        get = param.opts.get
+        visibility = get('visibility', EVisibility.Invisible)
         return visibility <= self.visibility
 
     def _updateEnabled(self) -> None:
@@ -187,6 +218,8 @@ class QGenicamTree(QCameraTree):
                 value = node.value
             else:
                 continue
+            if name in self._scaleFactors:
+                value *= self._scaleFactors[name]
             p.blockSignals(True)
             try:
                 p.setValue(value)
@@ -235,6 +268,8 @@ class QGenicamTree(QCameraTree):
                     value = node.value
                 else:
                     continue
+                if name in self._scaleFactors:
+                    value *= self._scaleFactors[name]
                 p.setValue(value)
             self._updateEnabled()
         finally:
@@ -258,9 +293,11 @@ class QGenicamTree(QCameraTree):
             if isinstance(node, IInteger):
                 p.setOpts(limits=(node.min, node.max), step=node.inc)
             elif isinstance(node, IFloat):
-                opts = {'limits': (node.min, node.max)}
+                scale = self._scaleFactors.get(name, 1.0)
+                opts = {'limits': (node.min * scale,
+                                   node.max * scale)}
                 if node.has_inc():
-                    opts['step'] = node.inc
+                    opts['step'] = node.inc * scale
                 p.setOpts(**opts)
             elif isinstance(node, IEnumeration):
                 p.setOpts(limits=[v.symbolic for v in node.entries])

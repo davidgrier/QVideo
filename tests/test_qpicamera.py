@@ -37,6 +37,24 @@ _METADATA = {
     'FrameDuration': 33333,
 }
 
+_AF_CONTROLS = {
+    **_CAMERA_CONTROLS,
+    'AfMode':       (0, 2, 0),
+    'AfRange':      (0, 2, 0),
+    'AfSpeed':      (0, 1, 0),
+    'LensPosition': (0.0, 32.0, 1.0),
+    'AfTrigger':    (0, 1, 0),
+}
+
+_AF_METADATA = {
+    **_METADATA,
+    'AfMode':       0,
+    'AfRange':      0,
+    'AfSpeed':      0,
+    'LensPosition': 1.0,
+    'AfState':      0,
+}
+
 def make_mock_device(width=1280, height=960, frame=None,
                      capture_ok=True, controls=None, metadata=None):
     '''Return a MagicMock standing in for a Picamera2 instance.'''
@@ -54,6 +72,7 @@ def make_mock_device(width=1280, height=960, frame=None,
         device.capture_array.return_value = frame.copy()
         request = MagicMock()
         request.make_array.return_value = frame.copy()
+        request.get_metadata.return_value = metadata.copy()
         device.capture_request.return_value = request
     else:
         device.capture_array.side_effect = RuntimeError('no frame')
@@ -450,6 +469,97 @@ class TestQPicameraSource(unittest.TestCase):
             src = QPicameraSource(cameraID=1)
         mock_cls.assert_called_once_with(camera_num=1)
         src.source.close()
+
+
+class TestFocus(unittest.TestCase):
+    '''Focus-control tests for cameras that report AfTrigger.'''
+
+    def setUp(self):
+        self.cam, self.device = make_camera(
+            controls=_AF_CONTROLS, metadata=_AF_METADATA)
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_af_mode_registered(self):
+        self.assertIn('AfMode', self.cam.properties)
+
+    def test_af_range_registered(self):
+        self.assertIn('AfRange', self.cam.properties)
+
+    def test_af_speed_registered(self):
+        self.assertIn('AfSpeed', self.cam.properties)
+
+    def test_lens_position_registered(self):
+        self.assertIn('LensPosition', self.cam.properties)
+
+    def test_af_state_registered(self):
+        self.assertIn('AfState', self.cam.properties)
+
+    def test_autofocus_method_registered(self):
+        self.assertIn('autofocus', self.cam.methods)
+
+    def test_af_state_is_read_only(self):
+        self.assertIsNone(self.cam._properties['AfState']['setter'])
+
+    def test_af_state_initial_value(self):
+        self.assertEqual(self.cam.AfState, 0)
+
+    def test_lens_position_has_minimum(self):
+        self.assertIn('minimum', self.cam._properties['LensPosition'])
+
+    def test_lens_position_has_maximum(self):
+        self.assertIn('maximum', self.cam._properties['LensPosition'])
+
+    def test_lens_position_range(self):
+        spec = self.cam._properties['LensPosition']
+        self.assertEqual(spec['minimum'], 0.0)
+        self.assertEqual(spec['maximum'], 32.0)
+
+    def test_autofocus_sends_trigger(self):
+        self.device.reset_mock()
+        self.cam.execute('autofocus')
+        self.device.set_controls.assert_called_with({'AfTrigger': 0})
+
+    def test_autofocus_skipped_when_closed(self):
+        self.cam._deviceOpen = False
+        self.device.reset_mock()
+        self.cam.execute('autofocus')
+        self.device.set_controls.assert_not_called()
+
+    def test_read_updates_af_state(self):
+        request = self.device.capture_request.return_value
+        request.get_metadata.return_value = {'AfState': 2}
+        self.cam.read()
+        self.assertEqual(self.cam.AfState, 2)
+
+    def test_read_ignores_missing_af_state_in_metadata(self):
+        request = self.device.capture_request.return_value
+        request.get_metadata.return_value = {}
+        self.cam.read()
+        self.assertEqual(self.cam.AfState, 0)
+
+
+class TestFocusAbsent(unittest.TestCase):
+    '''Cameras without AfTrigger must not register focus properties.'''
+
+    def setUp(self):
+        self.cam, _ = make_camera()
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_af_state_not_registered(self):
+        self.assertNotIn('AfState', self.cam.properties)
+
+    def test_autofocus_not_registered(self):
+        self.assertNotIn('autofocus', self.cam.methods)
+
+    def test_af_mode_not_registered(self):
+        self.assertNotIn('AfMode', self.cam.properties)
+
+    def test_lens_position_not_registered(self):
+        self.assertNotIn('LensPosition', self.cam.properties)
 
 
 if __name__ == '__main__':

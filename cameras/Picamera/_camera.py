@@ -24,6 +24,10 @@ _CONTROL_TYPES: dict[str, type] = {
     'Sharpness':    float,
     'ExposureTime': int,
     'AnalogueGain': float,
+    'AfMode':       int,
+    'AfRange':      int,
+    'AfSpeed':      int,
+    'LensPosition': float,
 }
 
 
@@ -121,6 +125,7 @@ class QPicamera(QCamera):
         metadata = self.device.capture_metadata()
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
+        self._probeFocus(metadata)
         # Re-apply any controls the user set before this restart.
         # Filter to keys still valid under the new configuration.
         pending = {k: v for k, v in prior_controls.items()
@@ -190,6 +195,36 @@ class QPicamera(QCamera):
             minimum=1_000_000 / hi,
             maximum=1_000_000 / lo,
         )
+
+    def _probeFocus(self, metadata: dict) -> None:
+        '''Register autofocus controls if the camera supports AF.
+
+        AF support is detected by the presence of ``AfTrigger`` in
+        ``camera_controls``.  When supported, ``AfState`` is registered
+        as a read-only property (updated per frame in :meth:`read`) and
+        ``autofocus`` is registered as a trigger method.
+
+        Parameters
+        ----------
+        metadata : dict
+            Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
+            used to initialise the cached ``AfState`` value.
+        '''
+        if 'AfTrigger' not in self.device.camera_controls:
+            return
+        self._controlValues['AfState'] = int(metadata.get('AfState', 0))
+        self.registerProperty(
+            'AfState',
+            getter=lambda: int(self._controlValues.get('AfState', 0)),
+            setter=None,
+            ptype=int,
+        )
+        self.registerMethod('autofocus', self._triggerAutofocus)
+
+    def _triggerAutofocus(self) -> None:
+        '''Send ``AfTrigger=Start`` to begin a single autofocus sweep.'''
+        if self._deviceOpen:
+            self.device.set_controls({'AfTrigger': 0})
 
     def _getFps(self) -> float:
         duration = self._controlValues['FrameDurationLimits'][0]
@@ -293,6 +328,10 @@ class QPicamera(QCamera):
         try:
             request = self.device.capture_request()
             frame = request.make_array('main').copy()
+            if 'AfState' in self._controlValues:
+                req_meta = request.get_metadata()
+                if 'AfState' in req_meta:
+                    self._controlValues['AfState'] = int(req_meta['AfState'])
             request.release()
         except Exception as ex:
             logger.warning(f'Frame read failed: {ex}')

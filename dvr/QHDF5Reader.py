@@ -1,3 +1,4 @@
+'''HDF5 video reader and threaded playback source.'''
 from qtpy import QtCore
 from QVideo.lib import QVideoReader, QVideoSource
 from pathlib import Path
@@ -41,6 +42,13 @@ class QHDF5Reader(QVideoReader):
         self.file.close()
 
     def read(self) -> QVideoReader.CameraData:
+        '''Read the next frame from the HDF5 file.
+
+        Returns
+        -------
+        tuple[bool, ndarray or None]
+            ``(True, frame)`` on success, ``(False, None)`` when past the end.
+        '''
         if self._framenumber >= len(self.keys):
             return False, None
         key = self.keys[self._framenumber]
@@ -55,6 +63,12 @@ class QHDF5Reader(QVideoReader):
 
     @QtCore.Property(float)
     def fps(self) -> float:
+        '''Estimated frame rate derived from the recorded timestamps [fps].
+
+        Computed as ``(n_frames - 1) / total_duration``.  Falls back to
+        30 fps when fewer than two frames are present or the timestamps
+        span zero time.
+        '''
         if len(self.keys) < 2:
             return 30.
         elapsed = float(self.keys[-1]) - float(self.keys[0])
@@ -64,18 +78,22 @@ class QHDF5Reader(QVideoReader):
 
     @QtCore.Property(int)
     def length(self) -> int:
+        '''Total number of frames in the HDF5 file.'''
         return self._length
 
     @QtCore.Property(int)
     def framenumber(self) -> int:
+        '''Index of the next frame to be returned by :meth:`read`.'''
         return self._framenumber
 
     @QtCore.Property(int)
     def width(self) -> int:
+        '''Frame width in pixels.'''
         return self._width
 
     @QtCore.Property(int)
     def height(self) -> int:
+        '''Frame height in pixels.'''
         return self._height
 
 

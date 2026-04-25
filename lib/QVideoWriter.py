@@ -95,14 +95,39 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
 
     @abstractmethod
     def open(self, frame: Image) -> bool:
-        pass
+        '''Open the output file using frame dimensions from the first frame.
+
+        Called automatically by :meth:`write` on the first frame.
+
+        Parameters
+        ----------
+        frame : Image
+            The first video frame; dimensions and colour mode are read
+            from this array.
+
+        Returns
+        -------
+        bool
+            ``True`` if the file was opened successfully.
+        '''
 
     @abstractmethod
     def isOpen(self) -> bool:
-        return False
+        '''Return ``True`` if the output file is currently open.'''
 
     @QtCore.Slot(np.ndarray)
     def write(self, frame: Image) -> None:
+        '''Write a video frame.
+
+        Opens the file on the first call, skips frames according to
+        :attr:`nskip`, and emits :attr:`finished` when :attr:`nframes`
+        have been written or when the file cannot be opened.
+
+        Parameters
+        ----------
+        frame : Image
+            Video frame to write.
+        '''
         if not self.isOpen():
             if not self.open(frame):
                 logger.warning(f'Could not write to {self.filename}')

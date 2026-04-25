@@ -1,3 +1,32 @@
+'''Digital video recorder (DVR) subsystem.
+
+Provides a composite widget and file I/O classes for recording and
+playing back video streams captured from a
+:class:`~QVideo.lib.QVideoSource.QVideoSource`.
+
+Supported formats:
+
+- **AVI, MKV, MP4** — via :class:`QOpenCVWriter` / :class:`QOpenCVReader`
+- **HDF5** (``.h5``) — via :class:`QHDF5Writer` / :class:`QHDF5Reader`
+  (requires ``h5py``)
+
+Classes
+-------
+QDVRWidget
+    Composite widget with record, play, pause, stop, and rewind controls.
+QOpenCVWriter
+    OpenCV-backed writer for AVI, MKV, and MP4 files.
+QOpenCVReader
+    OpenCV-backed reader for common video file formats.
+QOpenCVSource
+    Threaded playback source backed by :class:`QOpenCVReader`.
+QHDF5Writer
+    HDF5-backed writer with per-frame timestamps (requires ``h5py``).
+QHDF5Reader
+    HDF5-backed reader for files written by :class:`QHDF5Writer`.
+QHDF5Source
+    Threaded playback source backed by :class:`QHDF5Reader`.
+'''
 from .QDVRWidget import QDVRWidget
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVReader, QOpenCVSource

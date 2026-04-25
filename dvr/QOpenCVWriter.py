@@ -1,3 +1,4 @@
+'''OpenCV-backed video file writer supporting AVI, MKV, and MP4.'''
 from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
@@ -125,6 +126,7 @@ class QOpenCVWriter(QVideoWriter):
         return (self._writer is not None) and self._writer.isOpened()
 
     def _write(self, frame: Image) -> None:
+        '''Write *frame* to the video file, stopping if the shape changes.'''
         if frame.shape != self._shape:
             logger.warning(
                 f'Frame shape {frame.shape} does not match '

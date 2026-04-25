@@ -1,3 +1,4 @@
+'''OpenCV video reader and threaded playback source.'''
 from qtpy import QtCore
 from QVideo.lib import QVideoReader, QVideoSource
 from pathlib import Path
@@ -40,6 +41,16 @@ class QOpenCVReader(QVideoReader):
         self.reader = None
 
     def read(self) -> QVideoReader.CameraData:
+        '''Read the next frame from the video file.
+
+        Frames are converted from BGR (OpenCV native) to RGB on read.
+
+        Returns
+        -------
+        tuple[bool, ndarray or None]
+            ``(True, frame)`` on success, ``(False, None)`` at end-of-file
+            or when the reader is not open.
+        '''
         if not self.isOpen():
             return False, None
         ok, frame = self.reader.read()
@@ -58,22 +69,27 @@ class QOpenCVReader(QVideoReader):
 
     @QtCore.Property(float)
     def fps(self) -> float:
+        '''Frame rate reported by the video file [fps].'''
         return self.reader.get(self.FPS)
 
     @QtCore.Property(int)
     def length(self) -> int:
+        '''Total number of frames in the video file.'''
         return int(self.reader.get(self.LENGTH))
 
     @QtCore.Property(int)
     def framenumber(self) -> int:
+        '''Index of the next frame to be returned by :meth:`read`.'''
         return self._framenumber
 
     @QtCore.Property(int)
     def width(self) -> int:
+        '''Frame width in pixels.'''
         return int(self.reader.get(self.WIDTH))
 
     @QtCore.Property(int)
     def height(self) -> int:
+        '''Frame height in pixels.'''
         return int(self.reader.get(self.HEIGHT))
 
 

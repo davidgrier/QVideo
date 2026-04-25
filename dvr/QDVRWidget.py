@@ -1,3 +1,4 @@
+'''Composite DVR widget for recording and playing back video streams.'''
 from qtpy import QtCore, QtGui, QtWidgets, uic
 from pathlib import Path
 import numpy as np

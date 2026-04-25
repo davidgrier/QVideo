@@ -1,3 +1,4 @@
+'''HDF5 video writer with per-frame timestamps.'''
 from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
@@ -79,6 +80,7 @@ class QHDF5Writer(QVideoWriter):
         return self._file is not None and bool(self._file)
 
     def _write(self, frame: Image) -> None:
+        '''Write *frame* as a dataset keyed by elapsed time in seconds.'''
         now = time() - self._start
         self._writer.create_dataset(f'{now:.9f}', data=frame)
 

@@ -14,7 +14,7 @@ cameras, Raspberry Pi cameras — is controlled through the same API.  Property
 trees, display widgets, and a digital video recorder are built on top of that
 abstraction and require no camera-specific code.
 
-<img src="docs/dvrdemo.png" width="75%" alt="QVideo interface demo">
+<img src="https://raw.githubusercontent.com/davidgrier/QVideo/main/docs/dvrdemo.png" width="75%" alt="QVideo interface demo">
 
 ## Features
 

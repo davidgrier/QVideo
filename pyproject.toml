@@ -50,7 +50,7 @@ picamera = ["picamera2"]
 dev-pyqt5 = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics"]
 dev-pyqt6 = ["PyQt6", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics"]
 dev       = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics"]
-docs     = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
+docs     = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints", "PyQt5"]
 
 [tool.setuptools]
 packages = [

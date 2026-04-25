@@ -1,0 +1,4 @@
+pydata-sphinx-theme
+sphinx
+sphinx-autodoc-typehints
+PyQt5

@@ -183,51 +183,15 @@ Potential additions:
 
 ---
 
-## Reduce Core Dependencies
+## Reduce Core Dependencies  **Done**
 
-The current core install requires `h5py`, `opencv-python`, and `pandas`
-even for users who only want basic camera display with no DVR, no filters,
-and no overlays.  Moving niche packages to optional groups lowers the
-barrier to entry and avoids pulling in large binary wheels unnecessarily.
-
-Candidates for optional groups:
-
-- **`pandas`** — used only by `overlays/trackpy.py` and `overlays/yolo.py`
-  to carry detection results.  Move to an `overlays` optional group.
-  Both modules currently import pandas unconditionally at the top level;
-  they would need to adopt the project's soft-import pattern
-  (`try: import pandas as pd / except ImportError: pd = None`) and emit
-  a helpful error message when a user enables the overlay without pandas
-  installed.
-- **`h5py`** — used only by `dvr/HDF5Writer.py` and `dvr/HDF5Reader.py`.
-  Move to a `dvr` optional group.  The DVR widget already falls back
-  gracefully to OpenCV video formats when `h5py` is absent at runtime;
-  the dependency can simply be removed from the core list.
-- **`opencv-python`** — pervasive (OpenCV camera backend, DVR video
-  writer/reader, several filters, resolution probing), so it cannot
-  easily be made fully optional.  However, `opencv-python` ships a heavy
-  GUI build; consider accepting `opencv-python-headless` as an alternative
-  for server / headless deployments by loosening the requirement to
-  `opencv-python | opencv-python-headless` (PEP 508 `or` syntax not yet
-  widely supported, but achievable via extras or documentation note).
-- **`PyQt5` / `PyQt5-sip`** — see PyQt6 section above; these should
-  become optional once the binding abstraction is complete.
-
-Suggested revised dependency structure:
-
-```toml
-dependencies = ["numpy", "pyqtgraph"]
-
-[project.optional-dependencies]
-pyqt5    = ["PyQt5", "PyQt5-sip"]
-pyqt6    = ["PyQt6"]
-dvr      = ["h5py", "opencv-python"]
-overlays = ["pandas"]
-genicam  = ["harvesters", "genicam"]
-picamera = ["picamera2"]
-full     = ["QVideo[pyqt5,dvr,overlays,genicam]"]
-dev      = ["QVideo[pyqt5,dvr,overlays]", "pytest", "pytest-cov"]
-```
+- ~~`pandas`~~ — already in the `overlays` optional group.
+- ~~`h5py`~~ — already in the `dvr` optional group.
+- ~~`PyQt5`/`PyQt5-sip`~~ — already optional (`pyqt5` / `pyqt6` extras).
+- **`opencv-python`** — too pervasive to make optional (camera backend,
+  DVR writer/reader, filters, resolution probing).  Accepting
+  `opencv-python-headless` as an alternative is not yet possible via
+  PEP 508; document as a note for headless deployments if requested.
 
 ---
 

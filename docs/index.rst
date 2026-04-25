@@ -17,6 +17,7 @@ Run the full camcorder application directly::
 
    quickstart
    architecture
+   extending
    api/lib
    api/cameras
    api/filters

@@ -100,13 +100,13 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         self.assertEqual(len(spy), 1)
         self.assertIs(spy[0][0], features)
 
-    def test_locate_converts_colour_to_grey(self):
+    def test_locate_converts_color_to_gray(self):
         mock_tp.locate.return_value = _make_features()
         self._worker.locate(_make_frame(color=True))
         args, _ = mock_tp.locate.call_args
         self.assertEqual(args[0].ndim, 2)
 
-    def test_locate_passes_greyscale_unchanged(self):
+    def test_locate_passes_grayscale_unchanged(self):
         frame = _make_frame()
         mock_tp.locate.return_value = _make_features()
         self._worker.locate(frame)

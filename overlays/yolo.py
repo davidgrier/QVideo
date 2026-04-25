@@ -88,7 +88,7 @@ class _YoloWorker(QtCore.QObject):
         Parameters
         ----------
         image : Image
-            Video frame to analyse.
+            Video frame to analyze.
         '''
         try:
             results = self.model(image, verbose=False, conf=self.confidence)
@@ -229,7 +229,7 @@ class QYoloWidget(QtWidgets.QGroupBox):
 
     @property
     def source(self):
-        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being analysed.'''
+        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being analyzed.'''
         return self._source
 
     @source.setter

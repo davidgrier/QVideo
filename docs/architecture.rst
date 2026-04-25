@@ -1,7 +1,7 @@
 Architecture
 ============
 
-QVideo is organised into four layers.  Each layer depends only on the
+QVideo is organized into four layers.  Each layer depends only on the
 layers below it, so individual components can be used in isolation.
 
 .. code-block:: text

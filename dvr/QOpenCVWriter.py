@@ -19,7 +19,7 @@ class QOpenCVWriter(QVideoWriter):
 
     Writes frames to a video file using ``cv2.VideoWriter``.  The file
     is opened lazily on the first frame so that frame dimensions and
-    colour mode can be determined automatically.
+    color mode can be determined automatically.
 
     Codecs are selected based on the file extension using
     :attr:`CODEC_MAP`.  When no codec is specified, the preference-ordered
@@ -71,14 +71,14 @@ class QOpenCVWriter(QVideoWriter):
         '''Open the video file using the first available codec.
 
         Called automatically by :meth:`~QVideo.lib.QVideoWriter.write`
-        on the first frame.  Frame dimensions and colour mode are
+        on the first frame.  Frame dimensions and color mode are
         determined from *frame*; codecs are probed via :meth:`_getWriter`.
 
         Parameters
         ----------
         frame : Image
             The first video frame, used to determine dimensions and
-            colour mode.
+            color mode.
 
         Returns
         -------
@@ -101,7 +101,7 @@ class QOpenCVWriter(QVideoWriter):
         shape : tuple[int, ...]
             Frame shape ``(height, width)`` used to configure the writer.
         color : bool
-            ``True`` for colour frames, ``False`` for grayscale.
+            ``True`` for color frames, ``False`` for grayscale.
 
         Returns
         -------

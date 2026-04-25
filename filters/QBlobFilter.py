@@ -1,4 +1,4 @@
-'''Blob-coloring filter using connected-component labelling.'''
+'''Blob-coloring filter using connected-component labeling.'''
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -14,7 +14,7 @@ class BlobFilter(VideoFilter):
     '''Blob-coloring filter.
 
     Labels connected foreground regions in a binary frame and renders each
-    blob in a distinct hue using OpenCV's HSV colour space.
+    blob in a distinct hue using OpenCV's HSV color space.
 
     Notes
     -----
@@ -25,14 +25,14 @@ class BlobFilter(VideoFilter):
     Labels are mapped linearly to the hue channel (0–179 in OpenCV) and
     merged with a full-saturation, full-value channel to produce an HSV
     image that is then converted to BGR.  Background pixels (label 0) are
-    forced to black after the colour conversion.
+    forced to black after the color conversion.
 
     The returned frame is always three-channel BGR uint8, with the same
     spatial dimensions as the input.
     '''
 
     def get(self) -> Image | None:
-        '''Return the blob-coloured frame.
+        '''Return the blob-colored frame.
 
         Returns
         -------

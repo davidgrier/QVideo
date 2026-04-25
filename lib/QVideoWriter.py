@@ -102,7 +102,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
         Parameters
         ----------
         frame : Image
-            The first video frame; dimensions and colour mode are read
+            The first video frame; dimensions and color mode are read
             from this array.
 
         Returns

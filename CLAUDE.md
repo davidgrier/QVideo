@@ -97,7 +97,7 @@ Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilte
 ## Documentation
 
 Sphinx documentation uses the **PyData Sphinx Theme** (`pydata-sphinx-theme`)
-with NYU brand colours applied via `docs/_static/nyu.css`:
+with NYU brand colors applied via `docs/_static/nyu.css`:
 
 - Primary: NYU purple `#57068c`
 - Accent/hover: NYU violet `#8900e1`

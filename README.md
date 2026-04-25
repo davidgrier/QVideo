@@ -27,7 +27,10 @@ abstraction and require no camera-specific code.
   and emits `newFrame(ndarray)` at acquisition rate.
 - **Composable filter pipeline** — `VideoFilter` / `QFilterBank` sit between
   source and display; filters include blur, edge detection, RGB channel
-  selection, sample-and-hold, and statistical median variants.
+  selection, sample-and-hold, binary threshold, and blob coloring.
+- **Graphical overlays** — `QTrackpyWidget` for live particle tracking and
+  `QYoloWidget` for real-time object detection render markers directly on
+  `QVideoScreen`; composite mode lets the DVR record the annotated scene.
 - **Digital video recorder** — lossless HDF5 (with timestamps) and OpenCV
   video formats; `QDVRWidget` is the composite UI widget.
 - **Live display** — `QVideoScreen` supports mouse-aware graphical overlays
@@ -110,6 +113,28 @@ class MyCamera(QCamera):
 
 `QCameraTree` and `QVideoSource` work with `MyCamera` immediately — no
 additional code needed.
+
+## Filters
+
+| Filter | Class | Description |
+|--------|-------|-------------|
+| Gaussian blur | `QBlurFilter` | Smoothing with adjustable kernel radius |
+| Canny edge detection | `QEdgeFilter` | Edge map with configurable thresholds |
+| RGB channel selection | `QRGBFilter` | Pass one or more color channels |
+| Sample and hold | `QSampleHold` | Background normalization via a sampled median estimate |
+| Binary threshold | `QThresholdFilter` | Convert to binary mask at a configurable level |
+| Blob coloring | `QBlobFilter` | Color connected foreground regions with distinct hues |
+| YOLO annotation | `QYOLOFilter` | Annotate frames with YOLO bounding boxes (requires `ultralytics`) |
+
+## Overlays
+
+Overlays render analysis results directly on the live `QVideoScreen` and require
+`pip install QVideo[overlays]`.
+
+| Overlay | Class | Description |
+|---------|-------|-------------|
+| Particle tracking | `QTrackpyWidget` | Live particle detection and tracking using `trackpy` |
+| Object detection | `QYoloWidget` | Real-time bounding-box detection using YOLO (`ultralytics`) |
 
 ## Acknowledgements
 

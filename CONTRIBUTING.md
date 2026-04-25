@@ -38,7 +38,7 @@ python -m pytest --cov=. --cov-report=term-missing
 
 Tests never require physical hardware — all camera backends are mocked.
 
-## How the code is organised
+## How the code is organized
 
 QVideo is layered: **hardware → threading → UI → application**.  Each layer
 depends only on the ones below it.

@@ -100,7 +100,7 @@ Blob coloring
 -------------
 
 :class:`~QVideo.filters.QBlobFilter.BlobFilter` runs OpenCV's connected-
-component labelling on a binary (thresholded) frame and assigns each blob a
+component labeling on a binary (thresholded) frame and assigns each blob a
 distinct pseudo-color, making it easy to count and track individual objects
 visually.
 

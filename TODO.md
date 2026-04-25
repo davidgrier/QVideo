@@ -65,7 +65,7 @@ additions:
   are controlled via the `thorlabs_tsi_sdk` Python package.
 - **PCO** — PCO cameras use the `pco` Python package, which wraps
   the PCO SDK and exposes properties as a dict-like interface.
-- **Azure Kinect / Intel RealSense** — depth + colour cameras useful
+- **Azure Kinect / Intel RealSense** — depth + color cameras useful
   for 3-D tracking experiments; would add a `depth` frame type
   alongside the existing `Image` type alias.
 - **Aravis** — [Aravis](https://github.com/AravisProject/aravis) (LGPL-2.1)

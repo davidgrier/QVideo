@@ -238,7 +238,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Removed
 - `cameras/Genicam/nodemap.py` — dead code; logic moved into
-  `QGenicamCamera` private static methods (now also removed in favour of
+  `QGenicamCamera` private static methods (now also removed in favor of
   `registerProperty`).
 - Exploratory Jupyter notebooks from `cameras/Genicam/` and
   `cameras/Spinnaker/`.

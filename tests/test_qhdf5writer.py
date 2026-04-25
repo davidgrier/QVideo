@@ -12,7 +12,7 @@ _FRAME = np.zeros((480, 640), dtype=np.uint8)
 
 
 def make_mock_h5file():
-    '''Return (mock_file, mock_images_group) with h5py-like behaviour.'''
+    '''Return (mock_file, mock_images_group) with h5py-like behavior.'''
     mock_group = MagicMock()
     is_open = [True]
     mock_file = MagicMock()

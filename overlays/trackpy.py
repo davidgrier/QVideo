@@ -91,8 +91,8 @@ class _TrackpyWorker(QtCore.QObject):
         Parameters
         ----------
         image : Image
-            Video frame to analyse.  Colour frames are converted to
-            greyscale before processing.
+            Video frame to analyze.  Color frames are converted to
+            grayscale before processing.
         '''
         frame = (np.mean(image, axis=2).astype(np.uint8)
                  if image.ndim == 3 else image)
@@ -159,7 +159,7 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
     minmass : float
         Initial minimum integrated brightness. Default: ``100``.
     separation : float or None
-        Minimum separation between particle centres [pixels].  ``None``
+        Minimum separation between particle centers [pixels].  ``None``
         (default) lets trackpy choose (diameter + 1).
     noise_size : int
         Radius of the Gaussian blur applied for noise suppression [pixels].

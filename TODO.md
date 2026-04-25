@@ -241,6 +241,48 @@ dev      = ["QVideo[pyqt5,dvr,overlays]", "pytest", "pytest-cov"]
 
 ---
 
+## Documentation Gaps
+
+Many sections of the ReadTheDocs site are stub pages with only
+automodule directives and no explanatory prose.  Fill the gaps so each
+page gives a user enough context to use the module without reading source.
+
+- **Camera backends** (`basler.rst`, `flir.rst`, `ids.rst`, `mv.rst`,
+  `vimbax.rst`, `genicam.rst`, `opencv.rst`, `picamera.rst`, `noise.rst`) —
+  introductory paragraph per page covering target hardware, SDK prerequisites,
+  install command, and a minimal usage snippet.
+- **DVR** — describe the two recording formats (HDF5 with timestamps,
+  OpenCV video), the `.newFrame` / `.fps` duck-typing contract, and a short
+  wiring example.
+- **Filters** — add prose to any filter section that is still directive-only;
+  include a pipeline composition example using `QFilterBank`.
+- **Overlays** — verify Trackpy and YOLO prose is current; add a paragraph
+  covering `QVideoScreen.composite` and composite-frame recording.
+- **Architecture** — add a section on the task framework (`lib/tasks/`) and
+  a signal-flow sketch from hardware through source, filter bank, screen,
+  and DVR.
+- **Quickstart page** — a top-level walkthrough from `pip install` to a live
+  camera window in fewer than ten lines.  Currently missing entirely.
+- **API completeness** — audit every public class and function against the
+  existing `automodule` directives; add missing entries to the appropriate
+  `.rst` file.
+
+---
+
+## Broken PyPI Page Graphic
+
+The image on the QVideo PyPI page fails to render.  PyPI serves
+`README.md` as the project description but does not resolve relative
+image paths or GitHub-hosted raw URLs that require authentication.
+
+- Identify the broken `![…](…)` reference in `README.md`.
+- Replace the path with an absolute `https://raw.githubusercontent.com/…`
+  URL pointing to the `main` branch so PyPI can fetch it directly.
+- Verify the fix locally with `twine check dist/*` (renders the long
+  description and flags broken markup) before the next release.
+
+---
+
 ## Distribution
 
 - Add references to relevant literature in `README.md` (holographic

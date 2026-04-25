@@ -15,6 +15,7 @@ Run the full camcorder application directly::
    :maxdepth: 2
    :caption: Contents
 
+   quickstart
    architecture
    api/lib
    api/cameras

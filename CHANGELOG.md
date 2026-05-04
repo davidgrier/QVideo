@@ -7,6 +7,38 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.6.8] — 2026-05-04
+
+### Fixed
+
+- **`fps` alias floods GenICam tree with warnings on startup** — the
+  `AcquisitionFrameRate` → `fps` alias added to `_properties` was not
+  excluded from `QGenicamCamera.settings`, causing `QGenicamTree._sync`
+  to call `set('fps', …)` on every `sigTreeStateChanged` emission (which
+  fires once per visible parameter during startup).  Added `'fps'` to
+  `_ALIASES` (formerly `_SHAPE_ALIASES`) so the alias is available for
+  attribute access (`camera.fps`, `source.fps`) but is never forwarded
+  to the tree sync loop.
+
+### Added
+
+- **Quickstart documentation** — new `docs/quickstart.rst` page covering
+  installation, the `QCamcorder` CLI, a minimal live-feed example, camera
+  controls, and filters.
+- **Extending QVideo chapter** — new `docs/extending.rst` covering how to
+  write stateless, stateful, and parameterized filters, and how to build
+  overlay worker/graphics/widget triplets with composite recording support.
+
+### Changed
+
+- `README.md` — added Graphical overlays to the Features list; added
+  Filters and Overlays tables; fixed broken PyPI image URL.
+- Corrected British spellings to American English throughout source,
+  tests, and documentation (`colour → color`, `normalisation → normalization`,
+  etc.).
+
+---
+
 ## [3.2.3] — 2026-03-21
 
 ### Fixed

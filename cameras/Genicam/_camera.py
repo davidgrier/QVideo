@@ -287,9 +287,11 @@ class QGenicamCamera(QCamera):
         self.protected = {k for k, v in ma.items()
                           if k in mb and mb[k] != v}
         self._register_features(root)
-        for name in ('Width', 'Height'):
-            if name in self._properties:
-                self._properties[name.lower()] = self._properties[name]
+        for src, dst in (('Width', 'width'), ('Height', 'height'),
+                         ('AcquisitionFrameRate', 'fps'),
+                         ('AcquisitionFrameRateAbs', 'fps')):
+            if src in self._properties and dst not in self._properties:
+                self._properties[dst] = self._properties[src]
         return True
 
     def _cleanup(self) -> None:
@@ -386,22 +388,24 @@ class QGenicamCamera(QCamera):
         logger.warning(f'node {name} is unknown')
         return None
 
-    _SHAPE_ALIASES = frozenset(('width', 'height'))
+    _ALIASES = frozenset(('width', 'height', 'fps'))
 
     @property
     def settings(self) -> QCamera.Settings:
-        '''All registered property values, excluding lowercase shape aliases.
+        '''All registered property values, excluding standard-name aliases.
 
-        GenICam cameras register ``width``/``height`` as lowercase aliases for
-        ``Width``/``Height`` so that :attr:`~QVideo.lib.QCamera.QCamera.shape`
-        and attribute access (``camera.width``) work the same as on other
-        backends.  Those aliases are excluded here so that
+        GenICam cameras register lowercase aliases (``width``, ``height``,
+        ``fps``) that map to canonical SFNC node names (``Width``, ``Height``,
+        ``AcquisitionFrameRate``).  Those aliases are excluded here so that
         :class:`~QVideo.cameras.Genicam._tree.QGenicamTree` does not try to
-        sync them to tree parameters (which use the canonical GenICam names).
+        sync them to tree parameters — the canonical names are already present
+        and do the right thing.  Attribute access (``camera.fps``) still works
+        because :meth:`~QVideo.lib.QCamera.QCamera.__getattr__` reads
+        ``_properties`` directly, not ``settings``.
         '''
         return {name: spec['getter']()
                 for name, spec in self._properties.items()
-                if name not in self._SHAPE_ALIASES}
+                if name not in self._ALIASES}
 
     @settings.setter
     def settings(self, settings: QCamera.Settings) -> None:

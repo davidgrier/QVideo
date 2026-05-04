@@ -83,19 +83,38 @@ class ROIDemo(QCamcorder):
 
     Attributes
     ----------
-    ROI_POS : list[int]
-        Default [x, y] position of the ROI overlay. Default: ``[100, 100]``.
-    ROI_SIZE : list[int]
-        Default [width, height] of the ROI overlay. Default: ``[400, 400]``.
+    DISPLAY_RATE : int
+        Maximum display frame rate [fps]. Default: ``30``.
     '''
 
-    ROI_POS: list[int] = [100, 100]
-    ROI_SIZE: list[int] = [400, 400]
+    DISPLAY_RATE: int = 30
+
+    def _roiGeometry(self) -> tuple[list[int], list[int]]:
+        '''Return default ROI position and size for the current source.
+
+        The ROI covers one quarter of the frame area (half each dimension),
+        rounded down to the nearest multiple of 8, and centered.
+
+        Returns
+        -------
+        pos : list[int]
+            ``[x, y]`` top-left corner in image pixel coordinates.
+        size : list[int]
+            ``[width, height]`` in image pixel coordinates.
+        '''
+        shape = self.source.shape
+        w = (shape.width() // 2 // 8) * 8
+        h = (shape.height() // 2 // 8) * 8
+        x = (shape.width() - w) // 2
+        y = (shape.height() - h) // 2
+        return [x, y], [w, h]
 
     def _setupUi(self) -> None:
         super()._setupUi()
+        self.screen.framerate = self.DISPLAY_RATE
+        pos, size = self._roiGeometry()
         self.roi = ROIFilter(self.source.fps,
-                             self.ROI_POS, self.ROI_SIZE,
+                             pos, size,
                              snapSize=8,
                              scaleSnap=True,
                              sideScalers=True,
@@ -106,9 +125,12 @@ class ROIDemo(QCamcorder):
         self.screen.view.addItem(self.roi)
         self.dvr.filename = str(Path.home() / 'roidemo.avi')
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.dvr.source = self.roi
+
     def _connectSignals(self) -> None:
         super()._connectSignals()
-        self.dvr.source = self.roi
         self.dvr.recording.connect(self.recording)
 
     @QtCore.Slot(bool)

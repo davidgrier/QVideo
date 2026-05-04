@@ -52,11 +52,8 @@ class TestROIFilterCrop(unittest.TestCase):
 
 class TestROIDemoConstants(unittest.TestCase):
 
-    def test_roi_pos_default(self):
-        self.assertEqual(ROIDemo.ROI_POS, [100, 100])
-
-    def test_roi_size_default(self):
-        self.assertEqual(ROIDemo.ROI_SIZE, [400, 400])
+    def test_display_rate_default(self):
+        self.assertEqual(ROIDemo.DISPLAY_RATE, 30)
 
 
 class TestROIDemo(unittest.TestCase):
@@ -70,15 +67,31 @@ class TestROIDemo(unittest.TestCase):
     def test_roi_is_roi_filter(self):
         self.assertIsInstance(self.widget.roi, ROIFilter)
 
-    def test_roi_pos_matches_class_constant(self):
+    def test_roi_pos_matches_geometry(self):
+        expected_pos, _ = self.widget._roiGeometry()
         pos = self.widget.roi.pos()
-        self.assertAlmostEqual(pos[0], ROIDemo.ROI_POS[0])
-        self.assertAlmostEqual(pos[1], ROIDemo.ROI_POS[1])
+        self.assertAlmostEqual(pos[0], expected_pos[0])
+        self.assertAlmostEqual(pos[1], expected_pos[1])
 
-    def test_roi_size_matches_class_constant(self):
+    def test_roi_size_matches_geometry(self):
+        _, expected_size = self.widget._roiGeometry()
         size = self.widget.roi.size()
-        self.assertAlmostEqual(size[0], ROIDemo.ROI_SIZE[0])
-        self.assertAlmostEqual(size[1], ROIDemo.ROI_SIZE[1])
+        self.assertAlmostEqual(size[0], expected_size[0])
+        self.assertAlmostEqual(size[1], expected_size[1])
+
+    def test_roi_size_divisible_by_8(self):
+        _, size = self.widget._roiGeometry()
+        self.assertEqual(size[0] % 8, 0)
+        self.assertEqual(size[1] % 8, 0)
+
+    def test_roi_centered(self):
+        shape = self.widget.source.shape
+        pos, size = self.widget._roiGeometry()
+        self.assertEqual(pos[0], (shape.width() - size[0]) // 2)
+        self.assertEqual(pos[1], (shape.height() - size[1]) // 2)
+
+    def test_dvr_source_is_roi(self):
+        self.assertIs(self.widget.dvr.source, self.widget.roi)
 
     def test_dvr_filename_set(self):
         self.assertIn('roidemo.avi', self.widget.dvr.filename)

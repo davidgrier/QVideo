@@ -188,9 +188,14 @@ class QDVRWidget(QtWidgets.QFrame):
         if self.isPlaying() or self.isRecording():
             return ''
         get = self.GetFileName[save]
+        try:
+            options = QtWidgets.QFileDialog.Option.DontUseNativeDialog
+        except AttributeError:
+            options = QtWidgets.QFileDialog.DontUseNativeDialog
         filename, _ = get(self, 'Video File Name',
                           str(self.filename),
-                          self._buildFilter(save))
+                          self._buildFilter(save),
+                          options=options)
         if filename:
             if save:
                 self.filename = filename

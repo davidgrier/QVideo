@@ -7,6 +7,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.6.9] — 2026-05-04
+
+### Fixed
+
+- **`ROIDemo` recorded the full frame instead of the ROI** — `QCamcorder.__init__`
+  unconditionally sets `dvr.source = self.source` after `_connectSignals()`,
+  overwriting the `dvr.source = self.roi` assignment that `ROIDemo._connectSignals`
+  had just made.  Fixed by overriding `__init__` in `ROIDemo` to reassign
+  `dvr.source` after `super().__init__()` completes.
+- **`ROIDemo` ROI unresponsive with high-speed cameras** — display rendering
+  was unthrottled, letting a 100+ fps camera saturate the GUI thread and starve
+  mouse events.  `ROIDemo` now caps display at `DISPLAY_RATE` (default 30 fps)
+  via `QVideoScreen.framerate`.
+- **`ROIDemo` fixed ROI position/size unsuitable for large sensors** — replaced
+  the hardcoded `ROI_POS`/`ROI_SIZE` class constants with `_roiGeometry()`,
+  which computes a quarter-area ROI (each dimension halved, rounded down to a
+  multiple of 8) centered on the live frame at startup.
+- **DVR file-format filter invisible in file dialog on macOS** — `getSaveFileName`
+  and `getOpenFileName` were using the macOS native dialog, which only shows a
+  format popup when multiple filter groups are present.  Passing
+  `DontUseNativeDialog` forces Qt's cross-platform dialog, which always renders
+  the supported formats (``*.avi``, ``*.mkv``, ``*.mp4``, ``*.h5``) in a
+  visible "Files of type:" combo box.
+
+---
+
 ## [3.6.8] — 2026-05-04
 
 ### Fixed

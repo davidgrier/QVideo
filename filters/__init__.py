@@ -5,6 +5,7 @@ from .QBlobFilter import BlobFilter, QBlobFilter
 from .QBlurFilter import BlurFilter, QBlurFilter
 from .QEdgeFilter import EdgeFilter, QEdgeFilter
 from .QRGBFilter import RGBFilter, QRGBFilter
+from .QROIFilter import ROIFilter, QROIFilter
 from .QSampleHold import SampleHold, QSampleHold
 from .QThresholdFilter import ThresholdFilter, QThresholdFilter
 from .QYOLOFilter import YOLOFilter, QYOLOFilter
@@ -17,6 +18,7 @@ BlobFilter QBlobFilter
 BlurFilter QBlurFilter
 EdgeFilter QEdgeFilter
 RGBFilter QRGBFilter
+ROIFilter QROIFilter
 SampleHold QSampleHold
 ThresholdFilter QThresholdFilter
 YOLOFilter QYOLOFilter

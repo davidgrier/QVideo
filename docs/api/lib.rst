@@ -34,6 +34,20 @@ QFilterBank and VideoFilter
 .. automodule:: QVideo.lib.QVideoFilter
    :members:
 
+QFilterRack
+-----------
+
+:class:`~QVideo.lib.QFilterRack.QFilterRack` is a dynamic, user-editable
+alternative to :class:`~QVideo.lib.QFilterBank.QFilterBank`.  It wraps each
+filter in a slot that carries a ⋮ drag handle for reordering and a × button
+for removal.  An "Add filter…" toolbar button opens a picker dialog listing
+all :class:`~QVideo.lib.QVideoFilter.QVideoFilter` subclasses exported by
+:mod:`QVideo.filters`.  Set :attr:`~QVideo.lib.QFilterRack.QFilterRack.editable`
+to ``False`` to hide all editing controls while keeping the pipeline callable.
+
+.. automodule:: QVideo.lib.QFilterRack
+   :members:
+
 Camera chooser
 --------------
 

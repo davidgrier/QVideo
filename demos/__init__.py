@@ -16,6 +16,11 @@ filterdemo
     panel so that image-processing filters can be toggled and adjusted
     alongside the live feed.
 
+filterrackdemo
+    Extends :class:`~QVideo.QCamcorder.QCamcorder` with a dynamic
+    :class:`~QVideo.lib.QFilterRack.QFilterRack` and three DVR recording
+    modes: raw (full speed), filtered (full speed), and display (throttled).
+
 ROIdemo
     Extends :class:`~QVideo.QCamcorder.QCamcorder` with a draggable
     rectangular ROI overlay.  Only the cropped region is saved when
@@ -42,6 +47,7 @@ Each demo can be launched directly::
 
     python -m QVideo.demos.demo
     python -m QVideo.demos.filterdemo
+    python -m QVideo.demos.filterrackdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
@@ -75,6 +81,7 @@ Example::
 
 from .demo import Demo
 from .filterdemo import FilterDemo
+from .filterrackdemo import FilterRackDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo

@@ -96,6 +96,21 @@ provides a spinbox for the threshold level.
 .. automodule:: QVideo.filters.QThresholdFilter
    :members:
 
+Region of interest
+------------------
+
+:class:`~QVideo.filters.QROIFilter.ROIFilter` crops each frame to a
+rectangular sub-region defined by a top-left corner ``(x, y)`` and
+dimensions ``(w, h)``.  When the frame shape is first seen — or whenever
+it changes — the ROI parameters are clamped to fit within the frame.
+That check costs a single tuple comparison per frame; the clamp itself
+runs only on shape changes.  The companion widget provides four spinboxes
+for ``x``, ``y``, ``w``, and ``h``, with ``w`` and ``h`` stepping in
+multiples of 8 for codec compatibility.
+
+.. automodule:: QVideo.filters.QROIFilter
+   :members:
+
 Blob coloring
 -------------
 

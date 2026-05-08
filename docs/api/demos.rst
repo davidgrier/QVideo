@@ -17,6 +17,7 @@ Each demo can also be launched directly::
 
     python -m QVideo.demos.demo
     python -m QVideo.demos.filterdemo
+    python -m QVideo.demos.filterrackdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
@@ -90,6 +91,22 @@ using a YOLO model via the `Ultralytics <https://docs.ultralytics.com/>`_
 library.
 
 .. automodule:: QVideo.demos.yolodemo
+   :members:
+
+FilterRackDemo
+--------------
+
+Extends :class:`~QVideo.QCamcorder.QCamcorder` with a dynamic
+:class:`~QVideo.lib.QFilterRack.QFilterRack` (pre-loaded with
+:class:`~QVideo.filters.QBlurFilter.QBlurFilter` and
+:class:`~QVideo.filters.QThresholdFilter.QThresholdFilter`) and three DVR
+recording modes selectable at runtime:
+
+- **Raw** — unfiltered frames at the camera's full frame rate.
+- **Filtered** — rack-processed frames at the camera's full frame rate.
+- **Display** — rack-processed frames at the throttled display rate.
+
+.. automodule:: QVideo.demos.filterrackdemo
    :members:
 
 CompositeDemo

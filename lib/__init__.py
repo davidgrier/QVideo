@@ -19,7 +19,9 @@ VideoFilter
 QVideoFilter
     Qt widget wrapper around a :class:`VideoFilter`.
 QFilterBank
-    Ordered collection of :class:`VideoFilter` instances.
+    Fixed, programmatically-configured pipeline of :class:`VideoFilter` instances.
+QFilterRack
+    Dynamic, user-reorderable pipeline of :class:`QVideoFilter` widgets.
 QVideoReader
     Abstract base class for video file readers.
 QVideoWriter
@@ -36,6 +38,7 @@ from .QVideoSource import QVideoSource
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
 from .QFilterBank import QFilterBank
+from .QFilterRack import QFilterRack
 from .QVideoFilter import VideoFilter, QVideoFilter
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
@@ -45,6 +48,6 @@ from .QFPSMeter import QFPSMeter
 
 __all__ = '''Image
 clickable choose_camera QListCameras
-QCamera QVideoSource QCameraTree QFilterBank
+QCamera QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen
 QFPSMeter VideoFilter QVideoFilter'''.split()

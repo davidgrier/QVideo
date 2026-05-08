@@ -1,6 +1,7 @@
 '''Base classes for image-processing filters in the QVideo filter pipeline.'''
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.videotypes import Image
+import pyqtgraph as pg
 
 
 __all__ = ['VideoFilter', 'QVideoFilter']
@@ -96,6 +97,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
         super().__init__(title, parent)
         self._filter = videoFilter
         self._setupUi()
+        self._connectSignals()
 
     @property
     def filter(self) -> VideoFilter:
@@ -136,6 +138,13 @@ class QVideoFilter(QtWidgets.QGroupBox):
         self._layout = QtWidgets.QHBoxLayout(self)
         self._layout.setContentsMargins(2, 5, 2, 5)
 
+    def _connectSignals(self) -> None:
+        '''Connect signals for UI elements
+
+        Subclasses should call ``super()._connectSignals()`` and then
+        connect their own signals.
+        '''
+        
     @classmethod
     def example(cls: 'QVideoFilter') -> None:  # pragma: no cover
         '''Demonstrate the filter widget.
@@ -143,9 +152,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
         Intended to be called on a concrete subclass that supplies its
         own ``__init__`` defaults, not on :class:`QVideoFilter` directly.
         '''
-        import pyqtgraph as pg
-
-        app = pg.mkQApp()
+        pg.mkQApp()
         widget = cls()
         widget.show()
         pg.exec()

@@ -119,16 +119,16 @@ class TestQSampleHold(unittest.TestCase):
 
     def test_has_three_orderButtons(self):
         widget = make_widget()
-        self.assertEqual(len(widget._orderButtons), 3)
+        self.assertEqual(len(widget._buttons), 3)
 
     def test_order_button_labels(self):
         widget = make_widget()
-        labels = [b.text() for b in widget._orderButtons]
+        labels = [b.text() for b in widget._buttons]
         self.assertEqual(labels, ['1', '2', '3'])
 
     def test_default_order_button_checked(self):
         widget = make_widget()
-        self.assertTrue(widget._orderButtons[0].isChecked())
+        self.assertTrue(widget._buttons[0].isChecked())
 
     def test_set_order_when_checked_updates_filter(self):
         widget = make_widget()

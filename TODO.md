@@ -252,3 +252,13 @@ image paths or GitHub-hosted raw URLs that require authentication.
 - Add references to relevant literature in `README.md` (holographic
   video microscopy, particle tracking, YOLO object detection).
 - Conda-forge recipe for users who prefer conda environments.
+
+---
+
+## Scale-aware scrolling of spinbox values
+
+- pyqtgraph implements the dec property for SpinBox, which
+  scales the step size according to the order of magnitude of the
+  value. This would be helpful for camera properties such as
+  exposure time that can range over several orders of magnitude.
+  Consider how to implement this feature.

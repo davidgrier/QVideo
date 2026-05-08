@@ -1,6 +1,7 @@
 '''Blob-coloring filter using connected-component labeling.'''
-from qtpy import QtCore, QtWidgets
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from qtpy import QtWidgets
+from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
 import cv2
 import numpy as np
@@ -9,12 +10,13 @@ import numpy as np
 __all__ = ['BlobFilter', 'QBlobFilter']
 
 
-class BlobFilter(VideoFilter):
+class BlobFilter(AsyncVideoFilter):
 
     '''Blob-coloring filter.
 
     Labels connected foreground regions in a binary frame and renders each
-    blob in a distinct hue using OpenCV's HSV color space.
+    blob in a distinct hue using OpenCV's HSV color space.  The labeling
+    runs in a background thread so that large frames do not stall the GUI.
 
     Notes
     -----
@@ -28,23 +30,29 @@ class BlobFilter(VideoFilter):
     forced to black after the color conversion.
 
     The returned frame is always three-channel BGR uint8, with the same
-    spatial dimensions as the input.
+    spatial dimensions as the input.  If the input contains no foreground
+    pixels a black BGR frame is returned.
     '''
 
-    def get(self) -> Image | None:
-        '''Return the blob-colored frame.
+    def process(self, image: Image) -> Image:
+        '''Label connected components and render each blob in a distinct hue.
+
+        Parameters
+        ----------
+        image : Image
+            Binary (uint8) input frame.
 
         Returns
         -------
-        Image or None
-            BGR image in which each connected foreground region is
-            rendered in a distinct hue, or ``None`` if no frame has
-            been added yet.
+        Image
+            BGR image with each connected foreground region rendered in a
+            distinct hue.  Background pixels are black.
         '''
-        if self.data is None:
-            return None
-        nblobs, labels = cv2.connectedComponents(self.data)
-        hues = np.uint8(179 * labels / np.max(labels))
+        _, labels = cv2.connectedComponents(image)
+        max_label = int(np.max(labels))
+        if max_label == 0:
+            return np.zeros((*image.shape, 3), dtype=np.uint8)
+        hues = np.uint8(179 * labels / max_label)
         blank = 255 * np.ones_like(hues)
         img = cv2.merge([hues, blank, blank])
         img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)

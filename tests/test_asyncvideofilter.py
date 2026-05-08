@@ -1,0 +1,129 @@
+'''Unit tests for AsyncVideoFilter.'''
+import unittest
+import numpy as np
+from unittest.mock import patch
+from qtpy import QtCore, QtWidgets
+from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter
+
+
+app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+_FRAME = np.zeros((4, 4), dtype=np.uint8)
+_RESULT = np.ones((4, 4), dtype=np.uint8) * 42
+
+
+def make_filter() -> AsyncVideoFilter:
+    '''Create an AsyncVideoFilter with threading patched to be synchronous.
+
+    Patching moveToThread keeps the worker on the GUI thread, making the
+    _submit signal connection Direct so that process() runs synchronously
+    in add(), allowing tests to inspect results without waiting.
+    '''
+    with patch.object(QtCore.QThread, 'start'), \
+         patch.object(QtCore.QObject, 'moveToThread'):
+        return AsyncVideoFilter()
+
+
+class TestAsyncVideoFilterInit(unittest.TestCase):
+
+    def test_is_videofilter(self):
+        f = make_filter()
+        self.assertIsInstance(f, VideoFilter)
+
+    def test_initially_ready(self):
+        f = make_filter()
+        self.assertTrue(f._ready)
+
+    def test_initial_result_none(self):
+        f = make_filter()
+        self.assertIsNone(f._result)
+
+    def test_initial_data_none(self):
+        f = make_filter()
+        self.assertIsNone(f.data)
+
+
+class TestAsyncVideoFilterProcess(unittest.TestCase):
+
+    def test_process_is_passthrough_by_default(self):
+        f = make_filter()
+        result = f.process(_FRAME)
+        np.testing.assert_array_equal(result, _FRAME)
+
+
+class TestAsyncVideoFilterGet(unittest.TestCase):
+
+    def test_get_returns_none_before_add(self):
+        f = make_filter()
+        self.assertIsNone(f.get())
+
+    def test_get_returns_raw_frame_when_result_pending(self):
+        f = make_filter()
+        f._ready = False       # suppress submission
+        f.add(_FRAME)
+        # _result is still None → passthrough
+        np.testing.assert_array_equal(f.get(), _FRAME)
+
+    def test_get_returns_cached_result_after_on_result(self):
+        f = make_filter()
+        f._onResult(_RESULT)
+        np.testing.assert_array_equal(f.get(), _RESULT)
+
+    def test_get_prefers_result_over_raw_frame(self):
+        f = make_filter()
+        f._ready = False
+        f.add(_FRAME)
+        f._onResult(_RESULT)
+        np.testing.assert_array_equal(f.get(), _RESULT)
+
+
+class TestAsyncVideoFilterAdd(unittest.TestCase):
+
+    def test_add_caches_raw_frame(self):
+        f = make_filter()
+        f.add(_FRAME)
+        np.testing.assert_array_equal(f.data, _FRAME)
+
+    def test_add_drops_frame_when_not_ready(self):
+        f = make_filter()
+        f._ready = False
+        submitted = []
+        f._submit.connect(lambda img: submitted.append(img))
+        f.add(_FRAME)
+        self.assertEqual(len(submitted), 0)
+
+    def test_add_submits_when_ready(self):
+        f = make_filter()
+        submitted = []
+        f._submit.connect(lambda img: submitted.append(img))
+        f.add(_FRAME)
+        self.assertGreater(len(submitted), 0)
+
+
+class TestAsyncVideoFilterOnResult(unittest.TestCase):
+
+    def test_on_result_stores_result(self):
+        f = make_filter()
+        f._onResult(_RESULT)
+        np.testing.assert_array_equal(f._result, _RESULT)
+
+    def test_on_result_restores_ready(self):
+        f = make_filter()
+        f._ready = False
+        f._onResult(_RESULT)
+        self.assertTrue(f._ready)
+
+
+class TestAsyncVideoFilterCall(unittest.TestCase):
+
+    def test_call_returns_result_synchronously(self):
+        '''With threading patched to direct connections, __call__ is synchronous.'''
+        f = make_filter()
+        result = f(_FRAME)
+        # Default process is passthrough, so result == _FRAME
+        np.testing.assert_array_equal(result, _FRAME)
+
+
+if __name__ == '__main__':  # pragma: no cover
+    unittest.main()

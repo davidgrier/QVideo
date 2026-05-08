@@ -34,6 +34,22 @@ QFilterBank and VideoFilter
 .. automodule:: QVideo.lib.QVideoFilter
    :members:
 
+AsyncVideoFilter
+----------------
+
+:class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter` is a base class for
+filters that run heavy computation in a background :class:`~qtpy.QtCore.QThread`
+so the GUI remains responsive even when inference is slower than the camera
+frame rate.  Frames are dropped rather than queued when the worker is busy,
+preventing latency build-up.
+
+Subclasses override :meth:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter.process`
+(called in the background thread) and inherit :meth:`add` / :meth:`get` /
+:meth:`__call__` from the base.
+
+.. automodule:: QVideo.lib.AsyncVideoFilter
+   :members:
+
 QFilterRack
 -----------
 

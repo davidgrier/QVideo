@@ -12,7 +12,8 @@ Recognition, 779-788. https://doi.org/10.1109/CVPR.2016.91
 '''
 
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
 
@@ -25,36 +26,48 @@ except ImportError:
 __all__ = ['YOLOFilter', 'QYOLOFilter']
 
 
-class YOLOFilter(VideoFilter):
+class YOLOFilter(AsyncVideoFilter):
 
-    '''YOLO object detection filter.
+    '''YOLO object-detection filter.
+
+    Runs YOLO inference in a background thread so the GUI remains
+    responsive even when inference is slower than the camera frame rate.
+    Frames are dropped when the worker is busy rather than queued,
+    preventing latency build-up.
 
     Parameters
     ----------
-    model_name: str
-        Name of the YOLO model weights file.
-        Default: ``'yolo11n.pt'``.
-    passthrough: bool
-        If True, return the input image.
-        If False, mark up the image with bounding box data
+    model_name : str
+        Name of the YOLO model weights file.  Default: ``'yolo11n.pt'``.
+    passthrough : bool
+        If ``True``, :meth:`process` returns the original frame.
+        If ``False``, it returns the frame annotated with bounding boxes.
+        Default: ``False``.
+
+    Signals
+    -------
+    featuresReady(numpy.ndarray)
+        Emitted from the worker thread after each detection with an
+        ``(N, 4)`` array of bounding boxes in ``xyxy`` format.
+        Connected slots receive it on the GUI thread via queued delivery.
     '''
 
-    #: Emitted with bounding boxes of detected features.
     featuresReady = QtCore.Signal(np.ndarray)
 
     def __init__(self,
                  model_name: str = 'yolo11n.pt',
                  passthrough: bool = False) -> None:
-        super().__init__()
         if YOLO is None:
             raise ImportError(
-                'YOLO is required for QYOLOFilter.'
+                'YOLO is required for YOLOFilter.'
                 '\n\tInstall it with: pip install ultralytics'
                 '\n\tSee https://docs.ultralytics.com/ '
                 'for more information.')
+        super().__init__()
         try:
             self.model = YOLO(model_name)
         except FileNotFoundError:
+            self._cleanup()
             raise FileNotFoundError(
                 f'YOLO model "{model_name}" not found.'
                 '\n\tProvide the name of a pretrained ultralytics model'
@@ -63,18 +76,32 @@ class YOLOFilter(VideoFilter):
                 'for available pretrained models.')
         self._passthrough = passthrough
 
-    def add(self, image: Image) -> None:
-        '''Performs YOLO feature detection on image
+    def process(self, image: Image) -> Image:
+        '''Run YOLO inference on *image*.
 
-        Emits featuresReady with bounding-box data
+        Called in the background thread.  Emits :attr:`featuresReady`
+        with detected bounding boxes; queued delivery ensures the
+        connected slot runs on the GUI thread.
+
+        Parameters
+        ----------
+        image : Image
+            Input frame.
+
+        Returns
+        -------
+        Image
+            Original frame if :attr:`passthrough` is ``True``;
+            otherwise the frame annotated with bounding boxes.
         '''
         results = self.model(image, verbose=False)
         boxes = results[0].boxes.xyxy.cpu().numpy()
         self.featuresReady.emit(boxes)
-        self.data = image if self._passthrough else results[0].plot()
+        return image if self._passthrough else results[0].plot()
 
     @property
     def passthrough(self) -> bool:
+        '''Return the original frame instead of the annotated frame.'''
         return self._passthrough
 
     @passthrough.setter
@@ -84,7 +111,7 @@ class YOLOFilter(VideoFilter):
 
 class QYOLOFilter(QVideoFilter):
 
-    '''QVideoFilter wrapper for YOLOFilter.'''
+    '''QVideoFilter wrapper for :class:`YOLOFilter`.'''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'YOLO Filter', YOLOFilter())
@@ -93,6 +120,9 @@ class QYOLOFilter(QVideoFilter):
         super()._setupUi()
         self._checkbox = QtWidgets.QCheckBox('Passthrough')
         self._layout.addWidget(self._checkbox)
+
+    def _connectSignals(self) -> None:
+        super()._connectSignals()
         self._checkbox.stateChanged.connect(self._setPassthrough)
 
     @QtCore.Slot(int)

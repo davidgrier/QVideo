@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
-from qtpy import QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets, QtTest
 
 import sys
 import QVideo.filters.QYOLOFilter  # ensure module is loaded  # noqa: E402
@@ -15,20 +15,29 @@ app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 _FRAME = np.zeros((64, 64, 3), dtype=np.uint8)
 _BOXES = np.array([[10., 10., 20., 20.], [30., 30., 50., 50.]], dtype=np.float32)
+_ANNOTATED = np.ones((64, 64, 3), dtype=np.uint8)
 
 
 def _make_mock_yolo():
     '''Return a mock YOLO class whose instances return canned detection results.'''
     mock_result = MagicMock()
     mock_result.boxes.xyxy.cpu().numpy.return_value = _BOXES
-    mock_result.plot.return_value = np.ones((64, 64, 3), dtype=np.uint8)
+    mock_result.plot.return_value = _ANNOTATED
     mock_cls = MagicMock()
     mock_cls.return_value.return_value = [mock_result]
     return mock_cls
 
 
+def make_filter(**kwargs) -> YOLOFilter:
+    '''Create a YOLOFilter with mocked YOLO and synchronous threading.'''
+    with patch.object(_mod, 'YOLO', _make_mock_yolo()), \
+         patch.object(QtCore.QThread, 'start'), \
+         patch.object(QtCore.QObject, 'moveToThread'):
+        return YOLOFilter(**kwargs)
+
+
 # ---------------------------------------------------------------------------
-# YOLOFilter
+# YOLOFilter init
 # ---------------------------------------------------------------------------
 
 class TestYOLOFilterInit(unittest.TestCase):
@@ -40,26 +49,29 @@ class TestYOLOFilterInit(unittest.TestCase):
 
     def test_raises_file_not_found_for_bad_model(self):
         mock_cls = MagicMock(side_effect=FileNotFoundError)
-        with patch.object(_mod, 'YOLO', mock_cls):
+        with patch.object(_mod, 'YOLO', mock_cls), \
+             patch.object(QtCore.QThread, 'start'), \
+             patch.object(QtCore.QObject, 'moveToThread'):
             with self.assertRaises(FileNotFoundError):
                 YOLOFilter('nonexistent.pt')
 
     def test_default_passthrough_is_false(self):
-        with patch.object(_mod, 'YOLO', _make_mock_yolo()):
-            f = YOLOFilter()
+        f = make_filter()
         self.assertFalse(f.passthrough)
 
     def test_passthrough_can_be_set_at_init(self):
-        with patch.object(_mod, 'YOLO', _make_mock_yolo()):
-            f = YOLOFilter(passthrough=True)
+        f = make_filter(passthrough=True)
         self.assertTrue(f.passthrough)
 
+
+# ---------------------------------------------------------------------------
+# YOLOFilter passthrough property
+# ---------------------------------------------------------------------------
 
 class TestYOLOFilterPassthrough(unittest.TestCase):
 
     def setUp(self):
-        with patch.object(_mod, 'YOLO', _make_mock_yolo()):
-            self.f = YOLOFilter()
+        self.f = make_filter()
 
     def test_setter_stores_bool(self):
         self.f.passthrough = True
@@ -70,37 +82,38 @@ class TestYOLOFilterPassthrough(unittest.TestCase):
         self.assertIs(self.f.passthrough, True)
 
 
-class TestYOLOFilterAdd(unittest.TestCase):
+# ---------------------------------------------------------------------------
+# YOLOFilter.process (the heavy computation, now testable directly)
+# ---------------------------------------------------------------------------
+
+class TestYOLOFilterProcess(unittest.TestCase):
 
     def setUp(self):
-        self._mock_yolo = _make_mock_yolo()
-        with patch.object(_mod, 'YOLO', self._mock_yolo):
-            self.f = YOLOFilter()
+        self.f = make_filter()
 
-    def test_add_calls_model_with_image(self):
-        self.f.add(_FRAME)
+    def test_process_calls_model_with_image(self):
+        self.f.process(_FRAME)
         self.f.model.assert_called_once_with(_FRAME, verbose=False)
 
-    def test_add_emits_features_ready(self):
+    def test_process_emits_features_ready(self):
         spy = QtTest.QSignalSpy(self.f.featuresReady)
-        self.f.add(_FRAME)
+        self.f.process(_FRAME)
         self.assertEqual(len(spy), 1)
 
-    def test_features_ready_contains_boxes(self):
+    def test_process_features_ready_contains_boxes(self):
         spy = QtTest.QSignalSpy(self.f.featuresReady)
-        self.f.add(_FRAME)
+        self.f.process(_FRAME)
         np.testing.assert_array_equal(spy[0][0], _BOXES)
 
-    def test_add_sets_data_to_plot_when_not_passthrough(self):
+    def test_process_returns_annotated_when_not_passthrough(self):
         self.f.passthrough = False
-        self.f.add(_FRAME)
-        expected = self.f.model.return_value[0].plot.return_value
-        np.testing.assert_array_equal(self.f.data, expected)
+        result = self.f.process(_FRAME)
+        np.testing.assert_array_equal(result, _ANNOTATED)
 
-    def test_add_sets_data_to_image_when_passthrough(self):
+    def test_process_returns_original_when_passthrough(self):
         self.f.passthrough = True
-        self.f.add(_FRAME)
-        np.testing.assert_array_equal(self.f.data, _FRAME)
+        result = self.f.process(_FRAME)
+        np.testing.assert_array_equal(result, _FRAME)
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +123,9 @@ class TestYOLOFilterAdd(unittest.TestCase):
 class TestQYOLOFilter(unittest.TestCase):
 
     def setUp(self):
-        with patch.object(_mod, 'YOLO', _make_mock_yolo()):
+        with patch.object(_mod, 'YOLO', _make_mock_yolo()), \
+             patch.object(QtCore.QThread, 'start'), \
+             patch.object(QtCore.QObject, 'moveToThread'):
             self.widget = QYOLOFilter(parent=None)
 
     def test_is_qvideofilter(self):
@@ -125,6 +140,9 @@ class TestQYOLOFilter(unittest.TestCase):
 
     def test_initially_unchecked(self):
         self.assertFalse(self.widget.isChecked())
+
+    def test_has_passthrough_checkbox(self):
+        self.assertIsNotNone(self.widget._checkbox)
 
     def test_set_passthrough_updates_filter(self):
         self.widget._setPassthrough(2)  # Qt.Checked == 2

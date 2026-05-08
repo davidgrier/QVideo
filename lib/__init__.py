@@ -22,6 +22,8 @@ QFilterBank
     Fixed, programmatically-configured pipeline of :class:`VideoFilter` instances.
 QFilterRack
     Dynamic, user-reorderable pipeline of :class:`QVideoFilter` widgets.
+AsyncVideoFilter
+    :class:`VideoFilter` base that runs heavy computation in a background thread.
 QVideoReader
     Abstract base class for video file readers.
 QVideoWriter
@@ -40,6 +42,7 @@ from .QVideoScreen import QVideoScreen
 from .QFilterBank import QFilterBank
 from .QFilterRack import QFilterRack
 from .QVideoFilter import VideoFilter, QVideoFilter
+from .AsyncVideoFilter import AsyncVideoFilter
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
 from .chooser import choose_camera
@@ -50,4 +53,4 @@ __all__ = '''Image
 clickable choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen
-QFPSMeter VideoFilter QVideoFilter'''.split()
+QFPSMeter VideoFilter QVideoFilter AsyncVideoFilter'''.split()

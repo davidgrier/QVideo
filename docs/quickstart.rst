@@ -110,10 +110,10 @@ screen to process frames before display:
 .. code-block:: python
 
    from QVideo.lib import QFilterBank
-   from QVideo.filters import QBlurFilter, QEdgeFilter
+   from QVideo.filters import QSmoothingFilter, QEdgeFilter
 
    bank = QFilterBank()
-   bank.addFilter(QBlurFilter())
+   bank.addFilter(QSmoothingFilter())
    bank.addFilter(QEdgeFilter())
 
    source.newFrame.connect(bank.updateFrame)

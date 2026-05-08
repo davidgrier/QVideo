@@ -5,7 +5,7 @@ Run directly::
 
     python -m QVideo.demos.filterrackdemo
 
-The filter rack starts with :class:`~QVideo.filters.QBlurFilter.QBlurFilter`
+The filter rack starts with :class:`~QVideo.filters.QSmoothingFilter.QSmoothingFilter`
 and :class:`~QVideo.filters.QThresholdFilter.QThresholdFilter` pre-loaded.
 Additional filters can be added interactively via the "Add filter…" button,
 and any filter can be removed or reordered by dragging.
@@ -28,7 +28,7 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.lib import QCameraTree, QFilterRack
-from QVideo.filters import QBlurFilter, QThresholdFilter
+from QVideo.filters import QSmoothingFilter, QThresholdFilter
 from QVideo.lib.videotypes import Image
 
 
@@ -79,7 +79,7 @@ class FilterRackDemo(QCamcorder):
 
     Extends :class:`~QVideo.QCamcorder.QCamcorder` by adding a
     :class:`~QVideo.lib.QFilterRack.QFilterRack` pre-loaded with
-    :class:`~QVideo.filters.QBlurFilter.QBlurFilter` and
+    :class:`~QVideo.filters.QSmoothingFilter.QSmoothingFilter` and
     :class:`~QVideo.filters.QThresholdFilter.QThresholdFilter`, and
     a group of radio buttons to select the DVR recording source:
 
@@ -99,7 +99,7 @@ class FilterRackDemo(QCamcorder):
     def __init__(self, cameraWidget: QCameraTree, **kwargs) -> None:
         super().__init__(cameraWidget, **kwargs)
         self.rack = QFilterRack(self)
-        self.rack.add(QBlurFilter())
+        self.rack.add(QSmoothingFilter())
         self.rack.add(QThresholdFilter())
         self.screen.filter = self.rack
         self._filteredSource = _FilteredSource(self.source, self.rack, self)

@@ -9,7 +9,7 @@ from QVideo.demos.filterdemo import FilterDemo
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-FILTERS = ['QRGBFilter', 'QBlurFilter']
+FILTERS = ['QRGBFilter', 'QSmoothingFilter']
 
 
 def make_demo(filters=None):

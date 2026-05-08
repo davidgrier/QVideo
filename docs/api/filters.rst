@@ -51,15 +51,18 @@ which is useful after scene changes.
 .. automodule:: QVideo.filters.QSampleHold
    :members:
 
-Blur
-----
+Smoothing
+---------
 
-:class:`~QVideo.filters.QBlurFilter.BlurFilter` applies OpenCV's
-``GaussianBlur`` with an adjustable odd-pixel kernel.  It is commonly used
-as a pre-processing step to reduce high-frequency sensor noise before
-edge detection or thresholding.
+:class:`~QVideo.filters.QSmoothingFilter.SmoothingFilter` applies OpenCV
+smoothing with an adjustable odd-pixel kernel.  Two methods are available:
+``'gaussian'`` (``cv2.GaussianBlur``) and ``'median'`` (``cv2.medianBlur``).
+Gaussian blur is effective against additive Gaussian noise; median blur
+excels at removing salt-and-pepper noise while preserving edges.
+The :class:`~QVideo.filters.QSmoothingFilter.QSmoothingFilter` widget
+exposes a method selector combobox and a width spinbox.
 
-.. automodule:: QVideo.filters.QBlurFilter
+.. automodule:: QVideo.filters.QSmoothingFilter
    :members:
 
 Edge detection

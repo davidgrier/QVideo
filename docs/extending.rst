@@ -221,10 +221,10 @@ the filter widgets appear in the layout.
 .. code-block:: python
 
    from QVideo.lib import QFilterBank
-   from QVideo.filters import QBlurFilter, QEdgeFilter
+   from QVideo.filters import QSmoothingFilter, QEdgeFilter
 
    bank = QFilterBank()
-   bank.register(QBlurFilter())
+   bank.register(QSmoothingFilter())
    bank.register(QEdgeFilter())
 
    source.newFrame.connect(bank.updateFrame)

@@ -103,9 +103,9 @@ class TestQFilterBank(unittest.TestCase):
 
     def test_register_by_name_known_filter(self):
         bank = make_bank()
-        bank.registerByName('QBlurFilter')
-        from QVideo.filters import QBlurFilter
-        self.assertIsInstance(bank.filters[0], QBlurFilter)
+        bank.registerByName('QSmoothingFilter')
+        from QVideo.filters import QSmoothingFilter
+        self.assertIsInstance(bank.filters[0], QSmoothingFilter)
 
     def test_register_by_name_unknown_raises(self):
         bank = make_bank()
@@ -134,7 +134,7 @@ class TestQFilterBank(unittest.TestCase):
 
     def test_multiple_filters_registered(self):
         bank = make_bank()
-        bank.registerByName('QBlurFilter')
+        bank.registerByName('QSmoothingFilter')
         bank.registerByName('QRGBFilter')
         self.assertEqual(len(bank.filters), 2)
 

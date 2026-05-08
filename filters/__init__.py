@@ -2,7 +2,7 @@ from .Median import Median
 from .MoMedian import MoMedian
 from .Normalize import Normalize, SmoothNormalize
 from .QBlobFilter import BlobFilter, QBlobFilter
-from .QBlurFilter import BlurFilter, QBlurFilter
+from .QSmoothingFilter import SmoothingFilter, QSmoothingFilter
 from .QEdgeFilter import EdgeFilter, QEdgeFilter
 from .QRGBFilter import RGBFilter, QRGBFilter
 from .QROIFilter import ROIFilter, QROIFilter
@@ -15,7 +15,7 @@ __all__ = '''
 Median MoMedian
 Normalize SmoothNormalize
 BlobFilter QBlobFilter
-BlurFilter QBlurFilter
+SmoothingFilter QSmoothingFilter
 EdgeFilter QEdgeFilter
 RGBFilter QRGBFilter
 ROIFilter QROIFilter

@@ -98,7 +98,7 @@ FilterRackDemo
 
 Extends :class:`~QVideo.QCamcorder.QCamcorder` with a dynamic
 :class:`~QVideo.lib.QFilterRack.QFilterRack` (pre-loaded with
-:class:`~QVideo.filters.QBlurFilter.QBlurFilter` and
+:class:`~QVideo.filters.QSmoothingFilter.QSmoothingFilter` and
 :class:`~QVideo.filters.QThresholdFilter.QThresholdFilter`) and three DVR
 recording modes selectable at runtime:
 

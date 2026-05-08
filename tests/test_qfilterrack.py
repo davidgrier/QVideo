@@ -4,7 +4,7 @@ import numpy as np
 from qtpy import QtWidgets
 from QVideo.lib.QFilterRack import QFilterRack, _FilterSlot
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
-from QVideo.filters import QBlurFilter, QEdgeFilter
+from QVideo.filters import QSmoothingFilter, QEdgeFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -91,8 +91,8 @@ class TestQFilterRackAddByName(unittest.TestCase):
 
     def test_add_by_name_known_filter(self):
         rack = make_rack()
-        rack.addByName('QBlurFilter')
-        self.assertIsInstance(rack.filters[0], QBlurFilter)
+        rack.addByName('QSmoothingFilter')
+        self.assertIsInstance(rack.filters[0], QSmoothingFilter)
 
     def test_add_by_name_unknown_raises(self):
         rack = make_rack()
@@ -117,14 +117,14 @@ class TestQFilterRackAvailableFilters(unittest.TestCase):
 
     def test_contains_known_filters(self):
         result = QFilterRack.availableFilters()
-        self.assertIn('QBlurFilter', result)
+        self.assertIn('QSmoothingFilter', result)
         self.assertIn('QEdgeFilter', result)
         self.assertIn('QROIFilter', result)
 
     def test_excludes_non_widget_classes(self):
         result = QFilterRack.availableFilters()
         self.assertNotIn('Median', result)
-        self.assertNotIn('BlurFilter', result)
+        self.assertNotIn('SmoothingFilter', result)
 
 
 class TestQFilterRackFiltersProperty(unittest.TestCase):

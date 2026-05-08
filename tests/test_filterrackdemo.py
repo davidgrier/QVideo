@@ -8,7 +8,7 @@ from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.filterrackdemo import FilterRackDemo, _FilteredSource
 from QVideo.lib import QFilterRack
-from QVideo.filters import QBlurFilter, QThresholdFilter
+from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -77,7 +77,7 @@ class TestFilterRackDemoInit(unittest.TestCase):
     def test_rack_has_blur_filter(self):
         widget = make_demo()
         self.assertTrue(
-            any(isinstance(f, QBlurFilter) for f in widget.rack.filters))
+            any(isinstance(f, QSmoothingFilter) for f in widget.rack.filters))
 
     def test_rack_has_threshold_filter(self):
         widget = make_demo()

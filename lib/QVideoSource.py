@@ -3,13 +3,16 @@ from qtpy import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
 from QVideo.lib.videotypes import Image
+from typing import TypeAlias
 import numpy as np
 import logging
 
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['QVideoSource']
+VideoSourceType: TypeAlias = QCamera | QVideoReader
+
+__all__ = ['QVideoSource', 'VideoSourceType']
 
 
 class QVideoSource(QtCore.QThread):
@@ -62,12 +65,10 @@ class QVideoSource(QtCore.QThread):
     loop while paused and to wake it on :meth:`resume` or :meth:`stop`.
     '''
 
-    Source = QCamera | QVideoReader
-
     #: Emitted when a new video frame is available.
     newFrame = QtCore.Signal(np.ndarray)
 
-    def __init__(self, source: Source) -> None:
+    def __init__(self, source: VideoSourceType) -> None:
         '''Initialise the video source thread.
 
         Parameters
@@ -86,12 +87,12 @@ class QVideoSource(QtCore.QThread):
         self._running = True
 
     @property
-    def source(self) -> Source:
+    def source(self) -> VideoSourceType:
         '''The underlying QCamera or QVideoReader.'''
         return self._source
 
     @source.setter
-    def source(self, source: Source) -> None:
+    def source(self, source: VideoSourceType) -> None:
         self._source = source
         self.shapeChanged = source.shapeChanged
 
@@ -192,7 +193,7 @@ class QVideoSource(QtCore.QThread):
         return self._paused
 
     @classmethod
-    def example(cls: 'QVideoSource', *args) -> None:  # pragma: no cover
+    def example(cls: type['QVideoSource'], *args) -> None:  # pragma: no cover
         '''Demonstrate basic operation of a threaded video source.'''
         from pprint import pprint
 

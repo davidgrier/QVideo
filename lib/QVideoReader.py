@@ -40,19 +40,12 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     shapeChanged(QSize)
         Emitted when the file is opened and the frame dimensions are known.
 
-    Type Aliases
-    ------------
-    CameraData : tuple[bool, Image | None]
-        Return type of :meth:`read`, shared with :class:`~QVideo.lib.QCamera`.
-
     Notes
     -----
     :meth:`saferead` paces frame delivery by sleeping :attr:`delay`
     milliseconds between reads so that callers receive frames at
     approximately the correct playback rate.
     '''
-
-    CameraData = QCamera.CameraData
 
     #: Emitted when the file is opened and the frame dimensions are known.
     shapeChanged = QtCore.Signal(QtCore.QSize)
@@ -125,7 +118,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
         '''Close the video file so that deletion or re-opening succeeds.'''
 
     @abstractmethod
-    def read(self) -> CameraData:
+    def read(self) -> QCamera.CameraData:
         '''Read the next frame from the video file.
 
         Returns
@@ -135,7 +128,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
             or on error.
         '''
 
-    def saferead(self) -> CameraData:
+    def saferead(self) -> QCamera.CameraData:
         '''Read one frame, pacing delivery to the file's native frame rate.
 
         Blocks for :attr:`delay` milliseconds before each read so that

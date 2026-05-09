@@ -1,6 +1,6 @@
 '''OpenCV video reader and threaded playback source.'''
 from qtpy import QtCore
-from QVideo.lib import QVideoReader, QVideoSource
+from QVideo.lib import QCamera, QVideoReader, QVideoSource
 from pathlib import Path
 import cv2
 
@@ -40,7 +40,7 @@ class QOpenCVReader(QVideoReader):
             self.reader.release()
         self.reader = None
 
-    def read(self) -> QVideoReader.CameraData:
+    def read(self) -> QCamera.CameraData:
         '''Read the next frame from the video file.
 
         Frames are converted from BGR (OpenCV native) to RGB on read.

@@ -1,6 +1,6 @@
 '''HDF5 video reader and threaded playback source.'''
 from qtpy import QtCore
-from QVideo.lib import QVideoReader, QVideoSource
+from QVideo.lib import QCamera, QVideoReader, QVideoSource
 from pathlib import Path
 try:
     import h5py
@@ -41,7 +41,7 @@ class QHDF5Reader(QVideoReader):
     def _deinitialize(self) -> None:
         self.file.close()
 
-    def read(self) -> QVideoReader.CameraData:
+    def read(self) -> QCamera.CameraData:
         '''Read the next frame from the HDF5 file.
 
         Returns

@@ -60,183 +60,6 @@ class QGenicamCamera(QCamera):
 
     producer: str | None = None
 
-    @staticmethod
-    def _findProducer(*filenames: str) -> 'str | None':
-        '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
-
-        Parameters
-        ----------
-        *filenames : str
-            Producer ``.cti`` filenames to search for, in priority order.
-
-        Returns
-        -------
-        str or None
-            Absolute path to the first ``.cti`` file found, or ``None`` if
-            none of the requested producers exist on the path.
-        '''
-        search_path = os.environ.get('GENICAM_GENTL64_PATH', '')
-        for directory in search_path.split(os.pathsep):
-            for name in filenames:
-                candidate = Path(directory) / name
-                if candidate.exists():
-                    return str(candidate)
-        return None
-
-    @staticmethod
-    def _set_feature(feature: IValue,
-                     value: QCamera.PropertyValue) -> None:
-        '''Set the value of a feature node.'''
-        logger.debug(f'Setting {feature.node.name}: {value}')
-        if isinstance(feature, IEnumeration):
-            if value in [v.symbolic for v in feature.entries]:
-                feature.from_string(value)
-            else:
-                logger.warning(f'{value} is not in {feature.node.name}')
-        elif isinstance(feature, IBoolean):
-            feature.value = bool(value)
-        elif isinstance(feature, IInteger):
-            value = np.clip(value, feature.min, feature.max)
-            value = (value - feature.min) // feature.inc
-            feature.value = int(value * feature.inc + feature.min)
-        elif isinstance(feature, IFloat):
-            feature.value = float(np.clip(value, feature.min, feature.max))
-        elif isinstance(feature, IString):
-            feature.value = str(value)
-
-    @staticmethod
-    def _make_getter(feature: IValue):
-        '''Return a zero-argument callable that reads the feature value.
-
-        The returned callable checks the current access mode before reading,
-        returning ``None`` for features that are not readable at call time
-        (e.g. enumeration nodes whose access mode changes after acquisition
-        starts).
-        '''
-        if isinstance(feature, IEnumeration):
-            def getter():
-                mode = feature.node.get_access_mode()
-                if mode in (EAccessMode.RO, EAccessMode.RW):
-                    return feature.to_string()
-                return None
-            return getter
-
-        def getter():
-            mode = feature.node.get_access_mode()
-            if mode in (EAccessMode.RO, EAccessMode.RW):
-                return feature.value
-            return None
-        return getter
-
-    @staticmethod
-    def _feature_ptype(feature: IValue) -> type:
-        '''Return the Python type for a feature.'''
-        if isinstance(feature, IBoolean):
-            return bool
-        if isinstance(feature, IInteger):
-            return int
-        if isinstance(feature, IFloat):
-            return float
-        return str  # IEnumeration, IString
-
-    @staticmethod
-    def _feature_meta(feature: IValue) -> dict:
-        '''Return extra metadata kwargs for registerProperty.'''
-        if isinstance(feature, IEnumeration):
-            return {'limits': [v.symbolic for v in feature.entries]}
-        if isinstance(feature, IInteger):
-            return {'minimum': feature.min, 'maximum': feature.max,
-                    'step': feature.inc}
-        if isinstance(feature, IFloat):
-            meta = {'minimum': feature.min, 'maximum': feature.max}
-            if feature.has_inc():
-                meta['step'] = feature.inc
-            return meta
-        return {}
-
-    @staticmethod
-    def _load_node_map(device):
-        '''Reload the node map by re-running harvesters' own loading logic.
-
-        Called when harvesters' automatic node map loading fails due to a
-        timing race: if the Spinnaker GenTL producer's port URL list is not
-        yet populated at ``h.create()`` time, harvesters silently returns an
-        unconnected ``NodeMap``.  Calling ``_create_node_map`` again once the
-        port has settled produces a connected map, which is then patched back
-        onto the device so that ``device.start()`` also uses it.
-
-        Parameters
-        ----------
-        device : harvesters ImageAcquirer
-            The device whose remote port will be queried.
-
-        Returns
-        -------
-        NodeMap or None
-            A connected node map, or ``None`` if loading failed.
-        '''
-        try:
-            port = device.remote_device.module.remote_port
-            nm = device.remote_device._create_node_map(port=port)
-            device.remote_device._node_map = nm
-            return nm
-        except Exception as exc:
-            logger.warning(f'manual node map load failed: {exc}')
-            return None
-
-    @staticmethod
-    def _scan_modes(feature: IValue) -> dict[str, object]:
-        '''Return a dict mapping property node names to their access modes.'''
-        modes = {}
-        if isinstance(feature, ICategory):
-            for f in feature.features:
-                modes.update(QGenicamCamera._scan_modes(f))
-        elif isinstance(feature, IProperty):
-            modes[feature.node.name] = feature.node.get_access_mode()
-        return modes
-
-    def _make_setter(self, feature: IValue, name: str):
-        '''Return a setter that checks current access mode before writing.
-
-        If the feature is not currently writable (and is not a protected
-        feature that can be written after stopping acquisition), the write
-        is skipped and a warning is logged.  Protected features stop and
-        restart acquisition around the write as before.
-        '''
-        def setter(value):
-            mode = feature.node.get_access_mode()
-            if mode != EAccessMode.RW and name not in self.protected:
-                logger.warning(
-                    f'{name} is not currently writable (mode={mode})')
-                return
-            restart = name in self.protected and self.device.is_acquiring()
-            if restart:
-                self.device.stop()
-            QGenicamCamera._set_feature(feature, value)
-            if restart:
-                self.device.start()
-        return setter
-
-    def _register_features(self, feature: IValue) -> None:
-        '''Recurse the node tree to register properties and methods.'''
-        if isinstance(feature, ICategory):
-            for f in feature.features:
-                self._register_features(f)
-        elif isinstance(feature, ICommand):
-            self.registerMethod(feature.node.name, feature.execute)
-        elif isinstance(feature, IProperty):
-            mode = feature.node.get_access_mode()
-            if mode not in (EAccessMode.RO, EAccessMode.RW):
-                return
-            name = feature.node.name
-            getter = self._make_getter(feature)
-            setter = self._make_setter(feature, name)
-            self.registerProperty(name,
-                                  getter=getter,
-                                  setter=setter,
-                                  ptype=self._feature_ptype(feature),
-                                  **self._feature_meta(feature))
-
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraID = cameraID
@@ -416,6 +239,183 @@ class QGenicamCamera(QCamera):
         super().set(key, value)
         if key.lower() in ('width', 'height'):
             self.shapeChanged.emit(self.shape)
+
+    @staticmethod
+    def _findProducer(*filenames: str) -> 'str | None':
+        '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
+
+        Parameters
+        ----------
+        *filenames : str
+            Producer ``.cti`` filenames to search for, in priority order.
+
+        Returns
+        -------
+        str or None
+            Absolute path to the first ``.cti`` file found, or ``None`` if
+            none of the requested producers exist on the path.
+        '''
+        search_path = os.environ.get('GENICAM_GENTL64_PATH', '')
+        for directory in search_path.split(os.pathsep):
+            for name in filenames:
+                candidate = Path(directory) / name
+                if candidate.exists():
+                    return str(candidate)
+        return None
+
+    @staticmethod
+    def _load_node_map(device):
+        '''Reload the node map by re-running harvesters' own loading logic.
+
+        Called when harvesters' automatic node map loading fails due to a
+        timing race: if the Spinnaker GenTL producer's port URL list is not
+        yet populated at ``h.create()`` time, harvesters silently returns an
+        unconnected ``NodeMap``.  Calling ``_create_node_map`` again once the
+        port has settled produces a connected map, which is then patched back
+        onto the device so that ``device.start()`` also uses it.
+
+        Parameters
+        ----------
+        device : harvesters ImageAcquirer
+            The device whose remote port will be queried.
+
+        Returns
+        -------
+        NodeMap or None
+            A connected node map, or ``None`` if loading failed.
+        '''
+        try:
+            port = device.remote_device.module.remote_port
+            nm = device.remote_device._create_node_map(port=port)
+            device.remote_device._node_map = nm
+            return nm
+        except Exception as exc:
+            logger.warning(f'manual node map load failed: {exc}')
+            return None
+
+    @staticmethod
+    def _scan_modes(feature: IValue) -> dict[str, object]:
+        '''Return a dict mapping property node names to their access modes.'''
+        modes = {}
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                modes.update(QGenicamCamera._scan_modes(f))
+        elif isinstance(feature, IProperty):
+            modes[feature.node.name] = feature.node.get_access_mode()
+        return modes
+
+    @staticmethod
+    def _make_getter(feature: IValue):
+        '''Return a zero-argument callable that reads the feature value.
+
+        The returned callable checks the current access mode before reading,
+        returning ``None`` for features that are not readable at call time
+        (e.g. enumeration nodes whose access mode changes after acquisition
+        starts).
+        '''
+        if isinstance(feature, IEnumeration):
+            def getter():
+                mode = feature.node.get_access_mode()
+                if mode in (EAccessMode.RO, EAccessMode.RW):
+                    return feature.to_string()
+                return None
+            return getter
+
+        def getter():
+            mode = feature.node.get_access_mode()
+            if mode in (EAccessMode.RO, EAccessMode.RW):
+                return feature.value
+            return None
+        return getter
+
+    def _make_setter(self, feature: IValue, name: str):
+        '''Return a setter that checks current access mode before writing.
+
+        If the feature is not currently writable (and is not a protected
+        feature that can be written after stopping acquisition), the write
+        is skipped and a warning is logged.  Protected features stop and
+        restart acquisition around the write as before.
+        '''
+        def setter(value):
+            mode = feature.node.get_access_mode()
+            if mode != EAccessMode.RW and name not in self.protected:
+                logger.warning(
+                    f'{name} is not currently writable (mode={mode})')
+                return
+            restart = name in self.protected and self.device.is_acquiring()
+            if restart:
+                self.device.stop()
+            QGenicamCamera._set_feature(feature, value)
+            if restart:
+                self.device.start()
+        return setter
+
+    @staticmethod
+    def _set_feature(feature: IValue,
+                     value: QCamera.PropertyValue) -> None:
+        '''Set the value of a feature node.'''
+        logger.debug(f'Setting {feature.node.name}: {value}')
+        if isinstance(feature, IEnumeration):
+            if value in [v.symbolic for v in feature.entries]:
+                feature.from_string(value)
+            else:
+                logger.warning(f'{value} is not in {feature.node.name}')
+        elif isinstance(feature, IBoolean):
+            feature.value = bool(value)
+        elif isinstance(feature, IInteger):
+            value = np.clip(value, feature.min, feature.max)
+            value = (value - feature.min) // feature.inc
+            feature.value = int(value * feature.inc + feature.min)
+        elif isinstance(feature, IFloat):
+            feature.value = float(np.clip(value, feature.min, feature.max))
+        elif isinstance(feature, IString):
+            feature.value = str(value)
+
+    @staticmethod
+    def _feature_ptype(feature: IValue) -> type:
+        '''Return the Python type for a feature.'''
+        if isinstance(feature, IBoolean):
+            return bool
+        if isinstance(feature, IInteger):
+            return int
+        if isinstance(feature, IFloat):
+            return float
+        return str  # IEnumeration, IString
+
+    @staticmethod
+    def _feature_meta(feature: IValue) -> dict:
+        '''Return extra metadata kwargs for registerProperty.'''
+        if isinstance(feature, IEnumeration):
+            return {'limits': [v.symbolic for v in feature.entries]}
+        if isinstance(feature, IInteger):
+            return {'minimum': feature.min, 'maximum': feature.max,
+                    'step': feature.inc}
+        if isinstance(feature, IFloat):
+            meta = {'minimum': feature.min, 'maximum': feature.max}
+            if feature.has_inc():
+                meta['step'] = feature.inc
+            return meta
+        return {}
+
+    def _register_features(self, feature: IValue) -> None:
+        '''Recurse the node tree to register properties and methods.'''
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                self._register_features(f)
+        elif isinstance(feature, ICommand):
+            self.registerMethod(feature.node.name, feature.execute)
+        elif isinstance(feature, IProperty):
+            mode = feature.node.get_access_mode()
+            if mode not in (EAccessMode.RO, EAccessMode.RW):
+                return
+            name = feature.node.name
+            getter = self._make_getter(feature)
+            setter = self._make_setter(feature, name)
+            self.registerProperty(name,
+                                  getter=getter,
+                                  setter=setter,
+                                  ptype=self._feature_ptype(feature),
+                                  **self._feature_meta(feature))
 
     def is_readwrite(self, feature: str) -> bool:
         '''Return ``True`` if the named feature is currently writable.

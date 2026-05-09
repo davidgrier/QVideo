@@ -93,7 +93,9 @@ class QOpenCVWriter(QVideoWriter):
             return True
         return False
 
-    def _getWriter(self, shape: tuple[int, ...], color: bool) -> cv2.VideoWriter | None:
+    def _getWriter(self,
+                   shape: tuple[int, ...],
+                   color: bool) -> cv2.VideoWriter | None:
         '''Probe codecs in preference order and return the first that opens.
 
         Parameters

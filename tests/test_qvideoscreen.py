@@ -140,6 +140,21 @@ class TestSource(unittest.TestCase):
         except AttributeError:
             self.fail('source setter called disconnect on None')
 
+    def test_source_none_clears_source(self):
+        screen = make_screen()
+        screen.source = make_mock_source()
+        screen.source = None
+        self.assertIsNone(screen._source)
+
+    def test_source_none_no_crash(self):
+        '''Setting source to None after a source is connected should not raise.'''
+        screen = make_screen()
+        screen.source = make_mock_source()
+        try:
+            screen.source = None
+        except Exception as e:
+            self.fail(f'Setting source to None raised {e}')
+
 
 class TestSetImage(unittest.TestCase):
 
@@ -168,9 +183,9 @@ class TestSetImage(unittest.TestCase):
         screen = make_screen()
         with patch.object(screen.filter, '__call__', return_value=_FRAME):
             with patch.object(screen.image, 'setImage'):
-                with patch.object(screen._timer, 'singleShot') as mock_shot:
+                with patch.object(screen._timer, 'start') as mock_start:
                     screen.setImage(_FRAME)
-        mock_shot.assert_called_once_with(screen._interval, screen._setready)
+        mock_start.assert_called_once_with(screen._interval)
 
     def test_setimage_when_ready_clears_pending(self):
         screen = make_screen()
@@ -244,29 +259,37 @@ class TestSizeHints(unittest.TestCase):
         self.source = make_mock_source(width=640, height=480)
         with patch.object(self.screen, 'updateShape'):
             self.screen._source = self.source
+        # Simulate updateShape having been called with the source shape.
+        self.screen._videoShape = self.shape
 
-    def test_size_hint_returns_source_shape(self):
+    def test_size_hint_returns_video_shape(self):
         self.assertEqual(self.screen.sizeHint(), self.shape)
 
-    def test_has_height_for_width_true_with_source(self):
+    def test_has_height_for_width_true_when_shape_known(self):
         self.assertTrue(self.screen.hasHeightForWidth())
 
-    def test_has_height_for_width_false_without_source(self):
+    def test_has_height_for_width_false_before_any_source(self):
         screen = make_screen()
         self.assertFalse(screen.hasHeightForWidth())
+
+    def test_has_height_for_width_true_after_update_shape(self):
+        screen = make_screen()
+        with patch.object(screen.view, 'setRange'):
+            screen.updateShape(QtCore.QSize(640, 480))
+        self.assertTrue(screen.hasHeightForWidth())
 
     def test_height_for_width_preserves_aspect_ratio(self):
         # 640×480 → height for width=320 should be 240
         self.assertEqual(self.screen.heightForWidth(320), 240)
 
-    def test_height_for_width_without_source_delegates(self):
+    def test_height_for_width_without_shape_delegates(self):
         screen = make_screen()
         try:
             screen.heightForWidth(320)
         except Exception as e:
-            self.fail(f'heightForWidth raised {e} without source')
+            self.fail(f'heightForWidth raised {e} without shape')
 
-    def test_size_hint_without_source_delegates(self):
+    def test_size_hint_without_shape_delegates(self):
         screen = make_screen()
         result = screen.sizeHint()
         self.assertIsInstance(result, QtCore.QSize)

@@ -89,7 +89,8 @@ class QDVRWidget(QtWidgets.QFrame):
               '.mkv': QOpenCVSource,
               '.mp4': QOpenCVSource}
 
-    FileGroups = {'Video files': {'.avi', '.mkv', '.mp4'}}
+    FileGroups = {'Lossless Video': {'.avi', '.mkv'},
+                  'Video': {'.mp4'}}
 
     if _h5py_available:
         Writer['.h5'] = QHDF5Writer

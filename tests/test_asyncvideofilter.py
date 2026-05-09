@@ -125,5 +125,47 @@ class TestAsyncVideoFilterCall(unittest.TestCase):
         np.testing.assert_array_equal(result, _FRAME)
 
 
+class TestAsyncVideoFilterCleanup(unittest.TestCase):
+
+    def setUp(self):
+        self._p_start = patch.object(QtCore.QThread, 'start')
+        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
+        self._p_start.start()
+        self._p_move.start()
+
+    def tearDown(self):
+        self._p_start.stop()
+        self._p_move.stop()
+
+    def test_cleanup_quits_thread(self):
+        f = AsyncVideoFilter()
+        with patch.object(f._thread, 'quit') as mock_quit:
+            with patch.object(f._thread, 'wait'):
+                f._cleanup()
+        mock_quit.assert_called_once()
+
+    def test_cleanup_waits_for_thread(self):
+        f = AsyncVideoFilter()
+        with patch.object(f._thread, 'quit'):
+            with patch.object(f._thread, 'wait') as mock_wait:
+                f._cleanup()
+        mock_wait.assert_called_once()
+
+    def test_abouttoquit_connected_to_cleanup(self):
+        f = AsyncVideoFilter()
+        app = QtCore.QCoreApplication.instance()
+        try:
+            app.aboutToQuit.disconnect(f._cleanup)
+        except RuntimeError:
+            self.fail('_cleanup was not connected to aboutToQuit')
+
+    def test_no_connection_when_no_app(self):
+        with patch.object(QtCore.QCoreApplication, 'instance', return_value=None):
+            f = AsyncVideoFilter()
+        app = QtCore.QCoreApplication.instance()
+        with self.assertRaises((RuntimeError, TypeError)):
+            app.aboutToQuit.disconnect(f._cleanup)
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

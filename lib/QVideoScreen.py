@@ -59,7 +59,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         :attr:`composite`.
     '''
 
-    #: Emitted after each displayed frame.
     newFrame = QtCore.Signal(np.ndarray)
 
     def __init__(self, *args,
@@ -73,9 +72,11 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._overlays = []
         self._composite = False
         self._videoShape = None
-        self._setupUi()
-        self._timer = QtCore.QTimer()
         self._source = None
+        self._timer = QtCore.QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._setready)
+        self._setupUi()
         self.filter = QFilterBank(self)
         self.filter.setVisible(False)
 
@@ -86,43 +87,29 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.invertY(True)
         self.view.setAspectLocked(True)
         self.view.setDefaultPadding(0)
-        self.updateShape(self.size())
+        sz = self.size()
+        self.view.setRange(xRange=(0, sz.width()),
+                           yRange=(0, sz.height()),
+                           padding=0, update=True)
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
 
-    def addOverlay(self, item) -> None:
-        '''Add a graphics item to the view
-
-        Register overlays for visibility control.
-
-        Parameters
-        ----------
-        item : pyqtgraph.GraphicsObject
-            The overlay item to add.
-        '''
-        self.view.addItem(item)
-        self._overlays.append(item)
-
-    def removeOverlay(self, item) -> None:
-        '''Remove a previously added graphics item from the view.
-
-        Parameters
-        ----------
-        item : pyqtgraph.GraphicsObject
-            The overlay item to remove.
-        '''
-        self.view.removeItem(item)
-        self._overlays.remove(item)
-
     @property
-    def overlaysVisible(self) -> bool:
-        '''Whether any registered overlay is currently visible.'''
-        return any(item.isVisible() for item in self._overlays)
+    def source(self) -> QVideoSource:
+        '''The video source providing frames to display.'''
+        return self._source
 
-    @overlaysVisible.setter
-    def overlaysVisible(self, visible: bool) -> None:
-        for item in self._overlays:
-            item.setVisible(visible)
+    @source.setter
+    def source(self, source: QVideoSource) -> None:
+        if self._source is not None:
+            self._source.shapeChanged.disconnect(self.updateShape)
+            self._source.newFrame.disconnect(self.setImage)
+        self._source = source
+        if source is None:
+            return
+        self.updateShape(source.shape)
+        self._source.shapeChanged.connect(self.updateShape)
+        self._source.newFrame.connect(self.setImage)
 
     @property
     def framerate(self) -> int | None:
@@ -145,30 +132,44 @@ class QVideoScreen(GraphicsLayoutWidget):
         if self._pending is not None:
             self.setImage(self._pending)
 
-    @property
-    def source(self) -> QVideoSource:
-        '''The video source providing frames to display.'''
-        return self._source
+    @QtCore.Slot(np.ndarray)
+    def setImage(self, image: Image) -> None:
+        '''Display a new video frame and emit :attr:`newFrame`.
 
-    @source.setter
-    def source(self, source: QVideoSource) -> None:
-        if self._source is not None:
-            self._source.shapeChanged.disconnect(self.updateShape)
-            self._source.newFrame.disconnect(self.setImage)
-        self._source = source
-        self.updateShape(source.shape)
-        self._source.shapeChanged.connect(self.updateShape)
-        self._source.newFrame.connect(self.setImage)
+        Passes the frame through :attr:`filter` before display.  If the
+        throttle interval has not yet elapsed, the frame is buffered as the
+        most recent pending frame; when the interval expires the buffered
+        frame is displayed immediately so no extra latency accumulates.
+
+        :attr:`newFrame` is emitted with the filtered frame, or with the
+        rendered composite scene when :attr:`composite` is ``True``.
+
+        Parameters
+        ----------
+        image : Image
+            The frame to display.
+        '''
+        if self._ready:
+            filtered = self.filter(image)
+            self.image.setImage(filtered, autoLevels=False)
+            self.newFrame.emit(
+                self._renderComposite() if self._composite else filtered)
+            self._ready = False
+            self._pending = None
+            self._timer.start(self._interval)
+        else:
+            self._pending = image
 
     @property
     def fps(self) -> float | None:
         '''Effective display frame rate [frames per second].
 
-        Returns :attr:`framerate` when display throttling is active, otherwise
-        delegates to the source frame rate.  This is the rate at which
-        :attr:`newFrame` fires, and therefore the correct value to use when
-        the screen is connected to a recorder.  Returns ``None`` when no
-        source is connected.
+        Returns :attr:`framerate` when display throttling is active,
+        otherwise delegates to the source frame rate.
+        This is the rate at which :attr:`newFrame` fires, and therefore
+        the correct value to use when the screen is used as the source
+        for a recorder.
+        Returns ``None`` when no source is connected.
         '''
         if self._framerate is not None:
             return float(self._framerate)
@@ -213,54 +214,55 @@ class QVideoScreen(GraphicsLayoutWidget):
             ptr.setsize(h * w * 4)
         return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()
 
-    @QtCore.Slot(np.ndarray)
-    def setImage(self, image: Image) -> None:
-        '''Display a new video frame and emit :attr:`newFrame`.
+    def addOverlay(self, item) -> None:
+        '''Add a graphics item to the view
 
-        Passes the frame through :attr:`filter` before display.  If the
-        throttle interval has not yet elapsed, the frame is buffered as the
-        most recent pending frame; when the interval expires the buffered
-        frame is displayed immediately so no extra latency accumulates.
-
-        :attr:`newFrame` is emitted with the filtered frame, or with the
-        rendered composite scene when :attr:`composite` is ``True``.
+        Register overlays for visibility control.
 
         Parameters
         ----------
-        image : Image
-            The frame to display.
+        item : pyqtgraph.GraphicsObject
+            The overlay item to add.
         '''
-        if self._ready:
-            filtered = self.filter(image)
-            self.image.setImage(filtered, autoLevels=False)
-            self.newFrame.emit(
-                self._renderComposite() if self._composite else filtered)
-            self._ready = False
-            self._pending = None
-            self._timer.singleShot(self._interval, self._setready)
-        else:
-            self._pending = image
+        self.view.addItem(item)
+        self._overlays.append(item)
+
+    def removeOverlay(self, item) -> None:
+        '''Remove a previously added graphics item from the view.
+
+        Parameters
+        ----------
+        item : pyqtgraph.GraphicsObject
+            The overlay item to remove.
+        '''
+        self.view.removeItem(item)
+        self._overlays.remove(item)
+
+    @property
+    def overlaysVisible(self) -> bool:
+        '''Whether any registered overlay is currently visible.'''
+        return any(item.isVisible() for item in self._overlays)
+
+    @overlaysVisible.setter
+    def overlaysVisible(self, visible: bool) -> None:
+        for item in self._overlays:
+            item.setVisible(visible)
 
     def sizeHint(self) -> QtCore.QSize:
         '''Return the source frame size as the preferred widget size.'''
         if self._videoShape is not None:
             return self._videoShape
-        if self.source is not None:
-            return self.source.shape
         return super().sizeHint()
 
     def hasHeightForWidth(self) -> bool:
-        '''Return True when a source is connected.'''
-        return self.source is not None
+        '''Return True once a video frame shape is known.'''
+        return self._videoShape is not None
 
     def heightForWidth(self, width: int) -> int:
         '''Return the height that preserves the source aspect ratio.'''
-        shape = self._videoShape
-        if shape is None and self.source is not None:
-            shape = self.source.shape
-        if shape is not None and shape.width() > 0:
-            return width * shape.height() // shape.width()
-        return super().heightForWidth(width)
+        if self._videoShape is None:
+            return super().heightForWidth(width)
+        return width * self._videoShape.height() // self._videoShape.width()
 
     @QtCore.Slot(QtCore.QSize)
     def updateShape(self, shape: QtCore.QSize) -> None:
@@ -278,6 +280,9 @@ class QVideoScreen(GraphicsLayoutWidget):
                            padding=0, update=True)
         self.setMinimumSize(shape / 2)
         self.updateGeometry()
+        widget = self
+        while (widget := widget.parentWidget()) is not None:
+            widget.updateGeometry()
         QtCore.QTimer.singleShot(0, self._fitToVideo)
 
     @QtCore.Slot()

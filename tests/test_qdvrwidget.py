@@ -515,6 +515,24 @@ class TestQDVRWidgetBuildFilter(unittest.TestCase):
         else:
             self.assertNotIn('.h5', f)
 
+    def test_lossless_extensions_grouped_under_lossless_label(self):
+        f = QDVRWidget._buildFilter(save=True)
+        self.assertIn('Lossless Video', f)
+        lossless_group = next(p for p in f.split(';;') if 'Lossless' in p)
+        self.assertIn('.avi', lossless_group)
+        self.assertIn('.mkv', lossless_group)
+
+    def test_mp4_grouped_under_video_label(self):
+        f = QDVRWidget._buildFilter(save=True)
+        video_group = next(p for p in f.split(';;') if p.startswith('Video'))
+        self.assertIn('.mp4', video_group)
+        self.assertNotIn('.avi', video_group)
+        self.assertNotIn('.mkv', video_group)
+
+    def test_lossless_group_precedes_video_group(self):
+        f = QDVRWidget._buildFilter(save=True)
+        self.assertLess(f.index('Lossless'), f.index('Video ('))
+
     def test_ungrouped_extension_appears_in_other_group(self):
         class SubWidget(QDVRWidget):
             Writer = {'.avi': None, '.webm': None}

@@ -1,8 +1,8 @@
 '''Unit tests for demos.filterrackdemo.'''
 import unittest
 import numpy as np
-from unittest.mock import MagicMock
-from qtpy import QtWidgets
+from unittest.mock import MagicMock, patch
+from qtpy import QtCore, QtWidgets
 from qtpy.QtTest import QSignalSpy
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
@@ -17,7 +17,9 @@ _FRAME = np.zeros((4, 4), dtype=np.uint8)
 
 
 def make_demo() -> FilterRackDemo:
-    return FilterRackDemo(QNoiseTree())
+    with patch.object(QtCore.QThread, 'start'), \
+         patch.object(QtCore.QObject, 'moveToThread'):
+        return FilterRackDemo(QNoiseTree())
 
 
 class TestFilteredSource(unittest.TestCase):

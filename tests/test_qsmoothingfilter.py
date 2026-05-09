@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.filters.QSmoothingFilter import SmoothingFilter, QSmoothingFilter
 
 
@@ -12,11 +12,15 @@ _FRAME = np.zeros((480, 640), dtype=np.uint8)
 
 
 def make_filter(**kwargs) -> SmoothingFilter:
-    return SmoothingFilter(**kwargs)
+    with patch.object(QtCore.QThread, 'start'), \
+         patch.object(QtCore.QObject, 'moveToThread'):
+        return SmoothingFilter(**kwargs)
 
 
 def make_widget() -> QSmoothingFilter:
-    return QSmoothingFilter(parent=None)
+    with patch.object(QtCore.QThread, 'start'), \
+         patch.object(QtCore.QObject, 'moveToThread'):
+        return QSmoothingFilter(parent=None)
 
 
 # ---------------------------------------------------------------------------
@@ -94,41 +98,33 @@ class TestSmoothingFilterMethod(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# SmoothingFilter — get()
+# SmoothingFilter — process()
 # ---------------------------------------------------------------------------
 
-class TestSmoothingFilterGet(unittest.TestCase):
+class TestSmoothingFilterProcess(unittest.TestCase):
 
-    def test_get_returns_none_before_add(self):
-        f = make_filter()
-        self.assertIsNone(f.get())
-
-    def test_get_calls_gaussian_blur(self):
+    def test_process_calls_gaussian_blur(self):
         f = make_filter(width=5, method='gaussian')
-        f.add(_FRAME)
         with patch('cv2.GaussianBlur', return_value=_FRAME) as mock_blur:
-            f.get()
+            f.process(_FRAME)
         mock_blur.assert_called_once_with(_FRAME, (5, 5), 0)
 
-    def test_get_calls_median_blur(self):
+    def test_process_calls_median_blur(self):
         f = make_filter(width=5, method='median')
-        f.add(_FRAME)
         with patch('cv2.medianBlur', return_value=_FRAME) as mock_blur:
-            f.get()
+            f.process(_FRAME)
         mock_blur.assert_called_once_with(_FRAME, 5)
 
-    def test_get_returns_ndarray(self):
+    def test_process_returns_ndarray(self):
         f = make_filter()
-        f.add(_FRAME)
         with patch('cv2.GaussianBlur', return_value=_FRAME):
-            result = f.get()
+            result = f.process(_FRAME)
         self.assertIsInstance(result, np.ndarray)
 
     def test_kernel_size_matches_width(self):
         f = make_filter(width=7)
-        f.add(_FRAME)
         with patch('cv2.GaussianBlur', return_value=_FRAME) as mock_blur:
-            f.get()
+            f.process(_FRAME)
         _, ksize, _ = mock_blur.call_args[0]
         self.assertEqual(ksize, (7, 7))
 

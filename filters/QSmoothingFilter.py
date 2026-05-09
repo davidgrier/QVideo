@@ -1,7 +1,8 @@
 '''Smoothing filter with selectable method and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
 import cv2
 
@@ -11,7 +12,7 @@ __all__ = ['SmoothingFilter', 'QSmoothingFilter']
 _METHODS = ('gaussian', 'median')
 
 
-class SmoothingFilter(VideoFilter):
+class SmoothingFilter(AsyncVideoFilter):
 
     '''Smoothing filter supporting Gaussian and median blur.
 
@@ -60,20 +61,19 @@ class SmoothingFilter(VideoFilter):
             raise ValueError(f'method must be one of {_METHODS}')
         self._method = method
 
-    def get(self) -> Image | None:
+    def process(self, image: Image) -> Image:
         '''Return the smoothed frame.
+
+        Called in the background thread.
 
         Returns
         -------
-        Image or None
-            Smoothed version of the most recently added frame, or
-            ``None`` if no frame has been added yet.
+        Image
+            Smoothed version of *image*.
         '''
-        if self.data is None:
-            return None
         if self._method == 'median':
-            return cv2.medianBlur(self.data, self._width)
-        return cv2.GaussianBlur(self.data, (self._width, self._width), 0)
+            return cv2.medianBlur(image, self._width)
+        return cv2.GaussianBlur(image, (self._width, self._width), 0)
 
 
 class QSmoothingFilter(QVideoFilter):

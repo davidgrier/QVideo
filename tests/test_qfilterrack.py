@@ -1,7 +1,8 @@
 '''Unit tests for QFilterRack.'''
 import unittest
 import numpy as np
-from qtpy import QtWidgets
+from unittest.mock import patch
+from qtpy import QtCore, QtWidgets
 from QVideo.lib.QFilterRack import QFilterRack, _FilterSlot
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.filters import QSmoothingFilter, QEdgeFilter
@@ -91,7 +92,9 @@ class TestQFilterRackAddByName(unittest.TestCase):
 
     def test_add_by_name_known_filter(self):
         rack = make_rack()
-        rack.addByName('QSmoothingFilter')
+        with patch.object(QtCore.QThread, 'start'), \
+             patch.object(QtCore.QObject, 'moveToThread'):
+            rack.addByName('QSmoothingFilter')
         self.assertIsInstance(rack.filters[0], QSmoothingFilter)
 
     def test_add_by_name_unknown_raises(self):

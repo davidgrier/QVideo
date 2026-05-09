@@ -1,7 +1,8 @@
 '''Unit tests for QFilterBank.'''
 import unittest
 import numpy as np
-from qtpy import QtWidgets
+from unittest.mock import patch
+from qtpy import QtCore, QtWidgets
 from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 
@@ -103,7 +104,9 @@ class TestQFilterBank(unittest.TestCase):
 
     def test_register_by_name_known_filter(self):
         bank = make_bank()
-        bank.registerByName('QSmoothingFilter')
+        with patch.object(QtCore.QThread, 'start'), \
+             patch.object(QtCore.QObject, 'moveToThread'):
+            bank.registerByName('QSmoothingFilter')
         from QVideo.filters import QSmoothingFilter
         self.assertIsInstance(bank.filters[0], QSmoothingFilter)
 
@@ -134,8 +137,10 @@ class TestQFilterBank(unittest.TestCase):
 
     def test_multiple_filters_registered(self):
         bank = make_bank()
-        bank.registerByName('QSmoothingFilter')
-        bank.registerByName('QRGBFilter')
+        with patch.object(QtCore.QThread, 'start'), \
+             patch.object(QtCore.QObject, 'moveToThread'):
+            bank.registerByName('QSmoothingFilter')
+            bank.registerByName('QRGBFilter')
         self.assertEqual(len(bank.filters), 2)
 
 

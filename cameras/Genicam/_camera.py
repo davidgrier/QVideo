@@ -1,8 +1,14 @@
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
 import numpy as np
 import os
 import logging
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from harvesters.core import ImageAcquirer
+    from genicam.genapi import NodeMap
 
 try:
     from harvesters.core import Harvester
@@ -58,13 +64,16 @@ class QGenicamCamera(QCamera):
         Forwarded to :class:`~QVideo.lib.QCamera`.
     '''
 
-    producer: str | None = None
+    producer: str | Path | None = None
     _ALIASES = frozenset(('width', 'height', 'fps'))
 
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraID = cameraID
-        self.nodeMap = None
+        self.harvester: Harvester | None = None
+        self.device: 'ImageAcquirer | None' = None
+        self.nodeMap: 'NodeMap | None' = None
+        self.protected: set[str] = set()
         self.open()
 
     def _initialize(self) -> bool:
@@ -223,7 +232,7 @@ class QGenicamCamera(QCamera):
         return None
 
     @staticmethod
-    def _load_node_map(device):
+    def _load_node_map(device: 'ImageAcquirer') -> 'NodeMap | None':
         '''Reload the node map by re-running harvesters' own loading logic.
 
         Called when harvesters' automatic node map loading fails due to a
@@ -233,9 +242,14 @@ class QGenicamCamera(QCamera):
         port has settled produces a connected map, which is then patched back
         onto the device so that ``device.start()`` also uses it.
 
+        .. warning::
+            Accesses ``device.remote_device._create_node_map``, a private
+            harvesters API.  Validated against harvesters 1.x; may break
+            if harvesters internals change.
+
         Parameters
         ----------
-        device : harvesters ImageAcquirer
+        device : ImageAcquirer
             The device whose remote port will be queried.
 
         Returns
@@ -264,7 +278,7 @@ class QGenicamCamera(QCamera):
         return modes
 
     @staticmethod
-    def _make_getter(feature: IValue):
+    def _make_getter(feature: IValue) -> Callable[[], object]:
         '''Return a zero-argument callable that reads the feature value.
 
         The returned callable checks the current access mode before reading,
@@ -281,7 +295,7 @@ class QGenicamCamera(QCamera):
             return feature.to_string() if is_enum else feature.value
         return getter
 
-    def _make_setter(self, feature: IValue, name: str):
+    def _make_setter(self, feature: IValue, name: str) -> Callable[[QCamera.PropertyValue], None]:
         '''Return a setter that checks current access mode before writing.
 
         If the feature is not currently writable (and is not a protected
@@ -316,16 +330,17 @@ class QGenicamCamera(QCamera):
         elif isinstance(feature, IBoolean):
             feature.value = bool(value)
         elif isinstance(feature, IInteger):
-            value = np.clip(value, feature.min, feature.max)
-            value = (value - feature.min) // feature.inc
-            feature.value = int(value * feature.inc + feature.min)
+            value = int(np.clip(value, feature.min, feature.max))
+            steps = round((value - feature.min) / feature.inc)
+            feature.value = int(np.clip(
+                steps * feature.inc + feature.min, feature.min, feature.max))
         elif isinstance(feature, IFloat):
             feature.value = float(np.clip(value, feature.min, feature.max))
         elif isinstance(feature, IString):
             feature.value = str(value)
 
     @staticmethod
-    def _feature_spec(feature: IValue) -> tuple[type, dict]:
+    def _feature_spec(feature: IValue) -> tuple[type, dict[str, object]]:
         '''Return the Python type and registerProperty metadata for a feature.
 
         IEnumeration must be checked before IInteger: in Spinnaker's SDK

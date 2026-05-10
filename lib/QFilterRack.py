@@ -1,4 +1,5 @@
 '''Dynamic, reorderable pipeline of QVideoFilter widgets.'''
+from collections.abc import Iterator
 from qtpy import QtCore, QtWidgets, QtGui
 from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -29,17 +30,17 @@ class _DragHandle(QtWidgets.QLabel):
         self.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.setCursor(QtCore.Qt.CursorShape.OpenHandCursor)
 
-    def mousePressEvent(self, event: QtCore.QEvent) -> None:
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event: QtCore.QEvent) -> None:
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
             self.dragging.emit(QtGui.QCursor.pos())
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event: QtCore.QEvent) -> None:
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         self.setCursor(QtCore.Qt.CursorShape.OpenHandCursor)
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self.dropped.emit(QtGui.QCursor.pos())
@@ -120,7 +121,7 @@ class _FilterSlot(QtWidgets.QWidget):
         '''
         self._dropIndicator.setVisible(highlighted)
 
-    def resizeEvent(self, event) -> None:
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         btn = self._closeButton
         btn.move(self.width() - btn.width() - 2, 2)
@@ -220,12 +221,12 @@ class QFilterRack(QtWidgets.QWidget):
         item = self._slots.itemAt(index)
         return item.widget() if item else None
 
-    def _iterSlots(self):
+    def _iterSlots(self) -> Iterator['_FilterSlot']:
         for i in range(self._slots.count()):
             if slot := self._slotAt(i):
                 yield slot
 
-    def __call__(self, image: Image) -> Image:
+    def __call__(self, image: Image) -> Image | None:
         '''Apply all registered filters to *image* in order.
 
         Parameters
@@ -235,14 +236,14 @@ class QFilterRack(QtWidgets.QWidget):
 
         Returns
         -------
-        Image
+        Image or None
             Frame after all enabled filters have been applied.
         '''
         for slot in self._iterSlots():
             image = slot._widget(image)
         return image
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[QVideoFilter]:
         return (slot._widget for slot in self._iterSlots())
 
     @property

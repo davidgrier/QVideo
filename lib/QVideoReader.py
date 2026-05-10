@@ -1,5 +1,6 @@
 '''Abstract base class for video file readers.'''
 from abc import ABCMeta, abstractmethod
+from types import TracebackType
 from qtpy import QtCore
 from QVideo.lib import QCamera
 import QVideo
@@ -66,7 +67,10 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
     def __enter__(self) -> 'QVideoReader':
         return self.open()
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self,
+                 exc_type: type[BaseException] | None,
+                 exc_val: BaseException | None,
+                 exc_tb: TracebackType | None) -> None:
         self.close()
 
     @QtCore.Slot()
@@ -200,7 +204,7 @@ class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
         return str(path)
 
     @classmethod
-    def example(cls: 'QVideoReader') -> None:  # pragma: no cover
+    def example(cls: type['QVideoReader']) -> None:  # pragma: no cover
         '''Print file metadata and read a few frames.'''
         filename = cls.examplevideo()
         video = cls(filename)

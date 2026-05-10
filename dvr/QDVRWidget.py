@@ -1,4 +1,5 @@
 '''Composite DVR widget for recording and playing back video streams.'''
+from collections.abc import Callable
 from qtpy import QtCore, QtGui, QtWidgets, uic
 from pathlib import Path
 import numpy as np
@@ -79,18 +80,19 @@ class QDVRWidget(QtWidgets.QFrame):
     UIFILE = Path(__file__).parent / 'QDVRWidget.ui'
     FILENAME = 'default.mkv'
 
-    GetFileName = {True: QtWidgets.QFileDialog.getSaveFileName,
-                   False: QtWidgets.QFileDialog.getOpenFileName}
+    GetFileName: dict[bool, Callable[..., tuple[str, str]]] = {
+        True: QtWidgets.QFileDialog.getSaveFileName,
+        False: QtWidgets.QFileDialog.getOpenFileName}
 
-    Writer = {'.avi': QOpenCVWriter,
-              '.mkv': QOpenCVWriter,
-              '.mp4': QOpenCVWriter}
-    Player = {'.avi': QOpenCVSource,
-              '.mkv': QOpenCVSource,
-              '.mp4': QOpenCVSource}
+    Writer: dict[str, type] = {'.avi': QOpenCVWriter,
+                                '.mkv': QOpenCVWriter,
+                                '.mp4': QOpenCVWriter}
+    Player: dict[str, type] = {'.avi': QOpenCVSource,
+                                '.mkv': QOpenCVSource,
+                                '.mp4': QOpenCVSource}
 
-    FileGroups = {'Lossless Video': {'.avi', '.mkv'},
-                  'Video': {'.mp4'}}
+    FileGroups: dict[str, set[str]] = {'Lossless Video': {'.avi', '.mkv'},
+                                       'Video': {'.mp4'}}
 
     if _h5py_available:
         Writer['.h5'] = QHDF5Writer
@@ -135,10 +137,10 @@ class QDVRWidget(QtWidgets.QFrame):
                  filename: str = '',
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._source = None
-        self._writer = None
-        self._player = None
-        self._thread = None
+        self._source: QVideoSource | None = None
+        self._writer: object | None = None
+        self._player: QVideoSource | None = None
+        self._thread: QtCore.QThread | None = None
         self._setupUi()
         self._connectSignals()
         self.source = source
@@ -330,7 +332,7 @@ class QDVRWidget(QtWidgets.QFrame):
         self.framenumber += 1
 
     @QtCore.Property(QVideoSource)
-    def source(self) -> QVideoSource:
+    def source(self) -> QVideoSource | None:
         '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being recorded.'''
         return self._source
 

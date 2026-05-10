@@ -24,7 +24,7 @@ class VideoFilter(QtCore.QObject):
         super().__init__()
         self.data: Image | None = None
 
-    def __call__(self, data: Image) -> Image:
+    def __call__(self, data: Image) -> Image | None:
         '''Apply the filter to *data* and return the result.
 
         Parameters
@@ -34,8 +34,8 @@ class VideoFilter(QtCore.QObject):
 
         Returns
         -------
-        Image
-            Filtered frame.
+        Image or None
+            Filtered frame, or ``None`` if no result is available yet.
         '''
         self.add(data)
         return self.get()
@@ -50,7 +50,7 @@ class VideoFilter(QtCore.QObject):
         '''
         self.data = data
 
-    def get(self) -> Image:
+    def get(self) -> Image | None:
         '''Return the current filter output.
 
         Returns
@@ -91,7 +91,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
     '''
 
     def __init__(self,
-                 parent: QtWidgets.QWidget,
+                 parent: QtWidgets.QWidget | None,
                  title: str,
                  videoFilter: VideoFilter) -> None:
         super().__init__(title, parent)
@@ -111,7 +111,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
                 f'expected VideoFilter, got {type(videoFilter).__name__}')
         self._filter = videoFilter
 
-    def __call__(self, image: Image) -> Image:
+    def __call__(self, image: Image) -> Image | None:
         '''Apply the filter if enabled, otherwise return *image* unchanged.
 
         Parameters
@@ -121,7 +121,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
 
         Returns
         -------
-        Image
+        Image or None
             Filtered frame if checked, otherwise *image* unchanged.
         '''
         return self.filter(image) if self.isChecked() else image
@@ -146,7 +146,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
         '''
         
     @classmethod
-    def example(cls: 'QVideoFilter') -> None:  # pragma: no cover
+    def example(cls: type['QVideoFilter']) -> None:  # pragma: no cover
         '''Demonstrate the filter widget.
 
         Intended to be called on a concrete subclass that supplies its

@@ -1,4 +1,5 @@
 '''Async VideoFilter base for computationally expensive operations.'''
+from collections.abc import Callable
 from qtpy import QtCore
 from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.videotypes import Image
@@ -13,7 +14,7 @@ class _AsyncWorker(QtCore.QObject):
 
     resultReady = QtCore.Signal(np.ndarray)
 
-    def __init__(self, fn) -> None:
+    def __init__(self, fn: Callable[[Image], Image]) -> None:
         super().__init__()
         self._fn = fn
 
@@ -57,7 +58,7 @@ class AsyncVideoFilter(VideoFilter):
     def __init__(self) -> None:
         super().__init__()
         self._ready = True
-        self._result = None
+        self._result: Image | None = None
         self._worker = _AsyncWorker(self.process)
         self._thread = QtCore.QThread()
         self._worker.moveToThread(self._thread)

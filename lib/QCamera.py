@@ -1,5 +1,7 @@
 '''Abstract base class for all QVideo camera backends.'''
 from abc import ABCMeta, abstractmethod
+from collections.abc import Callable
+from types import TracebackType
 from qtpy import QtCore
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -10,7 +12,10 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['QCamera']
 
-_AUTO = object()  # sentinel: auto-generate getter/setter from _name convention
+class _Auto:
+    '''Sentinel: auto-generate getter/setter from the ``_name`` convention.'''
+
+_AUTO = _Auto()
 
 
 class QCameraMeta(type(QtCore.QObject), ABCMeta):
@@ -84,17 +89,20 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.mutex = QtCore.QMutex()
-        self._properties: dict = {}
-        self._methods: dict = {}
+        self._properties: dict[str, dict[str, object]] = {}
+        self._methods: dict[str, Callable[[], object]] = {}
         self._isOpen = False
 
     def __enter__(self) -> 'QCamera':
         return self.open()
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self,
+                 exc_type: type[BaseException] | None,
+                 exc_val: BaseException | None,
+                 exc_tb: TracebackType | None) -> None:
         self.close()
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> object:
         '''Delegate attribute lookup to registered property getters.
 
         Allows ``camera.fps``, ``camera.width``, etc. to work without
@@ -111,8 +119,12 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     # Registration API
     # ------------------------------------------------------------------
 
-    def registerProperty(self, name: str, getter=_AUTO,
-                         setter=_AUTO, ptype=float, **meta) -> None:
+    def registerProperty(self,
+                         name: str,
+                         getter: Callable[[], PropertyValue] | _Auto = _AUTO,
+                         setter: Callable[[PropertyValue], None] | None | _Auto = _AUTO,
+                         ptype: type[PropertyValue] = float,
+                         **meta) -> None:
         '''Register a named camera property.
 
         By default both getter and setter are auto-generated from the
@@ -147,7 +159,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         self._properties[name] = dict(
             getter=getter, setter=setter, ptype=ptype, **meta)
 
-    def registerMethod(self, name: str, method) -> None:
+    def registerMethod(self, name: str, method: Callable[[], object]) -> None:
         '''Register a named callable method.
 
         Parameters
@@ -373,7 +385,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     # ------------------------------------------------------------------
 
     @classmethod
-    def example(cls) -> None:  # pragma: no cover
+    def example(cls: type['QCamera']) -> None:  # pragma: no cover
         '''Print camera settings and read a few frames.'''
         from pprint import pprint
 

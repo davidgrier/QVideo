@@ -68,11 +68,11 @@ class QVideoScreen(GraphicsLayoutWidget):
         super().__init__(*args, size=size, **kwargs)
         self.framerate = framerate
         self._ready = True
-        self._pending = None
-        self._overlays = []
+        self._pending: Image | None = None
+        self._overlays: list[object] = []
         self._composite = False
-        self._videoShape = None
-        self._source = None
+        self._videoShape: QtCore.QSize | None = None
+        self._source: QVideoSource | None = None
         self._timer = QtCore.QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._setready)
@@ -95,12 +95,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.addItem(self.image)
 
     @property
-    def source(self) -> QVideoSource:
+    def source(self) -> QVideoSource | None:
         '''The video source providing frames to display.'''
         return self._source
 
     @source.setter
-    def source(self, source: QVideoSource) -> None:
+    def source(self, source: QVideoSource | None) -> None:
         if self._source is not None:
             self._source.shapeChanged.disconnect(self.updateShape)
             self._source.newFrame.disconnect(self.setImage)
@@ -214,7 +214,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             ptr.setsize(h * w * 4)
         return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()
 
-    def addOverlay(self, item) -> None:
+    def addOverlay(self, item: object) -> None:
         '''Add a graphics item to the view
 
         Register overlays for visibility control.
@@ -227,7 +227,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.addItem(item)
         self._overlays.append(item)
 
-    def removeOverlay(self, item) -> None:
+    def removeOverlay(self, item: object) -> None:
         '''Remove a previously added graphics item from the view.
 
         Parameters
@@ -305,7 +305,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             window.resize(window.width(), needed)
 
     @classmethod
-    def example(cls: 'QVideoScreen') -> None:  # pragma: no cover
+    def example(cls: type['QVideoScreen']) -> None:  # pragma: no cover
         '''Demonstrate the video screen with a noise source.'''
         import pyqtgraph as pg
         from QVideo.cameras.Noise import QNoiseSource

@@ -13,7 +13,7 @@ logger.setLevel(logging.WARNING)
 
 
 Source = QCamera | QVideoSource
-Description = list[dict[str, str]]
+Description = list[dict[str, object]]
 Change = tuple[Parameter, str, QCamera.PropertyValue]
 Changes = list[Change]
 
@@ -50,7 +50,7 @@ class QCameraTree(ParameterTree):
     '''
 
     @classmethod
-    def _getParameters(cls, parameter: Parameter) -> dict[str, object]:
+    def _getParameters(cls, parameter: Parameter) -> dict[str, Parameter]:
         '''Recursively collect leaf :class:`~pyqtgraph.parametertree.Parameter` nodes.'''
         parameters = dict()
         for child in parameter.children():
@@ -203,7 +203,7 @@ class QCameraTree(ParameterTree):
             self.source.wait()
 
     @classmethod
-    def example(cls: 'QCameraTree') -> None:  # pragma: no cover
+    def example(cls: type['QCameraTree']) -> None:  # pragma: no cover
         '''Demonstrate the widget with a default camera source.'''
         import pyqtgraph as pg
 

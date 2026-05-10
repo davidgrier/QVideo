@@ -1,6 +1,6 @@
 '''Composable pipeline of VideoFilter stages between a source and a display.'''
 import logging
-from typing import Iterator
+from collections.abc import Iterator
 
 from qtpy import QtWidgets
 from QVideo.lib.QVideoFilter import QVideoFilter
@@ -30,7 +30,7 @@ class QFilterBank(QtWidgets.QGroupBox):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__('Display Filters', parent)
-        self._filters = []
+        self._filters: list[QVideoFilter] = []
         self._setupUi()
 
     def _setupUi(self) -> None:
@@ -44,7 +44,7 @@ class QFilterBank(QtWidgets.QGroupBox):
         '''Read-only view of the registered filters.'''
         return list(self._filters)
 
-    def __call__(self, image: Image) -> Image:
+    def __call__(self, image: Image) -> Image | None:
         '''Apply all registered filters to *image* in order.
 
         Parameters
@@ -54,7 +54,7 @@ class QFilterBank(QtWidgets.QGroupBox):
 
         Returns
         -------
-        Image
+        Image or None
             Frame after all enabled filters have been applied.
         '''
         for video_filter in self:

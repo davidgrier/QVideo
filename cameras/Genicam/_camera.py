@@ -59,6 +59,7 @@ class QGenicamCamera(QCamera):
     '''
 
     producer: str | None = None
+    _ALIASES = frozenset(('width', 'height', 'fps'))
 
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -171,48 +172,6 @@ class QGenicamCamera(QCamera):
             logger.warning(f'camera read failed: {e}')
         return frame is not None, frame
 
-    def has_node(self, name: str) -> bool:
-        '''Return ``True`` if the named node exists in the node map.
-
-        Unlike :meth:`node`, this never logs a warning for missing names.
-        Use it to guard calls to :meth:`node` or :meth:`is_readwrite` in
-        reactive code paths (e.g. UI update loops) where absent names are
-        expected and not an error.
-
-        Parameters
-        ----------
-        name : str
-            GenICam node name to look up.
-
-        Returns
-        -------
-        bool
-            ``True`` if the node map is available and contains *name*.
-        '''
-        return self.nodeMap is not None and self.nodeMap.has_node(name)
-
-    def node(self, name: str = 'Root') -> 'IValue | None':
-        '''Return the GenICam node with the given name.
-
-        Parameters
-        ----------
-        name : str
-            Node name to look up.  Default: ``'Root'``.
-
-        Returns
-        -------
-        IValue or None
-            The requested node, or ``None`` if it does not exist.
-        '''
-        if self.nodeMap is None:
-            return None
-        if self.nodeMap.has_node(name):
-            return self.nodeMap.get_node(name)
-        logger.warning(f'node {name} is unknown')
-        return None
-
-    _ALIASES = frozenset(('width', 'height', 'fps'))
-
     @property
     def settings(self) -> QCamera.Settings:
         '''All registered property values, excluding standard-name aliases.
@@ -313,19 +272,13 @@ class QGenicamCamera(QCamera):
         (e.g. enumeration nodes whose access mode changes after acquisition
         starts).
         '''
-        if isinstance(feature, IEnumeration):
-            def getter():
-                mode = feature.node.get_access_mode()
-                if mode in (EAccessMode.RO, EAccessMode.RW):
-                    return feature.to_string()
-                return None
-            return getter
+        is_enum = isinstance(feature, IEnumeration)
 
         def getter():
             mode = feature.node.get_access_mode()
-            if mode in (EAccessMode.RO, EAccessMode.RW):
-                return feature.value
-            return None
+            if mode not in (EAccessMode.RO, EAccessMode.RW):
+                return None
+            return feature.to_string() if is_enum else feature.value
         return getter
 
     def _make_setter(self, feature: IValue, name: str):
@@ -372,30 +325,25 @@ class QGenicamCamera(QCamera):
             feature.value = str(value)
 
     @staticmethod
-    def _feature_ptype(feature: IValue) -> type:
-        '''Return the Python type for a feature.'''
-        if isinstance(feature, IBoolean):
-            return bool
-        if isinstance(feature, IInteger):
-            return int
-        if isinstance(feature, IFloat):
-            return float
-        return str  # IEnumeration, IString
+    def _feature_spec(feature: IValue) -> tuple[type, dict]:
+        '''Return the Python type and registerProperty metadata for a feature.
 
-    @staticmethod
-    def _feature_meta(feature: IValue) -> dict:
-        '''Return extra metadata kwargs for registerProperty.'''
+        IEnumeration must be checked before IInteger: in Spinnaker's SDK
+        IEnumeration inherits from IInteger, so the order is significant.
+        '''
         if isinstance(feature, IEnumeration):
-            return {'limits': [v.symbolic for v in feature.entries]}
+            return str, {'limits': [v.symbolic for v in feature.entries]}
+        if isinstance(feature, IBoolean):
+            return bool, {}
         if isinstance(feature, IInteger):
-            return {'minimum': feature.min, 'maximum': feature.max,
-                    'step': feature.inc}
+            return int, {'minimum': feature.min, 'maximum': feature.max,
+                         'step': feature.inc}
         if isinstance(feature, IFloat):
             meta = {'minimum': feature.min, 'maximum': feature.max}
             if feature.has_inc():
                 meta['step'] = feature.inc
-            return meta
-        return {}
+            return float, meta
+        return str, {}
 
     def _register_features(self, feature: IValue) -> None:
         '''Recurse the node tree to register properties and methods.'''
@@ -409,13 +357,52 @@ class QGenicamCamera(QCamera):
             if mode not in (EAccessMode.RO, EAccessMode.RW):
                 return
             name = feature.node.name
-            getter = self._make_getter(feature)
-            setter = self._make_setter(feature, name)
+            ptype, meta = self._feature_spec(feature)
             self.registerProperty(name,
-                                  getter=getter,
-                                  setter=setter,
-                                  ptype=self._feature_ptype(feature),
-                                  **self._feature_meta(feature))
+                                  getter=self._make_getter(feature),
+                                  setter=self._make_setter(feature, name),
+                                  ptype=ptype,
+                                  **meta)
+
+    def has_node(self, name: str) -> bool:
+        '''Return ``True`` if the named node exists in the node map.
+
+        Unlike :meth:`node`, this never logs a warning for missing names.
+        Use it to guard calls to :meth:`node` or :meth:`is_readwrite` in
+        reactive code paths (e.g. UI update loops) where absent names are
+        expected and not an error.
+
+        Parameters
+        ----------
+        name : str
+            GenICam node name to look up.
+
+        Returns
+        -------
+        bool
+            ``True`` if the node map is available and contains *name*.
+        '''
+        return self.nodeMap is not None and self.nodeMap.has_node(name)
+
+    def node(self, name: str = 'Root') -> 'IValue | None':
+        '''Return the GenICam node with the given name.
+
+        Parameters
+        ----------
+        name : str
+            Node name to look up.  Default: ``'Root'``.
+
+        Returns
+        -------
+        IValue or None
+            The requested node, or ``None`` if it does not exist.
+        '''
+        if self.nodeMap is None:
+            return None
+        if self.nodeMap.has_node(name):
+            return self.nodeMap.get_node(name)
+        logger.warning(f'node {name} is unknown')
+        return None
 
     def is_readwrite(self, feature: str) -> bool:
         '''Return ``True`` if the named feature is currently writable.

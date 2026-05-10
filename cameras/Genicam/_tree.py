@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-_US_UNITS = frozenset({'us', 'µs', 'μs'})
+_MICROSECOND_UNITS = frozenset({'us', 'µs', 'μs'})
 
 __all__ = ['QGenicamTree']
 
@@ -117,7 +117,7 @@ class QGenicamTree(QCameraTree):
         elif isinstance(feature, IFloat):
             this['type'] = 'float'
             unit = feature.unit
-            if unit in _US_UNITS:
+            if unit in _MICROSECOND_UNITS:
                 scale = 1e-6
                 self._scaleFactors[feature.node.name] = scale
                 this['siPrefix'] = True
@@ -162,6 +162,32 @@ class QGenicamTree(QCameraTree):
             self.set(key, value)
         self._ignoreSync = False
 
+    @property
+    def controls(self) -> list[str] | None:
+        return self._controls
+
+    @controls.setter
+    def controls(self, controls: list[str] | None) -> None:
+        self._controls = controls
+        for item in self.listAllItems()[1:]:
+            p = item.param
+            name = p.opts['name']
+            node = self.camera.node(name)
+            visible = controls is None or name in controls
+            p.opts['visibility'] = (node.node.visibility
+                                    if node is not None and visible
+                                    else EVisibility.Invisible)
+        self._updateVisible()
+
+    @property
+    def visibility(self) -> EVisibility:
+        return self._visibility
+
+    @visibility.setter
+    def visibility(self, visibility: EVisibility) -> None:
+        self._visibility = visibility
+        self._updateVisible()
+
     def _handleItemChanges(self) -> None:
         if self._ignoreSync:
             return
@@ -194,6 +220,44 @@ class QGenicamTree(QCameraTree):
                 if self.camera.has_node(name):
                     p.setOpts(enabled=self.camera.is_readwrite(name))
 
+    def _updateLimits(self) -> None:
+        '''Refresh Parameter constraints from the live GenICam node values.
+
+        Called after every property change so that dependent nodes (e.g.
+        ``OffsetX`` range after a ``Width`` change) reflect the current
+        hardware state in the UI.  Only visible leaf parameters are updated.
+        '''
+        for item in self.listAllItems()[1:]:
+            p = item.param
+            if not p.opts.get('visible', False):
+                continue
+            name = p.opts.get('name')
+            if not self.camera.has_node(name):
+                continue
+            node = self.camera.node(name)
+            if isinstance(node, IInteger):
+                p.setOpts(limits=(node.min, node.max), step=node.inc)
+            elif isinstance(node, IFloat):
+                scale = self._scaleFactors.get(name, 1.0)
+                opts = {'limits': (node.min * scale, node.max * scale)}
+                if node.has_inc():
+                    opts['step'] = node.inc * scale
+                p.setOpts(**opts)
+            elif isinstance(node, IEnumeration):
+                p.setOpts(limits=[v.symbolic for v in node.entries])
+
+    def _nodeValue(self, name: str, node: IValue) -> object:
+        '''Read the current value of a node, applying any scale factor.'''
+        if isinstance(node, IEnumeration):
+            value = node.to_string()
+        elif isinstance(node, (IBoolean, IInteger, IFloat, IString)):
+            value = node.value
+        else:
+            return None
+        if name in self._scaleFactors:
+            value *= self._scaleFactors[name]
+        return value
+
     def _updateValues(self) -> None:
         '''Refresh read-only Parameter values from the live GenICam node map.
 
@@ -212,14 +276,9 @@ class QGenicamTree(QCameraTree):
             node = self.camera.node(name)
             if node.node.get_access_mode() != EAccessMode.RO:
                 continue
-            if isinstance(node, IEnumeration):
-                value = node.to_string()
-            elif isinstance(node, (IBoolean, IInteger, IFloat, IString)):
-                value = node.value
-            else:
+            value = self._nodeValue(name, node)
+            if value is None:
                 continue
-            if name in self._scaleFactors:
-                value *= self._scaleFactors[name]
             p.blockSignals(True)
             try:
                 p.setValue(value)
@@ -234,15 +293,15 @@ class QGenicamTree(QCameraTree):
         adjusted during auto-exposure, or ``GainAuto`` reverting from
         ``"Once"`` to ``"Off"`` after the sweep completes.
 
-        Returns immediately if the camera is no longer open(e.g. during
+        Returns immediately if the camera is no longer open (e.g. during
         application shutdown) to prevent accessing freed C++ genapi objects.
 
         Signals are not blocked so that the visual widgets update and
-        ``_handleItemChanges`` fires when a value changes.
-        : attr: `_ignoreSync` is set for the duration so that the resulting
+        :meth:`_handleItemChanges` fires when a value changes.
+        :attr:`_ignoreSync` is set for the duration so that the resulting
         ``sigTreeStateChanged`` emissions do not send values back to the
-        camera.: meth: `_updateEnabled` is called unconditionally so that
-        access-mode changes(e.g. ``ExposureTime`` becoming writable again
+        camera. :meth:`_updateEnabled` is called unconditionally so that
+        access-mode changes (e.g. ``ExposureTime`` becoming writable again
         after the sweep) are reflected even when the controlling node value
         has not changed.
         '''
@@ -262,71 +321,13 @@ class QGenicamTree(QCameraTree):
                 mode = node.node.get_access_mode()
                 if mode not in (EAccessMode.RO, EAccessMode.RW):
                     continue
-                if isinstance(node, IEnumeration):
-                    value = node.to_string()
-                elif isinstance(node, (IBoolean, IInteger, IFloat, IString)):
-                    value = node.value
-                else:
+                value = self._nodeValue(name, node)
+                if value is None:
                     continue
-                if name in self._scaleFactors:
-                    value *= self._scaleFactors[name]
                 p.setValue(value)
             self._updateEnabled()
         finally:
             self._ignoreSync = False
-
-    def _updateLimits(self) -> None:
-        '''Refresh Parameter constraints from the live GenICam node values.
-
-        Called after every property change so that dependent nodes(e.g.
-        ``OffsetX`` range after a ``Width`` change) reflect the current
-        hardware state in the UI.  Only visible leaf parameters are updated.
-        '''
-        for item in self.listAllItems()[1:]:
-            p = item.param
-            if not p.opts.get('visible', False):
-                continue
-            name = p.opts.get('name')
-            if not self.camera.has_node(name):
-                continue
-            node = self.camera.node(name)
-            if isinstance(node, IInteger):
-                p.setOpts(limits=(node.min, node.max), step=node.inc)
-            elif isinstance(node, IFloat):
-                scale = self._scaleFactors.get(name, 1.0)
-                opts = {'limits': (node.min * scale,
-                                   node.max * scale)}
-                if node.has_inc():
-                    opts['step'] = node.inc * scale
-                p.setOpts(**opts)
-            elif isinstance(node, IEnumeration):
-                p.setOpts(limits=[v.symbolic for v in node.entries])
-
-    @property
-    def controls(self) -> list[str] | None:
-        return self._controls
-
-    @controls.setter
-    def controls(self, controls: list[str] | None) -> None:
-        self._controls = controls
-        for item in self.listAllItems()[1:]:
-            p = item.param
-            name = p.opts['name']
-            node = self.camera.node(name)
-            visible = controls is None or name in controls
-            p.opts['visibility'] = (node.node.visibility
-                                    if node is not None and visible
-                                    else EVisibility.Invisible)
-        self._updateVisible()
-
-    @property
-    def visibility(self) -> EVisibility:
-        return self._visibility
-
-    @visibility.setter
-    def visibility(self, visibility: EVisibility) -> None:
-        self._visibility = visibility
-        self._updateVisible()
 
 
 if __name__ == '__main__':  # pragma: no cover

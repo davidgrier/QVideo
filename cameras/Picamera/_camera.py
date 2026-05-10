@@ -73,8 +73,12 @@ class QPicamera(QCamera):
         self._width = int(width)
         self._height = int(height)
         self._gray = bool(gray)
-        self._controlValues: dict = {}
+        self._controlValues: dict[str, object] = {}
+        # Tracks whether the picamera2 hardware is actively streaming.
+        # Distinct from self._isOpen so that _setControl can cache values
+        # between a stop/restart cycle (e.g. when fps changes while closed).
         self._deviceOpen: bool = False
+        self.device: object | None = None
         self.open()
 
     def _initialize(self) -> bool:
@@ -135,7 +139,7 @@ class QPicamera(QCamera):
             self._controlValues.update(pending)
         return True
 
-    def _probeControls(self, metadata: dict) -> None:
+    def _probeControls(self, metadata: dict[str, object]) -> None:
         '''Register picamera2 controls supported by this camera.
 
         For each name in :data:`_CONTROL_TYPES` that the camera reports in
@@ -167,7 +171,7 @@ class QPicamera(QCamera):
                 ptype=ptype,
                 **meta)
 
-    def _registerFrameRate(self, metadata: dict) -> None:
+    def _registerFrameRate(self, metadata: dict[str, object]) -> None:
         '''Register the ``fps`` property if the camera supports it.
 
         Frame rate is controlled via ``FrameDurationLimits``, a picamera2
@@ -196,7 +200,7 @@ class QPicamera(QCamera):
             maximum=1_000_000 / lo,
         )
 
-    def _probeFocus(self, metadata: dict) -> None:
+    def _probeFocus(self, metadata: dict[str, object]) -> None:
         '''Register autofocus controls if the camera supports AF.
 
         AF support is detected by the presence of ``AfTrigger`` in
@@ -234,7 +238,7 @@ class QPicamera(QCamera):
         duration = int(1_000_000 / fps)
         self._setControl('FrameDurationLimits', (duration, duration))
 
-    def _setControl(self, name: str, value) -> None:
+    def _setControl(self, name: str, value: object) -> None:
         '''Update the control cache and apply to the device if it is open.
 
         When called while the device is closed (e.g. fps changed between
@@ -302,6 +306,9 @@ class QPicamera(QCamera):
             main={'size': (w, h), 'format': fmt})
         self.device.configure(config)
         self.device.start()
+        # Re-apply cached controls.  Note: _reconfigure does not rebuild
+        # _properties, so if the new configuration changes available controls
+        # or their ranges the stale registrations will persist silently.
         if self._controlValues:
             self.device.set_controls(self._controlValues)
 
@@ -360,7 +367,7 @@ class QPicameraSource(QVideoSource):
     def __init__(self, *args,
                  camera: QPicamera | None = None,
                  **kwargs) -> None:
-        camera = camera or QPicamera(*args, **kwargs)
+        camera = camera if camera is not None else QPicamera(*args, **kwargs)
         super().__init__(camera)
 
 

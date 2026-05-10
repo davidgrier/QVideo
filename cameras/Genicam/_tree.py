@@ -1,4 +1,5 @@
 from typing import Any
+import math
 from qtpy import QtCore
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Genicam import QGenicamCamera
@@ -52,6 +53,7 @@ class QGenicamTree(QCameraTree):
                  controls: list[str] | None = None,
                  **kwargs) -> None:
         self._scaleFactors: dict[str, float] = {}
+        self._decParams: set[str] = set()
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
         self._visibility = visibility
@@ -125,11 +127,18 @@ class QGenicamTree(QCameraTree):
             else:
                 scale = 1.0
             this['value'] = this['default'] = feature.value * scale
-            this['min'] = feature.min * scale
-            this['max'] = feature.max * scale
+            lo = feature.min * scale
+            hi = feature.max * scale
+            this['min'] = lo
+            this['max'] = hi
             this['units'] = unit
             if feature.has_inc():
                 this['step'] = feature.inc * scale
+            if lo > 0 and hi / lo > 100:
+                self._decParams.add(feature.node.name)
+                v = feature.value * scale
+                if v > 0:
+                    this['step'] = 10 ** (math.floor(math.log10(v)) - 1)
         elif isinstance(feature, IString):
             this['type'] = 'str'
             this['value'] = this['default'] = feature.value
@@ -240,7 +249,14 @@ class QGenicamTree(QCameraTree):
             elif isinstance(node, IFloat):
                 scale = self._scaleFactors.get(name, 1.0)
                 opts = {'limits': (node.min * scale, node.max * scale)}
-                if node.has_inc():
+                if name in self._decParams:
+                    value = p.value()
+                    if value > 0:
+                        step = 10 ** (math.floor(math.log10(value)) - 1)
+                        if node.has_inc():
+                            step = max(step, node.inc * scale)
+                        opts['step'] = step
+                elif node.has_inc():
                     opts['step'] = node.inc * scale
                 p.setOpts(**opts)
             elif isinstance(node, IEnumeration):

@@ -1,5 +1,9 @@
+from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
 import logging
+
+if TYPE_CHECKING:
+    from picamera2 import Picamera2
 
 try:
     from picamera2 import Picamera2
@@ -78,7 +82,7 @@ class QPicamera(QCamera):
         # Distinct from self._isOpen so that _setControl can cache values
         # between a stop/restart cycle (e.g. when fps changes while closed).
         self._deviceOpen: bool = False
-        self.device: object | None = None
+        self.device: 'Picamera2 | None' = None
         self.open()
 
     def _initialize(self) -> bool:

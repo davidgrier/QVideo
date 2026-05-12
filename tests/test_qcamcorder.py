@@ -1,8 +1,10 @@
 '''Unit tests for QCamcorder.'''
 import unittest
+import numpy as np
 from qtpy import QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
+from QVideo.lib.QSnapshot import QSnapshot
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -39,6 +41,15 @@ class TestQCamcorderInit(unittest.TestCase):
         tree = QNoiseTree()
         widget = QCamcorder(tree)
         self.assertIs(widget.source, tree.source)
+
+    def test_snapshot_is_qsnapshot(self):
+        self.assertIsInstance(make_camcorder()._snapshot, QSnapshot)
+
+    def test_screen_newframe_connected_to_snapshot(self):
+        widget = make_camcorder()
+        frame = np.zeros((4, 6, 3), dtype=np.uint8)
+        widget.screen.newFrame.emit(frame)
+        self.assertIs(widget._snapshot._frame, frame)
 
 
 class TestQCamcorderCloseEvent(unittest.TestCase):

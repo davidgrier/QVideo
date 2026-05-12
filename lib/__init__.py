@@ -48,9 +48,10 @@ from .QVideoWriter import QVideoWriter
 from .chooser import choose_camera
 from .QListCameras import QListCameras
 from .QFPSMeter import QFPSMeter
+from .QSnapshot import QSnapshot
 
 __all__ = '''Image
 clickable choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen
-QFPSMeter VideoFilter QVideoFilter AsyncVideoFilter'''.split()
+QFPSMeter QSnapshot VideoFilter QVideoFilter AsyncVideoFilter'''.split()

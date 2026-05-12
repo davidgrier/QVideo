@@ -24,7 +24,7 @@ If no flag is given, a noise camera is used as a fallback.
 '''
 
 from qtpy import QtCore, QtWidgets, QtGui, uic
-from QVideo.lib import QCameraTree, QVideoSource
+from QVideo.lib import QCameraTree, QVideoSource, QSnapshot
 from pathlib import Path
 
 
@@ -61,6 +61,7 @@ class QCamcorder(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
         self._setupUi()
+        self._snapshot = QSnapshot(self)
         self._connectSignals()
         self.screen.source = self.source
         self.dvr.source = self.source
@@ -73,6 +74,7 @@ class QCamcorder(QtWidgets.QWidget):
 
     def _connectSignals(self) -> None:
         self.dvr.playing.connect(self.dvrPlayback)
+        self.screen.newFrame.connect(self._snapshot.newFrame)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         '''Stop the camera source when the widget is closed.'''

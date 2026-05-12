@@ -114,6 +114,33 @@ multiples of 8 for codec compatibility.
 .. automodule:: QVideo.filters.QROIFilter
    :members:
 
+Foreground estimation
+---------------------
+
+:class:`~QVideo.filters.QForegroundEstimator.ForegroundEstimator` uses
+OpenCV's MOG2 Gaussian-mixture background subtractor to maintain a persistent
+background model ``B(x, y, t)`` and returns each frame divided by that
+background.  For a multiplicative image model ``I = B × F`` the output
+approximates the foreground modulation ``F ≈ I / B``.  Unlike the median-based
+:class:`~QVideo.filters.Normalize.Normalize` pipeline, MOG2 remains accurate
+even when foreground objects occupy a pixel for more than half the time, because
+the mixture tracks the most persistent Gaussian component rather than a simple
+median.
+
+The output is scaled by a configurable *mean* (default 128) and cast to
+``uint8``, so that unmodulated pixels — where the frame equals the background —
+map to *mean*.  Pixels where the foreground brightens the image map above *mean*;
+darker foreground maps below.
+
+The companion :class:`~QVideo.filters.QForegroundEstimator.QForegroundEstimator`
+widget exposes two controls: *history* (number of frames integrated into the
+model) and *threshold* (the Mahalanobis-distance threshold used to classify a
+pixel as foreground).  Changing either control resets the background model and
+triggers a fresh learning phase.
+
+.. automodule:: QVideo.filters.QForegroundEstimator
+   :members:
+
 Blob coloring
 -------------
 

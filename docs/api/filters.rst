@@ -125,13 +125,3 @@ visually.
 .. automodule:: QVideo.filters.QBlobFilter
    :members:
 
-YOLO confidence threshold
--------------------------
-
-:class:`~QVideo.filters.QYOLOFilter.QYOLOFilter` post-processes detections
-from a YOLO model by suppressing any bounding box whose confidence score
-falls below an adjustable threshold.  It is intended to be chained after the
-:class:`~QVideo.overlays.yolo.QYoloWidget` analysis step in a filter pipeline.
-
-.. automodule:: QVideo.filters.QYOLOFilter
-   :members:

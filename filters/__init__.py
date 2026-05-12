@@ -8,8 +8,6 @@ from .QRGBFilter import RGBFilter, QRGBFilter
 from .QROIFilter import ROIFilter, QROIFilter
 from .QSampleHold import SampleHold, QSampleHold
 from .QThresholdFilter import ThresholdFilter, QThresholdFilter
-from .QYOLOFilter import YOLOFilter, QYOLOFilter
-
 
 __all__ = '''
 Median MoMedian
@@ -21,5 +19,4 @@ RGBFilter QRGBFilter
 ROIFilter QROIFilter
 SampleHold QSampleHold
 ThresholdFilter QThresholdFilter
-YOLOFilter QYOLOFilter
 '''.split()

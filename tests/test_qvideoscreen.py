@@ -334,19 +334,18 @@ class TestResizeEvent(unittest.TestCase):
             screen.resizeEvent(MagicMock())
         mock_fit.assert_not_called()
 
-    def test_resize_event_reapplies_range_when_shape_known(self):
+    def test_resize_event_sets_range_needs_update_when_shape_known(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        with patch.object(screen.view, 'setRange') as mock_range:
-            screen.resizeEvent(MagicMock())
-        mock_range.assert_called_with(
-            xRange=(0, 1280), yRange=(0, 1024), padding=0, update=True)
+        screen._rangeNeedsUpdate = False
+        screen.resizeEvent(MagicMock())
+        self.assertTrue(screen._rangeNeedsUpdate)
 
-    def test_resize_event_does_not_set_range_without_shape(self):
+    def test_resize_event_does_not_set_flag_without_shape(self):
         screen = make_screen()
-        with patch.object(screen.view, 'setRange') as mock_range:
-            screen.resizeEvent(MagicMock())
-        mock_range.assert_not_called()
+        screen._rangeNeedsUpdate = False
+        screen.resizeEvent(MagicMock())
+        self.assertFalse(screen._rangeNeedsUpdate)
 
 
 class TestFitToVideo(unittest.TestCase):
@@ -435,15 +434,14 @@ class TestFitToVideo(unittest.TestCase):
             screen._fitToVideo()
         mock_win.resize.assert_called_once_with(1340, 1084)
 
-    def test_reapplies_setrange_after_resize(self):
+    def test_fit_to_video_calls_window_resize(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
         mock_win = self._make_mock_window(640, 480)
         with patch.object(screen, 'window', return_value=mock_win), \
-             patch.object(screen.view, 'setRange') as mock_range:
+             self._mock_primary_screen():
             screen._fitToVideo()
-        mock_range.assert_called_with(
-            xRange=(0, 1280), yRange=(0, 1024), padding=0, update=True)
+        mock_win.resize.assert_called_once()
 
 
 class TestUpdateShape(unittest.TestCase):

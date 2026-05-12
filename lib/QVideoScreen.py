@@ -303,9 +303,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''
         super().resizeEvent(event)
         if getattr(self, '_videoShape', None) is not None:
-            self.view.setRange(xRange=(0, self._videoShape.width()),
-                               yRange=(0, self._videoShape.height()),
-                               padding=0, update=True)
+            self._rangeNeedsUpdate = True
 
     @QtCore.Slot()
     def _fitToVideo(self) -> None:
@@ -335,9 +333,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         new_h = max(1, ideal_h) + h_extra
         if (new_w, new_h) != (window.width(), window.height()):
             window.resize(new_w, new_h)
-        self.view.setRange(xRange=(0, shape.width()),
-                           yRange=(0, shape.height()),
-                           padding=0, update=True)
 
     @classmethod
     def example(cls: type['QVideoScreen']) -> None:  # pragma: no cover

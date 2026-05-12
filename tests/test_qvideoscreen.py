@@ -215,6 +215,34 @@ class TestSetImage(unittest.TestCase):
             screen.setImage(_FRAME)
         self.assertFalse(screen._ready)
 
+    def test_setimage_applies_range_when_flag_set(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(1280, 1024)
+        screen._rangeNeedsUpdate = True
+        with patch.object(screen.view, 'setRange') as mock_range, \
+             patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
+        mock_range.assert_called_with(
+            xRange=(0, 1280), yRange=(0, 1024), padding=0, update=True)
+
+    def test_setimage_clears_flag_after_applying_range(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(1280, 1024)
+        screen._rangeNeedsUpdate = True
+        with patch.object(screen.view, 'setRange'), \
+             patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
+        self.assertFalse(screen._rangeNeedsUpdate)
+
+    def test_setimage_does_not_apply_range_when_flag_clear(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(1280, 1024)
+        screen._rangeNeedsUpdate = False
+        with patch.object(screen.view, 'setRange') as mock_range, \
+             patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
+        mock_range.assert_not_called()
+
 
 class TestSetready(unittest.TestCase):
 

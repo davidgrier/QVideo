@@ -1,5 +1,5 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
-from qtpy import QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.videotypes import Image
@@ -285,6 +285,21 @@ class QVideoScreen(GraphicsLayoutWidget):
             widget.updateGeometry()
         QtCore.QTimer.singleShot(0, self._fitToVideo)
 
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        '''Re-apply the ViewBox range after every resize.
+
+        Qt and pyqtgraph can each trigger resize events during window
+        layout — including after :meth:`_fitToVideo` sets the range.
+        Re-applying here ensures the range is always correct at the end
+        of any resize cycle without causing a feedback loop (this method
+        does not resize the window).
+        '''
+        super().resizeEvent(event)
+        if getattr(self, '_videoShape', None) is not None:
+            self.view.setRange(xRange=(0, self._videoShape.width()),
+                               yRange=(0, self._videoShape.height()),
+                               padding=0, update=True)
+
     @QtCore.Slot()
     def _fitToVideo(self) -> None:
         '''Resize the containing window to show the video at native resolution.
@@ -298,7 +313,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             return
         shape = self._videoShape
         window = self.window()
-        available = window.screen().availableGeometry()
+        available = QtWidgets.QApplication.primaryScreen().availableGeometry()
         w_extra = window.width() - self.width()
         h_extra = window.height() - self.height()
         max_w = available.width() - w_extra

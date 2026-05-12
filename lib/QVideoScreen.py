@@ -287,22 +287,35 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @QtCore.Slot()
     def _fitToVideo(self) -> None:
-        '''Resize the containing window to match the video aspect ratio.
+        '''Resize the containing window to show the video at native resolution.
 
-        Computes the height the widget should have given its current
-        width and the source aspect ratio, then adjusts the top-level
-        window height by the difference. Only has effect when a source
-        is connected.
+        Targets the video's native pixel dimensions, capped by the available
+        screen area.  Both width and height are adjusted.  After resizing,
+        the ViewBox range is re-applied so that pyqtgraph's internal relayout
+        cannot reset it to the pre-resize physical dimensions.
         '''
         if not self.hasHeightForWidth():
             return
-        target_h = self.heightForWidth(self.width())
-        if target_h <= 0:
-            return
+        shape = self._videoShape
         window = self.window()
-        needed = window.height() + target_h - self.height()
-        if needed != window.height():
-            window.resize(window.width(), needed)
+        available = window.screen().availableGeometry()
+        w_extra = window.width() - self.width()
+        h_extra = window.height() - self.height()
+        max_w = available.width() - w_extra
+        max_h = available.height() - h_extra
+        ideal_w = min(shape.width(), max_w)
+        ideal_h = min(shape.height(), max_h)
+        if ideal_w * shape.height() > ideal_h * shape.width():
+            ideal_w = ideal_h * shape.width() // shape.height()
+        else:
+            ideal_h = ideal_w * shape.height() // shape.width()
+        new_w = max(1, ideal_w) + w_extra
+        new_h = max(1, ideal_h) + h_extra
+        if (new_w, new_h) != (window.width(), window.height()):
+            window.resize(new_w, new_h)
+        self.view.setRange(xRange=(0, shape.width()),
+                           yRange=(0, shape.height()),
+                           padding=0, update=True)
 
     @classmethod
     def example(cls: type['QVideoScreen']) -> None:  # pragma: no cover

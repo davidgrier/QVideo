@@ -88,6 +88,25 @@ QFPSMeter
 .. automodule:: QVideo.lib.QFPSMeter
    :members:
 
+QSnapshot
+---------
+
+:class:`~QVideo.lib.QSnapshot.QSnapshot` captures the most recent frame
+from any ``newFrame`` signal and saves it to disk on demand.  It has no
+visual presence — drop it into any application as a :class:`~qtpy.QtCore.QObject`
+and two keyboard shortcuts become available:
+
+- ``Ctrl+Shift+S`` — save a timestamped PNG to the user's home directory
+- ``Ctrl+Shift+Alt+S`` — open a file dialog pre-filled with the same name
+
+The source connected to :meth:`~QVideo.lib.QSnapshot.QSnapshot.newFrame`
+determines what is captured: raw frames (``QVideoSource.newFrame``),
+filtered frames (``QVideoScreen.newFrame``), or the fully rendered scene
+with overlays (``QVideoScreen.newFrame`` with ``composite=True``).
+
+.. automodule:: QVideo.lib.QSnapshot
+   :members:
+
 QListCameras
 ------------
 

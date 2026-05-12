@@ -30,6 +30,8 @@ QVideoWriter
     Abstract base class for video file writers.
 QFPSMeter
     Frame-rate measurement utility.
+QSnapshot
+    Hotkey-triggered still-frame capture from any ``newFrame`` signal.
 QListCameras
     Widget listing available camera backends.
 '''

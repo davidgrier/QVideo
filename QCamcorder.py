@@ -41,6 +41,12 @@ class QCamcorder(QtWidgets.QWidget):
     starts playback the screen is switched to the playback stream and the
     camera controls are disabled until playback ends.
 
+    A :class:`~QVideo.lib.QSnapshot.QSnapshot` is wired to the screen's
+    ``newFrame`` signal, enabling still-frame capture via two hotkeys:
+
+    - ``Ctrl+Shift+S`` — save a timestamped PNG to the home directory
+    - ``Ctrl+Shift+Alt+S`` — open a file dialog pre-filled with the same name
+
     Parameters
     ----------
     cameraWidget : QCameraTree

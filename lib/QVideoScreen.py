@@ -294,9 +294,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         if not self.hasHeightForWidth():
             return
         shape = self._videoShape
-        self.view.setRange(xRange=(0, shape.width()),
-                           yRange=(0, shape.height()),
-                           padding=0, update=True)
         window = self.window()
         frame = window.frameGeometry()
         screen = (QtWidgets.QApplication.screenAt(frame.center())
@@ -325,6 +322,21 @@ class QVideoScreen(GraphicsLayoutWidget):
             f'max={max_w}x{max_h} -> new={new_w}x{new_h}')
         if (new_w, new_h) != (window.width(), window.height()):
             window.resize(new_w, new_h)
+            # resizeEvent will call view.setRange after the viewport shrinks
+        else:
+            self.view.setRange(xRange=(0, shape.width()),
+                               yRange=(0, shape.height()),
+                               padding=0, update=True)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        '''Update the ViewBox range to match the video after the viewport is resized.'''
+        super().resizeEvent(event)
+        shape = getattr(self, '_videoShape', None)
+        if shape is not None:
+            self.view.setRange(
+                xRange=(0, shape.width()),
+                yRange=(0, shape.height()),
+                padding=0, update=True)
 
     @classmethod
     def example(cls: type['QVideoScreen']) -> None:  # pragma: no cover

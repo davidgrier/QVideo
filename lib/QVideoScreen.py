@@ -72,7 +72,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._overlays: list[object] = []
         self._composite = False
         self._videoShape: QtCore.QSize | None = None
-        self._rangeNeedsUpdate: bool = False
         self._source: QVideoSource | None = None
         self._timer = QtCore.QTimer(self)
         self._timer.setSingleShot(True)
@@ -152,11 +151,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''
         if self._ready:
             filtered = self.filter(image)
-            if self._rangeNeedsUpdate and self._videoShape is not None:
-                self._rangeNeedsUpdate = False
-                self.view.setRange(xRange=(0, self._videoShape.width()),
-                                   yRange=(0, self._videoShape.height()),
-                                   padding=0, update=True)
             self.image.setImage(filtered, autoLevels=False)
             self.newFrame.emit(
                 self._renderComposite() if self._composite else filtered)
@@ -281,7 +275,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''
         logger.debug(f'Resizing to {shape}')
         self._videoShape = shape
-        self._rangeNeedsUpdate = True
         self.view.setRange(xRange=(0, shape.width()),
                            yRange=(0, shape.height()),
                            padding=0, update=True)
@@ -291,19 +284,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         while (widget := widget.parentWidget()) is not None:
             widget.updateGeometry()
         QtCore.QTimer.singleShot(0, self._fitToVideo)
-
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        '''Re-apply the ViewBox range after every resize.
-
-        Qt and pyqtgraph can each trigger resize events during window
-        layout — including after :meth:`_fitToVideo` sets the range.
-        Re-applying here ensures the range is always correct at the end
-        of any resize cycle without causing a feedback loop (this method
-        does not resize the window).
-        '''
-        super().resizeEvent(event)
-        if getattr(self, '_videoShape', None) is not None:
-            self._rangeNeedsUpdate = True
 
     @QtCore.Slot()
     def _fitToVideo(self) -> None:

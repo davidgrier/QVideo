@@ -103,15 +103,10 @@ class QCamcorder(QtWidgets.QWidget):
         playback : bool
             ``True`` when DVR playback begins, ``False`` when it ends.
         '''
-        try:
-            if playback:
-                self.source.newFrame.disconnect(self.screen.setImage)
-                self.dvr.newFrame.connect(self.screen.setImage)
-            else:
-                self.dvr.newFrame.disconnect(self.screen.setImage)
-                self.source.newFrame.connect(self.screen.setImage)
-        except (RuntimeError, TypeError):
-            pass
+        if playback:
+            self.screen.source = self.dvr.player
+        else:
+            self.screen.source = self.source
         self.cameraWidget.setDisabled(playback)
 
     @property

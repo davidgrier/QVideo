@@ -343,6 +343,11 @@ class QDVRWidget(QtWidgets.QFrame):
         self._source = source
         self.recordButton.setDisabled(source is None)
 
+    @property
+    def player(self) -> QVideoSource | None:
+        '''The active playback source, or ``None`` when not playing.'''
+        return self._player
+
     @QtCore.Property(str)
     def filename(self) -> str:
         '''Current save filename.'''

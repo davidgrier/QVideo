@@ -107,7 +107,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._source = source
         if source is None:
             return
-        self.updateShape(source.shape)
+        if source.shape is not None:
+            self.updateShape(source.shape)
         self._source.shapeChanged.connect(self.updateShape)
         self._source.newFrame.connect(self.setImage)
 

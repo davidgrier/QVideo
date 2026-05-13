@@ -1,13 +1,23 @@
 '''Unit tests for QCamcorder.'''
 import unittest
 import numpy as np
-from qtpy import QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.lib.QSnapshot import QSnapshot
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+
+class MockSource(QtCore.QObject):
+    '''Minimal QVideoSource stand-in with the signals QVideoScreen expects.'''
+    newFrame = QtCore.Signal(np.ndarray)
+    shapeChanged = QtCore.Signal(QtCore.QSize)
+
+    def __init__(self):
+        super().__init__()
+        self.shape = QtCore.QSize(320, 240)
 
 
 def make_camcorder():
@@ -70,45 +80,32 @@ class TestQCamcorderCloseEvent(unittest.TestCase):
 
 class TestQCamcorderDvrPlayback(unittest.TestCase):
 
+    def setUp(self):
+        self.widget = make_camcorder()
+        self.mock_player = MockSource()
+        self.widget.dvr._player = self.mock_player
+
     def test_dvr_playback_true_disables_camera_widget(self):
-        widget = make_camcorder()
-        widget.dvrPlayback(True)
-        self.assertFalse(widget.cameraWidget.isEnabled())
+        self.widget.dvrPlayback(True)
+        self.assertFalse(self.widget.cameraWidget.isEnabled())
 
-    def test_dvr_playback_true_disconnects_source_from_screen(self):
-        widget = make_camcorder()
-        widget.dvrPlayback(True)
-        with self.assertRaises(Exception):
-            widget.source.newFrame.disconnect(widget.screen.setImage)
-
-    def test_dvr_playback_true_connects_dvr_to_screen(self):
-        widget = make_camcorder()
-        widget.dvrPlayback(True)
-        widget.dvr.newFrame.disconnect(widget.screen.setImage)
+    def test_dvr_playback_true_sets_screen_source_to_player(self):
+        self.widget.dvrPlayback(True)
+        self.assertIs(self.widget.screen.source, self.mock_player)
 
     def test_dvr_playback_false_enables_camera_widget(self):
-        widget = make_camcorder()
-        widget.dvrPlayback(True)
-        widget.dvrPlayback(False)
-        self.assertTrue(widget.cameraWidget.isEnabled())
+        self.widget.dvrPlayback(True)
+        self.widget.dvrPlayback(False)
+        self.assertTrue(self.widget.cameraWidget.isEnabled())
 
-    def test_dvr_playback_false_reconnects_source_to_screen(self):
-        widget = make_camcorder()
-        widget.dvrPlayback(True)
-        widget.dvrPlayback(False)
-        widget.source.newFrame.disconnect(widget.screen.setImage)
-
-    def test_dvr_playback_false_disconnects_dvr_from_screen(self):
-        widget = make_camcorder()
-        widget.dvrPlayback(True)
-        widget.dvrPlayback(False)
-        with self.assertRaises(Exception):
-            widget.dvr.newFrame.disconnect(widget.screen.setImage)
+    def test_dvr_playback_false_restores_screen_source(self):
+        self.widget.dvrPlayback(True)
+        self.widget.dvrPlayback(False)
+        self.assertIs(self.widget.screen.source, self.widget.source)
 
     def test_dvr_playback_false_without_prior_true_does_not_raise(self):
-        '''Guard catches RuntimeError when dvr.newFrame was never connected.'''
-        widget = make_camcorder()
-        widget.dvrPlayback(False)  # should not raise
+        self.widget.dvr._player = None
+        self.widget.dvrPlayback(False)  # should not raise
 
 
 if __name__ == '__main__':

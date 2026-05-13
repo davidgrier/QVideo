@@ -284,28 +284,24 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @QtCore.Slot()
     def _fitToVideo(self) -> None:
-        '''Resize the containing window to show the video at native resolution.
+        '''Resize the containing window to fit the video at native resolution.
 
-        Targets the video's native pixel dimensions, capped by the space
-        remaining on screen from the window's current position.  This prevents
-        the window from growing off-screen and pushing controls out of reach.
-        Both width and height are adjusted.
+        Caps at the full available area of whichever screen the window is on,
+        so the result is the same whether the window has been shown or not.
+        Both width and height are adjusted while preserving the video aspect ratio.
         '''
         if not self.hasHeightForWidth():
             return
         shape = self._videoShape
         window = self.window()
-        frame = window.frameGeometry()
-        screen = (QtWidgets.QApplication.screenAt(frame.center())
+        screen = (QtWidgets.QApplication.screenAt(window.pos())
                   or QtWidgets.QApplication.primaryScreen())
         available = screen.availableGeometry()
         sh = window.sizeHint()
         w_extra = sh.width() - shape.width()
         h_extra = sh.height() - shape.height()
-        max_w = available.right() - frame.right() + window.width() - w_extra
-        max_h = available.bottom() - frame.bottom() + window.height() - h_extra
-        ideal_w = min(shape.width(), max_w)
-        ideal_h = min(shape.height(), max_h)
+        ideal_w = min(shape.width(), available.width() - w_extra)
+        ideal_h = min(shape.height(), available.height() - h_extra)
         if ideal_w * shape.height() > ideal_h * shape.width():
             ideal_w = ideal_h * shape.width() // shape.height()
         else:
@@ -314,13 +310,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         new_h = max(1, ideal_h) + h_extra
         self.setMinimumSize(min(shape.width() // 2, ideal_w),
                             min(shape.height() // 2, ideal_h))
-        logger.debug(
-            f'_fitToVideo: video={shape.width()}x{shape.height()} '
-            f'frame={frame.left()},{frame.top()} {frame.width()}x{frame.height()} '
-            f'window={window.width()}x{window.height()} '
-            f'sizeHint={sh.width()}x{sh.height()} '
-            f'available={available.left()},{available.top()} {available.width()}x{available.height()} '
-            f'max={max_w}x{max_h} -> new={new_w}x{new_h}')
         if (new_w, new_h) != (window.width(), window.height()):
             window.resize(new_w, new_h)
             # resizeEvent will call view.setRange after the viewport shrinks

@@ -324,13 +324,11 @@ class TestResizeEvent(unittest.TestCase):
 
 class TestFitToVideo(unittest.TestCase):
 
-    def _make_mock_window(self, win_w, win_h, win_x=0, win_y=0,
-                          sh_w=None, sh_h=None):
+    def _make_mock_window(self, win_w, win_h, sh_w=None, sh_h=None):
         mock_win = MagicMock()
         mock_win.width.return_value = win_w
         mock_win.height.return_value = win_h
-        mock_win.frameGeometry.return_value = QtCore.QRect(
-            win_x, win_y, win_w, win_h)
+        mock_win.pos.return_value = QtCore.QPoint(0, 0)
         mock_win.sizeHint.return_value = QtCore.QSize(
             sh_w if sh_w is not None else win_w,
             sh_h if sh_h is not None else win_h)
@@ -393,18 +391,19 @@ class TestFitToVideo(unittest.TestCase):
         self.assertLessEqual(new_w, 2560)
         self.assertLessEqual(new_h, 1600)
 
-    def test_caps_at_room_from_window_position(self):
-        # window at (1400, 900) on 2560x1600 screen leaves 1160x700 of room
+    def test_caps_at_full_screen_regardless_of_window_position(self):
+        # Cap uses the full available screen width, not just room to the right
+        # of the current window position — gives consistent results before and
+        # after the window has been shown.
         screen = make_screen()
         screen._videoShape = QtCore.QSize(3840, 2160)
-        mock_win = self._make_mock_window(640, 480, win_x=1400, win_y=900,
-                                          sh_w=3840, sh_h=2160)
+        mock_win = self._make_mock_window(640, 480, sh_w=3840, sh_h=2160)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen(screen_w=2560, screen_h=1600):
             screen._fitToVideo()
         new_w, new_h = mock_win.resize.call_args[0]
-        self.assertLessEqual(new_w, 1160)
-        self.assertLessEqual(new_h, 700)
+        self.assertLessEqual(new_w, 2560)
+        self.assertLessEqual(new_h, 1600)
 
     def test_maintains_aspect_ratio_when_capping(self):
         screen = make_screen()

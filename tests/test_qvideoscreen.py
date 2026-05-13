@@ -276,8 +276,7 @@ class TestSizeHints(unittest.TestCase):
 
     def test_has_height_for_width_true_after_update_shape(self):
         screen = make_screen()
-        with patch.object(screen.view, 'setRange'):
-            screen.updateShape(QtCore.QSize(640, 480))
+        screen.updateShape(QtCore.QSize(640, 480))
         self.assertTrue(screen.hasHeightForWidth())
 
     def test_height_for_width_preserves_aspect_ratio(self):
@@ -420,37 +419,45 @@ class TestFitToVideo(unittest.TestCase):
         screen._videoShape = QtCore.QSize(1280, 1024)
         mock_win = self._make_mock_window(640, 480)
         with patch.object(screen, 'window', return_value=mock_win), \
+             patch.object(screen.view, 'setRange'), \
              self._mock_screen():
             screen._fitToVideo()
         mock_win.resize.assert_called_once()
 
-
-class TestUpdateShape(unittest.TestCase):
-
-    def test_updateshape_sets_range(self):
+    def test_fit_to_video_sets_range(self):
         screen = make_screen()
-        shape = QtCore.QSize(1280, 720)
-        with patch.object(screen.view, 'setRange') as mock_range:
-            with patch.object(screen, 'setMinimumSize'):
-                screen.updateShape(shape)
+        screen._videoShape = QtCore.QSize(1280, 720)
+        mock_win = self._make_mock_window(640, 480)
+        with patch.object(screen, 'window', return_value=mock_win), \
+             patch.object(screen.view, 'setRange') as mock_range, \
+             self._mock_screen():
+            screen._fitToVideo()
         mock_range.assert_called_once_with(
             xRange=(0, 1280), yRange=(0, 720), padding=0, update=True)
 
-    def test_updateshape_sets_minimum_size(self):
+    def test_fit_to_video_sets_minimum_size_within_cap(self):
+        # minimum size must not exceed the screen-capped video size
         screen = make_screen()
-        shape = QtCore.QSize(640, 480)
-        with patch.object(screen.view, 'setRange'):
-            with patch.object(screen, 'setMinimumSize') as mock_min:
-                screen.updateShape(shape)
-        mock_min.assert_called_once_with(shape / 2)
+        screen._videoShape = QtCore.QSize(1280, 1024)
+        mock_win = self._make_mock_window(640, 480)
+        with patch.object(screen, 'window', return_value=mock_win), \
+             patch.object(screen.view, 'setRange'), \
+             patch.object(screen, 'setMinimumSize') as mock_min, \
+             self._mock_screen():
+            screen._fitToVideo()
+        mock_min.assert_called_once()
+        min_w, min_h = mock_min.call_args[0]
+        self.assertLessEqual(min_w, 640)
+        self.assertLessEqual(min_h, 512)
+
+
+class TestUpdateShape(unittest.TestCase):
 
     def test_updateshape_calls_update_geometry(self):
         screen = make_screen()
         shape = QtCore.QSize(640, 480)
-        with patch.object(screen.view, 'setRange'):
-            with patch.object(screen, 'setMinimumSize'):
-                with patch.object(screen, 'updateGeometry') as mock_geom:
-                    screen.updateShape(shape)
+        with patch.object(screen, 'updateGeometry') as mock_geom:
+            screen.updateShape(shape)
         mock_geom.assert_called_once()
 
 

@@ -276,10 +276,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''
         logger.debug(f'Resizing to {shape}')
         self._videoShape = shape
-        self.view.setRange(xRange=(0, shape.width()),
-                           yRange=(0, shape.height()),
-                           padding=0, update=True)
-        self.setMinimumSize(shape / 2)
         self.updateGeometry()
         widget = self
         while (widget := widget.parentWidget()) is not None:
@@ -298,6 +294,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         if not self.hasHeightForWidth():
             return
         shape = self._videoShape
+        self.view.setRange(xRange=(0, shape.width()),
+                           yRange=(0, shape.height()),
+                           padding=0, update=True)
         window = self.window()
         frame = window.frameGeometry()
         screen = (QtWidgets.QApplication.screenAt(frame.center())
@@ -315,6 +314,15 @@ class QVideoScreen(GraphicsLayoutWidget):
             ideal_h = ideal_w * shape.height() // shape.width()
         new_w = max(1, ideal_w) + w_extra
         new_h = max(1, ideal_h) + h_extra
+        self.setMinimumSize(min(shape.width() // 2, ideal_w),
+                            min(shape.height() // 2, ideal_h))
+        logger.debug(
+            f'_fitToVideo: video={shape.width()}x{shape.height()} '
+            f'frame={frame.left()},{frame.top()} {frame.width()}x{frame.height()} '
+            f'window={window.width()}x{window.height()} '
+            f'self={self.width()}x{self.height()} '
+            f'available={available.left()},{available.top()} {available.width()}x{available.height()} '
+            f'max={max_w}x{max_h} -> new={new_w}x{new_h}')
         if (new_w, new_h) != (window.width(), window.height()):
             window.resize(new_w, new_h)
 

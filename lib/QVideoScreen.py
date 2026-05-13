@@ -280,7 +280,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         widget = self
         while (widget := widget.parentWidget()) is not None:
             widget.updateGeometry()
-        QtCore.QTimer.singleShot(0, self._fitToVideo)
+        self._fitToVideo()
 
     @QtCore.Slot()
     def _fitToVideo(self) -> None:

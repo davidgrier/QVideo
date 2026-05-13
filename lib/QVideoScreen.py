@@ -299,10 +299,11 @@ class QVideoScreen(GraphicsLayoutWidget):
         screen = (QtWidgets.QApplication.screenAt(frame.center())
                   or QtWidgets.QApplication.primaryScreen())
         available = screen.availableGeometry()
-        w_extra = window.width() - self.width()
-        h_extra = window.height() - self.height()
-        max_w = available.right() - frame.right() + self.width()
-        max_h = available.bottom() - frame.bottom() + self.height()
+        sh = window.sizeHint()
+        w_extra = sh.width() - shape.width()
+        h_extra = sh.height() - shape.height()
+        max_w = available.right() - frame.right() + window.width() - w_extra
+        max_h = available.bottom() - frame.bottom() + window.height() - h_extra
         ideal_w = min(shape.width(), max_w)
         ideal_h = min(shape.height(), max_h)
         if ideal_w * shape.height() > ideal_h * shape.width():
@@ -317,7 +318,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             f'_fitToVideo: video={shape.width()}x{shape.height()} '
             f'frame={frame.left()},{frame.top()} {frame.width()}x{frame.height()} '
             f'window={window.width()}x{window.height()} '
-            f'self={self.width()}x{self.height()} '
+            f'sizeHint={sh.width()}x{sh.height()} '
             f'available={available.left()},{available.top()} {available.width()}x{available.height()} '
             f'max={max_w}x{max_h} -> new={new_w}x{new_h}')
         if (new_w, new_h) != (window.width(), window.height()):

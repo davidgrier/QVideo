@@ -324,12 +324,16 @@ class TestResizeEvent(unittest.TestCase):
 
 class TestFitToVideo(unittest.TestCase):
 
-    def _make_mock_window(self, win_w, win_h, win_x=0, win_y=0):
+    def _make_mock_window(self, win_w, win_h, win_x=0, win_y=0,
+                          sh_w=None, sh_h=None):
         mock_win = MagicMock()
         mock_win.width.return_value = win_w
         mock_win.height.return_value = win_h
         mock_win.frameGeometry.return_value = QtCore.QRect(
             win_x, win_y, win_w, win_h)
+        mock_win.sizeHint.return_value = QtCore.QSize(
+            sh_w if sh_w is not None else win_w,
+            sh_h if sh_h is not None else win_h)
         return mock_win
 
     @contextmanager
@@ -352,7 +356,7 @@ class TestFitToVideo(unittest.TestCase):
     def test_resizes_window_to_native_video_size(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=1280, sh_h=1024)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen():
             screen._fitToVideo()
@@ -361,7 +365,7 @@ class TestFitToVideo(unittest.TestCase):
     def test_resizes_width_not_just_height(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        mock_win = self._make_mock_window(320, 256)
+        mock_win = self._make_mock_window(320, 256, sh_w=1280, sh_h=1024)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen():
             screen._fitToVideo()
@@ -371,7 +375,7 @@ class TestFitToVideo(unittest.TestCase):
     def test_no_resize_if_already_correct(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(640, 480)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=640, sh_h=480)
         with patch.object(screen, 'window', return_value=mock_win), \
              patch.object(screen.view, 'setRange'), \
              self._mock_screen():
@@ -381,7 +385,7 @@ class TestFitToVideo(unittest.TestCase):
     def test_caps_at_screen_size(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(3840, 2160)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=3840, sh_h=2160)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen(screen_w=2560, screen_h=1600):
             screen._fitToVideo()
@@ -393,7 +397,8 @@ class TestFitToVideo(unittest.TestCase):
         # window at (1400, 900) on 2560x1600 screen leaves 1160x700 of room
         screen = make_screen()
         screen._videoShape = QtCore.QSize(3840, 2160)
-        mock_win = self._make_mock_window(640, 480, win_x=1400, win_y=900)
+        mock_win = self._make_mock_window(640, 480, win_x=1400, win_y=900,
+                                          sh_w=3840, sh_h=2160)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen(screen_w=2560, screen_h=1600):
             screen._fitToVideo()
@@ -404,7 +409,7 @@ class TestFitToVideo(unittest.TestCase):
     def test_maintains_aspect_ratio_when_capping(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(3840, 2160)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=3840, sh_h=2160)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen(screen_w=2560, screen_h=1600):
             screen._fitToVideo()
@@ -412,10 +417,10 @@ class TestFitToVideo(unittest.TestCase):
         self.assertAlmostEqual(new_w / new_h, 3840 / 2160, places=1)
 
     def test_accounts_for_window_overhead(self):
-        # window is 60 px wider and taller than the screen widget
+        # window sizeHint is 60 px wider/taller than the video (controls overhead)
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        mock_win = self._make_mock_window(700, 540)
+        mock_win = self._make_mock_window(700, 540, sh_w=1340, sh_h=1084)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen():
             screen._fitToVideo()
@@ -424,7 +429,7 @@ class TestFitToVideo(unittest.TestCase):
     def test_fit_to_video_calls_window_resize(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=1280, sh_h=1024)
         with patch.object(screen, 'window', return_value=mock_win), \
              self._mock_screen():
             screen._fitToVideo()
@@ -434,7 +439,7 @@ class TestFitToVideo(unittest.TestCase):
         # When window is already the right size, setRange is called directly
         screen = make_screen()
         screen._videoShape = QtCore.QSize(640, 480)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=640, sh_h=480)
         with patch.object(screen, 'window', return_value=mock_win), \
              patch.object(screen.view, 'setRange') as mock_range, \
              self._mock_screen():
@@ -447,7 +452,7 @@ class TestFitToVideo(unittest.TestCase):
         # When window needs resizing, setRange is deferred to resizeEvent
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=1280, sh_h=1024)
         with patch.object(screen, 'window', return_value=mock_win), \
              patch.object(screen.view, 'setRange') as mock_range, \
              self._mock_screen():
@@ -459,7 +464,7 @@ class TestFitToVideo(unittest.TestCase):
         # minimum size must not exceed the screen-capped video size
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
-        mock_win = self._make_mock_window(640, 480)
+        mock_win = self._make_mock_window(640, 480, sh_w=1280, sh_h=1024)
         with patch.object(screen, 'window', return_value=mock_win), \
              patch.object(screen, 'setMinimumSize') as mock_min, \
              self._mock_screen():

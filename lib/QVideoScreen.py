@@ -290,10 +290,10 @@ class QVideoScreen(GraphicsLayoutWidget):
     def _fitToVideo(self) -> None:
         '''Resize the containing window to show the video at native resolution.
 
-        Targets the video's native pixel dimensions, capped by the available
-        screen area.  Both width and height are adjusted.  After resizing,
-        the ViewBox range is re-applied so that pyqtgraph's internal relayout
-        cannot reset it to the pre-resize physical dimensions.
+        Targets the video's native pixel dimensions, capped by the space
+        remaining on screen from the window's current position.  This prevents
+        the window from growing off-screen and pushing controls out of reach.
+        Both width and height are adjusted.
         '''
         if not self.hasHeightForWidth():
             return
@@ -302,8 +302,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         available = QtWidgets.QApplication.primaryScreen().availableGeometry()
         w_extra = window.width() - self.width()
         h_extra = window.height() - self.height()
-        max_w = available.width() - w_extra
-        max_h = available.height() - h_extra
+        max_w = available.right() + 1 - window.x() - w_extra
+        max_h = available.bottom() + 1 - window.y() - h_extra
         ideal_w = min(shape.width(), max_w)
         ideal_h = min(shape.height(), max_h)
         if ideal_w * shape.height() > ideal_h * shape.width():

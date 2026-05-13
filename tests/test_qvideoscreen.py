@@ -311,10 +311,12 @@ class TestResizeEvent(unittest.TestCase):
 
 class TestFitToVideo(unittest.TestCase):
 
-    def _make_mock_window(self, win_w, win_h):
+    def _make_mock_window(self, win_w, win_h, win_x=0, win_y=0):
         mock_win = MagicMock()
         mock_win.width.return_value = win_w
         mock_win.height.return_value = win_h
+        mock_win.x.return_value = win_x
+        mock_win.y.return_value = win_y
         return mock_win
 
     def _mock_primary_screen(self, screen_w=2560, screen_h=1600):
@@ -372,6 +374,19 @@ class TestFitToVideo(unittest.TestCase):
         new_w, new_h = mock_win.resize.call_args[0]
         self.assertLessEqual(new_w, 2560)
         self.assertLessEqual(new_h, 1600)
+
+    def test_caps_at_room_from_window_position(self):
+        # window at (1400, 900) on 2560x1600 screen leaves 1160x700 of room
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(3840, 2160)
+        mock_win = self._make_mock_window(640, 480, win_x=1400, win_y=900)
+        with patch.object(screen, 'window', return_value=mock_win), \
+             patch.object(screen.view, 'setRange'), \
+             self._mock_primary_screen(screen_w=2560, screen_h=1600):
+            screen._fitToVideo()
+        new_w, new_h = mock_win.resize.call_args[0]
+        self.assertLessEqual(new_w, 1160)
+        self.assertLessEqual(new_h, 700)
 
     def test_maintains_aspect_ratio_when_capping(self):
         screen = make_screen()

@@ -299,11 +299,14 @@ class QVideoScreen(GraphicsLayoutWidget):
             return
         shape = self._videoShape
         window = self.window()
-        available = QtWidgets.QApplication.primaryScreen().availableGeometry()
+        frame = window.frameGeometry()
+        screen = (QtWidgets.QApplication.screenAt(frame.center())
+                  or QtWidgets.QApplication.primaryScreen())
+        available = screen.availableGeometry()
         w_extra = window.width() - self.width()
         h_extra = window.height() - self.height()
-        max_w = available.right() + 1 - window.x() - w_extra
-        max_h = available.bottom() + 1 - window.y() - h_extra
+        max_w = available.right() - frame.right() + self.width()
+        max_h = available.bottom() - frame.bottom() + self.height()
         ideal_w = min(shape.width(), max_w)
         ideal_h = min(shape.height(), max_h)
         if ideal_w * shape.height() > ideal_h * shape.width():

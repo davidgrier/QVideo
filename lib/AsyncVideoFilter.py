@@ -65,6 +65,7 @@ class AsyncVideoFilter(VideoFilter):
         self._submit.connect(self._worker.run)
         self._worker.resultReady.connect(self._onResult)
         self._thread.start()
+        self.destroyed.connect(self._cleanup)
         app = QtCore.QCoreApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self._cleanup)

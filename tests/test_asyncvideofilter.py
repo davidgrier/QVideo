@@ -151,6 +151,13 @@ class TestAsyncVideoFilterCleanup(unittest.TestCase):
                 f._cleanup()
         mock_wait.assert_called_once()
 
+    def test_destroyed_connected_to_cleanup(self):
+        f = AsyncVideoFilter()
+        try:
+            f.destroyed.disconnect(f._cleanup)
+        except RuntimeError:
+            self.fail('_cleanup was not connected to destroyed')
+
     def test_abouttoquit_connected_to_cleanup(self):
         f = AsyncVideoFilter()
         app = QtCore.QCoreApplication.instance()

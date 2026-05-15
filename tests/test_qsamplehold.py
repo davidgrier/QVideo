@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
+from QVideo.filters.Median import Median
 from QVideo.filters.QSampleHold import SampleHold, QSampleHold
 
 
@@ -88,6 +89,33 @@ class TestSampleHold(unittest.TestCase):
     def test_custom_darkcount(self):
         f = make_filter(darkcount=10)
         self.assertEqual(f.darkcount, 10)
+
+    def test_sub_type_is_median(self):
+        self.assertIs(SampleHold._sub_type, Median)
+
+    def test_order2_sub_estimator_is_median_not_samplehold(self):
+        f = make_filter(order=2)
+        f.add(_FRAME)
+        self.assertIsInstance(f._next, Median)
+        self.assertNotIsInstance(f._next, SampleHold)
+
+    def test_order2_normalizes_after_accumulation(self):
+        '''Sub-estimator must stay a raw Median so hold-phase normalization works.
+
+        With a uniform 100-valued frame stream and no dark count, a
+        correct order-2 filter should output mean (100) after accumulation,
+        since every pixel divides to 1.  If the sub-estimator were a
+        SampleHold it would freeze and return normalized values (~100)
+        to the top-level Median, collapsing the background to a uniform
+        image; that uniform background cannot normalize spatial structure.
+        '''
+        f = make_filter(order=2, mean=100.0)
+        for _ in range(f._count):
+            f.add(_FRAME)
+        # Enter hold phase with a frame at the same level
+        f.add(_FRAME)
+        result = f.get()
+        np.testing.assert_array_equal(result, np.full(_SHAPE, 100, dtype=np.uint8))
 
 
 class TestQSampleHold(unittest.TestCase):

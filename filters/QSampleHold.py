@@ -1,5 +1,6 @@
 '''Sample-and-hold background normalization filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
+from QVideo.filters.Median import Median
 from QVideo.filters.Normalize import Normalize
 from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -9,6 +10,8 @@ __all__ = ['SampleHold', 'QSampleHold']
 
 
 class SampleHold(Normalize):
+
+    _sub_type = Median
 
     '''Normalize an image against a sampled background estimate.
 

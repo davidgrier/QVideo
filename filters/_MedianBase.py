@@ -10,6 +10,17 @@ class _MedianBase(VideoFilter):
     Provides buffer management, the ``order`` property, and ``reset``.
     Subclasses implement :meth:`add` with their own update cadence.
 
+    Class Attributes
+    ----------------
+    _sub_type : type or None
+        Sub-estimator class used when building recursive chains.
+        ``None`` (default) means use ``type(self)``, which is correct
+        for pure estimator chains (``Median`` → ``Median``,
+        ``MoMedian`` → ``MoMedian``).  Override in subclasses whose
+        ``add()`` behaviour must not propagate into sub-estimators
+        (e.g. :class:`~QVideo.filters.QSampleHold.SampleHold` uses
+        ``Median`` so the sub-estimator never enters hold mode).
+
     Parameters
     ----------
     order : int
@@ -25,6 +36,8 @@ class _MedianBase(VideoFilter):
        Statistical Association*, 85(409):97–104, 1990.
        :doi:`10.1080/01621459.1990.10475311`
     '''
+
+    _sub_type: 'type[_MedianBase] | None' = None
 
     def __init__(self,
                  order: int = 1,
@@ -66,7 +79,8 @@ class _MedianBase(VideoFilter):
         self._result = data.copy()
         self._buffer = np.zeros((2, *self.shape), data.dtype)
         if self._order > 1:
-            self._next = type(self)(self._order - 1, data)
+            cls = self._sub_type if self._sub_type is not None else type(self)
+            self._next = cls(self._order - 1, data)
 
     def get(self) -> Image | None:
         '''Return the most recent estimate.

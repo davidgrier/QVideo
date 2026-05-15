@@ -263,7 +263,10 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''Return the height that preserves the source aspect ratio.'''
         if self._videoShape is None:
             return super().heightForWidth(width)
-        return width * self._videoShape.height() // self._videoShape.width()
+        w = self._videoShape.width()
+        if w == 0:
+            return super().heightForWidth(width)
+        return width * self._videoShape.height() // w
 
     @QtCore.Slot(QtCore.QSize)
     def updateShape(self, shape: QtCore.QSize) -> None:

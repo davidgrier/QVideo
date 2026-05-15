@@ -290,6 +290,14 @@ class TestSizeHints(unittest.TestCase):
         except Exception as e:
             self.fail(f'heightForWidth raised {e} without shape')
 
+    def test_height_for_width_with_zero_width_does_not_raise(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(0, 480)
+        try:
+            screen.heightForWidth(320)
+        except ZeroDivisionError as e:
+            self.fail(f'heightForWidth raised ZeroDivisionError: {e}')
+
     def test_size_hint_without_shape_delegates(self):
         screen = make_screen()
         result = screen.sizeHint()

@@ -83,6 +83,18 @@ class EdgeFilter(VideoFilter):
         else:
             self.data = image
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        return FilterCode(
+            imports=frozenset({'import cv2'}),
+            lines=[
+                'if image.ndim == 3:',
+                '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
+                f'image = cv2.Canny(image, {self._low}, {self._high})',
+            ],
+            comment=f'Canny edges, low={self._low}, high={self._high}',
+        )
+
     def get(self) -> Image | None:
         '''Return the Canny edge map of the stored frame.
 

@@ -1,10 +1,34 @@
 '''Base classes for image-processing filters in the QVideo filter pipeline.'''
+from __future__ import annotations
+import dataclasses
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.videotypes import Image
 import pyqtgraph as pg
 
 
-__all__ = ['VideoFilter', 'QVideoFilter']
+__all__ = ['FilterCode', 'VideoFilter', 'QVideoFilter']
+
+
+@dataclasses.dataclass
+class FilterCode:
+    '''Code fragment emitted by a filter's :meth:`~VideoFilter.to_code` method.
+
+    Attributes
+    ----------
+    imports : frozenset[str]
+        Complete import lines required by *lines*, e.g. ``'import cv2'``.
+    lines : list[str]
+        Source lines (no leading indentation) that implement one filter
+        step.  The variable ``image`` holds the current frame on entry
+        and must hold the result on exit.
+    comment : str
+        Optional one-line description included as a comment above the
+        generated code block.
+    '''
+
+    imports: frozenset[str]
+    lines: list[str]
+    comment: str = ''
 
 
 class VideoFilter(QtCore.QObject):
@@ -66,6 +90,22 @@ class VideoFilter(QtCore.QObject):
         if self.data is None:
             raise RuntimeError('get() called before add()')
         return self.data
+
+    def to_code(self) -> FilterCode | None:
+        '''Return a :class:`FilterCode` fragment for pipeline export.
+
+        Stateless filters implement this to enable
+        :meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline`.
+        Stateful filters (those that accumulate state across frames)
+        return ``None`` to indicate they cannot be expressed as a
+        single-frame pure function.
+
+        Returns
+        -------
+        FilterCode or None
+            Code fragment, or ``None`` if export is not supported.
+        '''
+        return None
 
 
 class QVideoFilter(QtWidgets.QGroupBox):

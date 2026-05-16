@@ -53,6 +53,15 @@ class ROIFilter(VideoFilter):
             self._clamp(image.shape)
         super().add(image)
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        x, y, w, h = int(self._x), int(self._y), int(self._w), int(self._h)
+        return FilterCode(
+            imports=frozenset(),
+            lines=[f'image = image[{y}:{y + h}, {x}:{x + w}]'],
+            comment=f'ROI crop: x={x}, y={y}, w={w}, h={h}',
+        )
+
     def get(self) -> Image:
         '''Crop the current frame to the ROI bounds and return it.
 

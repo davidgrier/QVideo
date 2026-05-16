@@ -61,6 +61,20 @@ class SmoothingFilter(AsyncVideoFilter):
             raise ValueError(f'method must be one of {_METHODS}')
         self._method = method
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        if self._method == 'median':
+            return FilterCode(
+                imports=frozenset({'import cv2'}),
+                lines=[f'image = cv2.medianBlur(image, {self._width})'],
+                comment=f'median smoothing, k={self._width}',
+            )
+        return FilterCode(
+            imports=frozenset({'import cv2'}),
+            lines=[f'image = cv2.GaussianBlur(image, ({self._width}, {self._width}), 0)'],
+            comment=f'Gaussian smoothing, k={self._width}',
+        )
+
     def process(self, image: Image) -> Image:
         '''Return the smoothed frame.
 

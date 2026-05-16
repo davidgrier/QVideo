@@ -60,6 +60,40 @@ class SobelFilter(VideoFilter):
         value = max(1, min(7, int(value)))
         self._ksize = value + (1 - value % 2)
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        _GRAY = [
+            'if image.ndim == 3:',
+            '    image = image.mean(axis=2).astype(np.uint8)',
+        ]
+        imports = frozenset({'import cv2', 'import numpy as np'})
+        k = self._ksize
+        if self._direction == 'Horizontal':
+            return FilterCode(
+                imports=imports,
+                lines=_GRAY + [
+                    f'image = cv2.convertScaleAbs(cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize={k}))',
+                ],
+                comment=f'Sobel horizontal, k={k}',
+            )
+        if self._direction == 'Vertical':
+            return FilterCode(
+                imports=imports,
+                lines=_GRAY + [
+                    f'image = cv2.convertScaleAbs(cv2.Sobel(image, cv2.CV_32F, 0, 1, ksize={k}))',
+                ],
+                comment=f'Sobel vertical, k={k}',
+            )
+        return FilterCode(
+            imports=imports,
+            lines=_GRAY + [
+                f'_gx = cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize={k})',
+                f'_gy = cv2.Sobel(image, cv2.CV_32F, 0, 1, ksize={k})',
+                'image = np.clip(np.hypot(_gx, _gy), 0, 255).astype(np.uint8)',
+            ],
+            comment=f'Sobel magnitude, k={k}',
+        )
+
     def get(self) -> Image | None:
         '''Return the Sobel edge map of the stored frame.
 

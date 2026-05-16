@@ -91,6 +91,47 @@ class ThresholdFilter(VideoFilter):
     def C(self, value: int) -> None:
         self._C = int(value)
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        _GRAY = [
+            'if image.ndim == 3:',
+            '    image = image.mean(axis=2).astype(np.uint8)',
+        ]
+        imports = frozenset({'import cv2', 'import numpy as np'})
+        if self._method == 'Global':
+            return FilterCode(
+                imports=imports,
+                lines=_GRAY + [
+                    f'_, image = cv2.threshold(image, {self._threshold}, 255, cv2.THRESH_BINARY)',
+                ],
+                comment=f'global threshold, level={self._threshold}',
+            )
+        if self._method == 'Otsu':
+            return FilterCode(
+                imports=imports,
+                lines=_GRAY + [
+                    'image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]',
+                ],
+                comment='Otsu threshold',
+            )
+        if self._method == 'Adaptive Mean':
+            return FilterCode(
+                imports=imports,
+                lines=_GRAY + [
+                    f'image = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, '
+                    f'cv2.THRESH_BINARY, {self._block_size}, {self._C})',
+                ],
+                comment=f'adaptive mean threshold, block={self._block_size}, C={self._C}',
+            )
+        return FilterCode(
+            imports=imports,
+            lines=_GRAY + [
+                f'image = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, '
+                f'cv2.THRESH_BINARY, {self._block_size}, {self._C})',
+            ],
+            comment=f'adaptive Gaussian threshold, block={self._block_size}, C={self._C}',
+        )
+
     def get(self) -> Image | None:
         '''Return the thresholded frame.
 

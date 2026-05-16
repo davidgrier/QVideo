@@ -36,6 +36,18 @@ class RGBFilter(VideoFilter):
             raise ValueError(f'channel must be 0, 1, or 2; got {channel}')
         self._channel = channel
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        names = {0: 'Red', 1: 'Green', 2: 'Blue'}
+        ch = self._channel
+        return FilterCode(
+            imports=frozenset(),
+            lines=[
+                f'image = image[:, :, {ch}] if image.ndim == 3 else image  # {names[ch]}',
+            ],
+            comment=f'{names[ch]} channel',
+        )
+
     def add(self, image: Image) -> None:
         '''Extract the selected channel and store the result.
 

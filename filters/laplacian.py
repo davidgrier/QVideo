@@ -57,6 +57,25 @@ class LaplacianFilter(VideoFilter):
     def sigma(self, value: float) -> None:
         self._sigma = max(0.0, float(value))
 
+    def to_code(self) -> 'FilterCode':
+        from QVideo.lib.QVideoFilter import FilterCode
+        lines = [
+            'if image.ndim == 3:',
+            '    image = image.mean(axis=2).astype(np.uint8)',
+        ]
+        imports = frozenset({'import cv2', 'import numpy as np'})
+        if self._sigma > 0:
+            lines.append(f'image = cv2.GaussianBlur(image, (0, 0), {self._sigma})')
+        lines.append(
+            f'image = cv2.convertScaleAbs(cv2.Laplacian(image, cv2.CV_32F, ksize={self._ksize}))'
+        )
+        suffix = f', σ={self._sigma}' if self._sigma > 0 else ''
+        return FilterCode(
+            imports=imports,
+            lines=lines,
+            comment=f'Laplacian edges, k={self._ksize}{suffix}',
+        )
+
     def get(self) -> Image | None:
         '''Return the Laplacian edge map of the stored frame.
 

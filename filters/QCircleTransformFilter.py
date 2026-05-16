@@ -124,7 +124,7 @@ class CircleTransformFilter(AsyncVideoFilter):
         cmax = c.max()
         if cmax > np.finfo(float).eps:
             c *= 255.0 / cmax
-        return c.astype(np.uint8)
+        return np.round(c).clip(0, 255).astype(np.uint8)
 
 
 class QCircleTransformFilter(QVideoFilter):

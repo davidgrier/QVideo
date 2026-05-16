@@ -106,6 +106,7 @@ class ROIFilter(VideoFilter):
 class QROIFilter(QVideoFilter):
 
     display_name = 'Region of Interest'
+    display_category = 'Preprocessing'
 
     '''Qt widget wrapper for :class:`ROIFilter`.'''
 

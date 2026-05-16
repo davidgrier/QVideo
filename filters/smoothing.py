@@ -79,6 +79,7 @@ class SmoothingFilter(AsyncVideoFilter):
 class QSmoothingFilter(QVideoFilter):
 
     display_name = 'Smoothing'
+    display_category = 'Preprocessing'
 
     '''Widget for :class:`SmoothingFilter` with method selector and width spinbox.
 

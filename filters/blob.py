@@ -63,6 +63,7 @@ class BlobFilter(AsyncVideoFilter):
 class QBlobFilter(QVideoFilter):
 
     display_name = 'Blob'
+    display_category = 'Segmentation'
 
     '''Widget wrapper for :class:`BlobFilter`.
 

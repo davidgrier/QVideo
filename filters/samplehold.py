@@ -77,6 +77,7 @@ class SampleHold(Normalize):
 class QSampleHold(QVideoFilter):
 
     display_name = 'Sample and Hold'
+    display_category = 'Background'
 
     '''Widget for :class:`SampleHold` with order buttons and a *Reset* button.
 

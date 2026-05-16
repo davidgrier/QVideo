@@ -132,35 +132,50 @@ class _FilterSlot(QtWidgets.QWidget):
 
 
 class _FilterPicker(QtWidgets.QDialog):
-    '''Dialog for selecting a filter to add to the rack.'''
+    '''Dialog for selecting a filter to add to the rack, grouped by category.'''
 
     def __init__(self,
-                 filters: list[str],
+                 registry: dict[str, type[QVideoFilter]],
                  parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self._setupUi(filters)
+        self._setupUi(registry)
         self._connectSignals()
 
-    def _setupUi(self, filters: list[str]) -> None:
+    def _setupUi(self, registry: dict[str, type[QVideoFilter]]) -> None:
         self.setWindowTitle('Add Filter')
         layout = QtWidgets.QVBoxLayout(self)
-        self._list = QtWidgets.QListWidget()
-        self._list.addItems(filters)
-        layout.addWidget(self._list)
+        self._tree = QtWidgets.QTreeWidget()
+        self._tree.setHeaderHidden(True)
+        self._tree.setRootIsDecorated(True)
+        categories: dict[str, QtWidgets.QTreeWidgetItem] = {}
+        for name, klass in sorted(registry.items()):
+            category = klass.display_category or 'Other'
+            if category not in categories:
+                cat_item = QtWidgets.QTreeWidgetItem(self._tree, [category])
+                cat_item.setFlags(
+                    cat_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsSelectable)
+                categories[category] = cat_item
+            QtWidgets.QTreeWidgetItem(categories[category], [name])
+        self._tree.expandAll()
+        layout.addWidget(self._tree)
         ok = QtWidgets.QDialogButtonBox.StandardButton.Ok
         cancel = QtWidgets.QDialogButtonBox.StandardButton.Cancel
         self._buttons = QtWidgets.QDialogButtonBox(ok | cancel)
         layout.addWidget(self._buttons)
 
     def _connectSignals(self) -> None:
-        self._list.itemDoubleClicked.connect(self.accept)
+        self._tree.itemDoubleClicked.connect(
+            lambda item, _col: self.accept() if item.parent() else None)
         self._buttons.accepted.connect(self.accept)
         self._buttons.rejected.connect(self.reject)
 
     def selected(self) -> str | None:
-        '''Return the selected filter class name, or ``None``.'''
-        items = self._list.selectedItems()
-        return items[0].text() if items else None
+        '''Return the selected filter display name, or ``None``.'''
+        items = self._tree.selectedItems()
+        if not items:
+            return None
+        item = items[0]
+        return item.text(0) if item.parent() else None
 
 
 class QFilterRack(QtWidgets.QWidget):
@@ -365,10 +380,10 @@ class QFilterRack(QtWidgets.QWidget):
         self._slots.insertWidget(target_index, slot)
 
     def _addFilterDialog(self) -> None:
-        available = self.availableFilters()
-        if not available:
+        registry = self._registry()
+        if not registry:
             return
-        picker = _FilterPicker(available, self)
+        picker = _FilterPicker(registry, self)
         if picker.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             name = picker.selected()
             if name:

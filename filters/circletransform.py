@@ -130,6 +130,7 @@ class CircleTransformFilter(AsyncVideoFilter):
 class QCircleTransformFilter(QVideoFilter):
 
     display_name = 'Circle Transform'
+    display_category = 'Feature Detection'
 
     '''Widget for :class:`CircleTransformFilter` with a window spinbox.
 

@@ -98,9 +98,13 @@ class QVideoFilter(QtWidgets.QGroupBox):
     display_name : str
         Human-readable name shown in the filter picker.  Empty string
         means the filter will not appear in the picker.
+    display_category : str
+        Category label used to group filters in the picker tree.
+        Defaults to ``'Other'`` in the picker when empty.
     '''
 
     display_name: str = ''
+    display_category: str = ''
 
     def __init__(self,
                  parent: QtWidgets.QWidget | None,

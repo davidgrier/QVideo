@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.QFilterRack import QFilterRack, _FilterSlot
+from QVideo.lib.QFilterRack import QFilterRack, _FilterSlot, _FilterPicker
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.filters import QSmoothingFilter, QEdgeFilter
 
@@ -245,6 +245,78 @@ class TestQFilterRackMoveSlot(unittest.TestCase):
         from qtpy.QtCore import QPoint
         rack._moveSlot(slot, QPoint(9999, 9999))
         self.assertEqual(rack.filters, [f1, f2])
+
+
+class TestQFilterRackRegistry(unittest.TestCase):
+
+    def test_registry_returns_dict(self):
+        self.assertIsInstance(QFilterRack._registry(), dict)
+
+    def test_registry_maps_name_to_class(self):
+        reg = QFilterRack._registry()
+        self.assertIs(reg.get('Smoothing'), QSmoothingFilter)
+
+    def test_registry_excludes_empty_display_name(self):
+        reg = QFilterRack._registry()
+        for name in reg:
+            self.assertTrue(name)
+
+    def test_display_category_on_known_filters(self):
+        from QVideo.filters import QThresholdFilter, QROIFilter
+        self.assertEqual(QThresholdFilter.display_category, 'Segmentation')
+        self.assertEqual(QROIFilter.display_category, 'Preprocessing')
+        self.assertEqual(QEdgeFilter.display_category, 'Edge Detection')
+        self.assertEqual(QSmoothingFilter.display_category, 'Preprocessing')
+
+
+class TestFilterPicker(unittest.TestCase):
+
+    def _make_registry(self) -> dict:
+        return QFilterRack._registry()
+
+    def test_picker_creates_tree(self):
+        picker = _FilterPicker(self._make_registry())
+        self.assertIsInstance(picker._tree, QtWidgets.QTreeWidget)
+
+    def test_picker_selected_none_when_nothing_selected(self):
+        picker = _FilterPicker(self._make_registry())
+        self.assertIsNone(picker.selected())
+
+    def test_picker_selected_none_for_category_item(self):
+        picker = _FilterPicker(self._make_registry())
+        # Select the first top-level (category) item
+        cat_item = picker._tree.topLevelItem(0)
+        picker._tree.setCurrentItem(cat_item)
+        self.assertIsNone(picker.selected())
+
+    def test_picker_selected_returns_filter_name(self):
+        picker = _FilterPicker(self._make_registry())
+        # Find a leaf item and select it
+        cat_item = picker._tree.topLevelItem(0)
+        leaf_item = cat_item.child(0)
+        picker._tree.setCurrentItem(leaf_item)
+        name = picker.selected()
+        self.assertIn(name, QFilterRack._registry())
+
+    def test_picker_categories_are_not_selectable(self):
+        picker = _FilterPicker(self._make_registry())
+        cat_item = picker._tree.topLevelItem(0)
+        selectable = bool(
+            cat_item.flags() & QtCore.Qt.ItemFlag.ItemIsSelectable)
+        self.assertFalse(selectable)
+
+    def test_picker_empty_category_falls_back_to_other(self):
+        class _Uncategorised(QVideoFilter):
+            display_name = 'Uncategorised'
+            display_category = ''
+
+            def __init__(self, parent=None):
+                super().__init__(parent, 'Uncategorised', VideoFilter())
+
+        registry = {'Uncategorised': _Uncategorised}
+        picker = _FilterPicker(registry)
+        cat_item = picker._tree.topLevelItem(0)
+        self.assertEqual(cat_item.text(0), 'Other')
 
 
 if __name__ == '__main__':  # pragma: no cover

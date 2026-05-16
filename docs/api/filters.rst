@@ -141,6 +141,42 @@ triggers a fresh learning phase.
 .. automodule:: QVideo.filters.QForegroundEstimator
    :members:
 
+Circle transform
+----------------
+
+:class:`~QVideo.filters.QCircleTransformFilter.CircleTransformFilter`
+computes the orientation alignment transform (OAT) of Krishnatreya & Grier
+[KG14]_, which detects circularly symmetric ring-like features.  At each
+pixel the gradient orientation is compared against the orientation expected
+for a ring centred at every candidate position; summing this evidence over
+all ring radii simultaneously produces a detection map whose peaks locate
+ring centres.  Because the transform integrates over all radii, no radius
+parameter is required.
+
+The gradient field is estimated by Savitzky-Golay differentiation
+[SG64]_, controlled by *window* (filter width in pixels, must be odd and
+≥ 3) and *polyorder* (polynomial order, must be ≥ 1 and less than *window*).
+A larger *window* reduces noise but broadens detected peaks.  The output is
+normalised per-frame to ``[0, 255]`` and returned as ``uint8``; bright peaks
+indicate ring centres.
+
+Computation runs in a background thread via
+:class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter`, keeping the GUI
+responsive even for large frames.  The companion
+:class:`~QVideo.filters.QCircleTransformFilter.QCircleTransformFilter`
+widget exposes a *window* spinbox.
+
+.. [KG14] B.J. Krishnatreya and D.G. Grier, 'Fast feature identification
+   for holographic tracking: the orientation alignment transform,'
+   *Optics Express* **22**, 12773–12778 (2014).
+
+.. [SG64] A. Savitzky and M.J.E. Golay, 'Smoothing and differentiation of
+   data by simplified least squares procedures,' *Analytical Chemistry*
+   **36**, 1627–1639 (1964).
+
+.. automodule:: QVideo.filters.QCircleTransformFilter
+   :members:
+
 Blob coloring
 -------------
 

@@ -139,17 +139,27 @@ class TestAsyncVideoFilterCleanup(unittest.TestCase):
 
     def test_cleanup_quits_thread(self):
         f = AsyncVideoFilter()
-        with patch.object(f._thread, 'quit') as mock_quit:
-            with patch.object(f._thread, 'wait'):
-                f._cleanup()
+        with patch.object(f._thread, 'isRunning', return_value=True), \
+             patch.object(f._thread, 'quit') as mock_quit, \
+             patch.object(f._thread, 'wait'):
+            f._cleanup()
         mock_quit.assert_called_once()
 
     def test_cleanup_waits_for_thread(self):
         f = AsyncVideoFilter()
-        with patch.object(f._thread, 'quit'):
-            with patch.object(f._thread, 'wait') as mock_wait:
-                f._cleanup()
+        with patch.object(f._thread, 'isRunning', return_value=True), \
+             patch.object(f._thread, 'quit'), \
+             patch.object(f._thread, 'wait') as mock_wait:
+            f._cleanup()
         mock_wait.assert_called_once()
+
+    def test_cleanup_is_idempotent_when_thread_not_running(self):
+        f = AsyncVideoFilter()
+        with patch.object(f._thread, 'isRunning', return_value=False), \
+             patch.object(f._thread, 'quit') as mock_quit:
+            f._cleanup()
+            f._cleanup()
+        mock_quit.assert_not_called()
 
     def test_destroyed_connected_to_cleanup(self):
         f = AsyncVideoFilter()

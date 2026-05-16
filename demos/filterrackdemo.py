@@ -62,6 +62,7 @@ class _FilteredSource(QtCore.QObject):
         super().__init__(parent)
         self._source = source
         self._rack = rack
+        self._active = True
         source.newFrame.connect(self._process)
 
     @property
@@ -77,6 +78,9 @@ class _FilteredSource(QtCore.QObject):
         active : bool
             ``True`` to resume processing; ``False`` to pause.
         '''
+        if active == self._active:
+            return
+        self._active = active
         if active:
             self._source.newFrame.connect(self._process)
         else:

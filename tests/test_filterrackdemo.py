@@ -139,6 +139,10 @@ class TestFilteredSourceActive(unittest.TestCase):
         fs = _FilteredSource(source, rack)
         return fs, source
 
+    def test_initially_active(self):
+        fs, _ = self._make_fs()
+        self.assertTrue(fs._active)
+
     def test_set_active_false_disconnects_source(self):
         fs, source = self._make_fs()
         fs.setActive(False)
@@ -146,8 +150,23 @@ class TestFilteredSourceActive(unittest.TestCase):
 
     def test_set_active_true_reconnects_source(self):
         fs, source = self._make_fs()
+        fs.setActive(False)
+        source.newFrame.connect.reset_mock()
         fs.setActive(True)
-        source.newFrame.connect.assert_called_with(fs._process)
+        source.newFrame.connect.assert_called_once_with(fs._process)
+
+    def test_set_active_false_twice_does_not_disconnect_twice(self):
+        fs, source = self._make_fs()
+        fs.setActive(False)
+        fs.setActive(False)
+        source.newFrame.disconnect.assert_called_once_with(fs._process)
+
+    def test_set_active_true_twice_does_not_connect_twice(self):
+        fs, source = self._make_fs()
+        source.newFrame.connect.reset_mock()
+        fs.setActive(True)
+        fs.setActive(True)
+        source.newFrame.connect.assert_not_called()
 
 
 class TestFilterRackDemoDvrPlayback(unittest.TestCase):

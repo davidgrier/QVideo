@@ -129,5 +129,7 @@ class AsyncVideoFilter(VideoFilter):
 
     @QtCore.Slot()
     def _cleanup(self) -> None:
+        if not self._thread.isRunning():
+            return
         self._thread.quit()
         self._thread.wait()

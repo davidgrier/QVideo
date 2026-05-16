@@ -131,6 +131,50 @@ class TestFilterRackDemoInit(unittest.TestCase):
         self.assertIn(widget.rack, items)
 
 
+class TestFilteredSourceActive(unittest.TestCase):
+
+    def _make_fs(self):
+        source = MagicMock()
+        rack = MagicMock(return_value=_FRAME)
+        fs = _FilteredSource(source, rack)
+        return fs, source
+
+    def test_set_active_false_disconnects_source(self):
+        fs, source = self._make_fs()
+        fs.setActive(False)
+        source.newFrame.disconnect.assert_called_once_with(fs._process)
+
+    def test_set_active_true_reconnects_source(self):
+        fs, source = self._make_fs()
+        fs.setActive(True)
+        source.newFrame.connect.assert_called_with(fs._process)
+
+
+class TestFilterRackDemoDvrPlayback(unittest.TestCase):
+
+    def setUp(self):
+        self.widget = make_demo()
+
+    def test_dvr_playback_true_suspends_filtered_source(self):
+        with patch.object(self.widget._filteredSource, 'setActive') as mock:
+            self.widget.dvrPlayback(True)
+            mock.assert_called_once_with(False)
+
+    def test_dvr_playback_false_resumes_filtered_source(self):
+        with patch.object(self.widget._filteredSource, 'setActive') as mock:
+            self.widget.dvrPlayback(False)
+            mock.assert_called_once_with(True)
+
+    def test_dvr_playback_true_switches_screen_to_player(self):
+        self.widget.dvrPlayback(True)
+        self.assertIs(self.widget.screen.source, self.widget.dvr.player)
+
+    def test_dvr_playback_false_restores_screen_to_source(self):
+        self.widget.dvrPlayback(True)
+        self.widget.dvrPlayback(False)
+        self.assertIs(self.widget.screen.source, self.widget.source)
+
+
 class TestFilterRackDemoModes(unittest.TestCase):
 
     def setUp(self):

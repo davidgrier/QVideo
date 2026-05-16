@@ -69,6 +69,19 @@ class _FilteredSource(QtCore.QObject):
         '''Frame rate of the underlying source [fps].'''
         return self._source.fps
 
+    def setActive(self, active: bool) -> None:
+        '''Connect or disconnect from the source.
+
+        Parameters
+        ----------
+        active : bool
+            ``True`` to resume processing; ``False`` to pause.
+        '''
+        if active:
+            self._source.newFrame.connect(self._process)
+        else:
+            self._source.newFrame.disconnect(self._process)
+
     @QtCore.Slot(np.ndarray)
     def _process(self, frame: Image) -> None:
         self.newFrame.emit(self._rack(frame))
@@ -124,6 +137,24 @@ class FilterRackDemo(QCamcorder):
 
     def _connectModeSignals(self) -> None:
         self._modeGroup.buttonToggled.connect(self._onModeToggled)
+
+    @QtCore.Slot(bool)
+    def dvrPlayback(self, playback: bool) -> None:
+        '''Pause the filtered source during DVR playback.
+
+        Extends :meth:`~QVideo.QCamcorder.QCamcorder.dvrPlayback` by
+        suspending :class:`_FilteredSource` while the DVR is playing.
+        This prevents live camera frames from racing through the shared
+        filter rack alongside DVR frames, which would corrupt
+        :class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter` results.
+
+        Parameters
+        ----------
+        playback : bool
+            ``True`` when DVR playback begins, ``False`` when it ends.
+        '''
+        super().dvrPlayback(playback)
+        self._filteredSource.setActive(not playback)
 
     @QtCore.Slot(QtWidgets.QAbstractButton, bool)
     def _onModeToggled(self,

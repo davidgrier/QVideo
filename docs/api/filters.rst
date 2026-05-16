@@ -6,6 +6,13 @@ callable: ``filtered = f(frame)``.  The ``Q``-prefixed variants add a
 :class:`~pyqtgraph.parametertree` control panel so they can be inserted into a
 :class:`~QVideo.lib.QFilterBank.QFilterBank`.
 
+Stateless filters also implement
+:meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` and participate in
+:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline`, which generates
+a standalone ``filter.py`` from the rack's current settings.  Stateful
+filters that accumulate information across frames cannot be expressed as a
+single-frame function and are omitted from the export with a comment.
+
 Median background subtraction
 ------------------------------
 
@@ -61,6 +68,7 @@ Gaussian blur is effective against additive Gaussian noise; median blur
 excels at removing salt-and-pepper noise while preserving edges.
 The :class:`~QVideo.filters.smoothing.QSmoothingFilter` widget
 exposes a method selector combobox and a width spinbox.
+Supports pipeline export.
 
 .. automodule:: QVideo.filters.smoothing
    :members:
@@ -76,6 +84,7 @@ multi-stage Canny detector [C86]_.  Two hysteresis thresholds (*low* and
 *high*) control which gradient-magnitude edges are retained; a 2:1 or 3:1
 high-to-low ratio is recommended for typical scientific images.  Canny
 produces a clean binary edge map and is the best general-purpose choice.
+Supports pipeline export.
 
 **Sobel** — :class:`~QVideo.filters.sobel.SobelFilter` computes a
 first-order directional derivative using the Sobel operator.  Three modes
@@ -83,14 +92,14 @@ are available: *Horizontal* (∂/∂x), *Vertical* (∂/∂y), and *Magnitude*
 (Euclidean magnitude √(Gx² + Gy²), clipped to ``[0, 255]``).  The kernel
 size *k* is odd and in {1, 3, 5, 7}.  Sobel is well suited to extracting
 directional gradient information or computing gradient-magnitude images for
-further analysis.
+further analysis.  Supports pipeline export.
 
 **Laplacian** — :class:`~QVideo.filters.laplacian.LaplacianFilter` applies
 the discrete Laplacian operator (∇²), returning the absolute value as a
 uint8 image.  An optional Gaussian pre-blur with standard deviation *σ*
 reduces noise sensitivity; setting *σ* > 0 implements the
 Laplacian-of-Gaussian (LoG) operator commonly used to detect blob-like
-features at a scale set by *σ*.
+features at a scale set by *σ*.  Supports pipeline export.
 
 .. [C86] J. Canny, 'A computational approach to edge detection,'
    *IEEE Transactions on Pattern Analysis and Machine Intelligence*
@@ -111,7 +120,7 @@ RGB channel selection
 :class:`~QVideo.filters.rgb.RGBFilter` extracts a single color channel
 (Red, Green, or Blue) from an RGB frame, discarding the other two.  Grayscale
 input passes through unchanged.  The companion widget exposes the channel
-choice as three radio buttons.
+choice as three radio buttons.  Supports pipeline export.
 
 .. automodule:: QVideo.filters.rgb
    :members:
@@ -134,6 +143,7 @@ Four methods are available:
 The companion :class:`~QVideo.filters.threshold.QThresholdFilter` widget
 exposes a method selector combobox; parameter spinboxes appear and disappear
 depending on the selected method.
+Supports pipeline export.
 
 .. [O79] N. Otsu, 'A threshold selection method from gray-level histograms,'
    *IEEE Transactions on Systems, Man, and Cybernetics* **9**, 62–66 (1979).
@@ -151,7 +161,7 @@ it changes — the ROI parameters are clamped to fit within the frame.
 That check costs a single tuple comparison per frame; the clamp itself
 runs only on shape changes.  The companion widget provides four spinboxes
 for ``x``, ``y``, ``w``, and ``h``, with ``w`` and ``h`` stepping in
-multiples of 8 for codec compatibility.
+multiples of 8 for codec compatibility.  Supports pipeline export.
 
 .. automodule:: QVideo.filters.roi
    :members:

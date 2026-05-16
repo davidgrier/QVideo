@@ -200,6 +200,95 @@ the new one.  ``get`` uses integer arithmetic to avoid uint8 wrap-around,
 then clips back to 8-bit.
 
 
+.. _extending-export:
+
+Supporting pipeline export
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline` generates a
+standalone Python file from the rack's current settings.  It calls
+:meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` on each enabled filter
+and assembles the results.  The default implementation returns ``None``, which
+means the filter is silently omitted.  Implementing ``to_code`` makes a
+custom filter participate in export.
+
+``to_code`` returns a :class:`~QVideo.lib.QVideoFilter.FilterCode` instance
+with three fields:
+
+``imports``
+  A :class:`frozenset` of complete import lines required by the generated
+  code, e.g. ``frozenset({'import cv2', 'import numpy as np'})``.
+
+``lines``
+  A :class:`list` of source lines (no leading indentation).  The variable
+  ``image`` holds the current frame on entry and must hold the result on exit.
+  Temporary variables should use a leading underscore to avoid collisions
+  with the surrounding function scope.
+
+``comment``
+  An optional one-line description included as a ``# comment`` above the
+  generated block.
+
+**Stateless filter example** — the ``InvertFilter`` from the previous section:
+
+.. code-block:: python
+
+   from QVideo.lib.QVideoFilter import VideoFilter, FilterCode, QVideoFilter
+   from QVideo.lib.videotypes import Image
+   import numpy as np
+
+
+   class InvertFilter(VideoFilter):
+       '''Invert all pixel values.'''
+
+       def get(self) -> Image | None:
+           if self.data is None:
+               return None
+           return 255 - self.data
+
+       def to_code(self) -> FilterCode:
+           return FilterCode(
+               imports=frozenset({'import numpy as np'}),
+               lines=['image = 255 - image'],
+               comment='invert pixel values',
+           )
+
+**Filter with parameters** — embed the current parameter values directly in
+the generated source so the exported function is self-contained:
+
+.. code-block:: python
+
+   class BrightnessFilter(VideoFilter):
+       '''Multiply every pixel by a gain factor.'''
+
+       def __init__(self, gain: float = 1.0) -> None:
+           super().__init__()
+           self.gain = gain
+
+       def get(self) -> Image | None:
+           if self.data is None:
+               return None
+           return np.clip(self.data * self.gain, 0, 255).astype(self.data.dtype)
+
+       def to_code(self) -> FilterCode:
+           return FilterCode(
+               imports=frozenset({'import numpy as np'}),
+               lines=[
+                   f'image = np.clip(image * {self.gain}, 0, 255).astype(image.dtype)',
+               ],
+               comment=f'brightness gain={self.gain}',
+           )
+
+**Stateful filter** — a filter that accumulates state across frames cannot be
+expressed as a single-frame pure function.  Leave ``to_code`` returning ``None``
+(the default) and the rack will note the omission in a comment:
+
+.. code-block:: python
+
+   # NOTE: the following filters are stateful and were omitted:
+   #   DifferenceFilter
+
+
 Using filters in a pipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

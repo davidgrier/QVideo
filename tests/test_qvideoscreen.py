@@ -359,6 +359,26 @@ class TestFitToVideo(unittest.TestCase):
             screen._fitToVideo()
         mock_win_fn.assert_not_called()
 
+    def test_zero_width_shape_does_not_raise(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(0, 480)
+        with patch.object(screen, 'window') as mock_win_fn:
+            try:
+                screen._fitToVideo()
+            except ZeroDivisionError as e:
+                self.fail(f'_fitToVideo raised ZeroDivisionError: {e}')
+        mock_win_fn.assert_not_called()
+
+    def test_zero_height_shape_does_not_raise(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(640, 0)
+        with patch.object(screen, 'window') as mock_win_fn:
+            try:
+                screen._fitToVideo()
+            except ZeroDivisionError as e:
+                self.fail(f'_fitToVideo raised ZeroDivisionError: {e}')
+        mock_win_fn.assert_not_called()
+
     def test_resizes_window_to_native_video_size(self):
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)

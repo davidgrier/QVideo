@@ -296,6 +296,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         if not self.hasHeightForWidth():
             return
         shape = self._videoShape
+        if shape.width() == 0 or shape.height() == 0:
+            return
         window = self.window()
         screen = (QtWidgets.QApplication.screenAt(window.pos())
                   or QtWidgets.QApplication.primaryScreen())

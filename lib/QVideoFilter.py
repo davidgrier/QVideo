@@ -91,6 +91,13 @@ class VideoFilter(QtCore.QObject):
             raise RuntimeError('get() called before add()')
         return self.data
 
+    def shutdown(self) -> None:
+        '''Release background resources held by this filter.
+
+        Called by the pipeline when the filter is removed.  The default
+        is a no-op; subclasses that own background threads override this.
+        '''
+
     def to_code(self) -> FilterCode | None:
         '''Return a :class:`FilterCode` fragment for pipeline export.
 

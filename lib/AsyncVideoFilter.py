@@ -1,5 +1,5 @@
 '''Async VideoFilter base for computationally expensive operations.'''
-from collections.abc import Callable
+import weakref
 from qtpy import QtCore
 from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.videotypes import Image
@@ -10,17 +10,36 @@ __all__ = ['AsyncVideoFilter']
 
 
 class _AsyncWorker(QtCore.QObject):
-    '''Runs a callable in a background thread and emits the result.'''
+    '''Runs filter.process in a background thread and reports the result.
 
-    resultReady = QtCore.Signal(np.ndarray)
+    Holds a *weakref* to the owning filter rather than a bound method
+    (``filter.process``).  A bound method would create a strong reference
+    cycle — ``AsyncVideoFilter → _worker → _fn → AsyncVideoFilter`` — that
+    Python's reference-counting GC cannot break.  PyQt5 uses weak references
+    for signal-slot connections, so the ``destroyed`` and ``aboutToQuit``
+    connections do *not* keep the filter alive; only the external reference
+    from the rack does.  When the cyclic GC runs (triggered by any allocation
+    that crosses the GC threshold, e.g. a mouse-move event), it detects the
+    unreachable cycle and collects it, destroying ``_thread`` while it is
+    still running and causing Qt to abort.  The weakref breaks the cycle so
+    that Python's refcount mechanism handles collection instead, which fires
+    ``destroyed`` reliably before ``_thread`` is freed.
+    '''
 
-    def __init__(self, fn: Callable[[Image], Image]) -> None:
+    def __init__(self, filter_ref: 'weakref.ref[AsyncVideoFilter]') -> None:
         super().__init__()
-        self._fn = fn
+        self._ref = filter_ref
 
     @QtCore.Slot(np.ndarray)
     def run(self, image: Image) -> None:
-        self.resultReady.emit(self._fn(image))
+        f = self._ref()
+        if f is None:
+            return
+        result = f.process(image)
+        f = self._ref()      # re-check: process() may have released the GIL
+        if f is not None:
+            f._result = result
+            f._ready = True
 
 
 class AsyncVideoFilter(VideoFilter):
@@ -59,11 +78,10 @@ class AsyncVideoFilter(VideoFilter):
         super().__init__()
         self._ready = True
         self._result: Image | None = None
-        self._worker = _AsyncWorker(self.process)
+        self._worker = _AsyncWorker(weakref.ref(self))
         self._thread = QtCore.QThread()
         self._worker.moveToThread(self._thread)
         self._submit.connect(self._worker.run)
-        self._worker.resultReady.connect(self._onResult)
         self._thread.start()
         self.destroyed.connect(self._cleanup)
         app = QtCore.QCoreApplication.instance()
@@ -122,7 +140,14 @@ class AsyncVideoFilter(VideoFilter):
             return self._result
         return self.data
 
-    @QtCore.Slot(np.ndarray)
+    def shutdown(self) -> None:
+        '''Stop the background thread synchronously.
+
+        Called by the pipeline when this filter is removed.  Safe to
+        call multiple times.
+        '''
+        self._cleanup()
+
     def _onResult(self, result: Image) -> None:
         self._result = result
         self._ready = True

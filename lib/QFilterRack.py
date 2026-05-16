@@ -207,6 +207,7 @@ class QFilterRack(QtWidgets.QWidget):
                  editable: bool = True) -> None:
         super().__init__(parent)
         self._editable = editable
+        self._filter_refs: list[QVideoFilter] = []
         self._setupUi()
 
     def _setupUi(self) -> None:
@@ -298,6 +299,7 @@ class QFilterRack(QtWidgets.QWidget):
         if not isinstance(video_filter, QVideoFilter):
             raise TypeError(f'expected QVideoFilter, '
                             f'got {type(video_filter).__name__}')
+        self._filter_refs.append(video_filter)
         slot = _FilterSlot(video_filter, self)
         slot.removeRequested.connect(self._removeSlot)
         slot.dropRequested.connect(self._moveSlot)
@@ -416,6 +418,8 @@ class QFilterRack(QtWidgets.QWidget):
                 fh.write(self.exportPipeline())
 
     def _removeSlot(self, slot: '_FilterSlot') -> None:
+        slot._widget.filter.shutdown()
+        self._filter_refs.remove(slot._widget)
         self._slots.removeWidget(slot)
         slot.deleteLater()
         self.adjustSize()

@@ -1,4 +1,5 @@
 '''Ring buffer that accumulates timestamped frames for later saving.'''
+import os
 from collections import deque
 from pathlib import Path
 from time import time
@@ -14,6 +15,8 @@ __all__ = ['QCircularBuffer']
 
 
 logger = logging.getLogger(__name__)
+
+_MEMORY_WARN_FRACTION = 0.25
 
 
 class QCircularBuffer(QtCore.QObject):
@@ -57,6 +60,8 @@ class QCircularBuffer(QtCore.QObject):
         self._fps = float(fps)
         self._duration = max(1, int(duration))
         self._buffer: deque = deque(maxlen=max(1, int(self._fps * self._duration)))
+        self._frameBytes: int = 0
+        self._warned: bool = False
 
     @property
     def fps(self) -> float:
@@ -82,6 +87,7 @@ class QCircularBuffer(QtCore.QObject):
         maxlen = max(1, int(self._fps * self._duration))
         items = list(self._buffer)
         self._buffer = deque(items[-maxlen:], maxlen=maxlen)
+        self._warned = False
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -89,6 +95,33 @@ class QCircularBuffer(QtCore.QObject):
     def clear(self) -> None:
         '''Discard all buffered frames.'''
         self._buffer.clear()
+
+    @staticmethod
+    def _totalRAM() -> int:
+        '''Return total physical RAM in bytes, or 0 if it cannot be determined.'''
+        try:
+            import psutil
+            return psutil.virtual_memory().total
+        except ImportError:
+            pass
+        try:
+            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+        except (AttributeError, ValueError):
+            return 0
+
+    def _checkMemory(self) -> None:
+        self._warned = True
+        estimated = self._buffer.maxlen * self._frameBytes
+        total = self._totalRAM()
+        if total > 0 and estimated > _MEMORY_WARN_FRACTION * total:
+            est_mb = estimated / 1024 ** 2
+            pct = 100 * estimated / total
+            total_gb = total / 1024 ** 3
+            logger.warning(
+                f'Circular buffer may use {est_mb:.0f} MB '
+                f'({pct:.0f}% of {total_gb:.1f} GB RAM); '
+                f'consider reducing duration or frame rate.'
+            )
 
     @QtCore.Slot(np.ndarray)
     def append(self, frame: Image) -> None:
@@ -99,6 +132,9 @@ class QCircularBuffer(QtCore.QObject):
         frame : numpy.ndarray
             Video frame to buffer.
         '''
+        self._frameBytes = frame.nbytes
+        if not self._warned:
+            self._checkMemory()
         self._buffer.append((time(), frame))
 
     def save(self, filename: str) -> bool:

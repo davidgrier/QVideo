@@ -221,5 +221,87 @@ class TestActualFps(unittest.TestCase):
         self.assertEqual(buf._actualFps(items), 30.)
 
 
+class TestTotalRAM(unittest.TestCase):
+
+    def test_returns_int(self):
+        result = QCircularBuffer._totalRAM()
+        self.assertIsInstance(result, int)
+
+    def test_uses_psutil_when_available(self):
+        mock_psutil = MagicMock()
+        mock_psutil.virtual_memory.return_value.total = 16 * 1024 ** 3
+        with patch.dict('sys.modules', {'psutil': mock_psutil}):
+            result = QCircularBuffer._totalRAM()
+        self.assertEqual(result, 16 * 1024 ** 3)
+
+    def test_falls_back_to_sysconf(self):
+        with patch.dict('sys.modules', {'psutil': None}):
+            with patch.object(_module.os, 'sysconf', side_effect=[4096, 1024]):
+                result = QCircularBuffer._totalRAM()
+        self.assertEqual(result, 4096 * 1024)
+
+    def test_returns_zero_on_failure(self):
+        with patch.dict('sys.modules', {'psutil': None}):
+            with patch.object(_module.os, 'sysconf', side_effect=ValueError):
+                result = QCircularBuffer._totalRAM()
+        self.assertEqual(result, 0)
+
+
+class TestMemoryWarning(unittest.TestCase):
+
+    def _big_frame(self):
+        # 1 GB / 10 frames → each frame is 100 MB when maxlen=10
+        # makes estimated = 1 GB which is >25% of a 1 GB total
+        n = (1024 ** 3) // 10
+        return np.zeros(n, dtype=np.uint8)
+
+    def test_warning_logged_when_over_threshold(self):
+        buf = QCircularBuffer(fps=10., duration=1)  # maxlen=10
+        with patch.object(buf, '_totalRAM', return_value=1024 ** 3):
+            with self.assertLogs('QVideo.dvr.QCircularBuffer', level='WARNING') as cm:
+                buf.append(self._big_frame())
+        self.assertTrue(any('Circular buffer' in line for line in cm.output))
+
+    def test_no_warning_when_under_threshold(self):
+        buf = QCircularBuffer(fps=1., duration=1)  # maxlen=1, frame=48 bytes
+        with patch.object(buf, '_totalRAM', return_value=1024 ** 3):
+            # 48 bytes << 25% of 1 GB — no warning
+            try:
+                with self.assertLogs('QVideo.dvr.QCircularBuffer', level='WARNING'):
+                    buf.append(make_frame())
+                warned = True
+            except AssertionError:
+                warned = False
+        self.assertFalse(warned)
+
+    def test_warning_fires_only_once_per_resize(self):
+        buf = QCircularBuffer(fps=10., duration=1)
+        with patch.object(buf, '_totalRAM', return_value=1024 ** 3):
+            with self.assertLogs('QVideo.dvr.QCircularBuffer', level='WARNING') as cm:
+                buf.append(self._big_frame())
+                buf.append(self._big_frame())
+        self.assertEqual(sum(1 for line in cm.output if 'Circular buffer' in line), 1)
+
+    def test_resize_resets_warned_flag(self):
+        buf = QCircularBuffer(fps=10., duration=1)
+        with patch.object(buf, '_totalRAM', return_value=1024 ** 3):
+            with self.assertLogs('QVideo.dvr.QCircularBuffer', level='WARNING'):
+                buf.append(self._big_frame())
+            self.assertTrue(buf._warned)
+            buf.duration = 2  # triggers _resize, resets _warned
+            self.assertFalse(buf._warned)
+
+    def test_no_warning_when_total_ram_unknown(self):
+        buf = QCircularBuffer(fps=10., duration=1)
+        with patch.object(buf, '_totalRAM', return_value=0):
+            try:
+                with self.assertLogs('QVideo.dvr.QCircularBuffer', level='WARNING'):
+                    buf.append(self._big_frame())
+                warned = True
+            except AssertionError:
+                warned = False
+        self.assertFalse(warned)
+
+
 if __name__ == '__main__':
     unittest.main()

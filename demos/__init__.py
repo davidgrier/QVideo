@@ -48,6 +48,13 @@ uniformitydemo
     mean intensity as a function of x and y.  Flat traces indicate uniform
     illumination; deviations localise non-uniformity spatially.
 
+circulardemo
+    Extends :mod:`demo` with a
+    :class:`~QVideo.dvr.QCircularDVRWidget.QCircularDVRWidget` below the
+    camera control tree.  The buffer accumulates continuously; clicking
+    **Save** writes the last N seconds to disk without any prior *record*
+    action.
+
 compositedemo
     Extends :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy overlay
     and a "Composite" checkbox.  When checked, the DVR records the rendered
@@ -62,6 +69,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.filterrackdemo
     python -m QVideo.demos.histogramdemo
     python -m QVideo.demos.uniformitydemo
+    python -m QVideo.demos.circulardemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
@@ -98,6 +106,7 @@ from .filterdemo import FilterDemo
 from .filterrackdemo import FilterRackDemo
 from .histogramdemo import HistogramDemo
 from .uniformitydemo import UniformityDemo
+from .circulardemo import CircularDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo

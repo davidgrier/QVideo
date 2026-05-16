@@ -138,10 +138,13 @@ class QROIFilter(QVideoFilter):
                                  bounds=(1, None),
                                  step=8,
                                  value=self.filter.h, int=True)
-        self._layout.addWidget(self._xSpinbox)
-        self._layout.addWidget(self._ySpinbox)
-        self._layout.addWidget(self._wSpinbox)
-        self._layout.addWidget(self._hSpinbox)
+        grid = QtWidgets.QGridLayout()
+        grid.setSpacing(2)
+        grid.addWidget(self._xSpinbox, 0, 0)
+        grid.addWidget(self._ySpinbox, 0, 1)
+        grid.addWidget(self._wSpinbox, 1, 0)
+        grid.addWidget(self._hSpinbox, 1, 1)
+        self._layout.addLayout(grid)
 
     def _connectSignals(self) -> None:
         super()._connectSignals()

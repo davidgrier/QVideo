@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.filters.QBlobFilter import BlobFilter, QBlobFilter
+from QVideo.filters.blob import BlobFilter, QBlobFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

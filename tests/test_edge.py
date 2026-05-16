@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtWidgets
-from QVideo.filters.QEdgeFilter import EdgeFilter, QEdgeFilter
+from QVideo.filters.edge import EdgeFilter, QEdgeFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -71,12 +71,12 @@ class TestEdgeFilter(unittest.TestCase):
 
     def test_low_rejected_logs_warning(self):
         f = make_filter(low=50, high=150)
-        with self.assertLogs('QVideo.filters.QEdgeFilter', level='WARNING'):
+        with self.assertLogs('QVideo.filters.edge', level='WARNING'):
             f.low = 200
 
     def test_high_rejected_logs_warning(self):
         f = make_filter(low=50, high=150)
-        with self.assertLogs('QVideo.filters.QEdgeFilter', level='WARNING'):
+        with self.assertLogs('QVideo.filters.edge', level='WARNING'):
             f.high = 10
 
     def test_get_returns_none_before_add(self):
@@ -164,14 +164,14 @@ class TestQEdgeFilter(unittest.TestCase):
     def test_set_low_rejected_snaps_spinbox_back(self):
         widget = make_widget()
         original_low = widget.filter.low
-        with self.assertLogs('QVideo.filters.QEdgeFilter', level='WARNING'):
+        with self.assertLogs('QVideo.filters.edge', level='WARNING'):
             widget.setLow(widget.filter.high + 10)
         self.assertEqual(widget._lowSpinbox.value(), original_low)
 
     def test_set_high_rejected_snaps_spinbox_back(self):
         widget = make_widget()
         original_high = widget.filter.high
-        with self.assertLogs('QVideo.filters.QEdgeFilter', level='WARNING'):
+        with self.assertLogs('QVideo.filters.edge', level='WARNING'):
             widget.setHigh(widget.filter.low - 1)
         self.assertEqual(widget._highSpinbox.value(), original_high)
 

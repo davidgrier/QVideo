@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
-from QVideo.filters.Median import Median
-from QVideo.filters.QSampleHold import SampleHold, QSampleHold
+from QVideo.filters.median import Median
+from QVideo.filters.samplehold import SampleHold, QSampleHold
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

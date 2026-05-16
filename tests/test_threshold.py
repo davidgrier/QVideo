@@ -4,7 +4,7 @@ import numpy as np
 from unittest.mock import patch
 import cv2
 from qtpy import QtWidgets
-from QVideo.filters.QThresholdFilter import ThresholdFilter, QThresholdFilter
+from QVideo.filters.threshold import ThresholdFilter, QThresholdFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

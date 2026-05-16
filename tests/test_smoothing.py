@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.filters.QSmoothingFilter import SmoothingFilter, QSmoothingFilter
+from QVideo.filters.smoothing import SmoothingFilter, QSmoothingFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

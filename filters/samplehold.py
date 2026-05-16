@@ -1,7 +1,7 @@
 '''Sample-and-hold background normalization filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
-from QVideo.filters.Median import Median
-from QVideo.filters.Normalize import Normalize
+from QVideo.filters.median import Median
+from QVideo.filters.normalize import Normalize
 from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
 
@@ -16,7 +16,7 @@ class SampleHold(Normalize):
     '''Normalize an image against a sampled background estimate.
 
     Accumulates ``3 ** order`` frames into the running-median background
-    estimator inherited from :class:`~QVideo.filters.Normalize.Normalize`,
+    estimator inherited from :class:`~QVideo.filters.normalize.Normalize`,
     then holds that estimate fixed.  Subsequent frames are normalized
     against the held background.  Calling :meth:`reset` restarts the
     accumulation, allowing the background to be refreshed on demand.

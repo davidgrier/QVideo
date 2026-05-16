@@ -5,7 +5,7 @@ from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
 from QVideo.lib.QVideoFilter import QVideoFilter
-from QVideo.filters.QCircleTransformFilter import (
+from QVideo.filters.circletransform import (
     CircleTransformFilter, QCircleTransformFilter)
 
 

@@ -1,6 +1,6 @@
 '''Background-normalization filters built on median background estimation.'''
-from QVideo.filters.Median import Median
-from QVideo.filters.MoMedian import MoMedian
+from QVideo.filters.median import Median
+from QVideo.filters.momedian import MoMedian
 from QVideo.lib.videotypes import Image
 import numpy as np
 
@@ -12,8 +12,8 @@ class _NormalizeMixin:
 
     '''Mixin that adds background normalization to a median estimator.
 
-    Intended to be combined with :class:`~QVideo.filters.Median.Median`
-    or :class:`~QVideo.filters.MoMedian.MoMedian` via multiple
+    Intended to be combined with :class:`~QVideo.filters.median.Median`
+    or :class:`~QVideo.filters.momedian.MoMedian` via multiple
     inheritance.  The median estimator accumulates frames to build a
     background model; this mixin divides new frames by that background.
 

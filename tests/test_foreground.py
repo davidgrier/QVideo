@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtCore, QtWidgets
-from QVideo.filters.QForegroundEstimator import (
+from QVideo.filters.foreground import (
     ForegroundEstimator, QForegroundEstimator)
 
 

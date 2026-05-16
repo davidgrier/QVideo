@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from qtpy import QtWidgets
-from QVideo.filters.QROIFilter import ROIFilter, QROIFilter
+from QVideo.filters.roi import ROIFilter, QROIFilter
 from QVideo.lib.QVideoFilter import QVideoFilter
 
 

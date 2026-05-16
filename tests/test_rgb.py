@@ -2,7 +2,7 @@
 import unittest
 import numpy as np
 from qtpy import QtWidgets
-from QVideo.filters.QRGBFilter import RGBFilter, QRGBFilter
+from QVideo.filters.rgb import RGBFilter, QRGBFilter
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

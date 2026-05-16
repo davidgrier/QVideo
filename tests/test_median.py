@@ -1,7 +1,7 @@
 '''Unit tests for Median.'''
 import unittest
 import numpy as np
-from QVideo.filters.Median import Median
+from QVideo.filters.median import Median
 
 
 _SHAPE = (4, 4)

@@ -5,8 +5,8 @@ Run directly::
 
     python -m QVideo.demos.filterrackdemo
 
-The filter rack starts with :class:`~QVideo.filters.QSmoothingFilter.QSmoothingFilter`
-and :class:`~QVideo.filters.QThresholdFilter.QThresholdFilter` pre-loaded.
+The filter rack starts with :class:`~QVideo.filters.smoothing.QSmoothingFilter`
+and :class:`~QVideo.filters.threshold.QThresholdFilter` pre-loaded.
 Additional filters can be added interactively via the "Add filter…" button,
 and any filter can be removed or reordered by dragging.
 
@@ -96,8 +96,8 @@ class FilterRackDemo(QCamcorder):
 
     Extends :class:`~QVideo.QCamcorder.QCamcorder` by adding a
     :class:`~QVideo.lib.QFilterRack.QFilterRack` pre-loaded with
-    :class:`~QVideo.filters.QSmoothingFilter.QSmoothingFilter` and
-    :class:`~QVideo.filters.QThresholdFilter.QThresholdFilter`, and
+    :class:`~QVideo.filters.smoothing.QSmoothingFilter` and
+    :class:`~QVideo.filters.threshold.QThresholdFilter`, and
     a group of radio buttons to select the DVR recording source:
 
     - **Raw**: unfiltered frames at the camera's full frame rate.

@@ -1,15 +1,15 @@
-from .Median import Median
-from .MoMedian import MoMedian
-from .Normalize import Normalize, SmoothNormalize
-from .QBlobFilter import BlobFilter, QBlobFilter
-from .QCircleTransformFilter import CircleTransformFilter, QCircleTransformFilter
-from .QForegroundEstimator import ForegroundEstimator, QForegroundEstimator
-from .QSmoothingFilter import SmoothingFilter, QSmoothingFilter
-from .QEdgeFilter import EdgeFilter, QEdgeFilter
-from .QRGBFilter import RGBFilter, QRGBFilter
-from .QROIFilter import ROIFilter, QROIFilter
-from .QSampleHold import SampleHold, QSampleHold
-from .QThresholdFilter import ThresholdFilter, QThresholdFilter
+from .median import Median
+from .momedian import MoMedian
+from .normalize import Normalize, SmoothNormalize
+from .blob import BlobFilter, QBlobFilter
+from .circletransform import CircleTransformFilter, QCircleTransformFilter
+from .foreground import ForegroundEstimator, QForegroundEstimator
+from .smoothing import SmoothingFilter, QSmoothingFilter
+from .edge import EdgeFilter, QEdgeFilter
+from .rgb import RGBFilter, QRGBFilter
+from .roi import ROIFilter, QROIFilter
+from .samplehold import SampleHold, QSampleHold
+from .threshold import ThresholdFilter, QThresholdFilter
 
 __all__ = '''
 Median MoMedian

@@ -1,7 +1,7 @@
 '''Unit tests for MoMedian.'''
 import unittest
 import numpy as np
-from QVideo.filters.MoMedian import MoMedian
+from QVideo.filters.momedian import MoMedian
 
 
 _SHAPE = (4, 4)

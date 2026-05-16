@@ -18,7 +18,7 @@ class _MedianBase(VideoFilter):
         for pure estimator chains (``Median`` → ``Median``,
         ``MoMedian`` → ``MoMedian``).  Override in subclasses whose
         ``add()`` behaviour must not propagate into sub-estimators
-        (e.g. :class:`~QVideo.filters.QSampleHold.SampleHold` uses
+        (e.g. :class:`~QVideo.filters.samplehold.SampleHold` uses
         ``Median`` so the sub-estimator never enters hold mode).
 
     Parameters

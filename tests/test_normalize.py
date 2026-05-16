@@ -1,9 +1,9 @@
 '''Unit tests for Normalize and SmoothNormalize.'''
 import unittest
 import numpy as np
-from QVideo.filters.Normalize import Normalize, SmoothNormalize
-from QVideo.filters.Median import Median
-from QVideo.filters.MoMedian import MoMedian
+from QVideo.filters.normalize import Normalize, SmoothNormalize
+from QVideo.filters.median import Median
+from QVideo.filters.momedian import MoMedian
 
 
 _SHAPE = (4, 4)

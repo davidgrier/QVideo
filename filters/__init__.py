@@ -6,6 +6,8 @@ from .circletransform import CircleTransformFilter, QCircleTransformFilter
 from .foreground import ForegroundEstimator, QForegroundEstimator
 from .smoothing import SmoothingFilter, QSmoothingFilter
 from .edge import EdgeFilter, QEdgeFilter
+from .sobel import SobelFilter, QSobelFilter
+from .laplacian import LaplacianFilter, QLaplacianFilter
 from .rgb import RGBFilter, QRGBFilter
 from .roi import ROIFilter, QROIFilter
 from .samplehold import SampleHold, QSampleHold
@@ -19,6 +21,8 @@ CircleTransformFilter QCircleTransformFilter
 ForegroundEstimator QForegroundEstimator
 SmoothingFilter QSmoothingFilter
 EdgeFilter QEdgeFilter
+SobelFilter QSobelFilter
+LaplacianFilter QLaplacianFilter
 RGBFilter QRGBFilter
 ROIFilter QROIFilter
 SampleHold QSampleHold

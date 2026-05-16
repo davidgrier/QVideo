@@ -58,6 +58,71 @@ which is useful after scene changes.
 .. automodule:: QVideo.filters.samplehold
    :members:
 
+Gamma correction
+----------------
+
+:class:`~QVideo.filters.gamma.GammaFilter` applies the power-law
+transform *output* = (*input* / 255)^γ × 255 to every pixel using a
+256-entry look-up table built once when :attr:`~QVideo.filters.gamma.GammaFilter.gamma`
+changes.  *γ* < 1 lifts shadows; *γ* > 1 deepens them; *γ* = 1 is the identity.
+Because the LUT is applied by ``cv2.LUT``, per-frame cost is independent of image
+size.  The same table is applied to every channel, preserving colour balance.
+Supports pipeline export.
+
+.. automodule:: QVideo.filters.gamma
+   :members:
+
+Exposure correction
+-------------------
+
+:class:`~QVideo.filters.exposure.ExposureFilter` provides three
+tone-mapping methods selectable at runtime.
+
+**Log** compresses dynamic range via a logarithmic curve — *log(1 + p) / log(256)*
+— lifting shadow detail without clipping highlights.  No parameters.
+
+**Sigmoid** applies a smooth S-curve centred at *cutoff* with steepness *gain*.
+Low *gain* gives a gentle contrast boost; high *gain* approaches hard clipping.
+
+**CLAHE** (Contrast-Limited Adaptive Histogram Equalization) equalises local
+contrast within *tile_size* × *tile_size* tiles, capping amplification at
+*clip_limit* to suppress noise amplification.  On colour input, CLAHE is applied
+to the L channel in LAB colour space so hue and saturation are preserved.
+All three methods support pipeline export.
+
+.. automodule:: QVideo.filters.exposure
+   :members:
+
+Difference of Gaussians
+-----------------------
+
+:class:`~QVideo.filters.dog.DoGFilter` implements the Difference-of-Gaussians
+(DoG) bandpass filter.  It subtracts a wide Gaussian blur (*high_sigma*) from a
+narrow one (*low_sigma*), suppressing both slowly-varying background and
+high-frequency noise.  The result is displayed as the absolute value scaled to
+``uint8``, so both positive and negative excursions appear bright.
+
+DoG is a standard preprocessing step for particle tracking and fluorescence
+microscopy: it isolates features at the scale set by *low_sigma* while
+removing background and pixel noise.  Colour input is converted to grayscale
+before filtering.  Supports pipeline export.
+
+.. automodule:: QVideo.filters.dog
+   :members:
+
+Unsharp mask
+------------
+
+:class:`~QVideo.filters.unsharp.UnsharpFilter` sharpens each frame by
+subtracting a Gaussian-blurred copy (*radius*) scaled by *amount* from the
+original, implemented as ``cv2.addWeighted`` so the result is clipped to
+``[0, 255]`` without overflow.  *amount* = 0 is a no-op; *amount* = 1 gives
+a standard unsharp mask; higher values over-sharpen.  Accepts both grayscale
+and colour input.  Supports pipeline export.
+
+.. automodule:: QVideo.filters.unsharp
+   :members:
+
 Smoothing
 ---------
 

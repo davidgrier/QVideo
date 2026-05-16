@@ -68,13 +68,41 @@ exposes a method selector combobox and a width spinbox.
 Edge detection
 --------------
 
-:class:`~QVideo.filters.edge.EdgeFilter` converts color input to
-grayscale and runs OpenCV's Canny edge detector.  The two hysteresis
-thresholds (*low* and *high*) are exposed as spinboxes in the companion
-widget.  A 2:1 or 3:1 high-to-low ratio is recommended for typical
-scientific images.
+Three edge-detection filters are available, each suited to different imaging
+conditions.  All accept color or grayscale input and return a uint8 edge map.
+
+**Canny** — :class:`~QVideo.filters.edge.EdgeFilter` applies OpenCV's
+multi-stage Canny detector [C86]_.  Two hysteresis thresholds (*low* and
+*high*) control which gradient-magnitude edges are retained; a 2:1 or 3:1
+high-to-low ratio is recommended for typical scientific images.  Canny
+produces a clean binary edge map and is the best general-purpose choice.
+
+**Sobel** — :class:`~QVideo.filters.sobel.SobelFilter` computes a
+first-order directional derivative using the Sobel operator.  Three modes
+are available: *Horizontal* (∂/∂x), *Vertical* (∂/∂y), and *Magnitude*
+(Euclidean magnitude √(Gx² + Gy²), clipped to ``[0, 255]``).  The kernel
+size *k* is odd and in {1, 3, 5, 7}.  Sobel is well suited to extracting
+directional gradient information or computing gradient-magnitude images for
+further analysis.
+
+**Laplacian** — :class:`~QVideo.filters.laplacian.LaplacianFilter` applies
+the discrete Laplacian operator (∇²), returning the absolute value as a
+uint8 image.  An optional Gaussian pre-blur with standard deviation *σ*
+reduces noise sensitivity; setting *σ* > 0 implements the
+Laplacian-of-Gaussian (LoG) operator commonly used to detect blob-like
+features at a scale set by *σ*.
+
+.. [C86] J. Canny, 'A computational approach to edge detection,'
+   *IEEE Transactions on Pattern Analysis and Machine Intelligence*
+   **8**, 679–698 (1986).
 
 .. automodule:: QVideo.filters.edge
+   :members:
+
+.. automodule:: QVideo.filters.sobel
+   :members:
+
+.. automodule:: QVideo.filters.laplacian
    :members:
 
 RGB channel selection
@@ -91,10 +119,24 @@ choice as three radio buttons.
 Threshold
 ---------
 
-:class:`~QVideo.filters.threshold.ThresholdFilter` applies a binary
-intensity threshold, producing a black-and-white mask.  Pixels above the
-threshold are set to 255; all others are set to 0.  The companion widget
-provides a spinbox for the threshold level.
+:class:`~QVideo.filters.threshold.ThresholdFilter` converts each frame to
+grayscale and applies a binary threshold, producing a black-and-white mask.
+Four methods are available:
+
+- **Global** — pixels above a fixed *level* are set to 255; all others to 0.
+- **Otsu** — the threshold is chosen automatically to minimise intra-class
+  intensity variance [O79]_; the *level* parameter is ignored.
+- **Adaptive Mean** — the threshold at each pixel is the mean intensity of a
+  *block* × *block* neighbourhood minus a constant *C*.
+- **Adaptive Gaussian** — like Adaptive Mean, but using a Gaussian-weighted
+  neighbourhood mean.
+
+The companion :class:`~QVideo.filters.threshold.QThresholdFilter` widget
+exposes a method selector combobox; parameter spinboxes appear and disappear
+depending on the selected method.
+
+.. [O79] N. Otsu, 'A threshold selection method from gray-level histograms,'
+   *IEEE Transactions on Systems, Man, and Cybernetics* **9**, 62–66 (1979).
 
 .. automodule:: QVideo.filters.threshold
    :members:

@@ -36,6 +36,12 @@ yolodemo
     panel so that YOLO object-detection bounding boxes are overlaid on the
     live feed in real time and detection results are available via a signal.
 
+histogramdemo
+    Extends :mod:`demo` with a
+    :class:`~QVideo.lib.QHistogramWidget.QHistogramWidget` panel showing
+    a live intensity histogram.  The draggable level handles adjust the
+    display range of the video screen in real time.
+
 compositedemo
     Extends :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy overlay
     and a "Composite" checkbox.  When checked, the DVR records the rendered
@@ -48,6 +54,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.demo
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.filterrackdemo
+    python -m QVideo.demos.histogramdemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
@@ -82,6 +89,7 @@ Example::
 from .demo import Demo
 from .filterdemo import FilterDemo
 from .filterrackdemo import FilterRackDemo
+from .histogramdemo import HistogramDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo

@@ -290,13 +290,6 @@ class TestSizeHints(unittest.TestCase):
         except Exception as e:
             self.fail(f'heightForWidth raised {e} without shape')
 
-    def test_height_for_width_with_zero_width_does_not_raise(self):
-        screen = make_screen()
-        screen._videoShape = QtCore.QSize(0, 480)
-        try:
-            screen.heightForWidth(320)
-        except ZeroDivisionError as e:
-            self.fail(f'heightForWidth raised ZeroDivisionError: {e}')
 
     def test_size_hint_without_shape_delegates(self):
         screen = make_screen()
@@ -357,26 +350,6 @@ class TestFitToVideo(unittest.TestCase):
         screen = make_screen()
         with patch.object(screen, 'window') as mock_win_fn:
             screen._fitToVideo()
-        mock_win_fn.assert_not_called()
-
-    def test_zero_width_shape_does_not_raise(self):
-        screen = make_screen()
-        screen._videoShape = QtCore.QSize(0, 480)
-        with patch.object(screen, 'window') as mock_win_fn:
-            try:
-                screen._fitToVideo()
-            except ZeroDivisionError as e:
-                self.fail(f'_fitToVideo raised ZeroDivisionError: {e}')
-        mock_win_fn.assert_not_called()
-
-    def test_zero_height_shape_does_not_raise(self):
-        screen = make_screen()
-        screen._videoShape = QtCore.QSize(640, 0)
-        with patch.object(screen, 'window') as mock_win_fn:
-            try:
-                screen._fitToVideo()
-            except ZeroDivisionError as e:
-                self.fail(f'_fitToVideo raised ZeroDivisionError: {e}')
         mock_win_fn.assert_not_called()
 
     def test_resizes_window_to_native_video_size(self):
@@ -510,6 +483,21 @@ class TestUpdateShape(unittest.TestCase):
         with patch.object(screen, 'updateGeometry') as mock_geom:
             screen.updateShape(shape)
         mock_geom.assert_called_once()
+
+    def test_zero_width_shape_is_ignored(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(0, 480))
+        self.assertIsNone(screen._videoShape)
+
+    def test_zero_height_shape_is_ignored(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(640, 0))
+        self.assertIsNone(screen._videoShape)
+
+    def test_zero_zero_shape_is_ignored(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(0, 0))
+        self.assertIsNone(screen._videoShape)
 
 
 class TestOverlays(unittest.TestCase):

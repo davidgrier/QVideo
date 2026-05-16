@@ -263,20 +263,23 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''Return the height that preserves the source aspect ratio.'''
         if self._videoShape is None:
             return super().heightForWidth(width)
-        w = self._videoShape.width()
-        if w == 0:
-            return super().heightForWidth(width)
-        return width * self._videoShape.height() // w
+        return width * self._videoShape.height() // self._videoShape.width()
 
     @QtCore.Slot(QtCore.QSize)
     def updateShape(self, shape: QtCore.QSize) -> None:
         '''Resize the display to match the video frame dimensions.
+
+        Ignores shapes with zero width or height, which :class:`QCamera`
+        emits as a sentinel before ``width`` / ``height`` are registered
+        as camera properties.
 
         Parameters
         ----------
         shape : QtCore.QSize
             New frame dimensions.
         '''
+        if shape.width() == 0 or shape.height() == 0:
+            return
         logger.debug(f'Resizing to {shape}')
         self._videoShape = shape
         self.updateGeometry()
@@ -296,8 +299,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         if not self.hasHeightForWidth():
             return
         shape = self._videoShape
-        if shape.width() == 0 or shape.height() == 0:
-            return
         window = self.window()
         screen = (QtWidgets.QApplication.screenAt(window.pos())
                   or QtWidgets.QApplication.primaryScreen())

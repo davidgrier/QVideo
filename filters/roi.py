@@ -104,7 +104,9 @@ class ROIFilter(VideoFilter):
 
 
 class QROIFilter(QVideoFilter):
-    
+
+    display_name = 'Region of Interest'
+
     '''Qt widget wrapper for :class:`ROIFilter`.'''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:

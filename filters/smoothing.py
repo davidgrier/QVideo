@@ -78,6 +78,8 @@ class SmoothingFilter(AsyncVideoFilter):
 
 class QSmoothingFilter(QVideoFilter):
 
+    display_name = 'Smoothing'
+
     '''Widget for :class:`SmoothingFilter` with method selector and width spinbox.
 
     Parameters

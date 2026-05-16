@@ -288,42 +288,50 @@ class QFilterRack(QtWidgets.QWidget):
         self._slots.addWidget(slot)
         self.adjustSize()
 
+    @classmethod
+    def _registry(cls) -> dict[str, type[QVideoFilter]]:
+        '''Map :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
+        to class for every exported :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
+        that has a non-empty :attr:`display_name`.
+        '''
+        return {
+            klass.display_name: klass
+            for name in videofilters.__all__
+            if isinstance(klass := getattr(videofilters, name, None), type)
+            and issubclass(klass, QVideoFilter)
+            and klass.display_name
+        }
+
     def addByName(self, name: str) -> None:
-        '''Instantiate a filter by class name and add it to the rack.
+        '''Instantiate a filter by display name and add it to the rack.
 
         Parameters
         ----------
         name : str
-            Name of a :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
-            subclass exported by :mod:`QVideo.filters`.
+            :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name` of
+            the filter to add.
 
         Raises
         ------
         ValueError
-            If *name* is not a known :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
-            subclass.
+            If *name* does not match any registered filter.
         '''
-        cls = getattr(videofilters, name, None)
-        if cls is None or not (isinstance(cls, type) and
-                               issubclass(cls, QVideoFilter)):
+        klass = self._registry().get(name)
+        if klass is None:
             raise ValueError(f'{name!r} is not a known filter')
-        self.add(cls())
+        self.add(klass())
 
     @classmethod
     def availableFilters(cls) -> list[str]:
-        '''Return names of all :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
-        subclasses exported by :mod:`QVideo.filters`.
+        '''Return display names of all available filters, sorted.
 
         Returns
         -------
         list[str]
-            Sorted list of class names.
+            Sorted list of :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
+            values for every exported filter with a non-empty display name.
         '''
-        return sorted(
-            name for name in videofilters.__all__
-            if isinstance(getattr(videofilters, name, None), type)
-            and issubclass(getattr(videofilters, name), QVideoFilter)
-        )
+        return sorted(cls._registry())
 
     def _removeSlot(self, slot: '_FilterSlot') -> None:
         self._slots.removeWidget(slot)

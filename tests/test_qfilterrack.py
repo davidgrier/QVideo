@@ -94,13 +94,13 @@ class TestQFilterRackAddByName(unittest.TestCase):
         rack = make_rack()
         with patch.object(QtCore.QThread, 'start'), \
              patch.object(QtCore.QObject, 'moveToThread'):
-            rack.addByName('QSmoothingFilter')
+            rack.addByName('Smoothing')
         self.assertIsInstance(rack.filters[0], QSmoothingFilter)
 
     def test_add_by_name_unknown_raises(self):
         rack = make_rack()
         with self.assertRaises(ValueError):
-            rack.addByName('NonExistentFilter')
+            rack.addByName('No Such Filter')
 
     def test_add_by_name_non_filter_raises(self):
         rack = make_rack()
@@ -120,9 +120,9 @@ class TestQFilterRackAvailableFilters(unittest.TestCase):
 
     def test_contains_known_filters(self):
         result = QFilterRack.availableFilters()
-        self.assertIn('QSmoothingFilter', result)
-        self.assertIn('QEdgeFilter', result)
-        self.assertIn('QROIFilter', result)
+        self.assertIn('Smoothing', result)
+        self.assertIn('Canny Edge Detection', result)
+        self.assertIn('Region of Interest', result)
 
     def test_excludes_non_widget_classes(self):
         result = QFilterRack.availableFilters()

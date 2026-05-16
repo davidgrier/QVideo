@@ -120,6 +120,8 @@ class ForegroundEstimator(AsyncVideoFilter):
 
 class QForegroundEstimator(QVideoFilter):
 
+    display_name = 'Foreground'
+
     '''Widget for :class:`ForegroundEstimator` with history and threshold spinboxes.
 
     Parameters

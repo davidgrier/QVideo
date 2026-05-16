@@ -61,6 +61,8 @@ class ThresholdFilter(VideoFilter):
 
 class QThresholdFilter(QVideoFilter):
 
+    display_name = 'Threshold'
+
     '''Widget for :class:`ThresholdFilter` with a threshold spinbox.
 
     Parameters

@@ -80,6 +80,10 @@ class QVideoFilter(QtWidgets.QGroupBox):
     override should call ``super()._setupUi()`` first, then add widgets
     to ``self._layout``.
 
+    Subclasses should set :attr:`display_name` to a short human-readable
+    label.  :class:`~QVideo.lib.QFilterRack.QFilterRack` uses this to
+    populate the "Add filter…" picker.
+
     Parameters
     ----------
     parent : QtWidgets.QWidget
@@ -88,7 +92,15 @@ class QVideoFilter(QtWidgets.QGroupBox):
         Label displayed in the group box border.
     videoFilter : VideoFilter
         The filter to apply when enabled.
+
+    Class Attributes
+    ----------------
+    display_name : str
+        Human-readable name shown in the filter picker.  Empty string
+        means the filter will not appear in the picker.
     '''
+
+    display_name: str = ''
 
     def __init__(self,
                  parent: QtWidgets.QWidget | None,

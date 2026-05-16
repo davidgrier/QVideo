@@ -53,6 +53,8 @@ class RGBFilter(VideoFilter):
 
 class QRGBFilter(QVideoFilter):
 
+    display_name = 'Color Channel'
+
     '''Widget for :class:`RGBFilter` with Red/Green/Blue radio buttons.
 
     Parameters

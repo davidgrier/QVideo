@@ -62,6 +62,8 @@ class BlobFilter(AsyncVideoFilter):
 
 class QBlobFilter(QVideoFilter):
 
+    display_name = 'Blob'
+
     '''Widget wrapper for :class:`BlobFilter`.
 
     Displays the filter as a checkable group box.  No adjustable

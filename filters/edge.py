@@ -98,6 +98,8 @@ class EdgeFilter(VideoFilter):
 
 class QEdgeFilter(QVideoFilter):
 
+    display_name = 'Canny Edge Detection'
+
     '''Widget for :class:`EdgeFilter` with low- and high-threshold spinboxes.
 
     Parameters

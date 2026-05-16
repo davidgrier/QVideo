@@ -42,6 +42,12 @@ histogramdemo
     a live intensity histogram.  The draggable level handles adjust the
     display range of the video screen in real time.
 
+uniformitydemo
+    Extends :mod:`demo` with a
+    :class:`~QVideo.lib.QUniformityWidget.QUniformityWidget` panel showing
+    mean intensity as a function of x and y.  Flat traces indicate uniform
+    illumination; deviations localise non-uniformity spatially.
+
 compositedemo
     Extends :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy overlay
     and a "Composite" checkbox.  When checked, the DVR records the rendered
@@ -55,6 +61,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.filterrackdemo
     python -m QVideo.demos.histogramdemo
+    python -m QVideo.demos.uniformitydemo
     python -m QVideo.demos.ROIdemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
@@ -90,6 +97,7 @@ from .demo import Demo
 from .filterdemo import FilterDemo
 from .filterrackdemo import FilterRackDemo
 from .histogramdemo import HistogramDemo
+from .uniformitydemo import UniformityDemo
 from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo

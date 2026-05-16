@@ -51,10 +51,11 @@ from .chooser import choose_camera
 from .QListCameras import QListCameras
 from .QFPSMeter import QFPSMeter
 from .QHistogramWidget import QHistogramWidget
+from .QUniformityWidget import QUniformityWidget
 from .QSnapshot import QSnapshot
 
 __all__ = '''Image
 clickable choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen
-QFPSMeter QHistogramWidget QSnapshot VideoFilter QVideoFilter AsyncVideoFilter'''.split()
+QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter AsyncVideoFilter'''.split()

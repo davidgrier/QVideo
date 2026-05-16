@@ -2,6 +2,7 @@ from .Median import Median
 from .MoMedian import MoMedian
 from .Normalize import Normalize, SmoothNormalize
 from .QBlobFilter import BlobFilter, QBlobFilter
+from .QCircleTransformFilter import CircleTransformFilter, QCircleTransformFilter
 from .QForegroundEstimator import ForegroundEstimator, QForegroundEstimator
 from .QSmoothingFilter import SmoothingFilter, QSmoothingFilter
 from .QEdgeFilter import EdgeFilter, QEdgeFilter
@@ -14,6 +15,7 @@ __all__ = '''
 Median MoMedian
 Normalize SmoothNormalize
 BlobFilter QBlobFilter
+CircleTransformFilter QCircleTransformFilter
 ForegroundEstimator QForegroundEstimator
 SmoothingFilter QSmoothingFilter
 EdgeFilter QEdgeFilter

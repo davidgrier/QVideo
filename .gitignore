@@ -64,6 +64,8 @@ creds.js
 # Scratch / local scratchpads — never track devel directories
 devel/
 **/devel/
+requirements.in
+requirements.txt
 requirements.txt.bak
 cameras/Genicam/vimbax/tmp/
 cameras/Spinnaker2/Untitled.ipynb

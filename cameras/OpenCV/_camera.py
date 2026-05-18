@@ -143,6 +143,10 @@ class QOpenCVCamera(QCamera):
         # the live device before configuring.  QtMultimedia nominal fps values
         # are unreliable; reading back what the V4L2 driver accepts is accurate.
         self._formats = probe_formats(self.device)
+        self._formatLabels = {
+            f'{w}×{h} @ {fps:.0f} Hz': (w, h, float(fps))
+            for w, h, _min, fps in self._formats
+        }
         resolutions = [(w, h) for w, h, *_ in self._formats] or None
         configure(self.device, self._configWidth, self._configHeight,
                   self._configFps, resolutions=resolutions)
@@ -150,6 +154,14 @@ class QOpenCVCamera(QCamera):
             if (ready := self.device.read()[0]):
                 break
         if ready:
+            if self._formatLabels:
+                self.registerProperty(
+                    'resolution',
+                    getter=self._getResolution,
+                    setter=self._setResolution,
+                    ptype=str,
+                    limits=list(self._formatLabels.keys()),
+                )
             self.registerProperty('width', getter=self._getWidth,
                                   setter=self._setWidth, ptype=int)
             self.registerProperty('height', getter=self._getHeight,
@@ -157,6 +169,10 @@ class QOpenCVCamera(QCamera):
             self.registerProperty('color', getter=self._getColor,
                                   setter=self._setColor, ptype=bool)
             self._probeProperties()
+            if 'resolution' in self._properties:
+                for name in ('width', 'height', 'fps'):
+                    if name in self._properties:
+                        self._properties[name]['hidden'] = True
             self.shapeChanged.emit(self.shape)
         else:
             self.device.release()
@@ -189,6 +205,19 @@ class QOpenCVCamera(QCamera):
     def _deinitialize(self) -> None:
         '''Release the OpenCV VideoCapture device.'''
         self.device.release()
+
+    def _getResolution(self) -> str:
+        w, h = self._getWidth(), self._getHeight()
+        for label, (lw, lh, _) in self._formatLabels.items():
+            if lw == w and lh == h:
+                return label
+        return next(iter(self._formatLabels))
+
+    def _setResolution(self, label: str) -> None:
+        w, h, fps = self._formatLabels[label]
+        self._setWidth(w)
+        self._setHeight(h)
+        self._setFps(fps)
 
     def _getWidth(self) -> int:
         return int(self.device.get(self.WIDTH))

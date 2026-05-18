@@ -1,6 +1,15 @@
 '''Jupyter widget for interactive camera property control.'''
+import math
 import ipywidgets as widgets
 from IPython.display import display as _display
+
+
+def _finite(v) -> bool:
+    '''Return True if v is a finite real number.'''
+    try:
+        return math.isfinite(float(v))
+    except (TypeError, ValueError):
+        return False
 
 __all__ = ['CameraControls']
 
@@ -10,7 +19,8 @@ class CameraControls:
 
     Reads the camera's registered properties and creates an appropriate
     input widget for each one.  Read-only properties are shown but
-    disabled.  Clicking **Refresh** re-reads all values from the camera
+    disabled.  Properties registered with ``hidden=True`` are omitted
+    entirely.  Clicking **Refresh** re-reads all values from the camera
     and updates the display.
 
     Parameters
@@ -60,11 +70,13 @@ class CameraControls:
         step     = spec.get('step')
         limits   = spec.get('limits')
 
-        if value is None:
+        if value is None or (isinstance(value, float) and not _finite(value)):
             try:
                 value = ptype()
             except Exception:
                 value = 0
+
+        has_range = (_finite(minimum) and _finite(maximum))
 
         layout = widgets.Layout(flex='1 1 auto')
 
@@ -82,7 +94,7 @@ class CameraControls:
             w = widgets.Text(
                 value=str(value), disabled=disabled, layout=layout)
 
-        elif ptype is int and minimum is not None and maximum is not None:
+        elif ptype is int and has_range:
             s = int(step) if step is not None else max(1, round((maximum - minimum) / 100))
             w = widgets.IntSlider(
                 value=int(value), min=int(minimum), max=int(maximum),
@@ -93,7 +105,7 @@ class CameraControls:
             w = widgets.IntText(
                 value=int(value), disabled=disabled, layout=layout)
 
-        elif minimum is not None and maximum is not None:
+        elif has_range:
             s = float(step) if step is not None else (maximum - minimum) / 100.
             w = widgets.FloatSlider(
                 value=float(value), min=float(minimum), max=float(maximum),
@@ -122,6 +134,8 @@ class CameraControls:
 
         rows = []
         for name, spec in self._camera._properties.items():
+            if spec.get('hidden'):
+                continue
             w = self._make_widget(name, spec)
             w.layout = widget_layout
             self._widgets[name] = w

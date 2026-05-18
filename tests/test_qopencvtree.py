@@ -226,5 +226,16 @@ class TestResolutionSync(unittest.TestCase):
         self.assertTrue(cam.mirrored)
 
 
-if __name__ == '__main__':
+    def test_sync_does_not_set_resolution_string_on_list_param(self):
+        '''Resolution string from camera.settings must not be pushed to the
+        pyqtgraph list param (whose values are tuples, not strings).'''
+        tree, cam = make_tree()
+        resolution_param = tree._parameters['resolution']
+        original_value = resolution_param.value()
+        self._make_resolution_change(tree, 640, 480, 30.)
+        self.assertIsInstance(resolution_param.value(), tuple)
+        self.assertEqual(resolution_param.value(), original_value)
+
+
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

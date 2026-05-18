@@ -65,6 +65,7 @@ class QGenicamCamera(QCamera):
     '''
 
     producer: str | Path | None = None
+    _producer_filenames: tuple[str, ...] = ()
     _ALIASES = frozenset(('width', 'height', 'fps'))
 
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
@@ -84,18 +85,20 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        if self.producer is None:
+        producer = self.producer or self._findProducer(*self._producer_filenames)
+        if producer is None:
             logger.warning(
-                f'{type(self).__name__}: no GenTL producer available')
+                f'{type(self).__name__}: no GenTL producer available '
+                f'(set GENICAM_GENTL64_PATH before opening the camera)')
             return False
         self.harvester = Harvester()
         self.device = None
         try:
-            self.harvester.add_file(self.producer)
+            self.harvester.add_file(producer)
             self.harvester.update()
         except Exception as ex:
             logger.warning(
-                f'Failed to load producer {self.producer!r}: {ex}')
+                f'Failed to load producer {producer!r}: {ex}')
             self._cleanup()
             return False
         try:

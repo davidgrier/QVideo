@@ -29,7 +29,7 @@ class QFlirCamera(QGenicamCamera):
         Index of the FLIR camera to open.  Default: ``0``.
     '''
 
-    producer = QGenicamCamera._findProducer('Spinnaker_GenTL.cti')
+    _producer_filenames = ('Spinnaker_GenTL.cti',)
 
 
 class QFlirSource(QGenicamSource):

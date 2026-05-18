@@ -108,6 +108,24 @@ class TestCameraControls(unittest.TestCase):
         ctrl = self._make()
         self.assertIsInstance(ctrl._widgets['label'], widgets.Text)
 
+    def test_float_slider_not_created_for_infinite_max(self):
+        import ipywidgets as widgets
+        self.camera._properties['fps']['maximum'] = float('inf')
+        ctrl = self._make()
+        self.assertIsInstance(ctrl._widgets['fps'], widgets.FloatText)
+
+    def test_float_slider_not_created_for_infinite_min(self):
+        import ipywidgets as widgets
+        self.camera._properties['fps']['minimum'] = float('-inf')
+        ctrl = self._make()
+        self.assertIsInstance(ctrl._widgets['fps'], widgets.FloatText)
+
+    def test_non_finite_value_replaced_with_default(self):
+        import math
+        self.camera._properties['fps']['getter'] = lambda: float('nan')
+        ctrl = self._make()
+        self.assertTrue(math.isfinite(ctrl._widgets['fps'].value))
+
     def test_widget_count_matches_properties(self):
         ctrl = self._make()
         self.assertEqual(len(ctrl._widgets), len(self.camera._properties))
@@ -217,6 +235,19 @@ class TestCameraControls(unittest.TestCase):
         with patch.dict('sys.modules', {'QVideo.lib._jupyter': None}):
             with self.assertRaises(ImportError):
                 proxy.controls()
+
+    def test_hidden_property_omitted_from_controls(self):
+        from QVideo.lib._jupyter import CameraControls
+        cam = MagicMock()
+        cam.name = 'Test'
+        cam._properties = {
+            'visible': {'getter': lambda: 1.0, 'setter': None, 'ptype': float},
+            'hidden':  {'getter': lambda: 2.0, 'setter': None, 'ptype': float,
+                        'hidden': True},
+        }
+        ctrl = CameraControls(cam)
+        self.assertIn('visible', ctrl._widgets)
+        self.assertNotIn('hidden', ctrl._widgets)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -132,7 +132,8 @@ class TestSubclass(unittest.TestCase):
 class TestProducer(unittest.TestCase):
 
     def test_returns_false_without_producer(self):
-        with patch.object(QFlirCamera, 'producer', None):
+        with patch.object(QFlirCamera, 'producer', None), \
+             patch.object(QFlirCamera, '_producer_filenames', ()):
             with self.assertLogs(level='WARNING'):
                 cam = QFlirCamera()
         self.assertFalse(cam.isOpen())

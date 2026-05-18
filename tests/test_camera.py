@@ -402,6 +402,27 @@ class TestJupyterChooser(unittest.TestCase):
         result = self._run(run())
         self.assertEqual(result, ('opencv', 0))
 
+    def test_click_disables_dropdown_and_button(self):
+        mock_dropdown, mock_button, callbacks = self._make_widget_mocks()
+
+        async def run():
+            async def fire():
+                await asyncio.sleep(0)
+                for cb in callbacks:
+                    cb(None)
+            asyncio.ensure_future(fire())
+            with patch('ipywidgets.Dropdown', return_value=mock_dropdown), \
+                 patch('ipywidgets.Button', return_value=mock_button), \
+                 patch('ipywidgets.HBox', return_value=MagicMock()), \
+                 patch('ipywidgets.Layout', return_value=MagicMock()), \
+                 patch('IPython.display.display'):
+                await camera_module._jupyter_chooser(self._WORKING_TWO)
+
+        self._run(run())
+        self.assertTrue(mock_dropdown.disabled)
+        self.assertTrue(mock_button.disabled)
+        self.assertEqual(mock_button.button_style, '')
+
     def test_raises_import_error_without_ipywidgets(self):
         with patch.dict('sys.modules', {'ipywidgets': None}):
             with self.assertRaises(ImportError):

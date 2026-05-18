@@ -282,9 +282,69 @@ class TestProperties(unittest.TestCase):
 
     def test_all_properties_registered(self):
         cam = make_camera()
-        for name in ('width', 'height', 'fps', 'color',
+        for name in ('resolution', 'width', 'height', 'fps', 'color',
                      'mirrored', 'flipped'):
             self.assertIn(name, cam.properties)
+
+    def test_resolution_registered_when_formats_available(self):
+        cam = make_camera(width=640, height=480, fps=30.)
+        self.assertIn('resolution', cam._properties)
+
+    def test_resolution_not_registered_without_formats(self):
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device), \
+             patch('QVideo.cameras.OpenCV._camera.configure'), \
+             patch('QVideo.cameras.OpenCV._camera.probe_formats', return_value=[]):
+            cam = QOpenCVCamera()
+        self.assertNotIn('resolution', cam._properties)
+
+    def test_resolution_getter_returns_label(self):
+        cam = make_camera(width=640, height=480, fps=30.)
+        label = cam._getResolution()
+        self.assertIn('640', label)
+        self.assertIn('480', label)
+
+    def test_resolution_limits_match_formats(self):
+        cam = make_camera(width=640, height=480, fps=30.)
+        limits = cam._properties['resolution']['limits']
+        self.assertEqual(len(limits), len(cam._formats))
+        for label in limits:
+            self.assertIn(label, cam._formatLabels)
+
+    def test_resolution_setter_updates_width_height_fps(self):
+        cam = make_camera(width=640, height=480, fps=30.)
+        label = next(iter(cam._formatLabels))
+        w, h, fps = cam._formatLabels[label]
+        cam.device.set.reset_mock()
+        cam._setResolution(label)
+        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, w)
+        cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, h)
+        cam.device.set.assert_any_call(QOpenCVCamera.FPS, fps)
+
+    def test_resolution_attribute_assignment(self):
+        cam = make_camera(width=640, height=480, fps=30.)
+        label = next(iter(cam._formatLabels))
+        cam.device.set.reset_mock()
+        cam.resolution = label
+        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, cam._formatLabels[label][0])
+
+    def test_width_height_fps_hidden_when_resolution_available(self):
+        cam = make_camera(width=640, height=480, fps=30.)
+        for name in ('width', 'height', 'fps'):
+            with self.subTest(name=name):
+                if name in cam._properties:
+                    self.assertTrue(cam._properties[name].get('hidden', False))
+
+    def test_width_height_not_hidden_without_formats(self):
+        device = make_mock_device()
+        with patch('cv2.VideoCapture', return_value=device), \
+             patch('QVideo.cameras.OpenCV._camera.configure'), \
+             patch('QVideo.cameras.OpenCV._camera.probe_formats', return_value=[]):
+            cam = QOpenCVCamera()
+        for name in ('width', 'height'):
+            with self.subTest(name=name):
+                if name in cam._properties:
+                    self.assertFalse(cam._properties[name].get('hidden', False))
 
 
 class TestRead(unittest.TestCase):

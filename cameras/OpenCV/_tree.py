@@ -78,7 +78,9 @@ class QOpenCVTree(QCameraTree):
         formats = getattr(self.camera, '_formats', [])
         self._hasFormats = bool(formats)
         if formats:
-            description = [self._formatEntry(formats)] + list(description)
+            description = [self._formatEntry(formats)] + [
+                d for d in description if d.get('name') != 'resolution'
+            ]
         super()._createTree(description)
 
     def _formatEntry(self, formats: list) -> dict:
@@ -126,7 +128,8 @@ class QOpenCVTree(QCameraTree):
             self.camera.set('fps', fps)
             self._ignoreSync = True
             for key, val in self.camera.settings.items():
-                self.set(key, val)
+                if key != 'resolution':
+                    self.set(key, val)
             self._ignoreSync = False
         if other:
             super()._sync(root, other)

@@ -202,6 +202,27 @@ class TestInit(unittest.TestCase):
             cam = _NullProducer()
         self.assertFalse(cam.isOpen())
 
+    def test_producer_filenames_resolved_lazily(self):
+        '''producer=None + _producer_filenames resolves at _initialize time.'''
+        class _LazyProducer(QGenicamCamera):
+            producer = None
+            _producer_filenames = ('fake.cti',)
+        with patch.object(QGenicamCamera, '_findProducer',
+                          return_value=PRODUCER) as mock_find:
+            with patch.object(_cam_module, 'Harvester',
+                               return_value=make_camera()[1]):
+                _LazyProducer()
+        mock_find.assert_called_once_with('fake.cti')
+
+    def test_returns_false_when_filenames_not_found(self):
+        class _LazyProducer(QGenicamCamera):
+            producer = None
+            _producer_filenames = ('missing.cti',)
+        with patch.object(QGenicamCamera, '_findProducer', return_value=None):
+            with self.assertLogs(level='WARNING'):
+                cam = _LazyProducer()
+        self.assertFalse(cam.isOpen())
+
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()
         self.assertEqual(cam.cameraID, 0)

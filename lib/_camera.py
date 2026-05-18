@@ -144,6 +144,9 @@ async def _jupyter_chooser(working: list[tuple[str, int]]) -> tuple[str, int]:
 
     def _on_click(_):
         if not future.done():
+            dropdown.disabled = True
+            button.disabled = True
+            button.button_style = ''
             loop.call_soon_threadsafe(future.set_result, dropdown.value)
 
     button.on_click(_on_click)

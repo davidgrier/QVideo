@@ -21,8 +21,7 @@ class QIDSCamera(QGenicamCamera):
         Index of the IDS camera to open.  Default: ``0``.
     '''
 
-    producer = QGenicamCamera._findProducer('ids_u3vgentl.cti',
-                                            'ids_gevgentl.cti')
+    _producer_filenames = ('ids_u3vgentl.cti', 'ids_gevgentl.cti')
 
 
 class QIDSSource(QGenicamSource):

@@ -250,6 +250,64 @@ class TestLiveView(unittest.TestCase):
             with self.assertRaises(ImportError):
                 proxy.live_view()
 
+    def test_live_view_encodes_rgb_as_bgr(self):
+        import cv2
+        proxy, cam = self._make_proxy()
+        rgb_frame = np.zeros((4, 4, 3), dtype=np.uint8)
+        rgb_frame[0, 0] = [255, 0, 0]  # red pixel in RGB
+        cam.saferead.return_value = (True, rgb_frame)
+
+        encoded = []
+
+        def _close_and_return(coro):
+            coro.close()
+            return MagicMock()
+
+        original_imencode = cv2.imencode
+
+        def capture_imencode(ext, f):
+            encoded.append(f.copy())
+            return original_imencode(ext, f)
+
+        with patch('QVideo.lib._camera._open', return_value=cam), \
+             patch('ipywidgets.Image'), \
+             patch('IPython.display.display'), \
+             patch('asyncio.ensure_future', side_effect=_close_and_return), \
+             patch('cv2.imencode', side_effect=capture_imencode):
+            proxy.live_view()
+
+        self.assertTrue(len(encoded) > 0)
+        np.testing.assert_array_equal(encoded[0][0, 0], [0, 0, 255])  # BGR
+
+    def test_live_view_grayscale_not_swapped(self):
+        import cv2
+        proxy, cam = self._make_proxy()
+        gray_frame = np.zeros((4, 4), dtype=np.uint8)
+        gray_frame[0, 0] = 128
+        cam.saferead.return_value = (True, gray_frame)
+
+        encoded = []
+
+        def _close_and_return(coro):
+            coro.close()
+            return MagicMock()
+
+        original_imencode = cv2.imencode
+
+        def capture_imencode(ext, f):
+            encoded.append(f.copy())
+            return original_imencode(ext, f)
+
+        with patch('QVideo.lib._camera._open', return_value=cam), \
+             patch('ipywidgets.Image'), \
+             patch('IPython.display.display'), \
+             patch('asyncio.ensure_future', side_effect=_close_and_return), \
+             patch('cv2.imencode', side_effect=capture_imencode):
+            proxy.live_view()
+
+        self.assertTrue(len(encoded) > 0)
+        self.assertEqual(encoded[0][0, 0], 128)
+
 
 class TestJupyterChooser(unittest.TestCase):
 

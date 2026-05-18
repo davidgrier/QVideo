@@ -274,6 +274,8 @@ class _CameraProxy:
         frame = self.read()
 
         def _encode(f):
+            if f.ndim == 3 and f.shape[2] == 3:
+                f = cv2.cvtColor(f, cv2.COLOR_RGB2BGR)
             _, buf = cv2.imencode('.jpg', f)
             return bytes(buf)
 

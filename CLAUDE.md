@@ -23,6 +23,19 @@ sphinx-build -b html docs docs/_build/html
 
 No build step is required. The package is used directly from the source tree.
 
+## Media files
+
+Media files (PNG, JPG, GIF, AVI, MP4, etc.) belong only under `docs/`.
+Never commit media files to the repo root or any non-docs directory.
+`.gitignore` enforces this for new files; already-tracked files outside
+`docs/` should be removed with `git rm`.
+
+## Scratchpad directories
+
+Any directory named `devel/` (at any depth) is a local scratchpad and is
+excluded from git via `.gitignore`.  These directories exist only on the
+developer's machine and must never be committed.
+
 ## Releasing
 
 When pushing a new version, always create a GitHub Release (not just a tag) so

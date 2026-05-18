@@ -43,11 +43,30 @@ creds.js
 *.tar.gz
 *.cti.[0-9]*
 
-# Scratch
+# Media files — only allowed under docs/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.avi
+*.mov
+*.webm
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.jpeg
+!docs/**/*.gif
+!docs/**/*.mp4
+!docs/**/*.avi
+!docs/**/*.mov
+!docs/**/*.webm
+
+# Scratch / local scratchpads — never track devel directories
+devel/
+**/devel/
 requirements.txt.bak
 cameras/Genicam/vimbax/tmp/
 cameras/Spinnaker2/Untitled.ipynb
-devel/
 
 # Claude Code internal files
 .claude/

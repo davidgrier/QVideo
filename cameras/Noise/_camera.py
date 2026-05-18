@@ -20,6 +20,8 @@ class QNoiseCamera(QCamera):
 
     Parameters
     ----------
+    cameraID : int
+        Accepted for API consistency with other camera backends; ignored.
     blacklevel : int
         Minimum pixel value (inclusive). Default: ``48``.
     whitelevel : int
@@ -31,6 +33,7 @@ class QNoiseCamera(QCamera):
     '''
 
     def __init__(self, *args,
+                 cameraID: int = 0,
                  blacklevel: int = 48,
                  whitelevel: int = 128,
                  **kwargs) -> None:

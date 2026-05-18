@@ -40,8 +40,9 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     run-time.
 
     Registered properties are accessible both through the explicit
-    :meth:`get` / :meth:`set` API and as ordinary Python attributes
-    (``camera.fps``, ``camera.width``, etc.) via ``__getattr__``.
+    :meth:`get` / :meth:`set` API and as ordinary Python attributes —
+    reads (``camera.fps``) and writes (``camera.fps = 30``) are both
+    routed through the registered getter and setter.
 
     Parameters
     ----------
@@ -114,6 +115,23 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
             return self._properties[name]['getter']()
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    def __setattr__(self, name: str, value) -> None:
+        '''Delegate attribute assignment to registered property setters.
+
+        Routes ``camera.fps = 30`` through :meth:`set` (mutex-protected,
+        type-coerced) for any name in ``_properties``.  All other names —
+        including internal backing attributes and Qt object attributes —
+        fall through to ``object.__setattr__``.
+
+        The ``'_properties' in self.__dict__`` guard ensures that writes
+        during ``__init__`` (before ``_properties`` is created) are always
+        handled by ``object.__setattr__``.
+        '''
+        if '_properties' in self.__dict__ and name in self._properties:
+            self.set(name, value)
+        else:
+            object.__setattr__(self, name, value)
 
     # ------------------------------------------------------------------
     # Registration API

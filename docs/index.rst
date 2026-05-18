@@ -16,6 +16,7 @@ Run the full camcorder application directly::
    :caption: Contents
 
    quickstart
+   jupyter
    architecture
    extending
    api/lib

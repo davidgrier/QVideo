@@ -6,6 +6,7 @@ from typing import NamedTuple
 
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Noise import QNoiseTree
+from ._camera import Camera, _BACKENDS
 
 __all__ = ['camera_parser', 'choose_camera']
 
@@ -14,30 +15,17 @@ logger = logging.getLogger(__name__)
 
 class _CameraEntry(NamedTuple):
     flag: str
-    module: str
-    cls: str
-    label: str
     help: str
 
 
 _CAMERAS: dict[str, _CameraEntry] = {
-    'opencv':    _CameraEntry('-c', 'QVideo.cameras.OpenCV',
-                              'QOpenCVTree', 'OpenCV', 'OpenCV camera'),
-    'basler':    _CameraEntry('-b', 'QVideo.cameras.Basler',
-                              'QBaslerTree', 'Basler', 'Basler pylon camera'),
-    'flir':      _CameraEntry('-f', 'QVideo.cameras.Flir',
-                              'QFlirTree', 'Flir', 'Flir camera'),
-    'ids':       _CameraEntry('-i', 'QVideo.cameras.IDS',
-                              'QIDSTree', 'IDS', 'IDS Imaging camera'),
-    'mv':        _CameraEntry('-m', 'QVideo.cameras.MV',
-                              'QMVTree', 'mvGenTLProducer',
-                              'MATRIX VISION mvGenTLProducer (universal GenICam)'),
-    'vimbax':    _CameraEntry('-v', 'QVideo.cameras.Vimbax',
-                              'QVimbaXTree', 'VimbaX',
-                              'Allied Vision VimbaX camera'),
-    'picamera':  _CameraEntry('-p', 'QVideo.cameras.Picamera',
-                              'QPicameraTree', 'Picamera',
-                              'Raspberry Pi camera module'),
+    'opencv':   _CameraEntry('-c', 'OpenCV camera'),
+    'basler':   _CameraEntry('-b', 'Basler pylon camera'),
+    'flir':     _CameraEntry('-f', 'Flir camera'),
+    'ids':      _CameraEntry('-i', 'IDS Imaging camera'),
+    'mv':       _CameraEntry('-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
+    'vimbax':   _CameraEntry('-v', 'Allied Vision VimbaX camera'),
+    'picamera': _CameraEntry('-p', 'Raspberry Pi camera module'),
 }
 
 
@@ -86,7 +74,7 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
 
 
 def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
-    '''Chooses and returns a camera based on command-line arguments.
+    '''Chooses and returns a camera tree based on command-line arguments.
 
     Tries to import and instantiate the camera backend selected by the
     command-line flags.  Falls back to :class:`QNoiseTree` if the
@@ -102,20 +90,32 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
     Returns
     -------
     QCameraTree
-        The chosen camera object.
+        The chosen camera tree widget.
     '''
     args, _ = camera_parser(parser).parse_known_args()
-    for dest, entry in _CAMERAS.items():
+    model = None
+    for dest in _CAMERAS:
         if getattr(args, dest, False):
-            try:
-                module = importlib.import_module(entry.module)
-                Camera = getattr(module, entry.cls)
-                return Camera(cameraID=args.cameraID)
-            except Exception as ex:
-                logger.warning(f'Could not open {entry.label}: {ex}')
+            model = dest
             break
-    return QNoiseTree(cameraID=args.cameraID)
+
+    if model is None:
+        return QNoiseTree(cameraID=args.cameraID)
+
+    try:
+        proxy = Camera(model, args.cameraID)
+        proxy._ensure_open()
+    except (RuntimeError, ValueError) as ex:
+        logger.warning(str(ex))
+        return QNoiseTree(cameraID=args.cameraID)
+
+    key = object.__getattribute__(proxy, '_selected_key')
+    backend = _BACKENDS[key]
+    module = importlib.import_module(backend.module)
+    tree_cls = getattr(module, backend.tree_cls)
+    camera = object.__getattribute__(proxy, '_camera')
+    return tree_cls(camera=camera)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     choose_camera().show()

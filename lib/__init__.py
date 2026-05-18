@@ -47,6 +47,7 @@ from .QVideoFilter import VideoFilter, QVideoFilter
 from .AsyncVideoFilter import AsyncVideoFilter
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
+from ._camera import Camera
 from .chooser import choose_camera
 from .QListCameras import QListCameras
 from .QFPSMeter import QFPSMeter
@@ -55,7 +56,7 @@ from .QUniformityWidget import QUniformityWidget
 from .QSnapshot import QSnapshot
 
 __all__ = '''Image
-clickable choose_camera QListCameras
+clickable Camera choose_camera QListCameras
 QCamera QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen
 QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter AsyncVideoFilter'''.split()

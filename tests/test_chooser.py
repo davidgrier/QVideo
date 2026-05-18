@@ -44,11 +44,8 @@ class TestChooserAll(unittest.TestCase):
 class TestCameraEntry(unittest.TestCase):
 
     def test_is_named_tuple(self):
-        entry = _CameraEntry('-x', 'mod', 'cls', 'label', 'help text')
+        entry = _CameraEntry('-x', 'help text')
         self.assertEqual(entry.flag, '-x')
-        self.assertEqual(entry.module, 'mod')
-        self.assertEqual(entry.cls, 'cls')
-        self.assertEqual(entry.label, 'label')
         self.assertEqual(entry.help, 'help text')
 
     def test_cameras_dict_values_are_camera_entries(self):
@@ -297,7 +294,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_runtime_error_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         mock_module = MagicMock()
-        mock_module.QOpenCVTree.side_effect = TypeError('no producer')
+        mock_module.QOpenCVCamera.side_effect = TypeError('no producer')
         with patch('sys.argv', ['prog', '-c']):
             with patch('QVideo.lib.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',

@@ -236,6 +236,48 @@ class TestGetattr(unittest.TestCase):
             _ = cam.nonexistent
 
 
+class TestSetattr(unittest.TestCase):
+
+    def test_attribute_assignment_calls_setter(self):
+        cam = make_camera()
+        cam.fps = 60.
+        self.assertAlmostEqual(cam.fps, 60.)
+
+    def test_attribute_assignment_routes_through_registered_setter(self):
+        cam = make_camera()
+        cam.width = 320
+        self.assertEqual(cam.width, 320)
+
+    def test_attribute_assignment_coerces_to_ptype(self):
+        cam = make_camera()
+        cam.width = '1280'
+        self.assertEqual(cam.width, 1280)
+        self.assertIsInstance(cam.width, int)
+
+    def test_attribute_assignment_to_readonly_logs_warning(self):
+        cam = make_camera()
+        with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+            cam.color = True
+
+    def test_unregistered_attribute_assignment_sets_python_attribute(self):
+        cam = make_camera()
+        cam.custom_attr = 'hello'
+        self.assertEqual(cam.custom_attr, 'hello')
+
+    def test_internal_attribute_set_directly(self):
+        cam = make_camera()
+        cam._fps = 99.
+        self.assertAlmostEqual(cam._fps, 99.)
+
+    def test_custom_setter_called_on_attribute_assignment(self):
+        setter_calls = []
+        cam = make_camera()
+        cam.registerProperty('gain', getter=lambda: 1.0,
+                             setter=lambda v: setter_calls.append(v), ptype=float)
+        cam.gain = 2.5
+        self.assertEqual(setter_calls, [2.5])
+
+
 class TestShape(unittest.TestCase):
 
     def test_shape_returns_qsize(self):

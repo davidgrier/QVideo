@@ -65,6 +65,13 @@ Each backend lives in its own subdirectory and follows the same pattern:
 
 Hardware-specific packages (`harvesters`/`genicam` for GenICam, `PySpin` for Spinnaker) are soft dependencies: the import is wrapped in `try/except (ImportError, ModuleNotFoundError)`. Any module-level names derived from those imports must also be inside the `try` block (not after it).
 
+When adding a new backend, update all four of the following:
+
+1. `lib/_camera.py` — add an entry to `_BACKENDS` (module path, camera class name, tree class name, display label) and append the key to `_DISCOVERY_ORDER` at the appropriate priority position.
+2. `lib/chooser.py` — add an entry to `_CAMERAS` with the CLI flag character and help string.
+3. `QCamcorder.py` — update the flag list in the module docstring.
+4. `demos/__init__.py` — update the flag list in the module docstring.
+
 **`cameras/Noise`** is the reference implementation — no hardware required, used as a model for tests and for verifying the framework.
 
 **`cameras/Genicam`** uses the [Harvesters](https://github.com/genicam/harvesters) library and a GenTL producer `.cti` file to communicate with GenICam-compliant cameras. Producer files live in `cameras/Genicam/producer/`. The `protected` list tracks features whose access mode changes after `device.start()` (i.e. features that require stopping acquisition to reconfigure).

@@ -1,5 +1,5 @@
 from QVideo.lib import QCameraTree
-from QVideo.cameras.Noise import QNoiseSource
+from QVideo.cameras.Noise import QNoiseCamera, QNoiseSource
 
 
 __all__ = ['QNoiseTree']
@@ -15,8 +15,12 @@ class QNoiseTree(QCameraTree):
 
     Parameters
     ----------
+    camera : QNoiseCamera or None
+        Camera instance to use.  If ``None``, a new
+        :class:`~QVideo.cameras.Noise.QNoiseCamera.QNoiseCamera` is created.
     cameraID : int
-        Accepted for API consistency with other camera trees; ignored.
+        Accepted for API consistency with other camera trees; ignored when
+        *camera* is provided.
     *args :
         Positional arguments forwarded to
         :class:`~QVideo.lib.QCameraTree.QCameraTree`.
@@ -25,8 +29,12 @@ class QNoiseTree(QCameraTree):
         :class:`~QVideo.lib.QCameraTree.QCameraTree`.
     '''
 
-    def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
-        super().__init__(QNoiseSource(), *args, **kwargs)
+    def __init__(self, *args,
+                 camera: QNoiseCamera | None = None,
+                 cameraID: int = 0,
+                 **kwargs) -> None:
+        source = QNoiseSource(camera) if camera is not None else QNoiseSource()
+        super().__init__(source, *args, **kwargs)
         if 'color' in self._parameters:
             self._parameters['color'].setOpts(enabled=False)
 

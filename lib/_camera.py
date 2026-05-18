@@ -117,6 +117,40 @@ def _jupyter_report(working: list[tuple[str, int]]) -> None:
         print(f'Using {labels[0]}. To select a different one: {opts}')
 
 
+async def _jupyter_chooser(working: list[tuple[str, int]]) -> tuple[str, int]:
+    '''Show an ipywidgets Dropdown chooser and return the selected (key, camera_id).
+
+    Falls back to :func:`_jupyter_report` for a single camera.
+    Raises ImportError if ipywidgets is not installed.
+    '''
+    if len(working) == 1:
+        _jupyter_report(working)
+        return working[0]
+
+    import asyncio
+    import ipywidgets as widgets
+    from IPython.display import display
+
+    loop = asyncio.get_running_loop()
+    future: asyncio.Future = loop.create_future()
+
+    options = [(_BACKENDS[k].label, (k, cid)) for k, cid in working]
+    dropdown = widgets.Dropdown(
+        options=options,
+        description='Camera:',
+        layout=widgets.Layout(width='auto'),
+    )
+    button = widgets.Button(description='Open', button_style='primary')
+
+    def _on_click(_):
+        if not future.done():
+            loop.call_soon_threadsafe(future.set_result, dropdown.value)
+
+    button.on_click(_on_click)
+    display(widgets.HBox([dropdown, button]))
+    return await future
+
+
 class _LiveView:
     '''Handle for a running :meth:`_CameraProxy.live_view` feed.
 
@@ -310,8 +344,16 @@ class _CameraProxy:
                 if get_ipython() is not None:
                     working = _working_candidates(candidates)
                     if working:
-                        _jupyter_report(working)
-                        object.__setattr__(self, '_candidates', [working[0]])
+                        if len(working) > 1:
+                            try:
+                                chosen = await _jupyter_chooser(working)
+                            except ImportError:
+                                _jupyter_report(working)
+                                chosen = working[0]
+                        else:
+                            _jupyter_report(working)
+                            chosen = working[0]
+                        object.__setattr__(self, '_candidates', [chosen])
             except ImportError:
                 pass
         self._ensure_open()

@@ -1,4 +1,5 @@
 '''Unit tests for lib/_camera.py.'''
+import asyncio
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
@@ -248,6 +249,105 @@ class TestLiveView(unittest.TestCase):
         with patch.dict('sys.modules', {'ipywidgets': None}):
             with self.assertRaises(ImportError):
                 proxy.live_view()
+
+
+class TestJupyterChooser(unittest.TestCase):
+
+    _WORKING_TWO = [('opencv', 0), ('noise', 0)]
+    _WORKING_ONE = [('noise', 0)]
+
+    def _run(self, coro):
+        return asyncio.run(coro)
+
+    def _make_widget_mocks(self):
+        '''Return (mock_dropdown, mock_button, click_callbacks list).'''
+        mock_dropdown = MagicMock()
+        mock_dropdown.value = ('opencv', 0)
+        mock_button = MagicMock()
+        callbacks = []
+        mock_button.on_click.side_effect = lambda cb: callbacks.append(cb)
+        return mock_dropdown, mock_button, callbacks
+
+    def _patched_chooser(self, working, mock_dropdown, mock_button):
+        return (
+            patch('ipywidgets.Dropdown', return_value=mock_dropdown),
+            patch('ipywidgets.Button', return_value=mock_button),
+            patch('ipywidgets.HBox', return_value=MagicMock()),
+            patch('ipywidgets.Layout', return_value=MagicMock()),
+            patch('IPython.display.display'),
+        )
+
+    def test_single_camera_calls_report_and_returns(self):
+        with patch.object(camera_module, '_jupyter_report') as mock_report:
+            result = self._run(camera_module._jupyter_chooser(self._WORKING_ONE))
+        mock_report.assert_called_once_with(self._WORKING_ONE)
+        self.assertEqual(result, ('noise', 0))
+
+    def test_returns_selected_camera(self):
+        mock_dropdown, mock_button, callbacks = self._make_widget_mocks()
+        mock_dropdown.value = ('noise', 0)
+
+        async def run():
+            async def fire():
+                await asyncio.sleep(0)
+                for cb in callbacks:
+                    cb(None)
+            asyncio.ensure_future(fire())
+            with patch('ipywidgets.Dropdown', return_value=mock_dropdown), \
+                 patch('ipywidgets.Button', return_value=mock_button), \
+                 patch('ipywidgets.HBox', return_value=MagicMock()), \
+                 patch('ipywidgets.Layout', return_value=MagicMock()), \
+                 patch('IPython.display.display'):
+                return await camera_module._jupyter_chooser(self._WORKING_TWO)
+
+        result = self._run(run())
+        self.assertEqual(result, ('noise', 0))
+
+    def test_displays_hbox_with_dropdown_and_button(self):
+        mock_dropdown, mock_button, callbacks = self._make_widget_mocks()
+
+        async def run():
+            async def fire():
+                await asyncio.sleep(0)
+                for cb in callbacks:
+                    cb(None)
+            asyncio.ensure_future(fire())
+            with patch('ipywidgets.Dropdown', return_value=mock_dropdown), \
+                 patch('ipywidgets.Button', return_value=mock_button), \
+                 patch('ipywidgets.HBox', return_value=MagicMock()) as mock_hbox_cls, \
+                 patch('ipywidgets.Layout', return_value=MagicMock()), \
+                 patch('IPython.display.display') as mock_display:
+                await camera_module._jupyter_chooser(self._WORKING_TWO)
+                mock_hbox_cls.assert_called_once_with([mock_dropdown, mock_button])
+                mock_display.assert_called_once()
+
+        self._run(run())
+
+    def test_double_click_ignored(self):
+        mock_dropdown, mock_button, callbacks = self._make_widget_mocks()
+        mock_dropdown.value = ('opencv', 0)
+
+        async def run():
+            async def fire_twice():
+                await asyncio.sleep(0)
+                for cb in callbacks:
+                    cb(None)
+                    cb(None)
+            asyncio.ensure_future(fire_twice())
+            with patch('ipywidgets.Dropdown', return_value=mock_dropdown), \
+                 patch('ipywidgets.Button', return_value=mock_button), \
+                 patch('ipywidgets.HBox', return_value=MagicMock()), \
+                 patch('ipywidgets.Layout', return_value=MagicMock()), \
+                 patch('IPython.display.display'):
+                return await camera_module._jupyter_chooser(self._WORKING_TWO)
+
+        result = self._run(run())
+        self.assertEqual(result, ('opencv', 0))
+
+    def test_raises_import_error_without_ipywidgets(self):
+        with patch.dict('sys.modules', {'ipywidgets': None}):
+            with self.assertRaises(ImportError):
+                self._run(camera_module._jupyter_chooser(self._WORKING_TWO))
 
 
 if __name__ == '__main__':  # pragma: no cover

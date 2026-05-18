@@ -54,9 +54,12 @@ Acquiring a frame
    camera = await Camera()
    frame  = camera.read()
 
-``await Camera()`` probes all installed backends, prints which cameras
-were found, and opens the first working one.  When multiple cameras are
-detected the output looks like::
+``await Camera()`` probes all installed backends and opens the first
+working one.  When multiple cameras are detected an interactive chooser
+appears — select a camera from the dropdown and click **Open**.
+
+When :mod:`ipywidgets` is not installed the chooser falls back to a
+printed summary::
 
    Available cameras: OpenCV, Noise
    Using OpenCV. To select a different one: Camera('Noise')

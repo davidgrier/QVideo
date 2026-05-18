@@ -5,7 +5,6 @@ from argparse import ArgumentParser
 from typing import NamedTuple
 
 from QVideo.lib import QCameraTree
-from QVideo.cameras.Noise import QNoiseTree
 from ._camera import Camera, _BACKENDS
 
 __all__ = ['camera_parser', 'choose_camera']
@@ -93,21 +92,19 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
         The chosen camera tree widget.
     '''
     args, _ = camera_parser(parser).parse_known_args()
-    model = None
+    model = 'noise'
     for dest in _CAMERAS:
         if getattr(args, dest, False):
             model = dest
             break
-
-    if model is None:
-        return QNoiseTree(cameraID=args.cameraID)
 
     try:
         proxy = Camera(model, args.cameraID)
         proxy._ensure_open()
     except (RuntimeError, ValueError) as ex:
         logger.warning(str(ex))
-        return QNoiseTree(cameraID=args.cameraID)
+        proxy = Camera('noise', args.cameraID)
+        proxy._ensure_open()
 
     key = object.__getattribute__(proxy, '_selected_key')
     backend = _BACKENDS[key]

@@ -244,6 +244,56 @@ class TestLiveView(unittest.TestCase):
                         proxy.live_view()
         mock_future.assert_called_once()
 
+    def test_live_view_stores_handle_on_proxy(self):
+        from QVideo.lib._camera import _LiveView
+
+        def _close_and_return(coro):
+            coro.close()
+            return MagicMock()
+
+        proxy, cam = self._make_proxy()
+        with patch('QVideo.lib._camera._open', return_value=cam), \
+             patch('ipywidgets.Image'), \
+             patch('IPython.display.display'), \
+             patch('asyncio.ensure_future', side_effect=_close_and_return):
+            proxy.live_view()
+        lv = object.__getattribute__(proxy, '_live_view')
+        self.assertIsInstance(lv, _LiveView)
+
+    def test_stop_live_view_cancels_task(self):
+        mock_task = MagicMock()
+
+        def _close_and_return(coro):
+            coro.close()
+            return mock_task
+
+        proxy, cam = self._make_proxy()
+        with patch('QVideo.lib._camera._open', return_value=cam), \
+             patch('ipywidgets.Image'), \
+             patch('IPython.display.display'), \
+             patch('asyncio.ensure_future', side_effect=_close_and_return):
+            proxy.live_view()
+        proxy.stop_live_view()
+        mock_task.cancel.assert_called_once()
+
+    def test_stop_live_view_clears_handle(self):
+        def _close_and_return(coro):
+            coro.close()
+            return MagicMock()
+
+        proxy, cam = self._make_proxy()
+        with patch('QVideo.lib._camera._open', return_value=cam), \
+             patch('ipywidgets.Image'), \
+             patch('IPython.display.display'), \
+             patch('asyncio.ensure_future', side_effect=_close_and_return):
+            proxy.live_view()
+        proxy.stop_live_view()
+        self.assertIsNone(object.__getattribute__(proxy, '_live_view'))
+
+    def test_stop_live_view_safe_when_no_feed(self):
+        proxy, _ = self._make_proxy()
+        proxy.stop_live_view()  # should not raise
+
     def test_live_view_raises_without_ipywidgets(self):
         proxy, _ = self._make_proxy()
         with patch.dict('sys.modules', {'ipywidgets': None}):

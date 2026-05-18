@@ -181,6 +181,7 @@ class _CameraProxy:
         object.__setattr__(self, '_candidates', candidates)
         object.__setattr__(self, '_selected_key', None)
         object.__setattr__(self, '_camera', None)
+        object.__setattr__(self, '_live_view', None)
 
     def _ensure_open(self) -> None:
         if object.__getattribute__(self, '_camera') is not None:
@@ -246,20 +247,27 @@ class _CameraProxy:
 
         Notes
         -----
-        Keep a reference to the returned handle — if it is
-        garbage-collected the update loop may stop::
+        The proxy keeps an internal reference to the handle, so you can
+        stop the feed from any cell via :meth:`stop_live_view`::
+
+            camera.live_view()
+            # ... in a later cell ...
+            camera.stop_live_view()
+
+        Alternatively, keep the returned handle and call its
+        :meth:`_LiveView.stop` method directly::
 
             live = camera.live_view()
-            live.stop()   # when done
+            live.stop()
 
         Examples
         --------
         ::
 
-            camera = Camera()
-            live = camera.live_view()
+            camera = await Camera()
+            camera.live_view()
             # ...
-            live.stop()
+            camera.stop_live_view()
         '''
         try:
             import ipywidgets as widgets
@@ -299,7 +307,29 @@ class _CameraProxy:
                     break
                 await asyncio.sleep(interval)
 
-        return _LiveView(asyncio.ensure_future(_loop()))
+        lv = _LiveView(asyncio.ensure_future(_loop()))
+        object.__setattr__(self, '_live_view', lv)
+        return lv
+
+    def stop_live_view(self) -> None:
+        '''Stop the live video feed started by :meth:`live_view`.
+
+        Cancels the background update loop.  Safe to call even if no
+        feed is running.
+
+        Examples
+        --------
+        ::
+
+            camera = await Camera()
+            camera.live_view()
+            # ... in a later cell ...
+            camera.stop_live_view()
+        '''
+        lv = object.__getattribute__(self, '_live_view')
+        if lv is not None:
+            lv.stop()
+            object.__setattr__(self, '_live_view', None)
 
     def controls(self):
         '''Return an interactive property panel for use in Jupyter.

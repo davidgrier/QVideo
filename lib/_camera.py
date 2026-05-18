@@ -117,6 +117,21 @@ def _jupyter_report(working: list[tuple[str, int]]) -> None:
         print(f'Using {labels[0]}. To select a different one: {opts}')
 
 
+class _LiveView:
+    '''Handle for a running :meth:`_CameraProxy.live_view` feed.
+
+    Returned by :meth:`_CameraProxy.live_view`.  Call :meth:`stop` to
+    end the update loop.
+    '''
+
+    def __init__(self, task) -> None:
+        self._task = task
+
+    def stop(self) -> None:
+        '''Cancel the background update loop.'''
+        self._task.cancel()
+
+
 class _CameraProxy:
     '''Wraps discovered camera backends; usable immediately and awaitable.
 
@@ -168,6 +183,84 @@ class _CameraProxy:
         key = object.__getattribute__(self, '_selected_key')
         label = _BACKENDS[key].label if key else 'uninitialized'
         return f'<Camera: {label}>'
+
+    def live_view(self, fps: float = 30.0) -> '_LiveView':
+        '''Display a live video feed in a Jupyter cell.
+
+        Encodes each frame as JPEG and streams it into an
+        :mod:`ipywidgets` ``Image`` widget via an ``asyncio`` background
+        loop.  No matplotlib backend switching required.
+
+        Parameters
+        ----------
+        fps : float
+            Target display update rate in frames per second (default 30).
+
+        Returns
+        -------
+        _LiveView
+            Handle for the running feed.  Call :meth:`_LiveView.stop`
+            to end it.
+
+        Raises
+        ------
+        ImportError
+            If :mod:`ipywidgets` is not installed.
+
+        Notes
+        -----
+        Keep a reference to the returned handle — if it is
+        garbage-collected the update loop may stop::
+
+            live = camera.live_view()
+            live.stop()   # when done
+
+        Examples
+        --------
+        ::
+
+            camera = Camera()
+            live = camera.live_view()
+            # ...
+            live.stop()
+        '''
+        try:
+            import ipywidgets as widgets
+            from IPython.display import display
+        except ImportError as ex:
+            raise ImportError(
+                'ipywidgets is required for live_view(). '
+                'Install it with: pip install ipywidgets'
+            ) from ex
+
+        import asyncio
+        import cv2
+
+        self._ensure_open()
+        frame = self.read()
+
+        def _encode(f):
+            _, buf = cv2.imencode('.jpg', f)
+            return bytes(buf)
+
+        widget = widgets.Image(
+            value=_encode(frame),
+            format='jpeg',
+            width=frame.shape[1],
+            height=frame.shape[0],
+        )
+        display(widget)
+
+        async def _loop():
+            interval = 1.0 / fps
+            while True:
+                try:
+                    widget.value = _encode(self.read())
+                except Exception:
+                    break
+                await asyncio.sleep(interval)
+
+        return _LiveView(asyncio.ensure_future(_loop()))
 
     def controls(self):
         '''Return an interactive property panel for use in Jupyter.

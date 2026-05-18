@@ -197,5 +197,58 @@ class TestCameraFactory(unittest.TestCase):
         self.assertIs(LibCamera, Camera)
 
 
+class TestLiveView(unittest.TestCase):
+
+    def _make_proxy(self):
+        cam = make_mock_noise_camera()
+        with patch('QVideo.lib._camera._open', return_value=cam):
+            proxy = Camera('noise')
+        return proxy, cam
+
+    def test_live_view_returns_live_view_handle(self):
+        from QVideo.lib._camera import _LiveView
+
+        def _close_and_return(coro):
+            coro.close()
+            return MagicMock()
+
+        proxy, cam = self._make_proxy()
+        with patch('QVideo.lib._camera._open', return_value=cam):
+            with patch('ipywidgets.Image'):
+                with patch('IPython.display.display'):
+                    with patch('asyncio.ensure_future',
+                               side_effect=_close_and_return):
+                        lv = proxy.live_view()
+        self.assertIsInstance(lv, _LiveView)
+
+    def test_live_view_stop_cancels_task(self):
+        from QVideo.lib._camera import _LiveView
+        mock_task = MagicMock()
+        lv = _LiveView(mock_task)
+        lv.stop()
+        mock_task.cancel.assert_called_once()
+
+    def test_live_view_schedules_async_loop(self):
+        proxy, cam = self._make_proxy()
+
+        def _close_and_return(coro):
+            coro.close()
+            return MagicMock()
+
+        with patch('QVideo.lib._camera._open', return_value=cam):
+            with patch('ipywidgets.Image'):
+                with patch('IPython.display.display'):
+                    with patch('asyncio.ensure_future',
+                               side_effect=_close_and_return) as mock_future:
+                        proxy.live_view()
+        mock_future.assert_called_once()
+
+    def test_live_view_raises_without_ipywidgets(self):
+        proxy, _ = self._make_proxy()
+        with patch.dict('sys.modules', {'ipywidgets': None}):
+            with self.assertRaises(ImportError):
+                proxy.live_view()
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

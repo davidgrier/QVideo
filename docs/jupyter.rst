@@ -137,6 +137,34 @@ other external adjustment).
 
        pip install ipywidgets
 
+Live video feed
+---------------
+
+``camera.live_view()`` streams frames into an :mod:`ipywidgets` image widget
+using an ``asyncio`` background loop — no matplotlib backend setup required:
+
+.. code-block:: python
+
+   live = camera.live_view()
+
+To stop the feed:
+
+.. code-block:: python
+
+   live.stop()
+
+Pass ``fps`` to control the display update rate (default 30):
+
+.. code-block:: python
+
+   live = camera.live_view(fps=10.0)
+
+.. note::
+
+   :mod:`ipywidgets` must be installed (included in the ``jupyter`` extra)::
+
+       pip install "QVideo[jupyter]"
+
 Acquiring a sequence of frames
 -------------------------------
 

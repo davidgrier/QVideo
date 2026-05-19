@@ -42,6 +42,31 @@ abstraction and require no camera-specific code.
 pip install QVideo
 ```
 
+### Qt binding
+
+QVideo works with PyQt5, PyQt6, or PySide. On x86/x86_64 a binding can be
+installed alongside QVideo:
+
+```bash
+pip install "QVideo[pyqt6]"   # PyQt6
+pip install "QVideo[pyqt5]"   # PyQt5
+```
+
+### Raspberry Pi
+
+PyPI has no prebuilt ARM wheels for PyQt5 or PyQt6, so the system-provided
+packages must be used instead.  Create the virtual environment with
+`--system-site-packages` so pip can see them:
+
+```bash
+sudo apt install python3-pyqt6 python3-pyqt6.qtsvg
+python3 -m venv --system-site-packages .venv
+source .venv/bin/activate
+pip install QVideo
+```
+
+Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
+
 ### Optional hardware backends
 
 | Backend | Extra | Notes |

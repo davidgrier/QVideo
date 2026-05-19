@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "QVideo"
-version = "3.13.0"
+version = "3.13.1"
 description = "PyQt-based framework for integrating video cameras into research applications"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -32,8 +32,6 @@ dependencies = [
     "numpy",
     "scipy",
     "opencv-python",
-    "PyQt5",
-    "PyQt5-sip",
     "qtpy",
     "pyqtgraph",
 ]

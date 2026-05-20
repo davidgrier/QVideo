@@ -78,6 +78,10 @@ class TestSmoothingFilterMethod(unittest.TestCase):
         f = make_filter()
         self.assertEqual(f.method, 'gaussian')
 
+    def test_custom_method_box(self):
+        f = make_filter(method='box')
+        self.assertEqual(f.method, 'box')
+
     def test_custom_method_median(self):
         f = make_filter(method='median')
         self.assertEqual(f.method, 'median')
@@ -89,12 +93,12 @@ class TestSmoothingFilterMethod(unittest.TestCase):
 
     def test_invalid_method_raises(self):
         with self.assertRaises(ValueError):
-            make_filter(method='box')
+            make_filter(method='unknown')
 
     def test_invalid_method_setter_raises(self):
         f = make_filter()
         with self.assertRaises(ValueError):
-            f.method = 'bilateral'
+            f.method = 'unknown'
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +119,12 @@ class TestSmoothingFilterProcess(unittest.TestCase):
             f.process(_FRAME)
         _, ksize, _ = mock_blur.call_args[0]
         self.assertEqual(ksize, (7, 7))
+
+    def test_call_applies_box(self):
+        f = make_filter(method='box')
+        with patch('cv2.blur', return_value=_FRAME) as mock_blur:
+            f(_FRAME)
+        mock_blur.assert_called_once()
 
     def test_call_applies_gaussian(self):
         f = make_filter(method='gaussian')
@@ -170,6 +180,19 @@ class TestQSmoothingFilter(unittest.TestCase):
         widget = make_widget()
         result = widget(_FRAME)
         np.testing.assert_array_equal(result, _FRAME)
+
+    def test_set_method_box_updates_filter(self):
+        widget = make_widget()
+        widget._methodBox.setCurrentText('Box')
+        self.assertEqual(widget.filter.method, 'box')
+
+    def test_call_when_checked_applies_box(self):
+        widget = make_widget()
+        widget.setChecked(True)
+        widget._methodBox.setCurrentText('Box')
+        with patch('cv2.blur', return_value=_FRAME) as mock_blur:
+            widget(_FRAME)
+        mock_blur.assert_called_once()
 
     def test_call_when_checked_applies_gaussian(self):
         widget = make_widget()

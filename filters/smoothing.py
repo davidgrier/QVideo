@@ -11,7 +11,7 @@ __all__ = ['SmoothingFilter', 'QSmoothingFilter']
 
 class SmoothingFilter(AsyncVideoFilter):
 
-    '''Smoothing filter supporting Gaussian and median blur.
+    '''Smoothing filter supporting box, Gaussian, and median blur.
 
     Parameters
     ----------
@@ -19,20 +19,21 @@ class SmoothingFilter(AsyncVideoFilter):
         Kernel width in pixels.  Must be odd and at least 1; even values
         are rounded up to the next odd integer.  Default: ``15``.
     method : str
-        Smoothing method: ``'gaussian'`` or ``'median'``.
+        Smoothing method: ``'box'``, ``'gaussian'``, or ``'median'``.
         Default: ``'gaussian'``.
 
     Notes
     -----
-    OpenCV requires an odd, positive kernel size for both
-    ``GaussianBlur`` and ``medianBlur``.  The :attr:`width` setter
-    enforces this automatically.
+    OpenCV requires an odd, positive kernel size for ``GaussianBlur``
+    and ``medianBlur``.  ``blur`` (box filter) accepts any positive
+    size, but the :attr:`width` setter enforces odd values uniformly
+    across all methods.
 
     For Gaussian blur, ``sigma`` is set to 0, which instructs OpenCV
     to derive it from the kernel size.
     '''
 
-    METHODS = ('gaussian', 'median')
+    METHODS = ('box', 'gaussian', 'median')
 
     def __init__(self, width: int = 15, method: str = 'gaussian') -> None:
         super().__init__()
@@ -51,7 +52,7 @@ class SmoothingFilter(AsyncVideoFilter):
 
     @property
     def method(self) -> str:
-        '''Smoothing method: ``'gaussian'`` or ``'median'``.'''
+        '''Smoothing method: ``'box'``, ``'gaussian'``, or ``'median'``.'''
         return self._method
 
     @method.setter
@@ -62,16 +63,23 @@ class SmoothingFilter(AsyncVideoFilter):
 
     def to_code(self) -> 'FilterCode':
         from QVideo.lib.QVideoFilter import FilterCode
+        k = self._width
+        if self._method == 'box':
+            return FilterCode(
+                imports=frozenset({'import cv2'}),
+                lines=[f'image = cv2.blur(image, ({k}, {k}))'],
+                comment=f'box smoothing, k={k}',
+            )
         if self._method == 'median':
             return FilterCode(
                 imports=frozenset({'import cv2'}),
-                lines=[f'image = cv2.medianBlur(image, {self._width})'],
-                comment=f'median smoothing, k={self._width}',
+                lines=[f'image = cv2.medianBlur(image, {k})'],
+                comment=f'median smoothing, k={k}',
             )
         return FilterCode(
             imports=frozenset({'import cv2'}),
-            lines=[f'image = cv2.GaussianBlur(image, ({self._width}, {self._width}), 0)'],
-            comment=f'Gaussian smoothing, k={self._width}',
+            lines=[f'image = cv2.GaussianBlur(image, ({k}, {k}), 0)'],
+            comment=f'Gaussian smoothing, k={k}',
         )
 
     def process(self, image: Image) -> Image:
@@ -84,6 +92,8 @@ class SmoothingFilter(AsyncVideoFilter):
         Image
             Smoothed version of *image*.
         '''
+        if self._method == 'box':
+            return cv2.blur(image, (self._width, self._width))
         if self._method == 'median':
             return cv2.medianBlur(image, self._width)
         return cv2.GaussianBlur(image, (self._width, self._width), 0)
@@ -108,7 +118,8 @@ class QSmoothingFilter(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._methodBox = QtWidgets.QComboBox()
-        self._methodBox.addItems(['Gaussian', 'Median'])
+        self._methodBox.addItems(['Box', 'Gaussian', 'Median'])
+        self._methodBox.setCurrentText(self.filter.method.capitalize())
         self._layout.addWidget(self._methodBox)
         self._spinbox = SpinBox(self, prefix='width: ',
                                 value=self.filter.width,

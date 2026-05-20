@@ -1,5 +1,6 @@
 from .median import Median
 from .momedian import MoMedian
+from .momean import MoMean, QMoMean
 from .normalize import Normalize, SmoothNormalize
 from .blob import BlobFilter, QBlobFilter
 from .circletransform import CircleTransformFilter, QCircleTransformFilter
@@ -19,6 +20,7 @@ from .unsharp import UnsharpFilter, QUnsharpFilter
 
 __all__ = '''
 Median MoMedian
+MoMean QMoMean
 Normalize SmoothNormalize
 BlobFilter QBlobFilter
 CircleTransformFilter QCircleTransformFilter

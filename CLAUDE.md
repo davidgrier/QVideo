@@ -38,16 +38,26 @@ developer's machine and must never be committed.
 
 ## Releasing
 
-When pushing a new version, always create a GitHub Release (not just a tag) so
-that Zenodo's webhook fires and mints a DOI:
+`pyproject.toml` is the single source of truth for the version number.
+`__init__.py` and `docs/conf.py` read it via `importlib.metadata` — do not
+duplicate it there.  `CITATION.cff` is auto-updated by CI (`.github/workflows/
+update-citation.yml`) on tag push — **never edit `CITATION.cff` manually**.
+
+Release steps:
+
+1. Bump `version` in `pyproject.toml` only.
+2. Commit and push.
+3. Tag, push the tag, and create a GitHub Release:
 
 ```bash
 git tag vX.Y.Z && git push origin vX.Y.Z
 gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 ```
 
-Pushing the tag alone is not sufficient — Zenodo listens for the GitHub
-`release` event, not a raw tag push.
+The tag push triggers the CI workflow that writes the new version and today's
+date into `CITATION.cff` and commits it back.  Creating the GitHub Release
+fires Zenodo's webhook and mints a DOI.  Pushing the tag alone is not
+sufficient — Zenodo listens for the `release` event, not a raw tag push.
 
 ## Architecture
 

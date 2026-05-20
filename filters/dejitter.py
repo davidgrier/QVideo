@@ -113,13 +113,13 @@ class DejitterFilter(AsyncVideoFilter):
             return image
 
         (dx, dy), _ = cv2.phaseCorrelate(self._reference.copy(), gray.copy(),
-                                          self._window)
+                                          self._window.copy())
 
         M = np.float32([[1, 0, -dx], [0, 1, -dy]])
         corrected = cv2.warpAffine(image, M, (w, h))
 
         if self._mode == 'rolling':
-            cv2.accumulateWeighted(gray, self._reference, self._alpha)
+            self._reference += self._alpha * (gray - self._reference)
 
         return corrected
 

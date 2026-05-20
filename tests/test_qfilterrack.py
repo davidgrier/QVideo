@@ -121,7 +121,7 @@ class TestQFilterRackAvailableFilters(unittest.TestCase):
     def test_contains_known_filters(self):
         result = QFilterRack.availableFilters()
         self.assertIn('Smoothing', result)
-        self.assertIn('Canny Edge Detection', result)
+        self.assertIn('Canny', result)
         self.assertIn('Region of Interest', result)
 
     def test_excludes_non_widget_classes(self):

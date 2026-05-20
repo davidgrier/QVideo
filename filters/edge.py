@@ -118,11 +118,11 @@ class QEdgeFilter(QVideoFilter):
         Parent widget.
     '''
 
-    display_name = 'Canny Edge Detection'
+    display_name = 'Canny'
     display_category = 'Edge Detection'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__(parent, 'Canny Edge Detection', EdgeFilter())
+        super().__init__(parent, 'Canny', EdgeFilter())
 
     def _setupUi(self) -> None:
         super()._setupUi()

@@ -1,7 +1,11 @@
-'''Unit tests for MoMedian.'''
+'''Unit tests for MoMedian and QMoMedian.'''
 import unittest
 import numpy as np
-from QVideo.filters.momedian import MoMedian
+from qtpy import QtWidgets
+from QVideo.filters.momedian import MoMedian, QMoMedian
+
+
+app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 _SHAPE = (4, 4)
@@ -107,6 +111,37 @@ class TestMoMedian(unittest.TestCase):
         f.reset()
         self.assertIsNotNone(f._next)
         np.testing.assert_array_equal(f._next._result, np.zeros(_SHAPE, dtype=np.uint8))
+
+
+class TestQMoMedian(unittest.TestCase):
+
+    def test_filter_is_momedian(self):
+        self.assertIsInstance(QMoMedian().filter, MoMedian)
+
+    def test_title(self):
+        self.assertEqual(QMoMedian().title(), 'Running Median')
+
+    def test_has_order_spinbox(self):
+        self.assertTrue(hasattr(QMoMedian(), '_orderBox'))
+
+    def test_order_spinbox_default(self):
+        self.assertEqual(QMoMedian()._orderBox.value(), 1)
+
+    def test_set_order_updates_filter(self):
+        w = QMoMedian()
+        w._setOrder(2)
+        self.assertEqual(w.filter.order, 2)
+
+    def test_call_when_unchecked_returns_frame_unchanged(self):
+        w = QMoMedian()
+        result = w(_A)
+        np.testing.assert_array_equal(result, _A)
+
+    def test_call_when_checked_returns_ndarray(self):
+        w = QMoMedian()
+        w.setChecked(True)
+        result = w(_A)
+        self.assertIsInstance(result, np.ndarray)
 
 
 if __name__ == '__main__':  # pragma: no cover

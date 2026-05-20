@@ -115,7 +115,7 @@ class TestQEdgeFilter(unittest.TestCase):
 
     def test_title(self):
         widget = make_widget()
-        self.assertEqual(widget.title(), 'Canny Edge Detection')
+        self.assertEqual(widget.title(), 'Canny')
 
     def test_has_lowSpinbox(self):
         widget = make_widget()

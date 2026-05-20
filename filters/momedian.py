@@ -1,10 +1,13 @@
 '''Streaming median-of-medians background estimator (rolling remedian).'''
+from qtpy import QtCore, QtWidgets
+from pyqtgraph import SpinBox
 from QVideo.filters._MedianBase import _MedianBase
+from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
 
 
-__all__ = ['MoMedian']
+__all__ = ['MoMedian', 'QMoMedian']
 
 
 class MoMedian(_MedianBase):
@@ -64,3 +67,39 @@ class MoMedian(_MedianBase):
                                   np.minimum(np.maximum(a, b), data))
         self._buffer[self._index] = data
         self._index = (self._index + 1) % 2
+
+
+class QMoMedian(QVideoFilter):
+
+    '''Widget for :class:`MoMedian` with an order spinbox.
+
+    Parameters
+    ----------
+    parent : QtWidgets.QWidget or None
+        Parent widget.
+    '''
+
+    display_name = 'Running Median'
+    display_category = 'Background'
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent, 'Running Median', MoMedian())
+
+    def _setupUi(self) -> None:
+        super()._setupUi()
+        self._orderBox = SpinBox(value=self.filter.order,
+                                 bounds=(1, 4), int=True, step=1,
+                                 prefix='order ')
+        self._layout.addWidget(self._orderBox)
+
+    def _connectSignals(self) -> None:
+        super()._connectSignals()
+        self._orderBox.valueChanged.connect(self._setOrder)
+
+    @QtCore.Slot(object)
+    def _setOrder(self, value: int) -> None:
+        self.filter.order = int(value)
+
+
+if __name__ == '__main__':  # pragma: no cover
+    QMoMedian.example()

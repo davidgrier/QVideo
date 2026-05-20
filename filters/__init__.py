@@ -1,5 +1,5 @@
 from .median import Median
-from .momedian import MoMedian
+from .momedian import MoMedian, QMoMedian
 from .momean import MoMean, QMoMean
 from .dejitter import DejitterFilter, QDejitterFilter
 from .normalize import Normalize, SmoothNormalize
@@ -20,7 +20,7 @@ from .threshold import ThresholdFilter, QThresholdFilter
 from .unsharp import UnsharpFilter, QUnsharpFilter
 
 __all__ = '''
-Median MoMedian
+Median MoMedian QMoMedian
 MoMean QMoMean
 DejitterFilter QDejitterFilter
 Normalize SmoothNormalize

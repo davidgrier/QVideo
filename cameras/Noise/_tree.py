@@ -33,7 +33,7 @@ class QNoiseTree(QCameraTree):
                  camera: QNoiseCamera | None = None,
                  cameraID: int = 0,
                  **kwargs) -> None:
-        source = QNoiseSource(camera) if camera is not None else QNoiseSource()
+        source = QNoiseSource(camera=camera)
         super().__init__(source, *args, **kwargs)
         if 'color' in self._parameters:
             self._parameters['color'].setOpts(enabled=False)

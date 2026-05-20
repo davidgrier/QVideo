@@ -47,17 +47,19 @@ Release steps:
 
 1. Bump `version` in `pyproject.toml` only.
 2. Commit and push.
-3. Tag, push the tag, and create a GitHub Release:
+3. Tag and push the tag:
 
 ```bash
 git tag vX.Y.Z && git push origin vX.Y.Z
-gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 ```
 
-The tag push triggers the CI workflow that writes the new version and today's
-date into `CITATION.cff` and commits it back.  Creating the GitHub Release
-fires Zenodo's webhook and mints a DOI.  Pushing the tag alone is not
-sufficient — Zenodo listens for the `release` event, not a raw tag push.
+The tag push triggers two CI workflows automatically:
+- `publish.yml` builds the package, publishes to PyPI, **and creates the
+  GitHub Release** (do not run `gh release create` manually — it will
+  conflict with CI and fail).
+- `update-citation.yml` updates `CITATION.cff` and commits it back.
+
+The GitHub Release event fires Zenodo's webhook and mints a DOI.
 
 ## Architecture
 

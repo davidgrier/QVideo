@@ -32,6 +32,28 @@ frame by rolling the buffer.
 .. automodule:: QVideo.filters.momedian
    :members:
 
+Running mean (EMA)
+------------------
+
+:class:`~QVideo.filters.momean.MoMean` maintains a per-pixel exponential
+moving average (EMA) of the incoming frames:
+
+.. math::
+
+   \hat{B}_t = \alpha\,I_t + (1 - \alpha)\,\hat{B}_{t-1}
+
+where *α* controls how quickly the estimate tracks changes.  A small *α*
+produces a heavily smoothed, slow-responding background; *α* = 1 reduces
+to a passthrough.  The effective time constant in frames is approximately
+1 / *α*.  Unlike the remedian estimators, a new estimate is available on
+every frame with no warm-up period.
+
+The companion :class:`~QVideo.filters.momean.QMoMean` widget exposes an
+*α* spinbox.
+
+.. automodule:: QVideo.filters.momean
+   :members:
+
 Normalisation
 -------------
 
@@ -127,15 +149,48 @@ Smoothing
 ---------
 
 :class:`~QVideo.filters.smoothing.SmoothingFilter` applies OpenCV
-smoothing with an adjustable odd-pixel kernel.  Two methods are available:
-``'gaussian'`` (``cv2.GaussianBlur``) and ``'median'`` (``cv2.medianBlur``).
-Gaussian blur is effective against additive Gaussian noise; median blur
-excels at removing salt-and-pepper noise while preserving edges.
-The :class:`~QVideo.filters.smoothing.QSmoothingFilter` widget
-exposes a method selector combobox and a width spinbox.
-Supports pipeline export.
+smoothing with an adjustable odd-pixel kernel.  Three methods are available:
+
+- ``'box'`` (``cv2.blur``) — uniform box average; fastest of the three,
+  O(N) cost independent of kernel size.
+- ``'gaussian'`` (``cv2.GaussianBlur``) — weighted average with a Gaussian
+  kernel; effective against additive Gaussian noise.
+- ``'median'`` (``cv2.medianBlur``) — replaces each pixel with the
+  neighbourhood median; excels at removing salt-and-pepper noise while
+  preserving edges.
+
+The :class:`~QVideo.filters.smoothing.QSmoothingFilter` widget exposes a
+method selector combobox and a width spinbox.  Supports pipeline export.
 
 .. automodule:: QVideo.filters.smoothing
+   :members:
+
+Dejitter (video stabilization)
+------------------------------
+
+:class:`~QVideo.filters.dejitter.DejitterFilter` corrects translational
+camera jitter frame-by-frame using FFT-based phase correlation
+(``cv2.phaseCorrelate`` with a Hanning window) to estimate the sub-pixel
+shift between each frame and a reference image, then applies the inverse
+translation via ``cv2.warpAffine``.
+
+Two reference-update modes are supported:
+
+- **Static** — the reference is fixed to the first frame seen after
+  construction or reset.  Subsequent frames are aligned to that origin.
+  Best for suppressing mechanical vibration around a fixed position.
+- **Rolling** — the reference is updated each frame by an exponential
+  moving average (weight *α* on the new frame), so it tracks slow drift
+  while only fast jitter is corrected.  Best for long acquisitions where
+  deliberate stage motion should be preserved.
+
+Computation runs in a background thread via
+:class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter`.
+The companion :class:`~QVideo.filters.dejitter.QDejitterFilter` widget
+exposes a mode selector, an *α* spinbox (shown only in Rolling mode), and
+a *Reset* button to reseed the reference.
+
+.. automodule:: QVideo.filters.dejitter
    :members:
 
 Edge detection

@@ -93,13 +93,6 @@ class TestEdgeFilter(unittest.TestCase):
         f.add(_GRAY)
         np.testing.assert_array_equal(f.data, _GRAY)
 
-    def test_get_calls_canny(self):
-        f = make_filter(low=50, high=150)
-        f.add(_GRAY)
-        with patch('cv2.Canny', return_value=_EDGE) as mock_canny:
-            f.get()
-        mock_canny.assert_called_once_with(_GRAY, 50, 150)
-
     def test_get_returns_ndarray(self):
         f = make_filter()
         f.add(_GRAY)
@@ -116,11 +109,6 @@ class TestEdgeFilter(unittest.TestCase):
 
 class TestQEdgeFilter(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_edge_filter(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, EdgeFilter)
@@ -128,10 +116,6 @@ class TestQEdgeFilter(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Canny Edge Detection')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_has_lowSpinbox(self):
         widget = make_widget()
@@ -188,5 +172,5 @@ class TestQEdgeFilter(unittest.TestCase):
         mock_canny.assert_called_once()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

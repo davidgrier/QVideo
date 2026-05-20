@@ -110,9 +110,6 @@ class EdgeFilter(VideoFilter):
 
 class QEdgeFilter(QVideoFilter):
 
-    display_name = 'Canny Edge Detection'
-    display_category = 'Edge Detection'
-
     '''Widget for :class:`EdgeFilter` with low- and high-threshold spinboxes.
 
     Parameters
@@ -120,6 +117,9 @@ class QEdgeFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Canny Edge Detection'
+    display_category = 'Edge Detection'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Canny Edge Detection', EdgeFilter())
@@ -154,9 +154,8 @@ class QEdgeFilter(QVideoFilter):
             New lower threshold.
         '''
         self.filter.low = low
-        self._lowSpinbox.blockSignals(True)
-        self._lowSpinbox.setValue(self.filter.low)
-        self._lowSpinbox.blockSignals(False)
+        with QtCore.QSignalBlocker(self._lowSpinbox):
+            self._lowSpinbox.setValue(self.filter.low)
 
     @QtCore.Slot(object)
     def setHigh(self, high: int) -> None:
@@ -172,9 +171,8 @@ class QEdgeFilter(QVideoFilter):
             New upper threshold.
         '''
         self.filter.high = high
-        self._highSpinbox.blockSignals(True)
-        self._highSpinbox.setValue(self.filter.high)
-        self._highSpinbox.blockSignals(False)
+        with QtCore.QSignalBlocker(self._highSpinbox):
+            self._highSpinbox.setValue(self.filter.high)
 
 
 if __name__ == '__main__':  # pragma: no cover

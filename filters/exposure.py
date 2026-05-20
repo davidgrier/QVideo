@@ -145,7 +145,6 @@ class ExposureFilter(AsyncVideoFilter):
             return np.clip(
                 255 / (1 + np.exp(-self._gain * (f / 255 - self._cutoff / 255))),
                 0, 255).astype(np.uint8)
-        # CLAHE
         if image.ndim == 3:
             lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
             lab[:, :, 0] = self._clahe.apply(lab[:, :, 0])
@@ -177,7 +176,6 @@ class ExposureFilter(AsyncVideoFilter):
                 comment=(f'sigmoid exposure, cutoff={self._cutoff}, '
                          f'gain={self._gain}'),
             )
-        # CLAHE
         return FilterCode(
             imports=frozenset({'import cv2'}),
             lines=[
@@ -198,9 +196,6 @@ class ExposureFilter(AsyncVideoFilter):
 
 class QExposureFilter(QVideoFilter):
 
-    display_name = 'Exposure'
-    display_category = 'Preprocessing'
-
     '''Widget for :class:`ExposureFilter` with a method selector and
     context-sensitive parameter spinboxes.
 
@@ -209,6 +204,9 @@ class QExposureFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Exposure'
+    display_category = 'Preprocessing'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Exposure', ExposureFilter())

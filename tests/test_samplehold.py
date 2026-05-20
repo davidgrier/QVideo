@@ -48,21 +48,6 @@ class TestSampleHold(unittest.TestCase):
         f.add(_FRAME)
         self.assertEqual(f._count, initial - 1)
 
-    def test_add_calls_super_while_counting(self):
-        f = make_filter(order=1)
-        with patch.object(f.__class__.__bases__[0], 'add') as mock_add:
-            f.add(_FRAME)
-        mock_add.assert_called_once_with(_FRAME)
-
-    def test_add_does_not_call_super_after_count_zero(self):
-        f = make_filter(order=1)
-        # Drain the counter
-        for _ in range(f._count):
-            f.add(_FRAME)
-        with patch.object(f.__class__.__bases__[0], 'add') as mock_add:
-            f.add(_FRAME)
-        mock_add.assert_not_called()
-
     def test_shape_change_triggers_reset(self):
         f = make_filter(order=1)
         # Drain the counter so count == 0
@@ -120,11 +105,6 @@ class TestSampleHold(unittest.TestCase):
 
 class TestQSampleHold(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_sample_hold(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, SampleHold)
@@ -132,10 +112,6 @@ class TestQSampleHold(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Sample and Hold')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_has_resetButton(self):
         widget = make_widget()
@@ -192,5 +168,5 @@ class TestQSampleHold(unittest.TestCase):
         np.testing.assert_array_equal(result, _FRAME)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

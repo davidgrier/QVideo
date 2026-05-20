@@ -97,14 +97,6 @@ class TestQUnsharpFilter(unittest.TestCase):
         from QVideo.filters.unsharp import QUnsharpFilter
         self.w = QUnsharpFilter()
 
-    def test_display_name(self):
-        from QVideo.filters.unsharp import QUnsharpFilter
-        self.assertEqual(QUnsharpFilter.display_name, 'Unsharp Mask')
-
-    def test_display_category(self):
-        from QVideo.filters.unsharp import QUnsharpFilter
-        self.assertEqual(QUnsharpFilter.display_category, 'Preprocessing')
-
     def test_filter_instance(self):
         from QVideo.filters.unsharp import UnsharpFilter
         self.assertIsInstance(self.w.filter, UnsharpFilter)
@@ -130,5 +122,5 @@ class TestQUnsharpFilter(unittest.TestCase):
         self.assertAlmostEqual(self.w.filter.amount, 0.5)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

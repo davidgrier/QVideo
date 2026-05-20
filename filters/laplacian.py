@@ -96,9 +96,6 @@ class LaplacianFilter(VideoFilter):
 
 class QLaplacianFilter(QVideoFilter):
 
-    display_name = 'Laplacian'
-    display_category = 'Edge Detection'
-
     '''Widget for :class:`LaplacianFilter` with kernel size and sigma spinboxes.
 
     Parameters
@@ -106,6 +103,9 @@ class QLaplacianFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Laplacian'
+    display_category = 'Edge Detection'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Laplacian Edge Detection', LaplacianFilter())

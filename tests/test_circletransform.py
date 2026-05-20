@@ -122,17 +122,19 @@ class TestCircleTransformFilterProcess(unittest.TestCase):
 
 class TestCircleTransformFilterKernel(unittest.TestCase):
 
-    def test_kernel_cached_for_same_shape(self):
-        f = make_filter()
-        k1 = f._kernel_for(_SHAPE)
-        k2 = f._kernel_for(_SHAPE)
-        self.assertIs(k1, k2)
+    def test_process_consistent_for_same_shape(self):
+        f = make_filter(window=5)
+        r1 = f.process(_FRAME)
+        r2 = f.process(_FRAME)
+        np.testing.assert_array_equal(r1, r2)
 
-    def test_kernel_recomputed_for_new_shape(self):
-        f = make_filter()
-        k1 = f._kernel_for((16, 16))
-        k2 = f._kernel_for((32, 32))
-        self.assertIsNot(k1, k2)
+    def test_process_handles_shape_change(self):
+        f = make_filter(window=5)
+        small = np.random.randint(0, 256, (16, 16), dtype=np.uint8)
+        r1 = f.process(small)
+        r2 = f.process(_FRAME)
+        self.assertEqual(r1.shape, (16, 16))
+        self.assertEqual(r2.shape, _SHAPE)
 
     def test_kernel_shape_matches_requested(self):
         f = make_filter()
@@ -141,9 +143,6 @@ class TestCircleTransformFilterKernel(unittest.TestCase):
 
 
 class TestQCircleTransformFilterWidget(unittest.TestCase):
-
-    def test_is_qvideofilter(self):
-        self.assertIsInstance(make_widget(), QVideoFilter)
 
     def test_filter_is_circle_transform_filter(self):
         self.assertIsInstance(make_widget().filter, CircleTransformFilter)

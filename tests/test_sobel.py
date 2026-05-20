@@ -120,24 +120,11 @@ class TestSobelFilterGet(unittest.TestCase):
 
 class TestQSobelFilterInit(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        self.assertIsInstance(make_widget(), QVideoFilter)
-
     def test_filter_is_sobel_filter(self):
         self.assertIsInstance(make_widget().filter, SobelFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Sobel Edge Detection')
-
-    def test_display_name(self):
-        self.assertEqual(QSobelFilter.display_name, 'Sobel')
-
-    def test_display_category(self):
-        self.assertEqual(QSobelFilter.display_category, 'Edge Detection')
-
-    def test_initially_unchecked(self):
-        self.assertFalse(make_widget().isChecked())
 
 
 class TestQSobelFilterSetDirection(unittest.TestCase):

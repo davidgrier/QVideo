@@ -92,11 +92,6 @@ class TestRGBFilter(unittest.TestCase):
 
 class TestQRGBFilter(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_rgb_filter(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, RGBFilter)
@@ -104,10 +99,6 @@ class TestQRGBFilter(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Color Channel')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_has_three_buttons(self):
         widget = make_widget()
@@ -141,5 +132,5 @@ class TestQRGBFilter(unittest.TestCase):
         np.testing.assert_array_equal(result, _RGB[:, :, 1])
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

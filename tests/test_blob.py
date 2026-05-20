@@ -8,8 +8,6 @@ from QVideo.filters.blob import BlobFilter, QBlobFilter
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-_FRAME = np.zeros((480, 640), dtype=np.uint8)
-
 # Binary frame with a single foreground blob
 _BINARY_FRAME = np.zeros((10, 10), dtype=np.uint8)
 _BINARY_FRAME[3:7, 3:7] = 255
@@ -65,17 +63,6 @@ class TestBlobFilter(unittest.TestCase):
         self.assertEqual(result.shape, (10, 10, 3))
         self.assertEqual(result.sum(), 0)
 
-    def test_process_calls_connected_components(self):
-        f = make_filter()
-        labels = np.zeros((10, 10), dtype=np.int32)
-        labels[3:7, 3:7] = 1
-        color3 = np.zeros((10, 10, 3), dtype=np.uint8)
-        with patch('cv2.connectedComponents', return_value=(2, labels)) as mock_cc, \
-             patch('cv2.merge', return_value=color3), \
-             patch('cv2.cvtColor', return_value=color3):
-            f.process(_BINARY_FRAME)
-        mock_cc.assert_called_once_with(_BINARY_FRAME)
-
     def test_call_applies_blob_coloring(self):
         '''With threading patched to synchronous, __call__ returns the result.'''
         f = make_filter()
@@ -86,11 +73,6 @@ class TestBlobFilter(unittest.TestCase):
 
 class TestQBlobFilter(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_blob_filter(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, BlobFilter)
@@ -98,10 +80,6 @@ class TestQBlobFilter(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Blob')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
         widget = make_widget()

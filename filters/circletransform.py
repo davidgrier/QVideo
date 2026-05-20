@@ -129,9 +129,6 @@ class CircleTransformFilter(AsyncVideoFilter):
 
 class QCircleTransformFilter(QVideoFilter):
 
-    display_name = 'Circle Transform'
-    display_category = 'Feature Detection'
-
     '''Widget for :class:`CircleTransformFilter` with a window spinbox.
 
     Parameters
@@ -139,6 +136,9 @@ class QCircleTransformFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Circle Transform'
+    display_category = 'Feature Detection'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Circle Transform', CircleTransformFilter())

@@ -120,9 +120,6 @@ class ForegroundEstimator(AsyncVideoFilter):
 
 class QForegroundEstimator(QVideoFilter):
 
-    display_name = 'Foreground'
-    display_category = 'Background'
-
     '''Widget for :class:`ForegroundEstimator` with history and threshold spinboxes.
 
     Parameters
@@ -130,6 +127,9 @@ class QForegroundEstimator(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Foreground'
+    display_category = 'Background'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Foreground', ForegroundEstimator())

@@ -76,9 +76,6 @@ class GammaFilter(VideoFilter):
 
 class QGammaFilter(QVideoFilter):
 
-    display_name = 'Gamma Correction'
-    display_category = 'Preprocessing'
-
     '''Widget for :class:`GammaFilter` with a gamma spinbox.
 
     Parameters
@@ -86,6 +83,9 @@ class QGammaFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Gamma Correction'
+    display_category = 'Preprocessing'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Gamma Correction', GammaFilter())

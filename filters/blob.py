@@ -62,9 +62,6 @@ class BlobFilter(AsyncVideoFilter):
 
 class QBlobFilter(QVideoFilter):
 
-    display_name = 'Blob'
-    display_category = 'Segmentation'
-
     '''Widget wrapper for :class:`BlobFilter`.
 
     Displays the filter as a checkable group box.  No adjustable
@@ -75,6 +72,9 @@ class QBlobFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Blob'
+    display_category = 'Segmentation'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Blob', BlobFilter())

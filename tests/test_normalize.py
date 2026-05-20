@@ -130,5 +130,5 @@ class TestSmoothNormalize(unittest.TestCase):
         np.testing.assert_array_equal(result, np.zeros(_SHAPE, dtype=np.uint8))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

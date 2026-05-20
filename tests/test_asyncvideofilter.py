@@ -31,14 +31,6 @@ class TestAsyncVideoFilterInit(unittest.TestCase):
         f = make_filter()
         self.assertIsInstance(f, VideoFilter)
 
-    def test_initially_ready(self):
-        f = make_filter()
-        self.assertTrue(f._ready)
-
-    def test_initial_result_none(self):
-        f = make_filter()
-        self.assertIsNone(f._result)
-
     def test_initial_data_none(self):
         f = make_filter()
         self.assertIsNone(f.data)
@@ -65,16 +57,16 @@ class TestAsyncVideoFilterGet(unittest.TestCase):
         # _result is still None → passthrough
         np.testing.assert_array_equal(f.get(), _FRAME)
 
-    def test_get_returns_cached_result_after_on_result(self):
+    def test_get_returns_cached_result_after_process(self):
         f = make_filter()
-        f._onResult(_RESULT)
+        f._result = _RESULT
         np.testing.assert_array_equal(f.get(), _RESULT)
 
     def test_get_prefers_result_over_raw_frame(self):
         f = make_filter()
         f._ready = False
         f.add(_FRAME)
-        f._onResult(_RESULT)
+        f._result = _RESULT
         np.testing.assert_array_equal(f.get(), _RESULT)
 
 
@@ -99,20 +91,6 @@ class TestAsyncVideoFilterAdd(unittest.TestCase):
         f._submit.connect(lambda img: submitted.append(img))
         f.add(_FRAME)
         self.assertGreater(len(submitted), 0)
-
-
-class TestAsyncVideoFilterOnResult(unittest.TestCase):
-
-    def test_on_result_stores_result(self):
-        f = make_filter()
-        f._onResult(_RESULT)
-        np.testing.assert_array_equal(f._result, _RESULT)
-
-    def test_on_result_restores_ready(self):
-        f = make_filter()
-        f._ready = False
-        f._onResult(_RESULT)
-        self.assertTrue(f._ready)
 
 
 class TestAsyncVideoFilterCall(unittest.TestCase):

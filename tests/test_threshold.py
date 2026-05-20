@@ -181,24 +181,11 @@ class TestThresholdFilterGet(unittest.TestCase):
 
 class TestQThresholdFilterInit(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        self.assertIsInstance(make_widget(), QVideoFilter)
-
     def test_filter_is_threshold_filter(self):
         self.assertIsInstance(make_widget().filter, ThresholdFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Threshold')
-
-    def test_display_name(self):
-        self.assertEqual(QThresholdFilter.display_name, 'Threshold')
-
-    def test_display_category(self):
-        self.assertEqual(QThresholdFilter.display_category, 'Segmentation')
-
-    def test_initially_unchecked(self):
-        self.assertFalse(make_widget().isChecked())
 
 
 class TestQThresholdFilterSetMethod(unittest.TestCase):

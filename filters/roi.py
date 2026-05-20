@@ -69,9 +69,14 @@ class ROIFilter(VideoFilter):
         -------
         Image
             Cropped frame.
+
+        Raises
+        ------
+        RuntimeError
+            If called before the first :meth:`add`.
         '''
         if self.data is None:
-            raise ValueError('no data to crop')
+            raise RuntimeError('get() called before add()')
         return self.data[int(self.y):int(self.y + self.h),
                          int(self.x):int(self.x + self.w)]
 
@@ -114,10 +119,10 @@ class ROIFilter(VideoFilter):
 
 class QROIFilter(QVideoFilter):
 
+    '''Qt widget wrapper for :class:`ROIFilter`.'''
+
     display_name = 'Region of Interest'
     display_category = 'Preprocessing'
-
-    '''Qt widget wrapper for :class:`ROIFilter`.'''
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Region of Interest', ROIFilter())

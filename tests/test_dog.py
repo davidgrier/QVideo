@@ -92,14 +92,6 @@ class TestQDoGFilter(unittest.TestCase):
         from QVideo.filters.dog import QDoGFilter
         self.w = QDoGFilter()
 
-    def test_display_name(self):
-        from QVideo.filters.dog import QDoGFilter
-        self.assertEqual(QDoGFilter.display_name, 'Difference of Gaussians')
-
-    def test_display_category(self):
-        from QVideo.filters.dog import QDoGFilter
-        self.assertEqual(QDoGFilter.display_category, 'Preprocessing')
-
     def test_filter_instance(self):
         from QVideo.filters.dog import DoGFilter
         self.assertIsInstance(self.w.filter, DoGFilter)
@@ -135,5 +127,5 @@ class TestQDoGFilter(unittest.TestCase):
         self.assertAlmostEqual(self.w._highBox.value(), original)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

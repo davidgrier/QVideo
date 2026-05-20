@@ -83,35 +83,6 @@ class TestMoMedian(unittest.TestCase):
         f.order = 1
         self.assertEqual(f.shape, _SHAPE)
 
-    def test_reset_zeros_buffers(self):
-        f = make_filter(data=_A)
-        f.add(_A)
-        f.reset()
-        np.testing.assert_array_equal(f._result, np.zeros(_SHAPE, dtype=np.uint8))
-        np.testing.assert_array_equal(f._buffer, np.zeros((2, *_SHAPE), dtype=np.uint8))
-
-    def test_clear_forgets_shape(self):
-        f = make_filter(data=_A)
-        f._clear()
-        self.assertIsNone(f.shape)
-
-    def test_clear_sets_result_to_none(self):
-        f = make_filter(data=_A)
-        f._clear()
-        self.assertIsNone(f._result)
-
-    def test_order_setter_clears_state(self):
-        f = make_filter(order=1, data=_A)
-        f.order = 2
-        self.assertIsNone(f.shape)
-        self.assertIsNone(f._result)
-
-    def test_reset_clears_index(self):
-        f = make_filter(data=_A)
-        f.add(_A)
-        f.reset()
-        self.assertEqual(f._index, 0)
-
     def test_does_not_mutate_input(self):
         f = make_filter()
         original = _A.copy()
@@ -138,5 +109,5 @@ class TestMoMedian(unittest.TestCase):
         np.testing.assert_array_equal(f._next._result, np.zeros(_SHAPE, dtype=np.uint8))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

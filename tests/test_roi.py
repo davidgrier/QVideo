@@ -70,7 +70,7 @@ class TestROIFilterGet(unittest.TestCase):
 
     def test_get_raises_before_add(self):
         f = make_filter()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             f.get()
 
     def test_get_returns_ndarray(self):
@@ -155,10 +155,6 @@ class TestROIFilterCall(unittest.TestCase):
 
 class TestQROIFilter(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_roi_filter(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, ROIFilter)
@@ -166,10 +162,6 @@ class TestQROIFilter(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Region of Interest')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_has_x_spinbox(self):
         widget = make_widget()

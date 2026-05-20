@@ -65,9 +65,6 @@ class RGBFilter(VideoFilter):
 
 class QRGBFilter(QVideoFilter):
 
-    display_name = 'Color Channel'
-    display_category = 'Preprocessing'
-
     '''Widget for :class:`RGBFilter` with Red/Green/Blue radio buttons.
 
     Parameters
@@ -75,6 +72,9 @@ class QRGBFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Color Channel'
+    display_category = 'Preprocessing'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Color Channel', RGBFilter())

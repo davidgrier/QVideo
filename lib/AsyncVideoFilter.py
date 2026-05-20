@@ -148,10 +148,6 @@ class AsyncVideoFilter(VideoFilter):
         '''
         self._cleanup()
 
-    def _onResult(self, result: Image) -> None:
-        self._result = result
-        self._ready = True
-
     @QtCore.Slot()
     def _cleanup(self) -> None:
         if not self._thread.isRunning():

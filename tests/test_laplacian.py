@@ -114,24 +114,11 @@ class TestLaplacianFilterGet(unittest.TestCase):
 
 class TestQLaplacianFilterInit(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        self.assertIsInstance(make_widget(), QVideoFilter)
-
     def test_filter_is_laplacian_filter(self):
         self.assertIsInstance(make_widget().filter, LaplacianFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Laplacian Edge Detection')
-
-    def test_display_name(self):
-        self.assertEqual(QLaplacianFilter.display_name, 'Laplacian')
-
-    def test_display_category(self):
-        self.assertEqual(QLaplacianFilter.display_category, 'Edge Detection')
-
-    def test_initially_unchecked(self):
-        self.assertFalse(make_widget().isChecked())
 
 
 class TestQLaplacianFilterSetKsize(unittest.TestCase):

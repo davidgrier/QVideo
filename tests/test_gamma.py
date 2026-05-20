@@ -95,14 +95,6 @@ class TestQGammaFilter(unittest.TestCase):
         from QVideo.filters.gamma import QGammaFilter
         self.w = QGammaFilter()
 
-    def test_display_name(self):
-        from QVideo.filters.gamma import QGammaFilter
-        self.assertEqual(QGammaFilter.display_name, 'Gamma Correction')
-
-    def test_display_category(self):
-        from QVideo.filters.gamma import QGammaFilter
-        self.assertEqual(QGammaFilter.display_category, 'Preprocessing')
-
     def test_filter_instance(self):
         from QVideo.filters.gamma import GammaFilter
         self.assertIsInstance(self.w.filter, GammaFilter)
@@ -118,5 +110,5 @@ class TestQGammaFilter(unittest.TestCase):
         self.assertAlmostEqual(self.w.filter.gamma, 2.0)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

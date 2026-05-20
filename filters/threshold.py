@@ -163,9 +163,6 @@ class ThresholdFilter(VideoFilter):
 
 class QThresholdFilter(QVideoFilter):
 
-    display_name = 'Threshold'
-    display_category = 'Segmentation'
-
     '''Widget for :class:`ThresholdFilter` with method selector and
     context-sensitive parameter spinboxes.
 
@@ -181,6 +178,9 @@ class QThresholdFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Threshold'
+    display_category = 'Segmentation'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Threshold', ThresholdFilter())

@@ -9,9 +9,6 @@ import cv2
 
 __all__ = ['SmoothingFilter', 'QSmoothingFilter']
 
-_METHODS = ('gaussian', 'median')
-
-
 class SmoothingFilter(AsyncVideoFilter):
 
     '''Smoothing filter supporting Gaussian and median blur.
@@ -35,6 +32,8 @@ class SmoothingFilter(AsyncVideoFilter):
     to derive it from the kernel size.
     '''
 
+    METHODS = ('gaussian', 'median')
+
     def __init__(self, width: int = 15, method: str = 'gaussian') -> None:
         super().__init__()
         self.width = width
@@ -57,8 +56,8 @@ class SmoothingFilter(AsyncVideoFilter):
 
     @method.setter
     def method(self, method: str) -> None:
-        if method not in _METHODS:
-            raise ValueError(f'method must be one of {_METHODS}')
+        if method not in self.METHODS:
+            raise ValueError(f'method must be one of {self.METHODS}')
         self._method = method
 
     def to_code(self) -> 'FilterCode':
@@ -92,9 +91,6 @@ class SmoothingFilter(AsyncVideoFilter):
 
 class QSmoothingFilter(QVideoFilter):
 
-    display_name = 'Smoothing'
-    display_category = 'Preprocessing'
-
     '''Widget for :class:`SmoothingFilter` with method selector and width spinbox.
 
     Parameters
@@ -102,6 +98,9 @@ class QSmoothingFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Smoothing'
+    display_category = 'Preprocessing'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Smoothing', SmoothingFilter())

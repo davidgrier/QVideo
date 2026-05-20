@@ -89,9 +89,6 @@ class UnsharpFilter(VideoFilter):
 
 class QUnsharpFilter(QVideoFilter):
 
-    display_name = 'Unsharp Mask'
-    display_category = 'Preprocessing'
-
     '''Widget for :class:`UnsharpFilter` with radius and amount spinboxes.
 
     Parameters
@@ -99,6 +96,9 @@ class QUnsharpFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Unsharp Mask'
+    display_category = 'Preprocessing'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Unsharp Mask', UnsharpFilter())

@@ -109,19 +109,15 @@ class SobelFilter(VideoFilter):
         if self._direction == 'Horizontal':
             result = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=self._ksize)
             return cv2.convertScaleAbs(result)
-        elif self._direction == 'Vertical':
+        if self._direction == 'Vertical':
             result = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=self._ksize)
             return cv2.convertScaleAbs(result)
-        else:
-            gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=self._ksize)
-            gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=self._ksize)
-            return np.clip(np.hypot(gx, gy), 0, 255).astype(np.uint8)
+        gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=self._ksize)
+        gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=self._ksize)
+        return np.clip(np.hypot(gx, gy), 0, 255).astype(np.uint8)
 
 
 class QSobelFilter(QVideoFilter):
-
-    display_name = 'Sobel'
-    display_category = 'Edge Detection'
 
     '''Widget for :class:`SobelFilter` with direction selector and kernel
     size spinbox.
@@ -131,6 +127,9 @@ class QSobelFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Sobel'
+    display_category = 'Edge Detection'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Sobel Edge Detection', SobelFilter())

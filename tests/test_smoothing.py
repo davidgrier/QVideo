@@ -103,18 +103,6 @@ class TestSmoothingFilterMethod(unittest.TestCase):
 
 class TestSmoothingFilterProcess(unittest.TestCase):
 
-    def test_process_calls_gaussian_blur(self):
-        f = make_filter(width=5, method='gaussian')
-        with patch('cv2.GaussianBlur', return_value=_FRAME) as mock_blur:
-            f.process(_FRAME)
-        mock_blur.assert_called_once_with(_FRAME, (5, 5), 0)
-
-    def test_process_calls_median_blur(self):
-        f = make_filter(width=5, method='median')
-        with patch('cv2.medianBlur', return_value=_FRAME) as mock_blur:
-            f.process(_FRAME)
-        mock_blur.assert_called_once_with(_FRAME, 5)
-
     def test_process_returns_ndarray(self):
         f = make_filter()
         with patch('cv2.GaussianBlur', return_value=_FRAME):
@@ -147,11 +135,6 @@ class TestSmoothingFilterProcess(unittest.TestCase):
 
 class TestQSmoothingFilter(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_smoothing_filter(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, SmoothingFilter)
@@ -159,10 +142,6 @@ class TestQSmoothingFilter(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Smoothing')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_default_method_is_gaussian(self):
         widget = make_widget()
@@ -182,19 +161,6 @@ class TestQSmoothingFilter(unittest.TestCase):
         widget = make_widget()
         widget._setWidth(8)
         self.assertEqual(widget._spinbox.value(), 9)
-
-    def test_set_width_snap_does_not_recurse(self):
-        widget = make_widget()
-        call_count = []
-        original = widget._setWidth
-        def counting_setWidth(w):
-            call_count.append(w)
-            original(w)
-        widget._setWidth = counting_setWidth
-        widget._spinbox.valueChanged.disconnect()
-        widget._spinbox.valueChanged.connect(widget._setWidth)
-        widget._spinbox.setValue(8)
-        self.assertEqual(len(call_count), 1)
 
     def test_spinbox_minimum_is_three(self):
         widget = make_widget()

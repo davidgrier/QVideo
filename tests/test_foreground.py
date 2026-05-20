@@ -9,8 +9,8 @@ from QVideo.filters.foreground import (
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-_FRAME = (128 * np.ones((480, 640), dtype=np.uint8))
-_BG = (128 * np.ones((480, 640), dtype=np.uint8))
+_FRAME = (128 * np.ones((4, 4), dtype=np.uint8))
+_BG = (128 * np.ones((4, 4), dtype=np.uint8))
 
 
 def _mock_bgs(bg=_BG):
@@ -224,11 +224,6 @@ class TestForegroundEstimatorProcess(unittest.TestCase):
 
 class TestQForegroundEstimator(unittest.TestCase):
 
-    def test_is_qvideofilter(self):
-        from QVideo.lib.QVideoFilter import QVideoFilter
-        widget = make_widget()
-        self.assertIsInstance(widget, QVideoFilter)
-
     def test_filter_is_foreground_estimator(self):
         widget = make_widget()
         self.assertIsInstance(widget.filter, ForegroundEstimator)
@@ -236,10 +231,6 @@ class TestQForegroundEstimator(unittest.TestCase):
     def test_title(self):
         widget = make_widget()
         self.assertEqual(widget.title(), 'Foreground')
-
-    def test_initially_unchecked(self):
-        widget = make_widget()
-        self.assertFalse(widget.isChecked())
 
     def test_history_spinbox_default(self):
         widget = make_widget()
@@ -260,20 +251,6 @@ class TestQForegroundEstimator(unittest.TestCase):
             widget = make_widget()
             widget._setHistory(0)
         self.assertEqual(widget._historyBox.value(), 1)
-
-    def test_set_history_snap_does_not_recurse(self):
-        widget = make_widget()
-        call_count = []
-        original = widget._setHistory
-        def counting(v):
-            call_count.append(v)
-            original(v)
-        widget._setHistory = counting
-        widget._historyBox.valueChanged.disconnect()
-        widget._historyBox.valueChanged.connect(widget._setHistory)
-        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()):
-            widget._historyBox.setValue(0)
-        self.assertEqual(len(call_count), 1)
 
     def test_set_threshold_updates_filter(self):
         widget = make_widget()

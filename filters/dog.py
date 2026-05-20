@@ -44,8 +44,8 @@ class DoGFilter(VideoFilter):
                  low_sigma: float = 1.0,
                  high_sigma: float = 3.0) -> None:
         super().__init__()
-        self._low_sigma = 1.0
-        self._high_sigma = 2.0
+        self._low_sigma = 0.1
+        self._high_sigma = 0.2
         self.high_sigma = high_sigma
         self.low_sigma = low_sigma
 
@@ -115,9 +115,6 @@ class DoGFilter(VideoFilter):
 
 class QDoGFilter(QVideoFilter):
 
-    display_name = 'Difference of Gaussians'
-    display_category = 'Preprocessing'
-
     '''Widget for :class:`DoGFilter` with low and high sigma spinboxes.
 
     Parameters
@@ -125,6 +122,9 @@ class QDoGFilter(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Difference of Gaussians'
+    display_category = 'Preprocessing'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Difference of Gaussians', DoGFilter())

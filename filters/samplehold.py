@@ -76,9 +76,6 @@ class SampleHold(Normalize):
 
 class QSampleHold(QVideoFilter):
 
-    display_name = 'Sample and Hold'
-    display_category = 'Background'
-
     '''Widget for :class:`SampleHold` with order buttons and a *Reset* button.
 
     Wraps :class:`SampleHold` in a checkable group box.  Three radio
@@ -92,6 +89,9 @@ class QSampleHold(QVideoFilter):
     parent : QtWidgets.QWidget or None
         Parent widget.
     '''
+
+    display_name = 'Sample and Hold'
+    display_category = 'Background'
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, 'Sample and Hold', SampleHold())

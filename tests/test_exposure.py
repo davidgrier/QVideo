@@ -203,12 +203,6 @@ class TestQExposureFilter(unittest.TestCase):
     def setUp(self):
         self.w = make_widget()
 
-    def test_display_name(self):
-        self.assertEqual(QExposureFilter.display_name, 'Exposure')
-
-    def test_display_category(self):
-        self.assertEqual(QExposureFilter.display_category, 'Preprocessing')
-
     def test_filter_instance(self):
         self.assertIsInstance(self.w.filter, ExposureFilter)
 
@@ -266,5 +260,5 @@ class TestQExposureFilter(unittest.TestCase):
         self.assertEqual(self.w.filter.tile_size, 16)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

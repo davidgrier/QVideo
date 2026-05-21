@@ -59,7 +59,8 @@ class QCircularBuffer(QtCore.QObject):
         super().__init__(parent)
         self._fps = float(fps)
         self._duration = max(1, int(duration))
-        self._buffer: deque = deque(maxlen=max(1, int(self._fps * self._duration)))
+        self._buffer: deque = deque(
+            maxlen=max(1, int(self._fps * self._duration)))
         self._frameBytes: int = 0
         self._warned: bool = False
 
@@ -98,7 +99,7 @@ class QCircularBuffer(QtCore.QObject):
 
     @staticmethod
     def _totalRAM() -> int:
-        '''Return total physical RAM in bytes, or 0 if it cannot be determined.'''
+        '''Return total physical RAM in bytes, or 0 if undetermined.'''
         try:
             import psutil
             return psutil.virtual_memory().total

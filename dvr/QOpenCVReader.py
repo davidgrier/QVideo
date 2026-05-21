@@ -29,16 +29,16 @@ class QOpenCVReader(QVideoReader):
     _COLOR_BGR2RGB = cv2.COLOR_BGR2RGB
 
     def _initialize(self) -> bool:
-        self.reader = cv2.VideoCapture(self.filename)
-        if not self.reader.isOpened():
+        self._reader = cv2.VideoCapture(self.filename)
+        if not self._reader.isOpened():
             return False
         self._framenumber = 0
         return True
 
     def _deinitialize(self) -> None:
-        if self.reader is not None:
-            self.reader.release()
-        self.reader = None
+        if self._reader is not None:
+            self._reader.release()
+        self._reader = None
 
     def read(self) -> QCamera.CameraData:
         '''Read the next frame from the video file.
@@ -53,7 +53,7 @@ class QOpenCVReader(QVideoReader):
         '''
         if not self.isOpen():
             return False, None
-        ok, frame = self.reader.read()
+        ok, frame = self._reader.read()
         if not ok:
             return False, None
         if frame.ndim == 3:
@@ -64,33 +64,33 @@ class QOpenCVReader(QVideoReader):
     @QtCore.Slot(int)
     def seek(self, framenumber: int) -> None:
         '''Seek to the specified frame number.'''
-        self.reader.set(self.FRAMENUMBER, framenumber)
+        self._reader.set(self.FRAMENUMBER, framenumber)
         self._framenumber = framenumber
 
-    @QtCore.Property(float)
+    @property
     def fps(self) -> float:
         '''Frame rate reported by the video file [fps].'''
-        return self.reader.get(self.FPS)
+        return self._reader.get(self.FPS)
 
-    @QtCore.Property(int)
+    @property
     def length(self) -> int:
         '''Total number of frames in the video file.'''
-        return int(self.reader.get(self.LENGTH))
+        return int(self._reader.get(self.LENGTH))
 
-    @QtCore.Property(int)
+    @property
     def framenumber(self) -> int:
         '''Index of the next frame to be returned by :meth:`read`.'''
         return self._framenumber
 
-    @QtCore.Property(int)
+    @property
     def width(self) -> int:
         '''Frame width in pixels.'''
-        return int(self.reader.get(self.WIDTH))
+        return int(self._reader.get(self.WIDTH))
 
-    @QtCore.Property(int)
+    @property
     def height(self) -> int:
         '''Frame height in pixels.'''
-        return int(self.reader.get(self.HEIGHT))
+        return int(self._reader.get(self.HEIGHT))
 
 
 class QOpenCVSource(QVideoSource):

@@ -130,7 +130,7 @@ class TestQOpenCVReaderSeek(unittest.TestCase):
     def test_seek_calls_capture_set(self):
         reader = make_reader()
         reader.seek(42)
-        reader.reader.set.assert_called_with(QOpenCVReader.FRAMENUMBER, 42)
+        reader._reader.set.assert_called_with(QOpenCVReader.FRAMENUMBER, 42)
 
     def test_seek_updates_framenumber(self):
         reader = make_reader()
@@ -140,7 +140,7 @@ class TestQOpenCVReaderSeek(unittest.TestCase):
     def test_rewind_seeks_to_zero(self):
         reader = make_reader()
         reader.rewind()
-        reader.reader.set.assert_called_with(QOpenCVReader.FRAMENUMBER, 0)
+        reader._reader.set.assert_called_with(QOpenCVReader.FRAMENUMBER, 0)
 
     def test_rewind_resets_framenumber(self):
         reader = make_reader()
@@ -153,7 +153,7 @@ class TestQOpenCVReaderClose(unittest.TestCase):
 
     def test_close_releases_capture(self):
         reader = make_reader()
-        cap = reader.reader
+        cap = reader._reader
         reader.close()
         cap.release.assert_called_once()
 
@@ -165,7 +165,7 @@ class TestQOpenCVReaderClose(unittest.TestCase):
     def test_close_sets_reader_to_none(self):
         reader = make_reader()
         reader.close()
-        self.assertIsNone(reader.reader)
+        self.assertIsNone(reader._reader)
 
 
 class TestQOpenCVSource(unittest.TestCase):

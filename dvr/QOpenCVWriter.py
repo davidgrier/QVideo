@@ -1,5 +1,4 @@
 '''OpenCV-backed video file writer supporting AVI, MKV, and MP4.'''
-from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
 from pathlib import Path
@@ -139,7 +138,6 @@ class QOpenCVWriter(QVideoWriter):
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         self._writer.write(frame)
 
-    @QtCore.Slot()
     def close(self) -> None:
         '''Release the video file and reset internal state.'''
         if self.isOpen():

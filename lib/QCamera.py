@@ -89,7 +89,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.mutex = QtCore.QMutex()
+        self._mutex = QtCore.QMutex()
         self._properties: dict[str, dict[str, object]] = {}
         self._methods: dict[str, Callable[[], object]] = {}
         self._isOpen = False
@@ -140,7 +140,8 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def registerProperty(self,
                          name: str,
                          getter: Callable[[], PropertyValue] | _Auto = _AUTO,
-                         setter: Callable[[PropertyValue], None] | None | _Auto = _AUTO,
+                         setter: (Callable[[PropertyValue], None]
+                                  | None | _Auto) = _AUTO,
                          ptype: type[PropertyValue] = float,
                          **meta) -> None:
         '''Register a named camera property.
@@ -290,7 +291,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         value : PropertyValue
             New value to assign.
         '''
-        with QtCore.QMutexLocker(self.mutex):
+        with QtCore.QMutexLocker(self._mutex):
             if key not in self._properties:
                 logger.error(f'Unknown property: {key}')
                 return
@@ -317,7 +318,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         PropertyValue or None
             Current value, or ``None`` if the property is unknown.
         '''
-        with QtCore.QMutexLocker(self.mutex):
+        with QtCore.QMutexLocker(self._mutex):
             if key in self._properties:
                 value = self._properties[key]['getter']()
             else:
@@ -335,7 +336,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         key : str
             Method name.
         '''
-        with QtCore.QMutexLocker(self.mutex):
+        with QtCore.QMutexLocker(self._mutex):
             if key in self._methods:
                 self._methods[key]()
             else:
@@ -372,7 +373,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         tuple[bool, Image or None]
             Result of :meth:`read`.
         '''
-        with QtCore.QMutexLocker(self.mutex):
+        with QtCore.QMutexLocker(self._mutex):
             return self.read()
 
     # ------------------------------------------------------------------

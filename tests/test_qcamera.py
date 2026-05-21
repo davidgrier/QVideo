@@ -66,7 +66,7 @@ class TestInit(unittest.TestCase):
 
     def test_has_mutex(self):
         cam = make_camera()
-        self.assertIsInstance(cam.mutex, QtCore.QMutex)
+        self.assertIsInstance(cam._mutex, QtCore.QMutex)
 
 
 

@@ -37,7 +37,8 @@ _BACKENDS: dict[str, _BackendEntry] = {
     'noise':    _BackendEntry('QVideo.cameras.Noise',    'QNoiseCamera',    'QNoiseTree',    'Noise'),
 }
 
-_DISCOVERY_ORDER = ['basler', 'flir', 'ids', 'mv', 'vimbax', 'picamera', 'opencv', 'noise']
+_DISCOVERY_ORDER = [
+    'basler', 'flir', 'ids', 'mv', 'vimbax', 'picamera', 'opencv', 'noise']
 
 
 def _probe(key: str) -> bool:
@@ -50,14 +51,14 @@ def _probe(key: str) -> bool:
 
 
 def _ensure_qapp() -> None:
-    '''Create a QApplication if none exists (required before instantiating any QCamera).'''
+    '''Create a QApplication if none exists (required before any QCamera).'''
     from qtpy.QtWidgets import QApplication
     if QApplication.instance() is None:
         QApplication([])
 
 
 def _open(key: str, camera_id: int = 0):
-    '''Import and instantiate (open) the camera for *key*. Returns None on failure.'''
+    '''Import and instantiate the camera for *key*. Returns None on failure.'''
     _ensure_qapp()
     entry = _BACKENDS[key]
     try:
@@ -84,7 +85,7 @@ def _discover(model: str | None, camera_id: int = 0) -> list[tuple[str, int]]:
 
 @contextlib.contextmanager
 def _quiet():
-    '''Suppress all sub-ERROR log messages from QVideo loggers during probing.'''
+    '''Suppress sub-ERROR log messages from QVideo loggers during probing.'''
     root = logging.getLogger('QVideo')
     saved = root.level
     root.setLevel(logging.ERROR)
@@ -94,7 +95,8 @@ def _quiet():
         root.setLevel(saved)
 
 
-def _working_candidates(candidates: list[tuple[str, int]]) -> list[tuple[str, int]]:
+def _working_candidates(
+        candidates: list[tuple[str, int]]) -> list[tuple[str, int]]:
     '''Return only the candidates whose cameras open successfully.'''
     working = []
     with _quiet():
@@ -118,7 +120,7 @@ def _jupyter_report(working: list[tuple[str, int]]) -> None:
 
 
 async def _jupyter_chooser(working: list[tuple[str, int]]) -> tuple[str, int]:
-    '''Show an ipywidgets Dropdown chooser and return the selected (key, camera_id).
+    '''Show an ipywidgets Dropdown chooser; return selected (key, camera_id).
 
     Falls back to :func:`_jupyter_report` for a single camera.
     Raises ImportError if ipywidgets is not installed.
@@ -197,8 +199,10 @@ class _CameraProxy:
                     break
         if object.__getattribute__(self, '_camera') is None:
             raise RuntimeError('No camera could be opened')
-        if object.__getattribute__(self, '_selected_key') == 'noise' and hardware:
-            logger.warning('No camera hardware detected; using simulated camera')
+        selected = object.__getattribute__(self, '_selected_key')
+        if selected == 'noise' and hardware:
+            logger.warning(
+                'No camera hardware detected; using simulated camera')
 
     def read(self) -> 'Image':
         '''Read one frame and return it as a numpy array.'''

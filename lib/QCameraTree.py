@@ -20,7 +20,8 @@ Changes = list[Change]
 
 class QCameraTree(ParameterTree):
 
-    '''A parameter tree widget for controlling :class:`~QVideo.lib.QCamera.QCamera` properties.
+    '''A parameter tree widget for controlling
+    :class:`~QVideo.lib.QCamera.QCamera` properties.
 
     Wraps a :class:`~QVideo.lib.QVideoSource.QVideoSource` (or a bare
     :class:`~QVideo.lib.QCamera.QCamera`) and presents its settings as
@@ -51,7 +52,8 @@ class QCameraTree(ParameterTree):
 
     @classmethod
     def _getParameters(cls, parameter: Parameter) -> dict[str, Parameter]:
-        '''Recursively collect leaf :class:`~pyqtgraph.parametertree.Parameter` nodes.'''
+        '''Recursively collect leaf
+        :class:`~pyqtgraph.parametertree.Parameter` nodes.'''
         parameters = dict()
         for child in parameter.children():
             if child.hasChildren():
@@ -172,12 +174,12 @@ class QCameraTree(ParameterTree):
         logger.warning(f'Unsupported property: {key}')
         return None
 
-    @QtCore.Property(QVideoSource)
+    @property
     def source(self) -> QVideoSource:
         '''The underlying :class:`~QVideo.lib.QVideoSource.QVideoSource`.'''
         return self._source
 
-    @QtCore.Property(QCamera)
+    @property
     def camera(self) -> QCamera:
         '''The :class:`~QVideo.lib.QCamera.QCamera` driven by this tree.'''
         return self.source.source
@@ -189,7 +191,8 @@ class QCameraTree(ParameterTree):
         Returns
         -------
         QCameraTree
-            ``self``, to allow chaining (e.g. ``tree = QCameraTree(...).start()``).
+            ``self``, to allow chaining
+            (e.g. ``tree = QCameraTree(...).start()``).
         '''
         self.source.start()
         return self

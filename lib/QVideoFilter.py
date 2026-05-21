@@ -207,7 +207,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
         Subclasses should call ``super()._connectSignals()`` and then
         connect their own signals.
         '''
-        
+
     @classmethod
     def example(cls: type['QVideoFilter']) -> None:  # pragma: no cover
         '''Demonstrate the filter widget.

@@ -185,6 +185,7 @@ The `-c` CLI flag opens `QOpenCVTree` in quality mode.
 ## Style
 
 - Prefer single quotes over double quotes for strings, including docstrings.
+- Use American English spelling in all code, docstrings, comments, documentation, and UI strings: *color* (not colour), *normalize* (not normalise), *center* (not centre), *gray* (not grey), *behavior* (not behaviour), etc.
 
 ## Naming conventions
 

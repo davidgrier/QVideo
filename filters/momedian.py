@@ -59,6 +59,7 @@ class MoMedian(_MedianBase):
         '''
         if data.shape != self.shape:
             self._initialize(data)
+            return
         if self._order > 1:
             data = self._next(data)
         a = self._buffer[0]

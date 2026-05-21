@@ -58,6 +58,17 @@ class TestSampleHold(unittest.TestCase):
         f.add(np.full((8, 8), 100, dtype=np.uint8))
         self.assertEqual(f._count, 3 - 1)  # reset then decremented once
 
+    def test_get_during_accumulation_returns_raw_frame(self):
+        f = make_filter(order=1)
+        f.add(_FRAME)
+        self.assertGreater(f._count, 0)
+        result = f.get()
+        np.testing.assert_array_equal(result, _FRAME)
+
+    def test_get_before_add_returns_none(self):
+        f = make_filter(order=1)
+        self.assertIsNone(f.get())
+
     def test_add_stores_fg_after_count_zero(self):
         f = make_filter(order=1)
         for _ in range(f._count):

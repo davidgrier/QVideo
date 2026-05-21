@@ -1,3 +1,4 @@
+from .artistic import PencilSketchFilter, QPencilSketchFilter, CartoonFilter, QCartoonFilter
 from .median import Median
 from .momedian import MoMedian, QMoMedian
 from .momean import MoMean, QMoMean
@@ -20,6 +21,8 @@ from .threshold import ThresholdFilter, QThresholdFilter
 from .unsharp import UnsharpFilter, QUnsharpFilter
 
 __all__ = '''
+PencilSketchFilter QPencilSketchFilter
+CartoonFilter QCartoonFilter
 Median MoMedian QMoMedian
 MoMean QMoMean
 DejitterFilter QDejitterFilter

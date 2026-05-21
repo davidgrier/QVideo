@@ -77,7 +77,7 @@ class _MedianBase(VideoFilter):
         self._next = None
         self.shape = data.shape
         self._result = data.copy()
-        self._buffer = np.zeros((2, *self.shape), data.dtype)
+        self._buffer = np.array([data, data])
         if self._order > 1:
             cls = self._sub_type if self._sub_type is not None else type(self)
             self._next = cls(self._order - 1, data)
@@ -105,13 +105,14 @@ class _MedianBase(VideoFilter):
             self._clear()
 
     def reset(self) -> None:
-        '''Clear all buffers and restart the estimator.
+        '''Clear accumulated state and restart the estimator.
 
-        Fills the result and frame buffers with zeros and resets the
-        frame counter and ready flag.  Does not reallocate memory.
+        Clears the stored shape so that the next :meth:`add` call
+        triggers :meth:`_initialize`, re-seeding the buffers from the
+        incoming frame just as on first use.
         '''
-        self._result.fill(0)
-        self._buffer.fill(0)
+        self.shape = None
+        self._result = None
         self._index = 0
         self._ready = False
         if self._next is not None:

@@ -181,42 +181,42 @@ class TestQROIFilter(unittest.TestCase):
 
     def test_setX_updates_filter(self):
         widget = make_widget()
-        widget.setX(3)
+        widget._setX(3)
         self.assertEqual(widget.filter.x, 3)
 
     def test_setY_updates_filter(self):
         widget = make_widget()
-        widget.setY(4)
+        widget._setY(4)
         self.assertEqual(widget.filter.y, 4)
 
     def test_setW_updates_filter(self):
         widget = make_widget()
-        widget.setW(64)
+        widget._setW(64)
         self.assertEqual(widget.filter.w, 64)
 
     def test_setH_updates_filter(self):
         widget = make_widget()
-        widget.setH(64)
+        widget._setH(64)
         self.assertEqual(widget.filter.h, 64)
 
     def test_setX_syncs_spinbox(self):
         widget = make_widget()
-        widget.setX(5)
+        widget._setX(5)
         self.assertEqual(widget._xSpinbox.value(), 5)
 
     def test_setY_syncs_spinbox(self):
         widget = make_widget()
-        widget.setY(6)
+        widget._setY(6)
         self.assertEqual(widget._ySpinbox.value(), 6)
 
     def test_setW_syncs_spinbox(self):
         widget = make_widget()
-        widget.setW(32)
+        widget._setW(32)
         self.assertEqual(widget._wSpinbox.value(), 32)
 
     def test_setH_syncs_spinbox(self):
         widget = make_widget()
-        widget.setH(32)
+        widget._setH(32)
         self.assertEqual(widget._hSpinbox.value(), 32)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
@@ -227,8 +227,8 @@ class TestQROIFilter(unittest.TestCase):
     def test_call_when_checked_returns_crop(self):
         widget = make_widget()
         widget.setChecked(True)
-        widget.setW(4)
-        widget.setH(4)
+        widget._setW(4)
+        widget._setH(4)
         result = widget(_GRAY)
         self.assertEqual(result.shape, (4, 4))
 

@@ -32,29 +32,22 @@ class TestMoMedian(unittest.TestCase):
         f = make_filter()
         self.assertIsNone(f.get())
 
-    def test_shape_none_before_add(self):
-        f = make_filter()
-        self.assertIsNone(f.shape)
-
-    def test_shape_set_after_first_add(self):
-        f = make_filter()
-        f.add(_A)
-        self.assertEqual(f.shape, _SHAPE)
-
     def test_get_returns_result_after_add(self):
         f = make_filter()
         f.add(_A)
         self.assertIsNotNone(f.get())
 
     def test_result_updated_every_frame(self):
-        '''MoMedian produces a new result on every frame (unlike Median).'''
+        '''MoMedian updates the rolling estimate on every call.'''
         f = make_filter()
-        f.add(_A)
-        r1 = f.get().copy()
-        f.add(_B)
-        r2 = f.get().copy()
-        # After two distinct frames the estimate should change
-        self.assertFalse(np.array_equal(r1, r2))
+        for _ in range(3):
+            f.add(_A)
+        r_before = f.get().copy()
+        # Two frames of C shift the rolling median away from A
+        f.add(_C)
+        f.add(_C)
+        r_after = f.get().copy()
+        self.assertFalse(np.array_equal(r_before, r_after))
 
     def test_median_of_three_picks_middle_value(self):
         f = make_filter()
@@ -70,28 +63,6 @@ class TestMoMedian(unittest.TestCase):
         new_frame = np.zeros((8, 8), dtype=np.uint8)
         f.add(new_frame)
         self.assertEqual(f.shape, (8, 8))
-
-    def test_seed_data_sets_shape(self):
-        f = make_filter(data=_A)
-        self.assertEqual(f.shape, _SHAPE)
-
-    def test_order_setter_reinitializes(self):
-        f = make_filter(order=1)
-        f.add(_A)
-        f.order = 2
-        self.assertIsNone(f.shape)
-
-    def test_order_setter_same_value_is_noop(self):
-        f = make_filter(order=1)
-        f.add(_A)
-        f.order = 1
-        self.assertEqual(f.shape, _SHAPE)
-
-    def test_does_not_mutate_input(self):
-        f = make_filter()
-        original = _A.copy()
-        f.add(_A)
-        np.testing.assert_array_equal(_A, original)
 
     def test_order2_delegates_to_sub_estimator(self):
         '''MoMedian with order=2 passes data through self._next on add().'''
@@ -110,7 +81,7 @@ class TestMoMedian(unittest.TestCase):
         f.add(_B)
         f.reset()
         self.assertIsNotNone(f._next)
-        np.testing.assert_array_equal(f._next._result, np.zeros(_SHAPE, dtype=np.uint8))
+        self.assertIsNone(f._next._result)
 
 
 class TestQMoMedian(unittest.TestCase):

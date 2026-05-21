@@ -360,3 +360,39 @@ visually.
 .. automodule:: QVideo.filters.blob
    :members:
 
+Artistic effects
+----------------
+
+Two non-photorealistic rendering filters provide artistic transformations of
+each frame.  Both require color (BGR) input; grayscale frames are
+automatically promoted to BGR before processing.
+
+**Pencil Sketch** — :class:`~QVideo.filters.artistic.PencilSketchFilter`
+applies ``cv2.pencilSketch``, which combines an edge-aware smoothing pass
+with a hand-drawn shading model to simulate a pencil drawing.  Three
+parameters control the appearance:
+
+- *σ_s* (spatial sigma, 1–200) — controls how large a neighbourhood is
+  smoothed together; larger values give bolder strokes.
+- *σ_r* (range sigma, 0–1) — controls how much tonal variation is absorbed
+  into a single smooth region; smaller values preserve more texture.
+- *shade* (0–0.1) — overall darkness of the pencil strokes.
+
+The output can be the three-channel color sketch (default) or the
+single-channel grayscale version, toggled via the *Gray* checkbox.
+Supports pipeline export.
+
+**Cartoon** — :class:`~QVideo.filters.artistic.CartoonFilter` applies
+``cv2.stylization``, which flattens low-contrast regions while sharpening
+edges to produce a watercolor/cartoon look.  *σ_s* and *σ_r* carry the
+same meanings as above.  Supports pipeline export.
+
+.. note::
+   Both filters use OpenCV's domain-transform algorithm, which has
+   O(N) pixel complexity but a relatively high constant.  For large
+   frames (≥ 1080p) the per-frame cost may be tens of milliseconds; the
+   live-view frame rate will drop accordingly while either filter is active.
+
+.. automodule:: QVideo.filters.artistic
+   :members:
+

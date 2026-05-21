@@ -137,11 +137,11 @@ class QEdgeFilter(QVideoFilter):
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
-        self._lowSpinbox.valueChanged.connect(self.setLow)
-        self._highSpinbox.valueChanged.connect(self.setHigh)
+        self._lowSpinbox.valueChanged.connect(self._setLow)
+        self._highSpinbox.valueChanged.connect(self._setHigh)
 
     @QtCore.Slot(object)
-    def setLow(self, low: int) -> None:
+    def _setLow(self, low: int) -> None:
         '''Set the lower Canny threshold.
 
         Passes *low* to :class:`EdgeFilter`, which enforces the
@@ -158,7 +158,7 @@ class QEdgeFilter(QVideoFilter):
             self._lowSpinbox.setValue(self.filter.low)
 
     @QtCore.Slot(object)
-    def setHigh(self, high: int) -> None:
+    def _setHigh(self, high: int) -> None:
         '''Set the upper Canny threshold.
 
         Passes *high* to :class:`EdgeFilter`, which enforces the

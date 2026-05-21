@@ -4,6 +4,7 @@ from QVideo.filters.median import Median
 from QVideo.filters.normalize import Normalize
 from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
+import numpy as np
 
 
 __all__ = ['SampleHold', 'QSampleHold']
@@ -49,6 +50,25 @@ class SampleHold(Normalize):
         are used to build a fresh background estimate.
         '''
         self._count = 3 ** self.order
+
+    def get(self) -> Image | None:
+        '''Return the current filter output.
+
+        While the background is still being accumulated, returns the
+        raw (dark-count-corrected) frame so the display stays live.
+        Once accumulation is complete, returns the normalized frame.
+
+        Returns
+        -------
+        Image or None
+            Raw frame during accumulation, normalized frame afterwards,
+            or ``None`` if called before the first :meth:`add`.
+        '''
+        if self._count > 0:
+            if self._fg is None:
+                return None
+            return np.clip(self._fg + self.darkcount, 0, 255).astype(np.uint8)
+        return super().get()
 
     def add(self, image: Image) -> None:
         '''Incorporate a new frame into the filter state.

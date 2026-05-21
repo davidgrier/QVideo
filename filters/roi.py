@@ -153,31 +153,31 @@ class QROIFilter(QVideoFilter):
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
-        self._xSpinbox.valueChanged.connect(self.setX)
-        self._ySpinbox.valueChanged.connect(self.setY)
-        self._wSpinbox.valueChanged.connect(self.setW)
-        self._hSpinbox.valueChanged.connect(self.setH)
+        self._xSpinbox.valueChanged.connect(self._setX)
+        self._ySpinbox.valueChanged.connect(self._setY)
+        self._wSpinbox.valueChanged.connect(self._setW)
+        self._hSpinbox.valueChanged.connect(self._setH)
 
     @QtCore.Slot(object)
-    def setX(self, x: int) -> None:
+    def _setX(self, x: int) -> None:
         '''Set the ROI x position.'''
         self.filter.x = x
         self._xSpinbox.setValue(self.filter.x)
 
     @QtCore.Slot(object)
-    def setY(self, y: int) -> None:
+    def _setY(self, y: int) -> None:
         '''Set the ROI y position.'''
         self.filter.y = y
         self._ySpinbox.setValue(self.filter.y)
 
     @QtCore.Slot(object)
-    def setW(self, w: int) -> None:
+    def _setW(self, w: int) -> None:
         '''Set the ROI width.'''
         self.filter.w = w
         self._wSpinbox.setValue(self.filter.w)
 
     @QtCore.Slot(object)
-    def setH(self, h: int) -> None:
+    def _setH(self, h: int) -> None:
         '''Set the ROI height.'''
         self.filter.h = h
         self._hSpinbox.setValue(self.filter.h)

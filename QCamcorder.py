@@ -23,9 +23,9 @@ Camera flags (mutually exclusive):
 If no flag is given, a noise camera is used as a fallback.
 '''
 
-from qtpy import QtCore, QtWidgets, QtGui, uic
-from QVideo.lib import QCameraTree, QVideoSource, QSnapshot
-from pathlib import Path
+from qtpy import QtCore, QtWidgets, QtGui
+from QVideo.lib import QCameraTree, QVideoSource, QVideoScreen, QSnapshot
+from QVideo.dvr import QDVRWidget
 
 
 __all__ = ['QCamcorder']
@@ -59,8 +59,6 @@ class QCamcorder(QtWidgets.QWidget):
         :class:`~pyqtgraph.Qt.QtWidgets.QWidget`.
     '''
 
-    UIFILE = Path(__file__).parent / 'QCamcorder.ui'
-
     def __init__(self,
                  cameraWidget: QCameraTree,
                  *args, **kwargs) -> None:
@@ -73,10 +71,19 @@ class QCamcorder(QtWidgets.QWidget):
         self.dvr.source = self.source
 
     def _setupUi(self) -> None:
-        uic.loadUi(str(self.UIFILE), self)
-        self.controls.layout().addWidget(self.cameraWidget)
-        self.layout().setStretch(0, 1)  # screen fill horizontal space
-        self.layout().setStretch(1, 0)  # controls retain natural width
+        self.screen = QVideoScreen(self)
+        self.dvr = QDVRWidget(self)
+
+        self.controls = QtWidgets.QWidget(self)
+        controlsLayout = QtWidgets.QVBoxLayout(self.controls)
+        controlsLayout.addWidget(self.dvr)
+        controlsLayout.addWidget(self.cameraWidget)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.screen)
+        layout.addWidget(self.controls)
+        layout.setStretch(0, 1)
+        layout.setStretch(1, 0)
 
     def _connectSignals(self) -> None:
         self.dvr.playing.connect(self.dvrPlayback)

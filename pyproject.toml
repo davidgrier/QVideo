@@ -75,7 +75,6 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-'QVideo'     = ['*.ui']
 'QVideo.dvr' = ['*.ui']
 
 [tool.setuptools.package-dir]

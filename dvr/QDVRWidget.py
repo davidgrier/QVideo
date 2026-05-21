@@ -1,6 +1,6 @@
 '''Composite DVR widget for recording and playing back video streams.'''
 from collections.abc import Callable
-from qtpy import QtCore, QtGui, QtWidgets, uic
+from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
 import numpy as np
 from QVideo.lib import clickable, QVideoSource
@@ -77,12 +77,7 @@ class QDVRWidget(QtWidgets.QFrame):
     #: Emitted when playback starts (``True``) or stops (``False``).
     playing = QtCore.Signal(bool)
 
-    UIFILE = Path(__file__).parent / 'QDVRWidget.ui'
     FILENAME = 'default.mkv'
-
-    GetFileName: dict[bool, Callable[..., tuple[str, str]]] = {
-        True: QtWidgets.QFileDialog.getSaveFileName,
-        False: QtWidgets.QFileDialog.getOpenFileName}
 
     Writer: dict[str, type] = {'.avi': QOpenCVWriter,
                                 '.mkv': QOpenCVWriter,
@@ -91,8 +86,9 @@ class QDVRWidget(QtWidgets.QFrame):
                                 '.mkv': QOpenCVSource,
                                 '.mp4': QOpenCVSource}
 
-    FileGroups: dict[str, set[str]] = {'Lossless Video': {'.avi', '.mkv'},
-                                       'Video': {'.mp4'}}
+    FileGroups: dict[str, set[str]] = {
+        'Lossless Video': {'.avi', '.mkv'},
+        'Video': {'.mp4'}}
 
     if _h5py_available:
         Writer['.h5'] = QHDF5Writer
@@ -148,8 +144,111 @@ class QDVRWidget(QtWidgets.QFrame):
             Path.home() / self.FILENAME)
 
     def _setupUi(self) -> None:
-        uic.loadUi(self.UIFILE, self)
-        self._framenumber = 0
+        self.setFrameShape(QtWidgets.QFrame.Shape.Box)
+
+        self.recordButton = QtWidgets.QPushButton('&Record', self)
+        self.recordButton.setStatusTip('Record video')
+        self.recordButton.setIcon(
+            QtGui.QIcon(':/icons/icons/media-record.svg'))
+        self.recordButton.setShortcut('R')
+
+        self.stopButton = QtWidgets.QPushButton('&Stop', self)
+        self.stopButton.setStatusTip('Stop recording')
+        self.stopButton.setIcon(
+            QtGui.QIcon(':/icons/icons/media-playback-stop.svg'))
+        self.stopButton.setShortcut('S')
+
+        self.frameNumber = QtWidgets.QLCDNumber(self)
+        self.frameNumber.setSegmentStyle(
+            QtWidgets.QLCDNumber.SegmentStyle.Flat)
+
+        recordRow = QtWidgets.QHBoxLayout()
+        recordRow.setSpacing(2)
+        recordRow.setContentsMargins(0, 0, 6, 0)
+        recordRow.addWidget(self.recordButton)
+        recordRow.addWidget(self.stopButton)
+        recordRow.addWidget(self.frameNumber)
+
+        saveLabel = QtWidgets.QLabel('Save As', self)
+        self.saveEdit = QtWidgets.QLineEdit(self)
+        self.saveEdit.setReadOnly(True)
+        self.saveEdit.setStatusTip('Video file name')
+        saveLabel.setBuddy(self.saveEdit)
+
+        saveRow = QtWidgets.QHBoxLayout()
+        saveRow.setSpacing(6)
+        saveRow.setContentsMargins(6, 0, 6, 0)
+        saveRow.addWidget(saveLabel)
+        saveRow.addWidget(self.saveEdit)
+
+        self.rewindButton = QtWidgets.QPushButton('&Rewind', self)
+        self.rewindButton.setStatusTip('Rewind video file')
+        self.rewindButton.setIcon(
+            QtGui.QIcon(':/icons/icons/media-skip-backward.svg'))
+
+        self.pauseButton = QtWidgets.QPushButton('&Pause', self)
+        self.pauseButton.setStatusTip('Pause video playback')
+        self.pauseButton.setIcon(
+            QtGui.QIcon(':/icons/icons/media-playback-pause.svg'))
+
+        self.playButton = QtWidgets.QPushButton('P&lay', self)
+        self.playButton.setStatusTip('Play video file')
+        self.playButton.setIcon(
+            QtGui.QIcon(':/icons/icons/media-playback-start.svg'))
+
+        playRow = QtWidgets.QHBoxLayout()
+        playRow.setSpacing(2)
+        playRow.setContentsMargins(0, 1, 0, 1)
+        playRow.addWidget(self.rewindButton)
+        playRow.addWidget(self.pauseButton)
+        playRow.addWidget(self.playButton)
+
+        labelPlayFile = QtWidgets.QLabel('Play', self)
+        self.playEdit = QtWidgets.QLineEdit(self)
+        self.playEdit.setReadOnly(True)
+        self.playEdit.setStatusTip('Video file')
+        labelPlayFile.setBuddy(self.playEdit)
+
+        playFileRow = QtWidgets.QHBoxLayout()
+        playFileRow.setSpacing(6)
+        playFileRow.setContentsMargins(6, 0, 6, 0)
+        playFileRow.addWidget(labelPlayFile)
+        playFileRow.addWidget(self.playEdit)
+
+        labelNFrames = QtWidgets.QLabel('Duration', self)
+        self.nframes = QtWidgets.QSpinBox(self)
+        self.nframes.setToolTip('number of frames to record')
+        self.nframes.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight)
+        self.nframes.setRange(10, 99000)
+        self.nframes.setSingleStep(10)
+        self.nframes.setValue(10000)
+        labelNFrames.setBuddy(self.nframes)
+
+        labelInterval = QtWidgets.QLabel('Interval', self)
+        self.nskip = QtWidgets.QSpinBox(self)
+        self.nskip.setToolTip('Record every Nth frame')
+        self.nskip.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight)
+        self.nskip.setRange(1, 999)
+        labelInterval.setBuddy(self.nskip)
+
+        framesRow = QtWidgets.QHBoxLayout()
+        framesRow.setSpacing(6)
+        framesRow.setContentsMargins(6, 4, 6, 4)
+        framesRow.addWidget(labelNFrames)
+        framesRow.addWidget(self.nframes)
+        framesRow.addWidget(labelInterval)
+        framesRow.addWidget(self.nskip)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(6)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.addLayout(recordRow)
+        layout.addLayout(saveRow)
+        layout.addLayout(playRow)
+        layout.addLayout(playFileRow)
+        layout.addLayout(framesRow)
 
     def _connectSignals(self) -> None:
         clickable(self.playEdit).connect(lambda: self.getFileName(False))
@@ -171,9 +270,7 @@ class QDVRWidget(QtWidgets.QFrame):
 
     def isPaused(self) -> bool:
         '''Return ``True`` if playback is paused.'''
-        if self.isPlaying():
-            return self._player.isPaused()
-        return False
+        return self.isPlaying() and self._player.isPaused()
 
     def getFileName(self, save: bool = False) -> str:
         '''Open a file dialog and update the filename fields.
@@ -181,7 +278,8 @@ class QDVRWidget(QtWidgets.QFrame):
         Parameters
         ----------
         save : bool
-            If ``True``, open a save dialog; otherwise open an open dialog.
+            If ``True``, open a save dialog; otherwise open an open
+            dialog.
 
         Returns
         -------
@@ -190,7 +288,8 @@ class QDVRWidget(QtWidgets.QFrame):
         '''
         if self.isPlaying() or self.isRecording():
             return ''
-        get = self.GetFileName[save]
+        get = (QtWidgets.QFileDialog.getSaveFileName if save
+               else QtWidgets.QFileDialog.getOpenFileName)
         try:
             options = QtWidgets.QFileDialog.Option.DontUseNativeDialog
         except AttributeError:
@@ -243,7 +342,8 @@ class QDVRWidget(QtWidgets.QFrame):
         '''Start playback, or resume if paused.
 
         Does nothing if recording is active, if playback is already
-        running, or if the playback filename has an unsupported extension.
+        running, or if the playback filename has an unsupported
+        extension.
         '''
         if self.isPaused():
             self._player.resume()
@@ -273,10 +373,7 @@ class QDVRWidget(QtWidgets.QFrame):
     def pause(self) -> None:
         '''Pause or resume playback.'''
         if self.isPlaying():
-            if self.isPaused():
-                self._player.resume()
-            else:
-                self._player.pause()
+            self._player.resume() if self.isPaused() else self._player.pause()
 
     @QtCore.Slot()
     def rewind(self) -> None:
@@ -331,9 +428,10 @@ class QDVRWidget(QtWidgets.QFrame):
         '''Increment the displayed frame number.'''
         self.framenumber += 1
 
-    @QtCore.Property(QVideoSource)
+    @property
     def source(self) -> QVideoSource | None:
-        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being recorded.'''
+        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being
+        recorded.'''
         return self._source
 
     @source.setter
@@ -371,12 +469,11 @@ class QDVRWidget(QtWidgets.QFrame):
         if not self.isPlaying():
             self.playEdit.setText(filename)
 
-    @QtCore.Property(int)
+    @property
     def framenumber(self) -> int:
         '''Current frame number displayed in the LCD.'''
-        return self._framenumber
+        return self.frameNumber.intValue()
 
     @framenumber.setter
     def framenumber(self, number: int) -> None:
-        self._framenumber = number
-        self.frameNumber.display(self._framenumber)
+        self.frameNumber.display(number)

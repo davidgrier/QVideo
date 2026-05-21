@@ -438,49 +438,51 @@ class TestQDVRWidgetGetFileName(unittest.TestCase):
     def test_calls_open_dialog_when_not_saving(self):
         widget = make_widget()
         mock_dialog = MagicMock(return_value=('', ''))
-        with patch.dict(QDVRWidget.GetFileName, {False: mock_dialog}):
+        with patch.object(QtWidgets.QFileDialog,
+                          'getOpenFileName', mock_dialog):
             widget.getFileName(save=False)
         mock_dialog.assert_called_once()
 
     def test_calls_save_dialog_when_saving(self):
         widget = make_widget()
         mock_dialog = MagicMock(return_value=('', ''))
-        with patch.dict(QDVRWidget.GetFileName, {True: mock_dialog}):
+        with patch.object(QtWidgets.QFileDialog,
+                          'getSaveFileName', mock_dialog):
             widget.getFileName(save=True)
         mock_dialog.assert_called_once()
 
     def test_updates_playname_when_filename_returned(self):
         widget = make_widget()
-        with patch.dict(QDVRWidget.GetFileName,
-                        {False: MagicMock(return_value=('chosen.avi', ''))}):
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName',
+                          return_value=('chosen.avi', '')):
             widget.getFileName(save=False)
         self.assertEqual(widget.playname, 'chosen.avi')
 
     def test_updates_filename_when_saving(self):
         widget = make_widget()
-        with patch.dict(QDVRWidget.GetFileName,
-                        {True: MagicMock(return_value=('output.avi', ''))}):
+        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                          return_value=('output.avi', '')):
             widget.getFileName(save=True)
         self.assertEqual(widget.filename, 'output.avi')
 
     def test_does_not_update_filename_when_opening(self):
         widget = make_widget(filename='original.avi')
-        with patch.dict(QDVRWidget.GetFileName,
-                        {False: MagicMock(return_value=('other.avi', ''))}):
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName',
+                          return_value=('other.avi', '')):
             widget.getFileName(save=False)
         self.assertEqual(widget.filename, 'original.avi')
 
     def test_save_dialog_updates_playname(self):
         widget = make_widget()
-        with patch.dict(QDVRWidget.GetFileName,
-                        {True: MagicMock(return_value=('save.avi', ''))}):
+        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                          return_value=('save.avi', '')):
             widget.getFileName(save=True)
         self.assertEqual(widget.playname, 'save.avi')
 
     def test_returns_empty_when_dialog_cancelled(self):
         widget = make_widget()
-        with patch.dict(QDVRWidget.GetFileName,
-                        {False: MagicMock(return_value=('', ''))}):
+        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName',
+                          return_value=('', '')):
             result = widget.getFileName(save=False)
         self.assertEqual(result, '')
 

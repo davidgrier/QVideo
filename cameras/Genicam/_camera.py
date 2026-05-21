@@ -70,11 +70,11 @@ class QGenicamCamera(QCamera):
 
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.cameraID = cameraID
-        self.harvester: Harvester | None = None
-        self.device: 'ImageAcquirer | None' = None
-        self.nodeMap: 'NodeMap | None' = None
-        self.protected: set[str] = set()
+        self._cameraID = cameraID
+        self._harvester: Harvester | None = None
+        self._device: 'ImageAcquirer | None' = None
+        self._nodeMap: 'NodeMap | None' = None
+        self._protected: set[str] = set()
         self.open()
 
     def _initialize(self) -> bool:
@@ -85,42 +85,43 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        producer = self.producer or self._findProducer(*self._producer_filenames)
+        producer = (self.producer
+                    or self._findProducer(*self._producer_filenames))
         if producer is None:
             logger.warning(
                 f'{type(self).__name__}: no GenTL producer available '
                 f'(set GENICAM_GENTL64_PATH before opening the camera)')
             return False
-        self.harvester = Harvester()
-        self.device = None
+        self._harvester = Harvester()
+        self._device = None
         try:
-            self.harvester.add_file(producer)
-            self.harvester.update()
+            self._harvester.add_file(producer)
+            self._harvester.update()
         except Exception as ex:
             logger.warning(
                 f'Failed to load producer {producer!r}: {ex}')
             self._cleanup()
             return False
         try:
-            self.device = self.harvester.create(self.cameraID)
+            self._device = self._harvester.create(self._cameraID)
         except Exception as ex:
             logger.warning(
-                f'No camera found at index {self.cameraID}: {ex}')
+                f'No camera found at index {self._cameraID}: {ex}')
             self._cleanup()
             return False
-        self.nodeMap = self.device.remote_device.node_map
-        if not self.nodeMap.has_node('Root'):
+        self._nodeMap = self._device.remote_device.node_map
+        if not self._nodeMap.has_node('Root'):
             logger.warning('harvesters node map unconnected; '
                            'loading manually from device port')
-            self.nodeMap = self._load_node_map(self.device)
-            if self.nodeMap is None:
+            self._nodeMap = self._load_node_map(self._device)
+            if self._nodeMap is None:
                 self._cleanup()
                 return False
         root = self.node()
         ma = self._scan_modes(root)
-        self.device.start()
+        self._device.start()
         mb = self._scan_modes(root)
-        self.protected = {k for k, v in ma.items()
+        self._protected = {k for k, v in ma.items()
                           if k in mb and mb[k] != v}
         self._register_features(root)
         for src, dst in (('Width', 'width'), ('Height', 'height'),
@@ -137,21 +138,21 @@ class QGenicamCamera(QCamera):
         Each step is guarded so that a failure here does not mask the
         original exception.
         '''
-        if self.device is not None:
+        if self._device is not None:
             try:
-                self.device.stop()
+                self._device.stop()
             except Exception:
                 pass
             try:
-                self.device.destroy()
+                self._device.destroy()
             except Exception:
                 pass
-            self.device = None
+            self._device = None
         try:
-            self.harvester.reset()
+            self._harvester.reset()
         except Exception:
             pass
-        self.nodeMap = None
+        self._nodeMap = None
 
     def _deinitialize(self) -> None:
         '''Stop acquisition and release the GenICam device.'''
@@ -167,7 +168,7 @@ class QGenicamCamera(QCamera):
         '''
         frame = None
         try:
-            with self.device.fetch(timeout=1) as buffer:
+            with self._device.fetch(timeout=1) as buffer:
                 components = buffer.payload.components
                 if not components:
                     logger.warning('camera returned empty payload')
@@ -192,8 +193,9 @@ class QGenicamCamera(QCamera):
         ``fps``) that map to canonical SFNC node names (``Width``, ``Height``,
         ``AcquisitionFrameRate``).  Those aliases are excluded here so that
         :class:`~QVideo.cameras.Genicam._tree.QGenicamTree` does not try to
-        sync them to tree parameters — the canonical names are already present
-        and do the right thing.  Attribute access (``camera.fps``) still works
+        sync them to tree parameters — the canonical names are already
+        present and do the right thing.  Attribute access
+        (``camera.fps``) still works
         because :meth:`~QVideo.lib.QCamera.QCamera.__getattr__` reads
         ``_properties`` directly, not ``settings``.
         '''
@@ -298,7 +300,9 @@ class QGenicamCamera(QCamera):
             return feature.to_string() if is_enum else feature.value
         return getter
 
-    def _make_setter(self, feature: IValue, name: str) -> Callable[[QCamera.PropertyValue], None]:
+    def _make_setter(self,
+                     feature: IValue,
+                     name: str) -> Callable[[QCamera.PropertyValue], None]:
         '''Return a setter that checks current access mode before writing.
 
         If the feature is not currently writable (and is not a protected
@@ -308,16 +312,16 @@ class QGenicamCamera(QCamera):
         '''
         def setter(value):
             mode = feature.node.get_access_mode()
-            if mode != EAccessMode.RW and name not in self.protected:
+            if mode != EAccessMode.RW and name not in self._protected:
                 logger.warning(
                     f'{name} is not currently writable (mode={mode})')
                 return
-            restart = name in self.protected and self.device.is_acquiring()
+            restart = name in self._protected and self._device.is_acquiring()
             if restart:
-                self.device.stop()
+                self._device.stop()
             QGenicamCamera._set_feature(feature, value)
             if restart:
-                self.device.start()
+                self._device.start()
         return setter
 
     @staticmethod
@@ -400,7 +404,7 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if the node map is available and contains *name*.
         '''
-        return self.nodeMap is not None and self.nodeMap.has_node(name)
+        return self._nodeMap is not None and self._nodeMap.has_node(name)
 
     def node(self, name: str = 'Root') -> 'IValue | None':
         '''Return the GenICam node with the given name.
@@ -415,10 +419,10 @@ class QGenicamCamera(QCamera):
         IValue or None
             The requested node, or ``None`` if it does not exist.
         '''
-        if self.nodeMap is None:
+        if self._nodeMap is None:
             return None
-        if self.nodeMap.has_node(name):
-            return self.nodeMap.get_node(name)
+        if self._nodeMap.has_node(name):
+            return self._nodeMap.get_node(name)
         logger.warning(f'node {name} is unknown')
         return None
 
@@ -440,7 +444,7 @@ class QGenicamCamera(QCamera):
         if node is None:
             return False
         mode = node.node.get_access_mode()
-        return (mode == EAccessMode.RW) or (feature in self.protected)
+        return (mode == EAccessMode.RW) or (feature in self._protected)
 
 
 class QGenicamSource(QVideoSource):

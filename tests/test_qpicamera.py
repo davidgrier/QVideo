@@ -113,17 +113,18 @@ class TestInit(unittest.TestCase):
 
     def test_default_camera_id(self):
         cam, _ = make_camera()
-        self.assertEqual(cam.cameraID, 0)
+        self.assertEqual(cam._cameraID, 0)
         cam.close()
 
     def test_custom_camera_id(self):
         cam, _ = make_camera(cameraID=1)
-        self.assertEqual(cam.cameraID, 1)
+        self.assertEqual(cam._cameraID, 1)
         cam.close()
 
     def test_picamera2_called_with_camera_num(self):
         device = make_mock_device()
-        with patch.object(_MODULE, 'Picamera2', return_value=device) as mock_cls:
+        with patch.object(
+                _MODULE, 'Picamera2', return_value=device) as mock_cls:
             cam = QPicamera(cameraID=2)
         mock_cls.assert_called_once_with(camera_num=2)
         cam.close()
@@ -154,7 +155,8 @@ class TestInitializationFailure(unittest.TestCase):
         self.assertFalse(cam.isOpen())
 
     def test_picamera2_constructor_error_returns_closed(self):
-        with patch.object(_MODULE, 'Picamera2', side_effect=RuntimeError('no cam')):
+        with patch.object(
+                _MODULE, 'Picamera2', side_effect=RuntimeError('no cam')):
             cam = QPicamera()
         self.assertFalse(cam.isOpen())
 
@@ -383,7 +385,8 @@ class TestFrameRate(unittest.TestCase):
 
     def test_fps_minimum(self):
         spec = self.cam._properties['fps']
-        self.assertAlmostEqual(spec['minimum'], 1_000_000 / 120000000, places=4)
+        self.assertAlmostEqual(
+            spec['minimum'], 1_000_000 / 120000000, places=4)
 
     def test_set_fps_calls_set_controls(self):
         self.cam.set('fps', 15.0)
@@ -465,7 +468,8 @@ class TestQPicameraSource(unittest.TestCase):
 
     def test_source_forwards_camera_id(self):
         device = make_mock_device()
-        with patch.object(_MODULE, 'Picamera2', return_value=device) as mock_cls:
+        with patch.object(
+                _MODULE, 'Picamera2', return_value=device) as mock_cls:
             src = QPicameraSource(cameraID=1)
         mock_cls.assert_called_once_with(camera_num=1)
         src.source.close()

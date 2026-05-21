@@ -48,7 +48,8 @@ def _probe_cameras():
 
 class QListCVCameras(QListCameras):
 
-    '''A :class:`~pyqtgraph.Qt.QtWidgets.QComboBox` listing available OpenCV cameras.
+    '''A :class:`~pyqtgraph.Qt.QtWidgets.QComboBox` listing available
+    OpenCV cameras.
 
     If ``cv2-enumerate-cameras`` is installed, devices are listed
     with their real names and indices via

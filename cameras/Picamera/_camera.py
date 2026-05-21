@@ -73,7 +73,7 @@ class QPicamera(QCamera):
                  gray: bool = False,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.cameraID = cameraID
+        self._cameraID = cameraID
         self._width = int(width)
         self._height = int(height)
         self._gray = bool(gray)
@@ -82,7 +82,7 @@ class QPicamera(QCamera):
         # Distinct from self._isOpen so that _setControl can cache values
         # between a stop/restart cycle (e.g. when fps changes while closed).
         self._deviceOpen: bool = False
-        self.device: 'Picamera2 | None' = None
+        self._device: 'Picamera2 | None' = None
         self.open()
 
     def _initialize(self) -> bool:
@@ -99,10 +99,10 @@ class QPicamera(QCamera):
                 'Install it on Raspberry Pi with: pip install picamera2')
             return False
         try:
-            self.device = Picamera2(camera_num=self.cameraID)
+            self._device = Picamera2(camera_num=self._cameraID)
         except Exception as ex:
             logger.warning('Could not open Raspberry Pi camera'
-                           f'{self.cameraID}: {ex}')
+                           f'{self._cameraID}: {ex}')
             return False
         # Save controls set before this restart (e.g. fps changed while
         # the device was closed).  _probeControls will overwrite
@@ -110,18 +110,18 @@ class QPicamera(QCamera):
         # re-apply them afterwards.
         prior_controls = dict(self._controlValues)
         fmt = 'YUV420' if self._gray else 'BGR888'
-        config = self.device.create_preview_configuration(
+        config = self._device.create_preview_configuration(
             main={'size': (self._width, self._height), 'format': fmt})
-        self.device.configure(config)
-        self.device.start()
+        self._device.configure(config)
+        self._device.start()
         self._deviceOpen = True
         try:
-            self.device.capture_array()
+            self._device.capture_array()
         except Exception as ex:
             logger.warning(f'Camera did not deliver a frame: {ex}')
             self._deviceOpen = False
-            self.device.stop()
-            self.device.close()
+            self._device.stop()
+            self._device.close()
             return False
         register = self.registerProperty
         register('width', getter=self._getWidth,
@@ -130,7 +130,7 @@ class QPicamera(QCamera):
                  setter=self._setHeight, ptype=int)
         register('color', getter=self._getColor,
                  setter=self._setColor, ptype=bool)
-        metadata = self.device.capture_metadata()
+        metadata = self._device.capture_metadata()
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
         self._probeFocus(metadata)
@@ -139,7 +139,7 @@ class QPicamera(QCamera):
         pending = {k: v for k, v in prior_controls.items()
                    if k in self._controlValues}
         if pending:
-            self.device.set_controls(pending)
+            self._device.set_controls(pending)
             self._controlValues.update(pending)
         return True
 
@@ -157,9 +157,9 @@ class QPicamera(QCamera):
             used to initialise cached control values.
         '''
         for name, ptype in _CONTROL_TYPES.items():
-            if name not in self.device.camera_controls:
+            if name not in self._device.camera_controls:
                 continue
-            lo, hi, default = self.device.camera_controls[name]
+            lo, hi, default = self._device.camera_controls[name]
             current = metadata.get(name, default)
             self._controlValues[name] = ptype(current)
             meta = {}
@@ -188,9 +188,9 @@ class QPicamera(QCamera):
             Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
             used to read the current ``FrameDuration``.
         '''
-        if 'FrameDurationLimits' not in self.device.camera_controls:
+        if 'FrameDurationLimits' not in self._device.camera_controls:
             return
-        lo, hi, default = self.device.camera_controls['FrameDurationLimits']
+        lo, hi, default = self._device.camera_controls['FrameDurationLimits']
         duration = metadata.get('FrameDuration', None)
         if duration is None:
             duration = default[0] if isinstance(default, tuple) else lo
@@ -218,7 +218,7 @@ class QPicamera(QCamera):
             Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
             used to initialise the cached ``AfState`` value.
         '''
-        if 'AfTrigger' not in self.device.camera_controls:
+        if 'AfTrigger' not in self._device.camera_controls:
             return
         self._controlValues['AfState'] = int(metadata.get('AfState', 0))
         self.registerProperty(
@@ -232,7 +232,7 @@ class QPicamera(QCamera):
     def _triggerAutofocus(self) -> None:
         '''Send ``AfTrigger=Start`` to begin a single autofocus sweep.'''
         if self._deviceOpen:
-            self.device.set_controls({'AfTrigger': 0})
+            self._device.set_controls({'AfTrigger': 0})
 
     def _getFps(self) -> float:
         duration = self._controlValues['FrameDurationLimits'][0]
@@ -251,7 +251,7 @@ class QPicamera(QCamera):
         '''
         self._controlValues[name] = value
         if self._deviceOpen:
-            self.device.set_controls({name: value})
+            self._device.set_controls({name: value})
 
     def _getColor(self) -> bool:
         return not self._gray
@@ -262,23 +262,27 @@ class QPicamera(QCamera):
         self.shapeChanged.emit(self.shape)
 
     def _getWidth(self) -> int:
-        return self.device.camera_config['main']['size'][0]
+        return self._device.camera_config['main']['size'][0]
 
     def _setWidth(self, value: int) -> None:
-        '''Store the requested width so the next :meth:`_initialize` applies it.
+        '''Store the requested width so the next
+        :meth:`_initialize` applies it.
 
         Resolution changes require stopping and restarting the picamera2
-        stream, which is handled by the :class:`~QVideo.lib.QVideoSource.QVideoSource`
-        context manager.  Storing the value here lets :meth:`_initialize`
-        apply it on restart via :meth:`~picamera2.Picamera2.create_preview_configuration`.
+        stream, handled by
+        :class:`~QVideo.lib.QVideoSource.QVideoSource`.
+        Storing the value here lets :meth:`_initialize` apply it on
+        restart via
+        :meth:`~picamera2.Picamera2.create_preview_configuration`.
         '''
         self._width = int(value)
 
     def _getHeight(self) -> int:
-        return self.device.camera_config['main']['size'][1]
+        return self._device.camera_config['main']['size'][1]
 
     def _setHeight(self, value: int) -> None:
-        '''Store the requested height so the next :meth:`_initialize` applies it.
+        '''Store the requested height so the next
+        :meth:`_initialize` applies it.
 
         See :meth:`_setWidth` for rationale.
         '''
@@ -299,28 +303,28 @@ class QPicamera(QCamera):
         height : int or None
             New frame height in pixels.  ``None`` keeps the current height.
         '''
-        w, h = self.device.camera_config['main']['size']
+        w, h = self._device.camera_config['main']['size']
         if width is not None:
             w = int(width)
         if height is not None:
             h = int(height)
-        self.device.stop()
+        self._device.stop()
         fmt = 'YUV420' if self._gray else 'BGR888'
-        config = self.device.create_preview_configuration(
+        config = self._device.create_preview_configuration(
             main={'size': (w, h), 'format': fmt})
-        self.device.configure(config)
-        self.device.start()
+        self._device.configure(config)
+        self._device.start()
         # Re-apply cached controls.  Note: _reconfigure does not rebuild
         # _properties, so if the new configuration changes available controls
         # or their ranges the stale registrations will persist silently.
         if self._controlValues:
-            self.device.set_controls(self._controlValues)
+            self._device.set_controls(self._controlValues)
 
     def _deinitialize(self) -> None:
         '''Stop acquisition and close the Raspberry Pi camera.'''
         self._deviceOpen = False
-        self.device.stop()
-        self.device.close()
+        self._device.stop()
+        self._device.close()
 
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
@@ -337,7 +341,7 @@ class QPicamera(QCamera):
         if not self.isOpen():
             return False, None
         try:
-            request = self.device.capture_request()
+            request = self._device.capture_request()
             frame = request.make_array('main').copy()
             if 'AfState' in self._controlValues:
                 req_meta = request.get_metadata()

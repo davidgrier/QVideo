@@ -189,36 +189,36 @@ class TestResolutionSync(unittest.TestCase):
 
     def test_sync_sets_width(self):
         tree, cam = make_tree()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         self._make_resolution_change(tree, 1280, 720, 30.)
-        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, 1280)
+        cam._device.set.assert_any_call(QOpenCVCamera.WIDTH, 1280)
 
     def test_sync_sets_height(self):
         tree, cam = make_tree()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         self._make_resolution_change(tree, 1280, 720, 30.)
-        cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, 720)
+        cam._device.set.assert_any_call(QOpenCVCamera.HEIGHT, 720)
 
     def test_sync_sets_fps(self):
         tree, cam = make_tree()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         self._make_resolution_change(tree, 1280, 720, 30.)
-        cam.device.set.assert_any_call(QOpenCVCamera.FPS, 30.)
+        cam._device.set.assert_any_call(QOpenCVCamera.FPS, 30.)
 
     def test_sync_ignored_when_ignoreSync_set(self):
         tree, cam = make_tree()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         tree._ignoreSync = True
         self._make_resolution_change(tree, 1280, 720, 30.)
         # No device.set calls should have occurred
-        width_calls = [c for c in cam.device.set.call_args_list
+        width_calls = [c for c in cam._device.set.call_args_list
                        if c.args[0] == QOpenCVCamera.WIDTH]
         self.assertEqual(width_calls, [])
 
     def test_non_resolution_changes_forwarded_to_base(self):
         '''Non-resolution changes reach the camera via the base _sync path.'''
         tree, cam = make_tree()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         param = MagicMock()
         param.name.return_value = 'mirrored'
         changes = [(param, 'value', True)]

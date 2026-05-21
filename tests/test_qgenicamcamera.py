@@ -63,7 +63,8 @@ _EVisibility.Invisible = _EVisibility(99)
 
 _mock_genapi.EVisibility  = _EVisibility
 # IProperty union — mirrors the camera module definition
-_mock_genapi.IProperty = (_IEnumeration, _IBoolean, _IInteger, _IFloat, _IString)
+_mock_genapi.IProperty = (
+    _IEnumeration, _IBoolean, _IInteger, _IFloat, _IString)
 
 _mock_gentl                  = MagicMock()
 _mock_gentl.TimeoutException = _TimeoutException
@@ -225,11 +226,11 @@ class TestInit(unittest.TestCase):
 
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()
-        self.assertEqual(cam.cameraID, 0)
+        self.assertEqual(cam._cameraID, 0)
 
     def test_custom_camera_id(self):
         cam, _, _ = make_camera(cameraID=2)
-        self.assertEqual(cam.cameraID, 2)
+        self.assertEqual(cam._cameraID, 2)
 
     def test_opens_on_init(self):
         cam, _, _ = make_camera()
@@ -275,7 +276,8 @@ class TestInitialize(unittest.TestCase):
             "    from QVideo.cameras.Genicam._camera import QGenicamCamera\n"
             "    raise AssertionError('ImportError not raised')\n"
             "except ImportError as e:\n"
-            "    assert 'pip install' in str(e), f'missing install hint: {e}'\n"
+            "    assert 'pip install' in str(e), "
+            "f'missing install hint: {e}'\n"
         )
         result = subprocess.run(
             [sys.executable, '-c', script],
@@ -369,7 +371,7 @@ class TestInitialize(unittest.TestCase):
             _EAccessMode.RO,  # _register_features (current mode after start)
         ]
         cam, _, _ = make_camera_with_node(feature)
-        self.assertIn('Width', cam.protected)
+        self.assertIn('Width', cam._protected)
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +500,8 @@ class TestRead(unittest.TestCase):
 
     def test_returns_false_none_on_general_exception(self):
         device = _make_device()
-        device.fetch.return_value.__enter__.side_effect = RuntimeError('driver crash')
+        device.fetch.return_value.__enter__.side_effect = RuntimeError(
+            'driver crash')
         cam, _, _ = make_camera(device=device)
         with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
@@ -700,7 +703,7 @@ class TestIsReadwrite(unittest.TestCase):
 
     def test_ro_mode_returns_false(self):
         cam, _, device = make_camera()
-        cam.protected = set()
+        cam._protected = set()
         feature = _make_feature(_IInteger, name='Width',
                                 mode=_EAccessMode.RO)
         device.remote_device.node_map.get_node.return_value = feature
@@ -708,7 +711,7 @@ class TestIsReadwrite(unittest.TestCase):
 
     def test_protected_feature_returns_true(self):
         cam, _, device = make_camera()
-        cam.protected = {'Width'}
+        cam._protected = {'Width'}
         feature = _make_feature(_IInteger, name='Width',
                                 mode=_EAccessMode.RO)
         device.remote_device.node_map.get_node.return_value = feature

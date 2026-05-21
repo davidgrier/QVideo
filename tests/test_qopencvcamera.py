@@ -53,11 +53,11 @@ class TestInit(unittest.TestCase):
 
     def test_camera_id_stored(self):
         cam = make_camera()
-        self.assertEqual(cam.cameraID, 0)
+        self.assertEqual(cam._cameraID, 0)
 
     def test_custom_camera_id(self):
         cam = make_camera(cameraID=2)
-        self.assertEqual(cam.cameraID, 2)
+        self.assertEqual(cam._cameraID, 2)
 
     def test_opens_on_init(self):
         cam = make_camera()
@@ -127,7 +127,8 @@ class TestInitialize(unittest.TestCase):
             with patch('QVideo.cameras.OpenCV._camera.configure'):
                 with patch('QVideo.cameras.OpenCV._camera.probe_formats',
                            return_value=[(640, 480, 1., 30.)]):
-                    with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                    with self.assertLogs(
+                            'QVideo.lib.QCamera', level='WARNING'):
                         QOpenCVCamera()
         device.release.assert_called_once()
 
@@ -143,7 +144,8 @@ class TestInitialize(unittest.TestCase):
             with patch('QVideo.cameras.OpenCV._camera.configure'):
                 with patch('QVideo.cameras.OpenCV._camera.probe_formats',
                            return_value=[(640, 480, 1., 30.)]):
-                    with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+                    with self.assertLogs(
+                            'QVideo.lib.QCamera', level='WARNING'):
                         cam = QOpenCVCamera()
         for name in ('mirrored', 'flipped'):
             self.assertIn(name, cam.properties)
@@ -185,7 +187,7 @@ class TestDeinitialize(unittest.TestCase):
 
     def test_close_releases_device(self):
         cam = make_camera()
-        device = cam.device
+        device = cam._device
         cam.close()
         device.release.assert_called_once()
 
@@ -217,9 +219,9 @@ class TestProperties(unittest.TestCase):
 
     def test_width_setter_calls_device_set(self):
         cam = make_camera()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         cam.set('width', 1280)
-        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, 1280)
+        cam._device.set.assert_any_call(QOpenCVCamera.WIDTH, 1280)
 
     def test_width_setter_emits_shape_changed(self):
         from qtpy import QtTest
@@ -235,9 +237,9 @@ class TestProperties(unittest.TestCase):
 
     def test_height_setter_calls_device_set(self):
         cam = make_camera()
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         cam.set('height', 720)
-        cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, 720)
+        cam._device.set.assert_any_call(QOpenCVCamera.HEIGHT, 720)
 
     def test_height_setter_emits_shape_changed(self):
         from qtpy import QtTest
@@ -249,7 +251,7 @@ class TestProperties(unittest.TestCase):
     def test_fps_setter_calls_device_set(self):
         cam = make_camera()
         cam.set('fps', 60.)
-        cam.device.set.assert_any_call(QOpenCVCamera.FPS, 60.)
+        cam._device.set.assert_any_call(QOpenCVCamera.FPS, 60.)
 
     def test_fps_setter_updates_config(self):
         cam = make_camera()
@@ -294,7 +296,8 @@ class TestProperties(unittest.TestCase):
         device = make_mock_device()
         with patch('cv2.VideoCapture', return_value=device), \
              patch('QVideo.cameras.OpenCV._camera.configure'), \
-             patch('QVideo.cameras.OpenCV._camera.probe_formats', return_value=[]):
+             patch('QVideo.cameras.OpenCV._camera.probe_formats',
+                   return_value=[]):
             cam = QOpenCVCamera()
         self.assertNotIn('resolution', cam._properties)
 
@@ -315,18 +318,19 @@ class TestProperties(unittest.TestCase):
         cam = make_camera(width=640, height=480, fps=30.)
         label = next(iter(cam._formatLabels))
         w, h, fps = cam._formatLabels[label]
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         cam._setResolution(label)
-        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, w)
-        cam.device.set.assert_any_call(QOpenCVCamera.HEIGHT, h)
-        cam.device.set.assert_any_call(QOpenCVCamera.FPS, fps)
+        cam._device.set.assert_any_call(QOpenCVCamera.WIDTH, w)
+        cam._device.set.assert_any_call(QOpenCVCamera.HEIGHT, h)
+        cam._device.set.assert_any_call(QOpenCVCamera.FPS, fps)
 
     def test_resolution_attribute_assignment(self):
         cam = make_camera(width=640, height=480, fps=30.)
         label = next(iter(cam._formatLabels))
-        cam.device.set.reset_mock()
+        cam._device.set.reset_mock()
         cam.resolution = label
-        cam.device.set.assert_any_call(QOpenCVCamera.WIDTH, cam._formatLabels[label][0])
+        cam._device.set.assert_any_call(
+            QOpenCVCamera.WIDTH, cam._formatLabels[label][0])
 
     def test_width_height_fps_hidden_when_resolution_available(self):
         cam = make_camera(width=640, height=480, fps=30.)
@@ -339,12 +343,14 @@ class TestProperties(unittest.TestCase):
         device = make_mock_device()
         with patch('cv2.VideoCapture', return_value=device), \
              patch('QVideo.cameras.OpenCV._camera.configure'), \
-             patch('QVideo.cameras.OpenCV._camera.probe_formats', return_value=[]):
+             patch('QVideo.cameras.OpenCV._camera.probe_formats',
+                   return_value=[]):
             cam = QOpenCVCamera()
         for name in ('width', 'height'):
             with self.subTest(name=name):
                 if name in cam._properties:
-                    self.assertFalse(cam._properties[name].get('hidden', False))
+                    self.assertFalse(
+                        cam._properties[name].get('hidden', False))
 
 
 class TestRead(unittest.TestCase):
@@ -410,7 +416,7 @@ class TestRead(unittest.TestCase):
 
     def test_read_device_exception_returns_false_none(self):
         cam = make_camera()
-        cam.device.read.side_effect = RuntimeError('device error')
+        cam._device.read.side_effect = RuntimeError('device error')
         with self.assertLogs('QVideo.cameras.OpenCV._camera', level='WARNING'):
             success, frame = cam.read()
         self.assertFalse(success)

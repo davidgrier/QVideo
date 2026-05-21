@@ -213,11 +213,11 @@ class TestQVimbaXCamera(unittest.TestCase):
 
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()
-        self.assertEqual(cam.cameraID, 0)
+        self.assertEqual(cam._cameraID, 0)
 
     def test_camera_id_forwarded(self):
         cam, _, _ = make_camera(cameraID=2)
-        self.assertEqual(cam.cameraID, 2)
+        self.assertEqual(cam._cameraID, 2)
 
     def test_harvester_add_file_called_with_producer(self):
         _, h, _ = make_camera()

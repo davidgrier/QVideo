@@ -111,7 +111,7 @@ class QOpenCVCamera(QCamera):
                  fps: float | None = 30.,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.cameraID = cameraID
+        self._cameraID = cameraID
         self._mirrored = bool(mirrored)
         self._flipped = bool(flipped)
         self._gray = bool(gray)
@@ -126,8 +126,8 @@ class QOpenCVCamera(QCamera):
         '''Open the OpenCV VideoCapture device and register device properties.
 
         Configures resolution and frame rate via
-        :func:`~QVideo.cameras.OpenCV._devices.configure` using the values supplied
-        at construction time.  Registers ``width`` and ``height`` as
+        :func:`~QVideo.cameras.OpenCV._devices.configure` using the values
+        supplied at construction time.  Registers ``width`` and ``height`` as
         writable properties, ``color`` as read-write, then probes the
         device for each property in :data:`_PROBED_PROPS` and registers
         those it supports.
@@ -138,20 +138,20 @@ class QOpenCVCamera(QCamera):
             ``True`` if the device was opened and returned at least one frame.
         '''
         api = cv2.CAP_V4L2 if platform.system() == 'Linux' else cv2.CAP_ANY
-        self.device = cv2.VideoCapture(self.cameraID, api)
+        self._device = cv2.VideoCapture(self._cameraID, api)
         # Probe supported resolutions and their actual maximum frame rates on
         # the live device before configuring.  QtMultimedia nominal fps values
-        # are unreliable; reading back what the V4L2 driver accepts is accurate.
-        self._formats = probe_formats(self.device)
+        # are unreliable; reading back what the driver accepts is accurate.
+        self._formats = probe_formats(self._device)
         self._formatLabels = {
             f'{w}×{h} @ {fps:.0f} Hz': (w, h, float(fps))
             for w, h, _min, fps in self._formats
         }
         resolutions = [(w, h) for w, h, *_ in self._formats] or None
-        configure(self.device, self._configWidth, self._configHeight,
+        configure(self._device, self._configWidth, self._configHeight,
                   self._configFps, resolutions=resolutions)
         for _ in range(5):
-            if (ready := self.device.read()[0]):
+            if (ready := self._device.read()[0]):
                 break
         if ready:
             if self._formatLabels:
@@ -175,7 +175,7 @@ class QOpenCVCamera(QCamera):
                         self._properties[name]['hidden'] = True
             self.shapeChanged.emit(self.shape)
         else:
-            self.device.release()
+            self._device.release()
         return ready
 
     def _probeProperties(self) -> None:
@@ -187,13 +187,13 @@ class QOpenCVCamera(QCamera):
         '''
         registered = []
         for name, (prop_id, ptype) in _PROBED_PROPS.items():
-            value = self.device.get(prop_id)
-            if self.device.set(prop_id, value):
+            value = self._device.get(prop_id)
+            if self._device.set(prop_id, value):
                 setter = (self._setFps if name == 'fps'
-                          else lambda v, p=prop_id: self.device.set(p, v))
+                          else lambda v, p=prop_id: self._device.set(p, v))
                 self.registerProperty(
                     name,
-                    getter=lambda p=prop_id, t=ptype: t(self.device.get(p)),
+                    getter=lambda p=prop_id, t=ptype: t(self._device.get(p)),
                     setter=setter,
                     ptype=ptype)
                 registered.append(name)
@@ -204,7 +204,7 @@ class QOpenCVCamera(QCamera):
 
     def _deinitialize(self) -> None:
         '''Release the OpenCV VideoCapture device.'''
-        self.device.release()
+        self._device.release()
 
     def _getResolution(self) -> str:
         w, h = self._getWidth(), self._getHeight()
@@ -220,7 +220,7 @@ class QOpenCVCamera(QCamera):
         self._setFps(fps)
 
     def _getWidth(self) -> int:
-        return int(self.device.get(self.WIDTH))
+        return int(self._device.get(self.WIDTH))
 
     def _setWidth(self, value: int) -> None:
         '''Set the frame width on the open device.
@@ -233,11 +233,11 @@ class QOpenCVCamera(QCamera):
         :meth:`~QVideo.lib.QCamera.QCamera.set` which acquires it.
         '''
         self._configWidth = int(value)
-        self.device.set(self.WIDTH, self._configWidth)
+        self._device.set(self.WIDTH, self._configWidth)
         self.shapeChanged.emit(self.shape)
 
     def _getHeight(self) -> int:
-        return int(self.device.get(self.HEIGHT))
+        return int(self._device.get(self.HEIGHT))
 
     def _setHeight(self, value: int) -> None:
         '''Set the frame height on the open device.
@@ -245,7 +245,7 @@ class QOpenCVCamera(QCamera):
         See :meth:`_setWidth` for rationale.
         '''
         self._configHeight = int(value)
-        self.device.set(self.HEIGHT, self._configHeight)
+        self._device.set(self.HEIGHT, self._configHeight)
         self.shapeChanged.emit(self.shape)
 
     def _setFps(self, value: float) -> None:
@@ -256,7 +256,7 @@ class QOpenCVCamera(QCamera):
         immediately as well as stored for the next :meth:`_initialize`.
         '''
         self._configFps = float(value)
-        self.device.set(self.FPS, self._configFps)
+        self._device.set(self.FPS, self._configFps)
 
     def _getColor(self) -> bool:
         '''Return color mode
@@ -283,7 +283,7 @@ class QOpenCVCamera(QCamera):
         '''
         if self.isOpen():
             try:
-                ready, image = self.device.read()
+                ready, image = self._device.read()
             except Exception as e:
                 logger.warning(f'Frame read failed: {e}')
                 return False, None

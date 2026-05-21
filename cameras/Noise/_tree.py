@@ -7,11 +7,12 @@ __all__ = ['QNoiseTree']
 
 class QNoiseTree(QCameraTree):
 
-    '''Camera tree for a :class:`~QVideo.cameras.Noise.QNoiseCamera.QNoiseCamera`.
+    '''Camera tree for a
+    :class:`~QVideo.cameras.Noise.QNoiseCamera.QNoiseCamera`.
 
     Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
-    that creates and opens a :class:`~QVideo.cameras.Noise.QNoiseSource.QNoiseSource`
-    automatically.
+    that creates and opens a
+    :class:`~QVideo.cameras.Noise.QNoiseSource.QNoiseSource` automatically.
 
     Parameters
     ----------

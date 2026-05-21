@@ -9,8 +9,8 @@ except (ImportError, AttributeError):
     _QMediaDevices = None
 
 
-__all__ = ['QOpenCVDevices',
-           'COMMON_RESOLUTIONS', 'probe_resolutions', 'probe_formats', 'configure']
+__all__ = ['QOpenCVDevices', 'COMMON_RESOLUTIONS',
+           'probe_resolutions', 'probe_formats', 'configure']
 
 
 COMMON_RESOLUTIONS: list[tuple[int, int]] = [
@@ -61,7 +61,7 @@ def probe_resolutions(device: cv2.VideoCapture) -> list[tuple[int, int]]:
 def probe_formats(device: cv2.VideoCapture,
                   resolutions: list[tuple[int, int]] | None = None,
                   ) -> list[tuple[int, int, float, float]]:
-    '''Return ``(width, height, 1.0, max_fps)`` for each resolution the device accepts.
+    '''Return ``(width, height, 1.0, max_fps)`` for each accepted resolution.
 
     For each candidate resolution, the device is asked to deliver 120 fps
     (above any real hardware limit) and the value the driver accepts is
@@ -271,17 +271,18 @@ class QOpenCVDevices:
                 if dev_id.endswith(target_suffix):
                     return dev
             return None
-        # macOS: Qt6 and OpenCV both use AVFoundation, enumeration order matches.
-        # Windows: Qt6 uses WMF; OpenCV may use DirectShow or MSMF depending on
-        # the build.  Index correlation holds when both use the same backend but
-        # may fail when virtual cameras (OBS, etc.) cause ordering differences.
+        # macOS: Qt6 and OpenCV both use AVFoundation, order matches.
+        # Windows: Qt6 uses WMF; OpenCV may use DirectShow or MSMF.
+        # Index correlation holds when both use the same backend but
+        # may fail when virtual cameras (OBS, etc.) differ.
         if cameraID < len(devices):
             return devices[cameraID]
         return None
 
     @staticmethod
     def _formats_from_device(device) -> list[tuple[int, int, float, float]]:
-        '''Extract and deduplicate formats from a :class:`~QtMultimedia.QCameraDevice`.
+        '''Extract and deduplicate formats from a
+        :class:`~QtMultimedia.QCameraDevice`.
 
         Multiple :class:`~QtMultimedia.QVideoFormat` entries that share the
         same ``(width, height)`` but differ in pixel format are merged; the

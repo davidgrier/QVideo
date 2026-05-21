@@ -26,20 +26,21 @@ class QHDF5Reader(QVideoReader):
 
     def _initialize(self) -> bool:
         try:
-            self.file = h5py.File(self.filename, 'r')
-            self.images = self.file['images']
+            self._file = h5py.File(self.filename, 'r')
+            self._images = self._file['images']
         except (OSError, KeyError):
             return False
-        self.keys = sorted(self.images.keys(), key=float)
-        self._length = len(self.keys)
-        if not self.keys:
+        self._keys = sorted(self._images.keys(), key=float)
+        self._length = len(self._keys)
+        if not self._keys:
             return False
         self._framenumber = 0
-        self._height, self._width = self.images[self.keys[0]][()].shape[0:2]
+        self._height, self._width = (
+            self._images[self._keys[0]][()].shape[0:2])
         return True
 
     def _deinitialize(self) -> None:
-        self.file.close()
+        self._file.close()
 
     def read(self) -> QCamera.CameraData:
         '''Read the next frame from the HDF5 file.
@@ -47,12 +48,13 @@ class QHDF5Reader(QVideoReader):
         Returns
         -------
         tuple[bool, ndarray or None]
-            ``(True, frame)`` on success, ``(False, None)`` when past the end.
+            ``(True, frame)`` on success, ``(False, None)`` when past
+            the end.
         '''
-        if self._framenumber >= len(self.keys):
+        if self._framenumber >= len(self._keys):
             return False, None
-        key = self.keys[self._framenumber]
-        frame = self.images[key][()]
+        key = self._keys[self._framenumber]
+        frame = self._images[key][()]
         self._framenumber += 1
         return True, frame
 
@@ -61,7 +63,7 @@ class QHDF5Reader(QVideoReader):
         '''Advance playback to specified frame number.'''
         self._framenumber = framenumber
 
-    @QtCore.Property(float)
+    @property
     def fps(self) -> float:
         '''Estimated frame rate derived from the recorded timestamps [fps].
 
@@ -69,29 +71,29 @@ class QHDF5Reader(QVideoReader):
         30 fps when fewer than two frames are present or the timestamps
         span zero time.
         '''
-        if len(self.keys) < 2:
+        if len(self._keys) < 2:
             return 30.
-        elapsed = float(self.keys[-1]) - float(self.keys[0])
+        elapsed = float(self._keys[-1]) - float(self._keys[0])
         if elapsed <= 0.:
             return 30.
-        return (len(self.keys) - 1) / elapsed
+        return (len(self._keys) - 1) / elapsed
 
-    @QtCore.Property(int)
+    @property
     def length(self) -> int:
         '''Total number of frames in the HDF5 file.'''
         return self._length
 
-    @QtCore.Property(int)
+    @property
     def framenumber(self) -> int:
         '''Index of the next frame to be returned by :meth:`read`.'''
         return self._framenumber
 
-    @QtCore.Property(int)
+    @property
     def width(self) -> int:
         '''Frame width in pixels.'''
         return self._width
 
-    @QtCore.Property(int)
+    @property
     def height(self) -> int:
         '''Frame height in pixels.'''
         return self._height

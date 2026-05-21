@@ -1,5 +1,4 @@
 '''HDF5 video writer with per-frame timestamps.'''
-from qtpy import QtCore
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image
 try:
@@ -71,7 +70,7 @@ class QHDF5Writer(QVideoWriter):
             logger.warning(f'Could not open {self.filename!r} for writing')
             return False
         self._start = time()
-        self._file.attrs.update({'Timestamp': self._start})
+        self._file.attrs['Timestamp'] = self._start
         self._writer = self._file.create_group('images')
         return True
 
@@ -84,7 +83,6 @@ class QHDF5Writer(QVideoWriter):
         now = time() - self._start
         self._writer.create_dataset(f'{now:.9f}', data=frame)
 
-    @QtCore.Slot()
     def close(self) -> None:
         '''Close the HDF5 file and reset internal state.'''
         if self.isOpen():

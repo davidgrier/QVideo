@@ -96,7 +96,7 @@ class TestQHDF5ReaderInit(unittest.TestCase):
     def test_fps_zero_elapsed_returns_default(self):
         '''fps falls back to 30 when all timestamps are identical.'''
         reader = make_reader([_FRAME.copy(), _FRAME.copy()])
-        reader.keys = ['0.000000000', '0.000000000']
+        reader._keys = ['0.000000000', '0.000000000']
         self.assertAlmostEqual(reader.fps, 30.)
 
     def test_width_from_frame_shape(self):
@@ -123,7 +123,7 @@ class TestQHDF5ReaderInit(unittest.TestCase):
             side_effect=lambda k: images if k == 'images' else None)
         with patch('h5py.File', return_value=mock_file):
             reader = QHDF5Reader('test.h5')
-        self.assertEqual(reader.keys,
+        self.assertEqual(reader._keys,
                          ['0.000000000', '0.033333333', '0.066666667'])
 
 

@@ -69,9 +69,9 @@ class TestQHDF5WriterOpen(unittest.TestCase):
         mock_file, _ = make_mock_h5file()
         with patch('h5py.File', return_value=mock_file):
             writer.open(_FRAME)
-        mock_file.attrs.update.assert_called_once()
-        attrs = mock_file.attrs.update.call_args[0][0]
-        self.assertIn('Timestamp', attrs)
+        mock_file.attrs.__setitem__.assert_called_once()
+        key, _ = mock_file.attrs.__setitem__.call_args[0]
+        self.assertEqual(key, 'Timestamp')
 
     def test_isopen_true_after_open(self):
         writer = make_writer()

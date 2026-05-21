@@ -55,15 +55,14 @@ class QCircularDVRWidget(QtWidgets.QWidget):
     FILENAME = 'circular.mkv'
 
     def __init__(self,
-                 source: 'QVideoSource | None' = None,
+                 source: QVideoSource | None = None,
                  parent=None) -> None:
         super().__init__(parent)
         self._buffer = QCircularBuffer()
-        self._source: 'QVideoSource | None' = None
+        self._source: QVideoSource | None = None
         self._setupUi()
         self._connectSignals()
-        if source is not None:
-            self.source = source
+        self.source = source
         app = QtCore.QCoreApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self._buffer.clear)
@@ -134,12 +133,12 @@ class QCircularDVRWidget(QtWidgets.QWidget):
             logger.warning(f'Circular buffer save failed: {filename!r}')
 
     @property
-    def source(self) -> 'QVideoSource | None':
+    def source(self) -> QVideoSource | None:
         '''The connected :class:`~QVideo.lib.QVideoSource.QVideoSource`.'''
         return self._source
 
     @source.setter
-    def source(self, source: 'QVideoSource | None') -> None:
+    def source(self, source: QVideoSource | None) -> None:
         if self._source is not None:
             self._source.newFrame.disconnect(self._buffer.append)
         self._source = source
@@ -151,5 +150,6 @@ class QCircularDVRWidget(QtWidgets.QWidget):
 
     @property
     def buffer(self) -> QCircularBuffer:
-        '''The underlying :class:`~QVideo.dvr.QCircularBuffer.QCircularBuffer`.'''
+        '''The underlying
+        :class:`~QVideo.dvr.QCircularBuffer.QCircularBuffer`.'''
         return self._buffer

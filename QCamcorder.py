@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-'''Composite camcorder widget combining a video screen, camera controls, and DVR.
+'''Composite camcorder widget combining a video screen, camera controls,
+and DVR.
 
 Run directly to launch a full camcorder application with camera selection::
 
@@ -110,15 +111,13 @@ class QCamcorder(QtWidgets.QWidget):
         playback : bool
             ``True`` when DVR playback begins, ``False`` when it ends.
         '''
-        if playback:
-            self.screen.source = self.dvr.player
-        else:
-            self.screen.source = self.source
+        self.screen.source = self.dvr.player if playback else self.source
         self.cameraWidget.setDisabled(playback)
 
     @property
     def source(self) -> QVideoSource:
-        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` from the camera widget.'''
+        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` from the
+        camera widget.'''
         return self.cameraWidget.source
 
 

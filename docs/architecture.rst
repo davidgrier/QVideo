@@ -62,7 +62,10 @@ carrying either the filtered video frame or, when
 rendered scene (video + overlays) as an RGBA array.  Its
 :attr:`~QVideo.lib.QVideoScreen.QVideoScreen.fps` property reports the
 effective display rate, so the screen can be used directly as a DVR
-source for composite recording.
+source for composite recording.  Setting
+:attr:`~QVideo.lib.QVideoScreen.QVideoScreen.colormap` applies a
+false-color LUT to grayscale frames at display time without affecting
+the underlying frame data.
 
 :class:`~QVideo.lib.QFilterBank.QFilterBank` and
 :class:`~QVideo.lib.VideoFilter.VideoFilter` provide a composable

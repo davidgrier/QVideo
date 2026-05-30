@@ -13,6 +13,36 @@ a standalone ``filter.py`` from the rack's current settings.  Stateful
 filters that accumulate information across frames cannot be expressed as a
 single-frame function and are omitted from the export with a comment.
 
+Calibration
+-----------
+
+These filters correct systematic sensor non-uniformities so that
+pixel values reflect the true signal rather than hardware artefacts.
+Apply them early in the pipeline — typically as the first two filters
+— before any feature-detection or enhancement steps.
+
+:class:`~QVideo.filters.darkframe.DarkFrameFilter` subtracts a stored
+dark frame from every incoming image, removing thermal electrons,
+amplifier offset, and fixed-pattern noise.  Click *Capture* with the
+shutter closed (or lens capped) to average :attr:`nFrames` frames into
+the dark reference.  Click *Reset* to clear it and pass frames through
+unchanged.
+
+:class:`~QVideo.filters.flatfield.FlatFieldFilter` divides each frame
+by a stored flat field reference, correcting pixel-to-pixel quantum
+efficiency variation and lens vignetting.  Click *Capture* under
+uniform illumination to record the reference; the mean is normalized
+to 1.0 so overall brightness is preserved.  For best results, place
+this filter after :class:`~QVideo.filters.darkframe.DarkFrameFilter`:
+the flat field is then captured from already-dark-subtracted frames
+and the correction is automatically dark-corrected.
+
+.. automodule:: QVideo.filters.darkframe
+   :members:
+
+.. automodule:: QVideo.filters.flatfield
+   :members:
+
 Median background subtraction
 ------------------------------
 

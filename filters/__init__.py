@@ -1,4 +1,7 @@
-from .artistic import PencilSketchFilter, QPencilSketchFilter, CartoonFilter, QCartoonFilter
+from .artistic import (PencilSketchFilter, QPencilSketchFilter,
+                       CartoonFilter, QCartoonFilter)
+from .darkframe import DarkFrameFilter, QDarkFrameFilter
+from .flatfield import FlatFieldFilter, QFlatFieldFilter
 from .median import Median
 from .momedian import MoMedian, QMoMedian
 from .momean import MoMean, QMoMean
@@ -23,6 +26,8 @@ from .unsharp import UnsharpFilter, QUnsharpFilter
 __all__ = '''
 PencilSketchFilter QPencilSketchFilter
 CartoonFilter QCartoonFilter
+DarkFrameFilter QDarkFrameFilter
+FlatFieldFilter QFlatFieldFilter
 Median MoMedian QMoMedian
 MoMean QMoMean
 DejitterFilter QDejitterFilter

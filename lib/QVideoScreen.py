@@ -4,6 +4,7 @@ from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFilterBank import QFilterBank
 from QVideo.lib.videotypes import Image
 import numpy as np
+import pyqtgraph as pg
 from pyqtgraph import GraphicsLayoutWidget, ImageItem
 import logging
 
@@ -50,6 +51,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         :attr:`newFrame` carries the filtered video frame.  When ``True``,
         it carries the rendered ViewBox scene (video + overlays) as an
         ``(H, W, 4)`` RGBA uint8 array.
+    colormap : str | None
+        Colormap name for false-color display of grayscale frames.
+        Accepts any matplotlib colormap name (e.g. ``'inferno'``,
+        ``'viridis'``) or a pyqtgraph built-in name.
+        Set to ``None`` (default) to display in grayscale.
+        Has no effect on color (3-channel) frames.
 
     Signals
     -------
@@ -67,6 +74,7 @@ class QVideoScreen(GraphicsLayoutWidget):
                  **kwargs) -> None:
         super().__init__(*args, size=size, **kwargs)
         self.framerate = framerate
+        self._colormap: str | None = None
         self._ready = True
         self._pending: Image | None = None
         self._overlays: list[object] = []
@@ -127,6 +135,28 @@ class QVideoScreen(GraphicsLayoutWidget):
                              f'got {framerate}')
         self._framerate = framerate
         self._interval = 0 if framerate is None else int(1000 / framerate)
+
+    @property
+    def colormap(self) -> str | None:
+        '''Colormap name for false-color display of grayscale frames.
+
+        Set to a colormap name (matplotlib or pyqtgraph built-in) to
+        apply false-color mapping. Set to ``None`` to restore grayscale.
+        Has no effect on color (3-channel) frames.
+        '''
+        return self._colormap
+
+    @colormap.setter
+    def colormap(self, name: str | None) -> None:
+        self._colormap = name
+        if name is None:
+            self.image.setLookupTable(None)
+            return
+        try:
+            cm = pg.colormap.get(name, source='matplotlib')
+        except (KeyError, FileNotFoundError, ImportError):
+            cm = pg.colormap.get(name)
+        self.image.setColorMap(cm)
 
     def _setready(self) -> None:
         self._ready = True

@@ -642,6 +642,71 @@ class TestNewFrame(unittest.TestCase):
         self.assertEqual(len(spy), 0)
 
 
+class TestColormap(unittest.TestCase):
+
+    def test_colormap_none_on_init(self):
+        screen = make_screen()
+        self.assertIsNone(screen._colormap)
+
+    def test_colormap_getter_returns_stored(self):
+        screen = make_screen()
+        screen._colormap = 'inferno'
+        self.assertEqual(screen.colormap, 'inferno')
+
+    def test_colormap_setter_none_stores_none(self):
+        screen = make_screen()
+        screen._colormap = 'inferno'
+        with patch.object(screen.image, 'setLookupTable'):
+            screen.colormap = None
+        self.assertIsNone(screen._colormap)
+
+    def test_colormap_setter_none_calls_set_lookup_table(self):
+        screen = make_screen()
+        with patch.object(screen.image, 'setLookupTable') as mock_lut:
+            screen.colormap = None
+        mock_lut.assert_called_once_with(None)
+
+    def test_colormap_setter_stores_name(self):
+        screen = make_screen()
+        mock_cm = MagicMock()
+        with patch('pyqtgraph.colormap.get',
+                   return_value=mock_cm), \
+             patch.object(screen.image, 'setColorMap'):
+            screen.colormap = 'viridis'
+        self.assertEqual(screen._colormap, 'viridis')
+
+    def test_colormap_setter_calls_set_color_map(self):
+        screen = make_screen()
+        mock_cm = MagicMock()
+        with patch('pyqtgraph.colormap.get',
+                   return_value=mock_cm), \
+             patch.object(screen.image, 'setColorMap') as mock_set:
+            screen.colormap = 'inferno'
+        mock_set.assert_called_once_with(mock_cm)
+
+    def test_colormap_setter_falls_back_to_builtin(self):
+        screen = make_screen()
+        mock_cm = MagicMock()
+
+        def _get(name, source=None):
+            if source == 'matplotlib':
+                raise ImportError('no matplotlib')
+            return mock_cm
+
+        with patch('pyqtgraph.colormap.get',
+                   side_effect=_get), \
+             patch.object(screen.image, 'setColorMap') as mock_set:
+            screen.colormap = 'thermal'
+        mock_set.assert_called_once_with(mock_cm)
+
+    def test_colormap_setter_invalid_raises(self):
+        screen = make_screen()
+        with patch('pyqtgraph.colormap.get',
+                   side_effect=KeyError('no such colormap')):
+            with self.assertRaises(KeyError):
+                screen.colormap = 'nonexistent_map'
+
+
 class TestComposite(unittest.TestCase):
 
     def test_composite_false_on_init(self):

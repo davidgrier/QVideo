@@ -13,6 +13,14 @@ _MODULE = sys.modules['QVideo.cameras.Picamera._camera']
 
 _FRAME_RGB = np.zeros((960, 1280, 3), dtype=np.uint8)
 
+
+class MockTransform:
+    '''Minimal stand-in for libcamera.Transform used in tests.'''
+
+    def __init__(self, hflip=False, vflip=False):
+        self.hflip = hflip
+        self.vflip = vflip
+
 _CAMERA_CONTROLS = {
     'AeEnable':          (False, True,      True),
     'AwbEnable':         (False, True,      True),
@@ -82,13 +90,16 @@ def make_mock_device(width=1280, height=960, frame=None,
 
 
 def make_camera(cameraID=0, width=1280, height=960,
-                capture_ok=True, controls=None, metadata=None):
+                capture_ok=True, controls=None, metadata=None,
+                hflip=False, vflip=False):
     '''Return a QPicamera with a mocked Picamera2 device.'''
     device = make_mock_device(width=width, height=height,
                               capture_ok=capture_ok,
                               controls=controls, metadata=metadata)
-    with patch.object(_MODULE, 'Picamera2', return_value=device):
-        cam = QPicamera(cameraID=cameraID, width=width, height=height)
+    with patch.object(_MODULE, 'Picamera2', return_value=device), \
+            patch.object(_MODULE, 'Transform', MockTransform):
+        cam = QPicamera(cameraID=cameraID, width=width, height=height,
+                        hflip=hflip, vflip=vflip)
     return cam, device
 
 
@@ -564,6 +575,126 @@ class TestFocusAbsent(unittest.TestCase):
 
     def test_lens_position_not_registered(self):
         self.assertNotIn('LensPosition', self.cam.properties)
+
+
+class TestFlip(unittest.TestCase):
+    '''Mirror and flip properties with Transform available.'''
+
+    def setUp(self):
+        self.cam, self.device = make_camera()
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_hflip_default_false(self):
+        self.assertFalse(self.cam.hflip)
+
+    def test_vflip_default_false(self):
+        self.assertFalse(self.cam.vflip)
+
+    def test_hflip_registered(self):
+        self.assertIn('hflip', self.cam.properties)
+
+    def test_vflip_registered(self):
+        self.assertIn('vflip', self.cam.properties)
+
+    def test_hflip_is_settable(self):
+        self.assertIsNotNone(self.cam._properties['hflip']['setter'])
+
+    def test_vflip_is_settable(self):
+        self.assertIsNotNone(self.cam._properties['vflip']['setter'])
+
+    def test_hflip_constructor_kwarg(self):
+        cam, _ = make_camera(hflip=True)
+        self.assertTrue(cam.hflip)
+        cam.close()
+
+    def test_vflip_constructor_kwarg(self):
+        cam, _ = make_camera(vflip=True)
+        self.assertTrue(cam.vflip)
+        cam.close()
+
+    def test_set_hflip_updates_value(self):
+        self.cam.set('hflip', True)
+        self.assertTrue(self.cam.hflip)
+
+    def test_set_vflip_updates_value(self):
+        self.cam.set('vflip', True)
+        self.assertTrue(self.cam.vflip)
+
+    def test_set_hflip_calls_reconfigure(self):
+        self.device.reset_mock()
+        self.cam.set('hflip', True)
+        self.device.stop.assert_called()
+
+    def test_set_vflip_calls_reconfigure(self):
+        self.device.reset_mock()
+        self.cam.set('vflip', True)
+        self.device.stop.assert_called()
+
+    def test_hflip_transform_passed_to_configure(self):
+        with patch.object(_MODULE, 'Transform', MockTransform):
+            self.cam.set('hflip', True)
+        call_kwargs = self.device.create_preview_configuration.call_args.kwargs
+        t = call_kwargs.get('transform')
+        self.assertIsNotNone(t)
+        self.assertTrue(t.hflip)
+        self.assertFalse(t.vflip)
+
+    def test_vflip_transform_passed_to_configure(self):
+        with patch.object(_MODULE, 'Transform', MockTransform):
+            self.cam.set('vflip', True)
+        call_kwargs = self.device.create_preview_configuration.call_args.kwargs
+        t = call_kwargs.get('transform')
+        self.assertIsNotNone(t)
+        self.assertFalse(t.hflip)
+        self.assertTrue(t.vflip)
+
+    def test_hflip_does_not_emit_shape_changed(self):
+        from qtpy import QtTest
+        spy = QtTest.QSignalSpy(self.cam.shapeChanged)
+        self.cam.set('hflip', True)
+        self.assertEqual(len(spy), 0)
+
+    def test_vflip_does_not_emit_shape_changed(self):
+        from qtpy import QtTest
+        spy = QtTest.QSignalSpy(self.cam.shapeChanged)
+        self.cam.set('vflip', True)
+        self.assertEqual(len(spy), 0)
+
+
+class TestFlipTransformAbsent(unittest.TestCase):
+    '''hflip/vflip properties must still register when Transform is None.'''
+
+    def setUp(self):
+        device = make_mock_device()
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', None):
+            self.cam = QPicamera()
+        self.device = device
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_hflip_registered_without_transform(self):
+        self.assertIn('hflip', self.cam.properties)
+
+    def test_vflip_registered_without_transform(self):
+        self.assertIn('vflip', self.cam.properties)
+
+    def test_configure_called_without_transform_kwarg(self):
+        call_kwargs = self.device.create_preview_configuration.call_args.kwargs
+        self.assertNotIn('transform', call_kwargs)
+
+    def test_set_hflip_does_not_crash(self):
+        with patch.object(_MODULE, 'Transform', None):
+            self.cam.set('hflip', True)
+        self.assertTrue(self.cam.hflip)
+
+    def test_set_vflip_does_not_crash(self):
+        with patch.object(_MODULE, 'Transform', None):
+            self.cam.set('vflip', True)
+        self.assertTrue(self.cam.vflip)
 
 
 if __name__ == '__main__':

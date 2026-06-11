@@ -7,8 +7,10 @@ if TYPE_CHECKING:
 
 try:
     from picamera2 import Picamera2
+    from libcamera import Transform
 except (ImportError, ModuleNotFoundError):
     Picamera2 = None
+    Transform = None
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,10 @@ class QPicamera(QCamera):
     gray : bool
         ``True`` convert frames to grayscale.
         Default: ``False``.
+    hflip : bool
+        ``True`` to mirror frames horizontally.  Default: ``False``.
+    vflip : bool
+        ``True`` to flip frames vertically.  Default: ``False``.
     *args :
         Forwarded to :class:`~QVideo.lib.QCamera`.
     **kwargs :
@@ -71,12 +77,16 @@ class QPicamera(QCamera):
                  width: int = 1280,
                  height: int = 960,
                  gray: bool = False,
+                 hflip: bool = False,
+                 vflip: bool = False,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._cameraID = cameraID
         self._width = int(width)
         self._height = int(height)
         self._gray = bool(gray)
+        self._hflip = bool(hflip)
+        self._vflip = bool(vflip)
         self._controlValues: dict[str, object] = {}
         # Tracks whether the picamera2 hardware is actively streaming.
         # Distinct from self._isOpen so that _setControl can cache values
@@ -110,8 +120,12 @@ class QPicamera(QCamera):
         # re-apply them afterwards.
         prior_controls = dict(self._controlValues)
         fmt = 'YUV420' if self._gray else 'BGR888'
-        config = self._device.create_preview_configuration(
-            main={'size': (self._width, self._height), 'format': fmt})
+        cfg_kwargs = {
+            'main': {'size': (self._width, self._height), 'format': fmt}}
+        t = self._makeTransform()
+        if t is not None:
+            cfg_kwargs['transform'] = t
+        config = self._device.create_preview_configuration(**cfg_kwargs)
         self._device.configure(config)
         self._device.start()
         self._deviceOpen = True
@@ -130,6 +144,10 @@ class QPicamera(QCamera):
                  setter=self._setHeight, ptype=int)
         register('color', getter=self._getColor,
                  setter=self._setColor, ptype=bool)
+        register('hflip', getter=self._getHflip,
+                 setter=self._setHflip, ptype=bool)
+        register('vflip', getter=self._getVflip,
+                 setter=self._setVflip, ptype=bool)
         metadata = self._device.capture_metadata()
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
@@ -261,6 +279,25 @@ class QPicamera(QCamera):
         self._reconfigure()
         self.shapeChanged.emit(self.shape)
 
+    def _getHflip(self) -> bool:
+        return self._hflip
+
+    def _setHflip(self, value: bool) -> None:
+        self._hflip = bool(value)
+        self._reconfigure()
+
+    def _getVflip(self) -> bool:
+        return self._vflip
+
+    def _setVflip(self, value: bool) -> None:
+        self._vflip = bool(value)
+        self._reconfigure()
+
+    def _makeTransform(self) -> 'Transform | None':
+        if Transform is None:
+            return None
+        return Transform(hflip=self._hflip, vflip=self._vflip)
+
     def _getWidth(self) -> int:
         return self._device.camera_config['main']['size'][0]
 
@@ -310,8 +347,11 @@ class QPicamera(QCamera):
             h = int(height)
         self._device.stop()
         fmt = 'YUV420' if self._gray else 'BGR888'
-        config = self._device.create_preview_configuration(
-            main={'size': (w, h), 'format': fmt})
+        cfg_kwargs = {'main': {'size': (w, h), 'format': fmt}}
+        t = self._makeTransform()
+        if t is not None:
+            cfg_kwargs['transform'] = t
+        config = self._device.create_preview_configuration(**cfg_kwargs)
         self._device.configure(config)
         self._device.start()
         # Re-apply cached controls.  Note: _reconfigure does not rebuild

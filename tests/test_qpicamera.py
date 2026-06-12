@@ -45,6 +45,26 @@ _METADATA = {
     'FrameDuration': 33333,
 }
 
+_AWB_CONTROLS = {
+    **_CAMERA_CONTROLS,
+    'AwbMode':    (0, 7, 0),
+}
+
+_AWB_METADATA = {
+    **_METADATA,
+    'AwbMode': 0,
+}
+
+_COLOUR_GAINS_CONTROLS = {
+    **_CAMERA_CONTROLS,
+    'ColourGains': (0.0, 32.0, None),
+}
+
+_COLOUR_GAINS_METADATA = {
+    **_METADATA,
+    'ColourGains': (1.5, 1.8),
+}
+
 _AF_CONTROLS = {
     **_CAMERA_CONTROLS,
     'AfMode':       (0, 2, 0),
@@ -575,6 +595,132 @@ class TestFocusAbsent(unittest.TestCase):
 
     def test_lens_position_not_registered(self):
         self.assertNotIn('LensPosition', self.cam.properties)
+
+
+class TestAwbMode(unittest.TestCase):
+    '''AwbMode is registered when the camera reports it in camera_controls.'''
+
+    def setUp(self):
+        self.cam, self.device = make_camera(
+            controls=_AWB_CONTROLS, metadata=_AWB_METADATA)
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_awb_mode_registered(self):
+        self.assertIn('AwbMode', self.cam.properties)
+
+    def test_awb_mode_initial_value(self):
+        self.assertEqual(self.cam.AwbMode, 0)
+
+    def test_awb_mode_has_minimum(self):
+        self.assertIn('minimum', self.cam._properties['AwbMode'])
+
+    def test_awb_mode_has_maximum(self):
+        self.assertIn('maximum', self.cam._properties['AwbMode'])
+
+    def test_awb_mode_minimum_value(self):
+        self.assertEqual(self.cam._properties['AwbMode']['minimum'], 0)
+
+    def test_awb_mode_maximum_value(self):
+        self.assertEqual(self.cam._properties['AwbMode']['maximum'], 7)
+
+    def test_awb_mode_is_settable(self):
+        self.assertIsNotNone(self.cam._properties['AwbMode']['setter'])
+
+    def test_set_awb_mode_calls_set_controls(self):
+        self.cam.set('AwbMode', 5)
+        self.device.set_controls.assert_called_with({'AwbMode': 5})
+
+    def test_set_awb_mode_updates_cache(self):
+        self.cam.set('AwbMode', 5)
+        self.assertEqual(self.cam.AwbMode, 5)
+
+    def test_awb_mode_not_registered_without_control(self):
+        cam, _ = make_camera()
+        self.assertNotIn('AwbMode', cam.properties)
+        cam.close()
+
+
+class TestColourGains(unittest.TestCase):
+    '''ColourGainR and ColourGainB are registered when ColourGains is
+    reported in camera_controls.'''
+
+    def setUp(self):
+        self.cam, self.device = make_camera(
+            controls=_COLOUR_GAINS_CONTROLS,
+            metadata=_COLOUR_GAINS_METADATA)
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_colour_gain_r_registered(self):
+        self.assertIn('ColourGainR', self.cam.properties)
+
+    def test_colour_gain_b_registered(self):
+        self.assertIn('ColourGainB', self.cam.properties)
+
+    def test_colour_gain_r_initial_value(self):
+        self.assertAlmostEqual(self.cam.ColourGainR, 1.5)
+
+    def test_colour_gain_b_initial_value(self):
+        self.assertAlmostEqual(self.cam.ColourGainB, 1.8)
+
+    def test_colour_gain_r_has_minimum(self):
+        self.assertIn('minimum', self.cam._properties['ColourGainR'])
+
+    def test_colour_gain_r_has_maximum(self):
+        self.assertIn('maximum', self.cam._properties['ColourGainR'])
+
+    def test_colour_gain_r_minimum_value(self):
+        self.assertEqual(self.cam._properties['ColourGainR']['minimum'], 0.0)
+
+    def test_colour_gain_r_maximum_value(self):
+        self.assertEqual(self.cam._properties['ColourGainR']['maximum'], 32.0)
+
+    def test_colour_gain_b_minimum_value(self):
+        self.assertEqual(self.cam._properties['ColourGainB']['minimum'], 0.0)
+
+    def test_colour_gain_b_maximum_value(self):
+        self.assertEqual(self.cam._properties['ColourGainB']['maximum'], 32.0)
+
+    def test_colour_gain_r_is_settable(self):
+        self.assertIsNotNone(self.cam._properties['ColourGainR']['setter'])
+
+    def test_colour_gain_b_is_settable(self):
+        self.assertIsNotNone(self.cam._properties['ColourGainB']['setter'])
+
+    def test_set_colour_gain_r_sends_both_gains(self):
+        self.cam.set('ColourGainR', 2.0)
+        self.device.set_controls.assert_called_with(
+            {'ColourGains': (2.0, 1.8)})
+
+    def test_set_colour_gain_b_sends_both_gains(self):
+        self.cam.set('ColourGainB', 2.2)
+        self.device.set_controls.assert_called_with(
+            {'ColourGains': (1.5, 2.2)})
+
+    def test_set_colour_gain_r_preserves_b(self):
+        self.cam.set('ColourGainR', 2.0)
+        self.assertAlmostEqual(self.cam.ColourGainB, 1.8)
+
+    def test_set_colour_gain_b_preserves_r(self):
+        self.cam.set('ColourGainB', 2.2)
+        self.assertAlmostEqual(self.cam.ColourGainR, 1.5)
+
+    def test_colour_gains_absent_without_control(self):
+        cam, _ = make_camera()
+        self.assertNotIn('ColourGainR', cam.properties)
+        self.assertNotIn('ColourGainB', cam.properties)
+        cam.close()
+
+    def test_colour_gains_fallback_when_not_in_metadata(self):
+        controls = _COLOUR_GAINS_CONTROLS.copy()
+        metadata = {k: v for k, v in _METADATA.items()}
+        cam, _ = make_camera(controls=controls, metadata=metadata)
+        self.assertAlmostEqual(cam.ColourGainR, 1.0)
+        self.assertAlmostEqual(cam.ColourGainB, 1.0)
+        cam.close()
 
 
 class TestFlip(unittest.TestCase):

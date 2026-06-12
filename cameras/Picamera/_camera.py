@@ -24,6 +24,7 @@ __all__ = ['QPicamera', 'QPicameraSource']
 _CONTROL_TYPES: dict[str, type] = {
     'AeEnable':     bool,
     'AwbEnable':    bool,
+    'AwbMode':      int,
     'Brightness':   float,
     'Contrast':     float,
     'Saturation':   float,
@@ -152,6 +153,7 @@ class QPicamera(QCamera):
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
         self._probeFocus(metadata)
+        self._probeColourGains(metadata)
         # Re-apply any controls the user set before this restart.
         # Filter to keys still valid under the new configuration.
         pending = {k: v for k, v in prior_controls.items()
@@ -246,6 +248,55 @@ class QPicamera(QCamera):
             ptype=int,
         )
         self.registerMethod('autofocus', self._triggerAutofocus)
+
+    def _probeColourGains(self, metadata: dict[str, object]) -> None:
+        '''Register ``ColourGainR`` and ``ColourGainB`` if supported.
+
+        ``ColourGains`` is a ``(R_gain, B_gain)`` tuple in picamera2 and
+        cannot be expressed as a single scalar property.  It is split into
+        two independent float properties that share the same underlying
+        ``ColourGains`` control so they can be adjusted separately from
+        the control tree.
+
+        Parameters
+        ----------
+        metadata : dict
+            Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
+            used to initialise cached gain values.
+        '''
+        if 'ColourGains' not in self._device.camera_controls:
+            return
+        lo, hi, _ = self._device.camera_controls['ColourGains']
+        current = metadata.get('ColourGains', None)
+        if not isinstance(current, (tuple, list)) or len(current) < 2:
+            current = (1.0, 1.0)
+        self._controlValues['ColourGains'] = (
+            float(current[0]), float(current[1]))
+        meta = {}
+        if lo is not None:
+            meta['minimum'] = lo
+        if hi is not None:
+            meta['maximum'] = hi
+        self.registerProperty(
+            'ColourGainR',
+            getter=lambda: self._controlValues['ColourGains'][0],
+            setter=self._setColourGainR,
+            ptype=float,
+            **meta)
+        self.registerProperty(
+            'ColourGainB',
+            getter=lambda: self._controlValues['ColourGains'][1],
+            setter=self._setColourGainB,
+            ptype=float,
+            **meta)
+
+    def _setColourGainR(self, value: float) -> None:
+        _, b = self._controlValues['ColourGains']
+        self._setControl('ColourGains', (float(value), b))
+
+    def _setColourGainB(self, value: float) -> None:
+        r, _ = self._controlValues['ColourGains']
+        self._setControl('ColourGains', (r, float(value)))
 
     def _triggerAutofocus(self) -> None:
         '''Send ``AfTrigger=Start`` to begin a single autofocus sweep.'''

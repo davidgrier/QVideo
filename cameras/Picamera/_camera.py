@@ -119,7 +119,7 @@ class QPicamera(QCamera):
         # _controlValues from fresh metadata, so we save them here and
         # re-apply them afterwards.
         prior_controls = dict(self._controlValues)
-        fmt = 'YUV420' if self._gray else 'RGB888'
+        fmt = 'YUV420' if self._gray else 'BGR888'
         cfg_kwargs = {
             'main': {'size': (self._width, self._height), 'format': fmt}}
         t = self._makeTransform()
@@ -346,7 +346,7 @@ class QPicamera(QCamera):
         if height is not None:
             h = int(height)
         self._device.stop()
-        fmt = 'YUV420' if self._gray else 'RGB888'
+        fmt = 'YUV420' if self._gray else 'BGR888'
         cfg_kwargs = {'main': {'size': (w, h), 'format': fmt}}
         t = self._makeTransform()
         if t is not None:

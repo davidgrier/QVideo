@@ -19,6 +19,17 @@ logger = logging.getLogger(__name__)
 __all__ = ['QPicamera', 'QPicameraSource']
 
 
+# Mapping from picamera2 sensor names to human-readable model names.
+# Unknown sensors fall back to the raw sensor name from global_camera_info().
+_CAMERA_MODELS: dict[str, str] = {
+    'ov5647': 'RPi Camera Module 1',
+    'imx219': 'RPi Camera Module 2',
+    'imx708': 'RPi Camera Module 3',
+    'imx477': 'RPi HQ Camera',
+    'imx296': 'RPi Global Shutter Camera',
+    'imx500': 'RPi AI Camera',
+}
+
 # picamera2 control names and their Python types.
 # Only controls listed here are probed and registered as properties.
 _CONTROL_TYPES: dict[str, type] = {
@@ -118,7 +129,9 @@ class QPicamera(QCamera):
         try:
             info = self._device.global_camera_info()
             if isinstance(info, list) and self._cameraID < len(info):
-                self._modelName = info[self._cameraID].get('Model')
+                sensor = info[self._cameraID].get('Model')
+                if sensor is not None:
+                    self._modelName = _CAMERA_MODELS.get(sensor, sensor)
         except Exception:
             pass
         # Save controls set before this restart (e.g. fps changed while
@@ -449,7 +462,8 @@ class QPicamera(QCamera):
             logger.warning(f'Frame read failed: {ex}')
             return False, None
         if self._gray:
-            # Convert YUV420 to grayscale by taking the Y channel.
+            # Extract Y plane from planar YUV420: strip U/V rows and
+            # any hardware stride padding beyond self.width.
             frame = frame[:self.height, :self.width]
         return True, frame
 

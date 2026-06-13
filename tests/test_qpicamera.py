@@ -184,13 +184,39 @@ class TestInit(unittest.TestCase):
         self.assertEqual(cam.model_name, 'TestCamera')
         cam.close()
 
-    def test_model_name_custom_value(self):
+    def test_model_name_unknown_sensor_uses_sensor_name(self):
+        device = make_mock_device(model='imx999')
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.assertEqual(cam.model_name, 'imx999')
+        cam.close()
+
+    def test_model_name_known_sensor_uses_friendly_name(self):
         device = make_mock_device(model='imx219')
         with patch.object(_MODULE, 'Picamera2', return_value=device), \
                 patch.object(_MODULE, 'Transform', MockTransform):
             cam = QPicamera()
-        self.assertEqual(cam.model_name, 'imx219')
+        self.assertEqual(cam.model_name, 'RPi Camera Module 2')
         cam.close()
+
+    def test_model_name_all_known_sensors(self):
+        expected = {
+            'ov5647': 'RPi Camera Module 1',
+            'imx219': 'RPi Camera Module 2',
+            'imx708': 'RPi Camera Module 3',
+            'imx477': 'RPi HQ Camera',
+            'imx296': 'RPi Global Shutter Camera',
+            'imx500': 'RPi AI Camera',
+        }
+        for sensor, friendly in expected.items():
+            with self.subTest(sensor=sensor):
+                device = make_mock_device(model=sensor)
+                with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                        patch.object(_MODULE, 'Transform', MockTransform):
+                    cam = QPicamera()
+                self.assertEqual(cam.model_name, friendly)
+                cam.close()
 
     def test_model_name_none_when_global_camera_info_raises(self):
         device = make_mock_device()

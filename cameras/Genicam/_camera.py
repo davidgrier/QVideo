@@ -124,6 +124,10 @@ class QGenicamCamera(QCamera):
         self._protected = {k for k, v in ma.items()
                           if k in mb and mb[k] != v}
         self._register_features(root)
+        try:
+            self._modelName = str(self._nodeMap.DeviceModelName.value)
+        except Exception:
+            pass
         for src, dst in (('Width', 'width'), ('Height', 'height'),
                          ('AcquisitionFrameRate', 'fps'),
                          ('AcquisitionFrameRateAbs', 'fps')):

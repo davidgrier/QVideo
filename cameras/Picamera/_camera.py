@@ -115,6 +115,12 @@ class QPicamera(QCamera):
             logger.warning('Could not open Raspberry Pi camera'
                            f'{self._cameraID}: {ex}')
             return False
+        try:
+            info = self._device.global_camera_info()
+            if isinstance(info, list) and self._cameraID < len(info):
+                self._modelName = info[self._cameraID].get('Model')
+        except Exception:
+            pass
         # Save controls set before this restart (e.g. fps changed while
         # the device was closed).  _probeControls will overwrite
         # _controlValues from fresh metadata, so we save them here and

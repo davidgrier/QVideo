@@ -93,6 +93,7 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         self._properties: dict[str, dict[str, object]] = {}
         self._methods: dict[str, Callable[[], object]] = {}
         self._isOpen = False
+        self._modelName: str | None = None
 
     def __enter__(self) -> 'QCamera':
         return self.open()
@@ -384,6 +385,18 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
     def name(self) -> str:
         '''Camera name, derived from the concrete class name.'''
         return type(self).__name__
+
+    @property
+    def model_name(self) -> str | None:
+        '''Hardware-reported camera model name.
+
+        Set by subclasses during :meth:`_initialize` when the device
+        reports a human-readable model string (e.g. ``'imx219'`` for a
+        Raspberry Pi camera, or a GenICam ``DeviceModelName`` string).
+        Returns ``None`` when the hardware does not provide this
+        information, in which case :attr:`name` is used as a fallback.
+        '''
+        return self._modelName
 
     @property
     def shape(self) -> QtCore.QSize:

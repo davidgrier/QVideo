@@ -82,6 +82,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 
 
 from QVideo.cameras.Genicam._camera import QGenicamCamera, QGenicamSource
+from QVideo.lib.QCamera import QCamera
 # Retrieve the module object directly — the `import ... as` form resolves
 # through attribute access and lands on the class (shadowed by __init__.py).
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
@@ -235,6 +236,21 @@ class TestInit(unittest.TestCase):
     def test_opens_on_init(self):
         cam, _, _ = make_camera()
         self.assertTrue(cam.isOpen())
+
+    def test_model_name_read_from_device_model_name(self):
+        cam, _, _ = make_camera()
+        self.assertEqual(cam.model_name, 'TestCamera')
+
+    def test_model_name_custom_value(self):
+        nm = _make_node_map(model_name='Basler ace acA1300')
+        device = _make_device(node_map=nm)
+        cam, _, _ = make_camera(device=device)
+        self.assertEqual(cam.model_name, 'Basler ace acA1300')
+
+    def test_model_name_none_before_open(self):
+        cam = QGenicamCamera.__new__(QGenicamCamera)
+        QCamera.__init__(cam)
+        self.assertIsNone(cam.model_name)
 
 
 # ---------------------------------------------------------------------------

@@ -52,6 +52,27 @@ class TestQCameraTreeInit(unittest.TestCase):
         self.assertIsInstance(tree, QCameraTree)
 
 
+class TestQCameraTreeTitle(unittest.TestCase):
+
+    def test_title_uses_class_name_when_model_name_is_none(self):
+        cam = make_camera()
+        self.assertIsNone(cam.model_name)
+        tree = make_tree(source=make_source(cam))
+        self.assertEqual(tree._tree.name(), cam.name)
+
+    def test_title_uses_model_name_when_set(self):
+        cam = make_camera()
+        cam._modelName = 'FaceTime HD Camera'
+        tree = make_tree(source=make_source(cam))
+        self.assertEqual(tree._tree.name(), 'FaceTime HD Camera')
+
+    def test_title_falls_back_to_class_name_for_empty_model_name(self):
+        cam = make_camera()
+        cam._modelName = ''
+        tree = make_tree(source=make_source(cam))
+        self.assertEqual(tree._tree.name(), cam.name)
+
+
 class TestQCameraTreeDefaultDescription(unittest.TestCase):
 
     def test_all_camera_properties_appear_in_tree(self):

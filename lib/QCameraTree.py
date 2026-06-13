@@ -103,7 +103,8 @@ class QCameraTree(ParameterTree):
         if description is None:
             description = self._defaultDescription(self.camera)
         logger.debug(description)
-        self._tree = Parameter.create(name=self.camera.name,
+        self._tree = Parameter.create(
+            name=self.camera.model_name or self.camera.name,
                                       type='group',
                                       children=description)
         self.setParameters(self._tree)

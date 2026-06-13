@@ -84,7 +84,8 @@ _AF_METADATA = {
 }
 
 def make_mock_device(width=1280, height=960, frame=None,
-                     capture_ok=True, controls=None, metadata=None):
+                     capture_ok=True, controls=None, metadata=None,
+                     model='TestCamera'):
     '''Return a MagicMock standing in for a Picamera2 instance.'''
     if frame is None:
         frame = _FRAME_RGB.copy()
@@ -96,6 +97,7 @@ def make_mock_device(width=1280, height=960, frame=None,
     device.camera_controls = controls
     device.camera_config = {'main': {'size': (width, height),
                                      'format': 'RGB888'}}
+    device.global_camera_info.return_value = [{'Model': model}]
     if capture_ok:
         device.capture_array.return_value = frame.copy()
         request = MagicMock()
@@ -175,6 +177,28 @@ class TestInit(unittest.TestCase):
         config_args = device.create_preview_configuration.call_args
         main = config_args.kwargs.get('main', config_args[1].get('main'))
         self.assertEqual(main['format'], 'BGR888')
+        cam.close()
+
+    def test_model_name_read_from_global_camera_info(self):
+        cam, _ = make_camera()
+        self.assertEqual(cam.model_name, 'TestCamera')
+        cam.close()
+
+    def test_model_name_custom_value(self):
+        device = make_mock_device(model='imx219')
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.assertEqual(cam.model_name, 'imx219')
+        cam.close()
+
+    def test_model_name_none_when_global_camera_info_raises(self):
+        device = make_mock_device()
+        device.global_camera_info.side_effect = RuntimeError('no info')
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.assertIsNone(cam.model_name)
         cam.close()
 
 

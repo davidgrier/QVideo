@@ -60,6 +60,15 @@ class TestInit(unittest.TestCase):
         cam = make_camera()
         self.assertEqual(cam.name, '_FakeCamera')
 
+    def test_model_name_default_none(self):
+        cam = make_camera()
+        self.assertIsNone(cam.model_name)
+
+    def test_model_name_reflects_model_name(self):
+        cam = make_camera()
+        cam._modelName = 'MyCamera'
+        self.assertEqual(cam.model_name, 'MyCamera')
+
     def test_initially_closed(self):
         cam = make_camera()
         self.assertFalse(cam.isOpen())

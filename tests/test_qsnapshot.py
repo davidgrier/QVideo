@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import os
 import numpy as np
-from qtpy import QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets, QtGui
 from QVideo.lib.QSnapshot import QSnapshot
 
 
@@ -52,6 +52,16 @@ class TestInit(unittest.TestCase):
         parent = make_parent()
         snap = QSnapshot(parent)
         self.assertIs(snap.parent(), parent)
+
+    def test_shortcuts_use_widget_with_children_context(self):
+        parent = make_parent()
+        QSnapshot(parent)
+        shortcuts = parent.findChildren(QtWidgets.QShortcut)
+        self.assertTrue(len(shortcuts) >= 2)
+        for sc in shortcuts:
+            self.assertEqual(
+                sc.context(),
+                QtCore.Qt.WidgetWithChildrenShortcut)
 
 
 class TestNewFrame(unittest.TestCase):

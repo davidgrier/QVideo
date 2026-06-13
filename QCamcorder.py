@@ -91,7 +91,13 @@ class QCamcorder(QtWidgets.QWidget):
         self.screen.newFrame.connect(self._snapshot.newFrame)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the camera source when the widget is closed.'''
+        '''Stop the camera source when the widget is closed.
+
+        Note: Qt only calls ``closeEvent`` on top-level windows.  When
+        QCamcorder is embedded as a child widget, closing the parent
+        window will not invoke this method; camera cleanup is then
+        handled by ``QCameraTree``\'s ``aboutToQuit`` connection.
+        '''
         self.cameraWidget.stop()
         super().closeEvent(event)
 
@@ -126,9 +132,12 @@ def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    pg.mkQApp('QCamcorder')
+    app = pg.mkQApp('QCamcorder')
     camera = choose_camera()
     widget = QCamcorder(camera.start())
+    QtWidgets.QShortcut(
+        QtGui.QKeySequence('Ctrl+Q'), widget
+    ).activated.connect(app.quit)
     widget.show()
     pg.exec()
 

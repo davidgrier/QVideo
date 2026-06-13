@@ -63,8 +63,10 @@ class QSnapshot(QtCore.QObject):
         super().__init__(parent)
         self._frame: Image | None = None
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), parent)
+        shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut.activated.connect(self.snap)
         shortcut_as = QtWidgets.QShortcut(QtGui.QKeySequence(key_as), parent)
+        shortcut_as.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut_as.activated.connect(self.snapAs)
 
     @QtCore.Slot(np.ndarray)

@@ -16,7 +16,7 @@ repository-code: https://github.com/davidgrier/QVideo
 license: GPL-3.0-or-later
 doi: 10.5281/zenodo.19239402
 url: https://qvideo.readthedocs.io
-version: "3.16.5"
+version: "3.16.6"
 date-released: "2026-06-13"
 keywords:
   - camera

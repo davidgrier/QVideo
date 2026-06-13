@@ -157,9 +157,13 @@ def main() -> None:  # pragma: no cover
     '''Launch the ROI demo with an interactively chosen camera.'''
     from QVideo.lib import choose_camera
 
-    pg.mkQApp('ROI Demo')
+    from qtpy import QtGui, QtWidgets
+    app = pg.mkQApp('ROI Demo')
     camera = choose_camera().start()
     widget = ROIDemo(camera)
+    QtWidgets.QShortcut(
+        QtGui.QKeySequence('Ctrl+Q'), widget
+    ).activated.connect(app.quit)
     widget.show()
     pg.exec()
 

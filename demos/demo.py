@@ -52,9 +52,13 @@ def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    pg.mkQApp('QVideo Demo')
+    from qtpy import QtGui, QtWidgets
+    app = pg.mkQApp('QVideo Demo')
     camera = choose_camera().start()
     widget = Demo(camera)
+    QtWidgets.QShortcut(
+        QtGui.QKeySequence('Ctrl+Q'), widget
+    ).activated.connect(app.quit)
     widget.show()
     pg.exec()
 

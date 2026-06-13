@@ -56,12 +56,16 @@ def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    pg.mkQApp('Filter Demo')
+    from qtpy import QtGui, QtWidgets
+    app = pg.mkQApp('Filter Demo')
     camera = choose_camera().start()
     filters = '''QRGBFilter QSmoothingFilter
                  QSampleHold QThresholdFilter QBlobFilter
                  QEdgeFilter'''.split()
     widget = FilterDemo(camera, filters)
+    QtWidgets.QShortcut(
+        QtGui.QKeySequence('Ctrl+Q'), widget
+    ).activated.connect(app.quit)
     widget.show()
     pg.exec()
 

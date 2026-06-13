@@ -51,13 +51,17 @@ def main() -> None:  # pragma: no cover
     import pyqtgraph as pg
     from QVideo.lib import choose_camera
 
-    pg.mkQApp()
+    from qtpy import QtGui, QtWidgets
+    app = pg.mkQApp()
     camera = choose_camera().start()
     try:
         widget = YoloDemo(camera)
     except ImportError as e:
         print(f'Error: {e}', file=sys.stderr)
         sys.exit(1)
+    QtWidgets.QShortcut(
+        QtGui.QKeySequence('Ctrl+Q'), widget
+    ).activated.connect(app.quit)
     widget.show()
     pg.exec()
 

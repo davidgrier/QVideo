@@ -107,6 +107,35 @@ class QPicamera(QCamera):
         self._device: 'Picamera2 | None' = None
         self.open()
 
+    def _createDevice(self) -> 'Picamera2 | None':
+        '''Return a new :class:`~picamera2.Picamera2` instance.
+
+        Subclasses can override this to return a specialised device
+        (e.g. :class:`~picamera2.devices.imx500.IMX500`) while inheriting
+        the rest of :meth:`_initialize`.
+
+        Returns ``None`` when the required library is unavailable.
+        '''
+        if Picamera2 is None:
+            logger.warning(
+                'picamera2 is not available. '
+                'Install it on Raspberry Pi with: pip install picamera2')
+            return None
+        return Picamera2(camera_num=self._cameraID)
+
+    def _onRequest(self, metadata: dict) -> None:
+        '''Hook called with each frame\'s metadata before the request is released.
+
+        Subclasses can override this to extract additional per-frame data
+        (e.g. IMX500 inference outputs) while the request buffer is still
+        valid.
+
+        Parameters
+        ----------
+        metadata : dict
+            Frame metadata from :meth:`~picamera2.Picamera2.capture_request`.
+        '''
+
     def _initialize(self) -> bool:
         '''Open the Raspberry Pi camera and register available controls.
 
@@ -115,16 +144,13 @@ class QPicamera(QCamera):
         bool
             ``True`` if the camera was opened and delivering frames.
         '''
-        if Picamera2 is None:
-            logger.warning(
-                'picamera2 is not available. '
-                'Install it on Raspberry Pi with: pip install picamera2')
-            return False
         try:
-            self._device = Picamera2(camera_num=self._cameraID)
+            self._device = self._createDevice()
         except Exception as ex:
-            logger.warning('Could not open Raspberry Pi camera'
+            logger.warning(f'Could not open Raspberry Pi camera '
                            f'{self._cameraID}: {ex}')
+            return False
+        if self._device is None:
             return False
         try:
             info = self._device.global_camera_info()
@@ -453,10 +479,10 @@ class QPicamera(QCamera):
         try:
             request = self._device.capture_request()
             frame = request.make_array('main').copy()
-            if 'AfState' in self._controlValues:
-                req_meta = request.get_metadata()
-                if 'AfState' in req_meta:
-                    self._controlValues['AfState'] = int(req_meta['AfState'])
+            metadata = request.get_metadata()
+            if 'AfState' in self._controlValues and 'AfState' in metadata:
+                self._controlValues['AfState'] = int(metadata['AfState'])
+            self._onRequest(metadata)
             request.release()
         except Exception as ex:
             logger.warning(f'Frame read failed: {ex}')

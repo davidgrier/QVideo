@@ -17,6 +17,7 @@ Run the full camcorder application directly::
 
    quickstart
    jupyter
+   rpihat
    architecture
    extending
    api/lib

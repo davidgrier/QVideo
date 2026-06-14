@@ -61,3 +61,9 @@ Raspberry Pi Camera
 
 .. automodule:: QVideo.cameras.Picamera
    :members:
+
+Raspberry Pi AI Camera (IMX500)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: QVideo.cameras.Picamera._imx500
+   :members:

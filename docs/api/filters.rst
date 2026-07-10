@@ -124,6 +124,17 @@ Supports pipeline export.
 .. automodule:: QVideo.filters.gamma
    :members:
 
+Intensity inversion
+--------------------
+
+:class:`~QVideo.filters.invert.InvertFilter` inverts pixel intensities
+(``255 - pixel``) on every channel, turning a black-on-white image into
+white-on-black and back again.  Has no parameters.  Supports pipeline
+export.
+
+.. automodule:: QVideo.filters.invert
+   :members:
+
 Exposure correction
 -------------------
 

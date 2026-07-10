@@ -13,6 +13,7 @@ from .dog import DoGFilter, QDoGFilter
 from .exposure import ExposureFilter, QExposureFilter
 from .foreground import ForegroundEstimator, QForegroundEstimator
 from .gamma import GammaFilter, QGammaFilter
+from .invert import InvertFilter, QInvertFilter
 from .smoothing import SmoothingFilter, QSmoothingFilter
 from .edge import EdgeFilter, QEdgeFilter
 from .sobel import SobelFilter, QSobelFilter
@@ -38,6 +39,7 @@ DoGFilter QDoGFilter
 ExposureFilter QExposureFilter
 ForegroundEstimator QForegroundEstimator
 GammaFilter QGammaFilter
+InvertFilter QInvertFilter
 SmoothingFilter QSmoothingFilter
 EdgeFilter QEdgeFilter
 SobelFilter QSobelFilter

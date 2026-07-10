@@ -243,6 +243,60 @@ them:
   solid — avoid the overload sugar becoming the first thing that has
   to be designed.
 
+### Filters emit results; overlays subscribe instead of detecting
+
+Today `QYoloWidget`/`QTrackpyWidget` connect to `source.newFrame`
+directly and run their own detection, independent of whatever
+`QFilterBank`/`QFilterRack` is doing for display. That's a latent
+correctness gap: if a display filter crops or geometrically
+transforms the frame, the overlay's boxes are computed in raw-source
+coordinates but drawn on top of a transformed frame. It also
+duplicates work — `overlays/yolo.py`'s `_YoloWorker` is a hand-rolled
+`QThread` + drop-frame implementation structurally identical to
+`AsyncVideoFilter`'s `_AsyncWorker`.
+
+Proposed fix: move detection into a filter stage — e.g.
+`YOLOFilter(AsyncVideoFilter)` sitting in the rack, pass-through on
+the image, emitting a results signal — so detection runs on the frame
+*as it exists at that point in the pipeline*, staying correctly
+aligned with what's actually displayed, and one inference pass can
+feed the overlay, the planned [[project_analysis_writer]]
+(`QAnalysisWriter`), and a live stats readout simultaneously instead
+of each running its own detector.
+
+- **No base-class change needed.** `VideoFilter`/`AsyncVideoFilter`
+  are `QObject` subclasses already; any filter can declare its own
+  `Signal` directly (`YOLOFilter.detectionsReady = QtCore.Signal
+  (object)`) with zero changes to the shared base. Baking a results
+  signal into `VideoFilter`/`AsyncVideoFilter` themselves would be the
+  wrong call — those classes back nearly every filter in the project,
+  and only detector-style filters (YOLO, Trackpy, maybe a future
+  blob/DNN filter) ever need one; the other dozen-plus filters
+  (Gaussian, threshold, gamma, ...) would carry a signal they never
+  use.
+- **A small opt-in convention still helps the registration side.**
+  The overlay needs to find "the YOLO filter" in the rack and connect
+  to it without special-casing every filter class by name. That only
+  needs a consistent signal name (`resultsReady`) or a tiny marker
+  mixin (`class ResultsFilter: resultsReady = QtCore.Signal(object)`)
+  that just `YOLOFilter`/`TrackpyFilter` additionally inherit from —
+  additive and opt-in, not a change to `VideoFilter`/`AsyncVideoFilter`.
+- **Registration/enable API needed on `QFilterRack`** — the overlay
+  needs to find-or-create the detector filter instance by name/type,
+  connect to its results signal, and enable it if it isn't already
+  active; if the user later disables or removes that filter from the
+  rack, the overlay needs to notice and clear its drawn results rather
+  than show stale boxes.
+- **Migration cost:** a real refactor of two shipped widgets
+  (`QYoloWidget`, `QTrackpyWidget`) plus their tests — the
+  `AsyncVideoFilter` test-threading pattern (patching `QThread.start`/
+  `moveToThread` in `setUp`/`tearDown`, see
+  [[feedback_asyncfilter_test_threading]]) would apply to the
+  refactored overlay tests too.
+- **Natural pairing with the YOLO `cv2.dnn` test case** above — worth
+  designing the filter/signal split and the torch-free backend
+  together rather than migrating YOLO twice.
+
 ---
 
 ## DVR Enhancements

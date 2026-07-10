@@ -284,14 +284,122 @@ a full-codebase review (session 2026-07-10):
     reproducibility across OpenCV versions.
   - Redesigned DNN engine / ~80% ONNX coverage doesn't apply yet:
     `overlays/yolo.py` uses `ultralytics` directly, not `cv2.dnn`.
-    Only relevant if QVideo ever wants a zero-extra-dependency
-    detector via `cv2.dnn.readNetFromONNX`.
+    OpenCV 5.0 shipped 2026-06-04 with ONNX operator coverage jumping
+    from ~22% to ~80%, and the dev environment is now actually on
+    `cv2==5.0.0` (confirmed `cv2.dnn.readNet`,
+    `cv2.dnn.ENGINE_AUTO`/`ENGINE_NEW`/`ENGINE_ORT`,
+    `cv2.dnn.NMSBoxes` all present). A YOLOv8/v11 `.onnx` export now
+    loads directly via `cv2.dnn.readNet(...)`, giving a genuinely
+    torch-free detection path — see [[project_opencv5_yolo_research]].
+    Not yet prototyped against QVideo's `_YoloWorker`; would need
+    manual output decoding + `cv2.dnn.NMSBoxes` in place of
+    `ultralytics`' built-in postprocessing.
   - No legacy C API (`CvMat`/`IplImage`/`cv2.cv`) usage anywhere in
     the codebase — confirmed by grep, so the biggest OpenCV 5
     breaking change doesn't touch QVideo at all.
   - `numpy`/`opencv-python` are both unpinned in `pyproject.toml`, so
     NumPy 2.x support in OpenCV 5 needs no dependency-constraint
     action.
+
+---
+
+## OpenCV DNN Framework — New Capabilities
+
+OpenCV 5.0 (released 2026-06-04) rewrote the `cv2.dnn` engine and
+raised ONNX operator coverage from ~22% to ~80% (see "OpenCV 5
+Feature Adoption" above). The dev environment is confirmed on
+`cv2==5.0.0`. Survey of what this opens up for QVideo, roughly
+ordered by value vs. effort — see
+[[project_opencv5_yolo_research]] for the research behind this list:
+
+- **Torch-free YOLO backend (test case — start here)** — see below.
+- **Face/landmark detection with zero extra dependencies** —
+  `cv2.FaceDetectorYN` (the YuNet model, `cv2.dnn` under the hood,
+  Apache-2.0) as the implementation for the planned `QFaceWidget`
+  (see "Analysis Overlays") instead of MediaPipe or dlib.
+- **Learned segmentation as a `QForegroundEstimator` option** — an
+  ONNX segmentation model (U-Net/DeepLabV3-style) alongside the
+  existing classical MOG2 method, selectable per use case.
+- **Super-resolution filter** — `cv2.dnn_superres`
+  (EDSR/FSRCNN/ESPCN/LapSRN) as a new `VideoFilter` for upscaling
+  feeds from low-res USB cameras.
+- **Text/OCR overlay** — `cv2.dnn_TextDetectionModel` /
+  `TextRecognitionModel` (EAST + CRNN) to read burned-in timestamps,
+  instrument displays, or labels in the field of view.
+- **Monocular depth estimation** — a lightweight MiDaS-style ONNX
+  model as a software fallback pseudo-depth overlay where dedicated
+  depth hardware (Kinect/RealSense, see "New Camera Backends") isn't
+  available.
+- **VLM/natural-language frame captioning** — OpenCV 5 bundles VLM
+  support (Qwen 2.5, PaliGemma, etc.); a "describe this frame" widget
+  could auto-annotate recordings or flag notable events during
+  long unattended acquisitions.
+- **Anomaly/novelty detection** — a small autoencoder-style ONNX
+  model flagging frames that deviate from a learned baseline; pairs
+  with the hot-plug / long-duration-recording themes above.
+- **Foundational: shared `AsyncDNNFilter`/`QDNNOverlay` base class**
+  — wraps `cv2.dnn.Net` (model loading, `blobFromImage`
+  preprocessing, `ENGINE_AUTO` selection, a postprocessing hook).
+  Every item above needs the same boilerplate; one abstraction
+  avoids duplicating it the way `AsyncVideoFilter` already does for
+  background-thread filters generally. Worth building this first if
+  more than one DNN-backed filter is planned.
+
+### Test case: torch-free YOLO via `cv2.dnn`
+
+`overlays/yolo.py`'s `_YoloWorker` currently hard-requires
+`ultralytics`, which pulls in `torch` — the heaviest optional
+dependency in the project. Goal: add a `cv2.dnn`-based backend as a
+**second option alongside** the existing `ultralytics` path, not a
+replacement, and write up detailed instructions so users can prepare
+their own ONNX exports. Findings so far:
+
+- **Keep `torch`/`ultralytics` as an opt-in accelerated backend.**
+  OpenCV 5's new DNN engine is CPU-only at launch (its hardware
+  acceleration is CPU-side: Intel IPP/AVX, Arm KleidiCV, Qualcomm
+  FastCV, RISC-V RVV). Real GPU acceleration for `cv2.dnn`
+  (`DNN_BACKEND_CUDA`) requires building OpenCV from source with CUDA
+  — the standard `opencv-python`/`opencv-python-headless` pip wheels
+  don't include it. `torch`'s pip wheels bundle CUDA (and Apple MPS)
+  out of the box. So `cv2.dnn` should be the lightweight default;
+  `ultralytics`/`torch` remains the answer for users who have an
+  NVIDIA GPU and want maximum throughput.
+- **Reimplementation work needed:** `ultralytics`'s Python API does
+  box decoding, confidence filtering, and NMS internally.  A
+  `cv2.dnn` path needs to redo that manually with
+  `cv2.dnn.NMSBoxes` plus manual decoding of the YOLO output tensor
+  layout — which differs between YOLO versions/export conventions,
+  so the decoding logic must be pinned to a specific export
+  convention and documented as such.
+- **Do not bundle a `yolov11n.onnx` file in the QVideo repo or
+  package as a default fallback.** Ultralytics licenses all
+  pretrained YOLO checkpoints (including exports derived from them)
+  under AGPL-3.0 by default; their own license page states that using
+  the models obligates releasing the complete corresponding source of
+  "the larger application" under AGPL-3.0 unless the user holds an
+  Ultralytics Enterprise license. That is a materially stronger
+  copyleft obligation than QVideo's own GPL-3.0-or-later, and
+  redistributing the weights as a bundled default could pull
+  downstream users — especially commercial ones — into those terms
+  without them realizing it. Also a plain repo-hygiene concern:
+  bundling a binary model blob conflicts with the "media files belong
+  only under `docs/`" / no-build-step / small-footprint conventions
+  already in place (see "Reduce Core Dependencies").
+  Alternatives to write into the user instructions instead:
+  - Auto-download-on-first-use from a canonical source (mirroring
+    what `ultralytics.YOLO(model_name)` already does), caching
+    locally, with a clear notice of the AGPL-3.0 terms and a pointer
+    to Ultralytics' Enterprise licensing page for commercial users
+    who need to avoid them.
+  - Document how a user exports their own `.onnx` from a YOLO
+    checkpoint they already have rights to use (`torch` is required
+    for the one-time export step even though it's not needed at
+    inference time — "torch-free" applies to runtime, not model
+    preparation).
+  - Investigate whether the [OpenCV Zoo](https://github.com/opencv/
+    opencv_zoo) has a permissively-licensed (Apache-2.0) general
+    object-detection model suitable as a truly redistributable
+    default, separate from anything YOLO/Ultralytics-derived.
 
 ---
 

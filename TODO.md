@@ -295,10 +295,16 @@ a full-codebase review (session 2026-07-10):
 
 ---
 
-## Scale-aware scrolling of spinbox values
+## Scale-aware scrolling of spinbox values  **Done**
 
-- pyqtgraph implements the dec property for SpinBox, which
-  scales the step size according to the order of magnitude of the
-  value. This would be helpful for camera properties such as
-  exposure time that can range over several orders of magnitude.
-  Consider how to implement this feature.
+- ~~pyqtgraph implements the dec property for SpinBox, which scales
+  the step size according to the order of magnitude of the value.
+  This would be helpful for camera properties such as exposure time
+  that can range over several orders of magnitude. Consider how to
+  implement this feature.~~ `QCameraTree._updateStep` recomputes each
+  float parameter's step to ~10% of its current magnitude whenever
+  the value changes (tree edit, camera echo-back, or programmatic
+  `set()`), instead of `dec=True`'s coarse whole-power-of-ten jumps.
+  Applies to every float property in any `QCameraTree`, not just
+  GenICam — generalizes the adaptive-step precedent already used in
+  `QGenicamTree`.

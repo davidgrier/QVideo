@@ -1,6 +1,6 @@
 '''Unit tests for QCameraTree.'''
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from qtpy import QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
 from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
@@ -228,6 +228,77 @@ class TestQCameraTreeStartStop(unittest.TestCase):
         tree.start()
         tree.stop()
         self.assertFalse(tree.source.isRunning())
+
+
+class TestQCameraTreeUpdateStepUnit(unittest.TestCase):
+    '''Direct unit tests for the static _updateStep helper.'''
+
+    def test_skips_non_float_type(self):
+        param = MagicMock()
+        param.opts = {'type': 'int'}
+        QCameraTree._updateStep(param)
+        param.setOpts.assert_not_called()
+
+    def test_skips_zero_value(self):
+        param = MagicMock()
+        param.opts = {'type': 'float'}
+        param.value.return_value = 0.0
+        QCameraTree._updateStep(param)
+        param.setOpts.assert_not_called()
+
+    def test_skips_non_numeric_value(self):
+        param = MagicMock()
+        param.opts = {'type': 'float'}
+        param.value.return_value = 'not-a-number'
+        QCameraTree._updateStep(param)
+        param.setOpts.assert_not_called()
+
+    def test_step_is_tenth_of_order_of_magnitude(self):
+        param = MagicMock()
+        param.opts = {'type': 'float'}
+        param.value.return_value = 250.0
+        QCameraTree._updateStep(param)
+        param.setOpts.assert_called_once_with(step=10.0)
+
+    def test_step_scales_for_small_values(self):
+        param = MagicMock()
+        param.opts = {'type': 'float'}
+        param.value.return_value = 0.0005
+        QCameraTree._updateStep(param)
+        param.setOpts.assert_called_once_with(step=1e-5)
+
+    def test_step_uses_magnitude_for_negative_values(self):
+        param = MagicMock()
+        param.opts = {'type': 'float'}
+        param.value.return_value = -250.0
+        QCameraTree._updateStep(param)
+        param.setOpts.assert_called_once_with(step=10.0)
+
+
+class TestQCameraTreeAdaptiveStepIntegration(unittest.TestCase):
+    '''End-to-end coverage of adaptive stepping through a real tree.
+
+    Uses QNoiseCamera.fps, a genuine registered float property, so the
+    _sync/camera.set round trip exercises the real code path rather
+    than a property name unknown to the camera.
+    '''
+
+    def test_initial_step_set_on_tree_creation(self):
+        tree = make_tree()
+        step = tree._parameters['fps'].opts['step']
+        self.assertAlmostEqual(step, 1.0)  # fps defaults to 30.0
+
+    def test_step_rescales_when_tree_value_edited(self):
+        tree = make_tree()
+        tree._parameters['fps'].setValue(0.001)
+        step = tree._parameters['fps'].opts['step']
+        self.assertAlmostEqual(step, 1e-4)
+
+    def test_step_rescales_via_tree_set(self):
+        tree = make_tree()
+        tree.set('fps', 5000.0)
+        step = tree._parameters['fps'].opts['step']
+        self.assertAlmostEqual(step, 100.0)
 
 
 if __name__ == '__main__':

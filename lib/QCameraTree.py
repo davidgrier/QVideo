@@ -2,6 +2,7 @@
 from qtpy import QtCore, QtGui
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from QVideo.lib import QCamera, QVideoSource
+import math
 import logging
 
 
@@ -109,6 +110,8 @@ class QCameraTree(ParameterTree):
                                       children=description)
         self.setParameters(self._tree)
         self._parameters = self._getParameters(self._tree)
+        for param in self._parameters.values():
+            self._updateStep(param)
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
@@ -126,6 +129,27 @@ class QCameraTree(ParameterTree):
         self.adjustSize()
         self.setMinimumWidth(self.width())
 
+    @staticmethod
+    def _updateStep(param: Parameter) -> None:
+        '''Scale a float SpinBox's step to ~10% of its current magnitude.
+
+        pyqtgraph's ``dec=True`` mode jumps by a whole power of ten per
+        scroll click, which is too coarse for camera properties (e.g.
+        exposure time) that can span several orders of magnitude.
+        Recomputing the step from the live value on every change keeps
+        scrolling proportional at every magnitude instead.
+        '''
+        if param.opts.get('type') != 'float':
+            return
+        try:
+            value = float(param.value())
+        except (TypeError, ValueError):
+            return
+        if value == 0:
+            return
+        step = 10 ** (math.floor(math.log10(abs(value))) - 1)
+        param.setOpts(step=step)
+
     @QtCore.Slot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:
         if self._ignoreSync:
@@ -135,6 +159,7 @@ class QCameraTree(ParameterTree):
                 key = param.name()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
+                self._updateStep(param)
         self._ignoreSync = True
         for key, value in self.camera.settings.items():
             self.set(key, value)
@@ -153,7 +178,9 @@ class QCameraTree(ParameterTree):
         '''
         if key in self._parameters:
             logger.debug(f'set {key}: {value}')
-            self._parameters[key].setValue(value)
+            param = self._parameters[key]
+            param.setValue(value)
+            self._updateStep(param)
         else:
             logger.warning(f'Unsupported property: {key}')
 

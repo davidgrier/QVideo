@@ -155,6 +155,96 @@ Potential additions:
 
 ---
 
+## Screen() API and Composable Vision Pipelines
+
+`Camera()` (`lib/_camera.py`) already proves the "minimal code" factory
+pattern works well for QVideo: discover a backend, return something
+usable immediately, and — in Jupyter — stay awaitable/interactive.
+Two follow-on ideas from a 2026-07-10 discussion, in increasing order
+of ambition.
+
+### `Screen()` — a display counterpart to `Camera()`
+
+`_CameraProxy.live_view()` already solves the hard part of this in
+miniature: it streams JPEG-encoded frames into an `ipywidgets.Image`
+via an `asyncio` background task, with no `QVideoScreen`/Qt widget and
+no `QApplication` event loop involved. That capability is currently
+trapped as a method on the camera proxy — you can only view what
+`Camera()` opened.
+
+- **Factor it into a standalone `Screen(source)`** accepting any
+  `QCamera`, `QVideoSource`, or `_CameraProxy` — anything with the
+  `newFrame`/`fps` duck type `QVideoScreen.source` already accepts
+  (see [[project_viewbox_range_bug]]). Lets you view a filtered
+  pipeline, DVR playback, or a composited overlay feed, not just a
+  raw camera.
+- **Environment-dependent implementation**, mirroring the
+  `IPython.get_ipython()` check `_CameraProxy._select()` already does:
+  - **Jupyter notebook** — `ipywidgets.Image` + `asyncio` task, same
+    mechanism as `live_view()`. This works because `ipykernel` runs a
+    single persistent `asyncio` event loop that drives both cell
+    execution and any background task scheduled on it — the
+    frame-update loop keeps running between cells without blocking.
+  - **IPython terminal** — a real `QVideoScreen` widget kept live via
+    IPython's `%gui qt` input-hook (the same mechanism that makes
+    interactive `matplotlib` work), if the user has that integration
+    enabled.
+  - **Plain script / `python` REPL** — no persistent event loop and
+    no input-hook mechanism exists here, and Qt widgets must be
+    created/touched on the main thread (strictly enforced on macOS),
+    so there is no clean way to get a live-updating display *and* a
+    responsive prompt at the same time. Falls back to the traditional
+    blocking `screen.show(); app.exec()`.
+  - **Takeaway:** "watch video while still typing commands" is a
+    genuine capability, but it is a Jupyter-notebook-kernel property
+    (or an IPython-terminal-with-`%gui qt` property), not something
+    `Screen()` can generalize to every command line.
+
+### Composable pipelines: `Camera() -> Filter() -> Screen(overlay=...)`
+
+Prompted by `Screen()`: could a full vision system — camera, filter
+chain, live display, detection overlay — be assembled in a few lines,
+the way `Camera()` already assembles a camera in one? The pieces
+mostly already exist; what's missing is a thin factory layer over
+them:
+
+- **`Filter()` factory, analogous to `Camera()`/`Screen()`** — wraps
+  a `QFilterBank`/`QFilterRack` around a source and re-emits filtered
+  frames as a `newFrame`-duck-typed object, so it can feed a
+  `Screen()` or a DVR in turn. This already exists in embryonic,
+  private form: `demos/filterrackdemo.py::_FilteredSource` connects to
+  `source.newFrame`, runs the frame through a `QFilterRack`, and
+  re-emits it, exposing `.fps` — promoting this into a public
+  `lib/_filter.py::Filter(source, *filters)` would make it reusable
+  outside that one demo.
+- **`Screen(source, overlay=...)`** — construct the requested overlay
+  widget (`QYoloWidget`, `QTrackpyWidget`, ...), wire
+  `overlay.source = source`, and call
+  `screen.addOverlay(overlay.overlay)` automatically instead of the
+  multi-line manual wiring every demo currently repeats.
+- **The real obstacle: overlay rendering is Qt-only today.**
+  `QYoloOverlay`/`QTrackpyOverlay` draw via
+  `pyqtgraph.GraphicsObject.paint()` (a `QPainter` call) — that only
+  works inside a real `QVideoScreen` widget. The Jupyter/`live_view()`
+  path JPEG-encodes a bare numpy frame with no `QPainter` involved, so
+  `overlay=` can't work there without either (a) a second,
+  numpy/`cv2`-based rendering path per overlay (e.g. `cv2.rectangle`
+  for `QYoloOverlay`), or (b) reusing the existing
+  `QWidget.grab()`-based compositing machinery from
+  [[project_overlay_feature2]] (`QVideoScreen._renderComposite`) to
+  rasterize the live Qt screen + overlay into an image before
+  streaming it to `ipywidgets.Image` — which still requires a real
+  (if invisible) `QVideoScreen`/`QApplication` to exist even in the
+  Jupyter case, unlike the current pure-`ipywidgets` `live_view()`.
+- **Optional sugar, secondary to the factory-call form above:**
+  operator overloading (e.g. `cam | GaussianFilter() | Screen()`) for
+  a more pipeline-like feel. Worth considering only once the plain
+  `Screen(Filter(cam, ...), overlay=...)` factory composition is
+  solid — avoid the overload sugar becoming the first thing that has
+  to be designed.
+
+---
+
 ## DVR Enhancements
 
 - **Metadata sidecar** — write a JSON file alongside each recording

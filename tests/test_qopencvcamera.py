@@ -105,10 +105,32 @@ class TestInitialize(unittest.TestCase):
                         QOpenCVCamera()
         mock_cap.assert_called_with(0, cv2.CAP_V4L2)
 
-    def test_uses_cap_any_on_macos(self):
+    def test_uses_avfoundation_on_macos(self):
         import cv2
         device = make_mock_device()
         with patch('platform.system', return_value='Darwin'):
+            with patch('cv2.VideoCapture', return_value=device) as mock_cap:
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    with patch('QVideo.cameras.OpenCV._camera.probe_formats',
+                               return_value=[(640, 480, 1., 30.)]):
+                        QOpenCVCamera()
+        mock_cap.assert_called_with(0, cv2.CAP_AVFOUNDATION)
+
+    def test_uses_msmf_on_windows(self):
+        import cv2
+        device = make_mock_device()
+        with patch('platform.system', return_value='Windows'):
+            with patch('cv2.VideoCapture', return_value=device) as mock_cap:
+                with patch('QVideo.cameras.OpenCV._camera.configure'):
+                    with patch('QVideo.cameras.OpenCV._camera.probe_formats',
+                               return_value=[(640, 480, 1., 30.)]):
+                        QOpenCVCamera()
+        mock_cap.assert_called_with(0, cv2.CAP_MSMF)
+
+    def test_uses_cap_any_on_other_platforms(self):
+        import cv2
+        device = make_mock_device()
+        with patch('platform.system', return_value='Java'):
             with patch('cv2.VideoCapture', return_value=device) as mock_cap:
                 with patch('QVideo.cameras.OpenCV._camera.configure'):
                     with patch('QVideo.cameras.OpenCV._camera.probe_formats',

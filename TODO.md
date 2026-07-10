@@ -255,6 +255,23 @@ image paths or GitHub-hosted raw URLs that require authentication.
 
 ---
 
+## OpenCV 5 Feature Adoption
+
+OpenCV 5 improves property setting (see the platform-specific capture
+backend selection added in `cameras/OpenCV/_camera.py`).  Audit the
+rest of the OpenCV surface for similar upgrades:
+
+- **`QOpenCVCamera` property setting** — fold OpenCV 5's improved
+  `cv2.VideoCapture.set()` behavior into `_devices.py`/`_camera.py`
+  where it simplifies or makes more reliable the existing
+  resolution/fps probing and configuration logic.
+- **Filters and other capabilities** — survey `filters/` and other
+  OpenCV-backed modules (DVR writer/reader, resolution probing) for
+  new OpenCV 5 APIs or behavior changes that could simplify code or
+  unlock new features.
+
+---
+
 ## Scale-aware scrolling of spinbox values
 
 - pyqtgraph implements the dec property for SpinBox, which

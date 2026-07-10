@@ -137,7 +137,15 @@ class QOpenCVCamera(QCamera):
         bool
             ``True`` if the device was opened and returned at least one frame.
         '''
-        api = cv2.CAP_V4L2 if platform.system() == 'Linux' else cv2.CAP_ANY
+        match platform.system():
+            case 'Linux':
+                api = cv2.CAP_V4L2
+            case 'Windows':
+                api = cv2.CAP_MSMF
+            case 'Darwin':
+                api = cv2.CAP_AVFOUNDATION
+            case _:
+                api = cv2.CAP_ANY
         self._device = cv2.VideoCapture(self._cameraID, api)
         # Probe supported resolutions and their actual maximum frame rates on
         # the live device before configuring.  QtMultimedia nominal fps values

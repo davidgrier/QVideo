@@ -9,8 +9,28 @@ except (ImportError, AttributeError):
     _QMediaDevices = None
 
 
-__all__ = ['QOpenCVDevices', 'COMMON_RESOLUTIONS',
+__all__ = ['QOpenCVDevices', 'COMMON_RESOLUTIONS', 'capture_backend',
            'probe_resolutions', 'probe_formats', 'configure']
+
+
+def capture_backend() -> int:
+    '''Return the preferred ``cv2.VideoCapture`` backend for this platform.
+
+    Returns
+    -------
+    int
+        ``cv2.CAP_V4L2`` on Linux, ``cv2.CAP_MSMF`` on Windows,
+        ``cv2.CAP_AVFOUNDATION`` on macOS, and ``cv2.CAP_ANY`` elsewhere.
+    '''
+    match platform.system():
+        case 'Linux':
+            return cv2.CAP_V4L2
+        case 'Windows':
+            return cv2.CAP_MSMF
+        case 'Darwin':
+            return cv2.CAP_AVFOUNDATION
+        case _:
+            return cv2.CAP_ANY
 
 
 COMMON_RESOLUTIONS: list[tuple[int, int]] = [
@@ -325,7 +345,7 @@ class QOpenCVDevices:
         '''
         found = []
         for i in range(10):
-            cap = cv2.VideoCapture(i)
+            cap = cv2.VideoCapture(i, capture_backend())
             if not cap.isOpened():
                 cap.release()
                 break
@@ -353,8 +373,7 @@ class QOpenCVDevices:
         list[tuple[int, int, float, float]]
             ``(width, height, 1.0, max_fps)`` for each accepted resolution.
         '''
-        api = cv2.CAP_V4L2 if platform.system() == 'Linux' else cv2.CAP_ANY
-        cap = cv2.VideoCapture(cameraID, api)
+        cap = cv2.VideoCapture(cameraID, capture_backend())
         if not cap.isOpened():
             cap.release()
             return []

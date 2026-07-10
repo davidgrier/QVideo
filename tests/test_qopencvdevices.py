@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import QVideo.cameras.OpenCV._devices as _devices_module
-from QVideo.cameras.OpenCV._devices import QOpenCVDevices
+from QVideo.cameras.OpenCV._devices import QOpenCVDevices, capture_backend
 
 
 def make_mock_format(width, height, min_fps, max_fps):
@@ -43,6 +43,29 @@ def make_mock_qmediadevices(devices):
     mock_cls = MagicMock()
     mock_cls.videoInputs.return_value = devices
     return mock_cls
+
+
+class TestCaptureBackend(unittest.TestCase):
+
+    def test_linux_uses_v4l2(self):
+        import cv2
+        with patch('platform.system', return_value='Linux'):
+            self.assertEqual(capture_backend(), cv2.CAP_V4L2)
+
+    def test_windows_uses_msmf(self):
+        import cv2
+        with patch('platform.system', return_value='Windows'):
+            self.assertEqual(capture_backend(), cv2.CAP_MSMF)
+
+    def test_darwin_uses_avfoundation(self):
+        import cv2
+        with patch('platform.system', return_value='Darwin'):
+            self.assertEqual(capture_backend(), cv2.CAP_AVFOUNDATION)
+
+    def test_other_platforms_use_cap_any(self):
+        import cv2
+        with patch('platform.system', return_value='Java'):
+            self.assertEqual(capture_backend(), cv2.CAP_ANY)
 
 
 class TestCameras(unittest.TestCase):
@@ -269,11 +292,29 @@ class TestProbeFormats(unittest.TestCase):
                 QOpenCVDevices._probe_formats(0)
         mock_cap.assert_called_once_with(0, cv2.CAP_V4L2)
 
-    def test_uses_cap_any_on_non_linux(self):
+    def test_uses_avfoundation_on_darwin(self):
         import cv2
         cap = MagicMock()
         cap.isOpened.return_value = False
         with patch('platform.system', return_value='Darwin'):
+            with patch('cv2.VideoCapture', return_value=cap) as mock_cap:
+                QOpenCVDevices._probe_formats(0)
+        mock_cap.assert_called_once_with(0, cv2.CAP_AVFOUNDATION)
+
+    def test_uses_msmf_on_windows(self):
+        import cv2
+        cap = MagicMock()
+        cap.isOpened.return_value = False
+        with patch('platform.system', return_value='Windows'):
+            with patch('cv2.VideoCapture', return_value=cap) as mock_cap:
+                QOpenCVDevices._probe_formats(0)
+        mock_cap.assert_called_once_with(0, cv2.CAP_MSMF)
+
+    def test_uses_cap_any_elsewhere(self):
+        import cv2
+        cap = MagicMock()
+        cap.isOpened.return_value = False
+        with patch('platform.system', return_value='Java'):
             with patch('cv2.VideoCapture', return_value=cap) as mock_cap:
                 QOpenCVDevices._probe_formats(0)
         mock_cap.assert_called_once_with(0, cv2.CAP_ANY)

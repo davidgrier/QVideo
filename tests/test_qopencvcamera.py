@@ -475,6 +475,38 @@ class TestProbeProperties(unittest.TestCase):
                 cam = QOpenCVCamera()
         self.assertIn('fps', cam.properties)
 
+    def test_negative_get_value_skips_without_calling_set(self):
+        '''OpenCV 5 reports an unsupported property as get() < 0.'''
+        import cv2
+        device = make_mock_device()
+        device.get.side_effect = lambda prop: {
+            QOpenCVCamera.WIDTH: 640,
+            QOpenCVCamera.HEIGHT: 480,
+            QOpenCVCamera.FPS: 30.,
+        }.get(prop, -1)
+        with patch('cv2.VideoCapture', return_value=device):
+            with patch('QVideo.cameras.OpenCV._camera.probe_formats',
+                              return_value=[(640, 480, 1., 30.)]):
+                cam = QOpenCVCamera()
+        self.assertNotIn('brightness', cam.properties)
+        set_props = [c.args[0] for c in device.set.call_args_list]
+        self.assertNotIn(cv2.CAP_PROP_BRIGHTNESS, set_props)
+
+    def test_negative_exposure_value_still_probed(self):
+        '''exposure is exempt from the get() < 0 fast path (log2 scale).'''
+        device = make_mock_device()
+        device.get.side_effect = lambda prop: {
+            QOpenCVCamera.WIDTH: 640,
+            QOpenCVCamera.HEIGHT: 480,
+            QOpenCVCamera.FPS: 30.,
+        }.get(prop, -1)
+        device.set.return_value = True
+        with patch('cv2.VideoCapture', return_value=device):
+            with patch('QVideo.cameras.OpenCV._camera.probe_formats',
+                              return_value=[(640, 480, 1., 30.)]):
+                cam = QOpenCVCamera()
+        self.assertIn('exposure', cam.properties)
+
 
 class TestQOpenCVSource(unittest.TestCase):
 

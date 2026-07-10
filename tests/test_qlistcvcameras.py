@@ -157,7 +157,7 @@ class TestProbeCameras(unittest.TestCase):
 
     def _make_cv2_mock(self, open_at=(0,), width=640, height=480):
         '''Return a VideoCapture constructor mock that opens only at given indices.'''
-        def factory(index):
+        def factory(index, api=None):
             cap = make_mock_capture(is_open=(index in open_at),
                                     width=width, height=height)
             return cap
@@ -207,7 +207,7 @@ class TestProbeCameras(unittest.TestCase):
         self.assertEqual(calls, [0, 3])
 
     def test_log_level_restored_on_exception(self):
-        def bad_capture(i):
+        def bad_capture(i, api=None):
             raise RuntimeError('device error')
         with patch.object(cv2, 'getLogLevel', return_value=3, create=True), \
              patch.object(cv2, 'setLogLevel', create=True) as mock_set_log, \

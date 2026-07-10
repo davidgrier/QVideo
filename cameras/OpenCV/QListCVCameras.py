@@ -2,6 +2,7 @@ import warnings
 import cv2
 from QVideo.lib import QListCameras
 from QVideo.cameras.OpenCV import QOpenCVCamera
+from QVideo.cameras.OpenCV._devices import capture_backend
 
 try:
     from cv2_enumerate_cameras import enumerate_cameras as _enumerate_cameras
@@ -35,7 +36,7 @@ def _probe_cameras():
         _set_log(0)
     try:
         for i in range(_MAX_PROBE):
-            cap = cv2.VideoCapture(i)
+            cap = cv2.VideoCapture(i, capture_backend())
             if cap.isOpened():
                 w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))

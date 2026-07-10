@@ -1,7 +1,7 @@
 from QVideo.lib import QCamera, QVideoSource
-from QVideo.cameras.OpenCV._devices import configure, probe_formats
+from QVideo.cameras.OpenCV._devices import (
+    capture_backend, configure, probe_formats)
 import cv2
-import platform
 import logging
 
 
@@ -137,16 +137,7 @@ class QOpenCVCamera(QCamera):
         bool
             ``True`` if the device was opened and returned at least one frame.
         '''
-        match platform.system():
-            case 'Linux':
-                api = cv2.CAP_V4L2
-            case 'Windows':
-                api = cv2.CAP_MSMF
-            case 'Darwin':
-                api = cv2.CAP_AVFOUNDATION
-            case _:
-                api = cv2.CAP_ANY
-        self._device = cv2.VideoCapture(self._cameraID, api)
+        self._device = cv2.VideoCapture(self._cameraID, capture_backend())
         # Probe supported resolutions and their actual maximum frame rates on
         # the live device before configuring.  QtMultimedia nominal fps values
         # are unreliable; reading back what the driver accepts is accurate.
@@ -192,10 +183,18 @@ class QOpenCVCamera(QCamera):
         For each entry in :data:`_PROBED_PROPS`, attempts to set the
         property to its current value.  If the device accepts the write,
         the property is registered as read-write; otherwise it is skipped.
+
+        OpenCV reports an unsupported property as a negative ``get()``
+        value, so those are skipped without attempting the write.
+        ``exposure`` is exempted: V4L2 reports it on a log2 scale, so
+        legitimate exposure values can themselves be negative.
         '''
         registered = []
         for name, (prop_id, ptype) in _PROBED_PROPS.items():
             value = self._device.get(prop_id)
+            if value < 0 and name != 'exposure':
+                logger.debug(f'Property {name!r} not supported by this device')
+                continue
             if self._device.set(prop_id, value):
                 setter = (self._setFps if name == 'fps'
                           else lambda v, p=prop_id: self._device.set(p, v))

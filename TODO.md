@@ -258,17 +258,40 @@ image paths or GitHub-hosted raw URLs that require authentication.
 ## OpenCV 5 Feature Adoption
 
 OpenCV 5 improves property setting (see the platform-specific capture
-backend selection added in `cameras/OpenCV/_camera.py`).  Audit the
-rest of the OpenCV surface for similar upgrades:
+backend selection added in `cameras/OpenCV/_camera.py`).  Findings from
+a full-codebase review (session 2026-07-10):
 
-- **`QOpenCVCamera` property setting** — fold OpenCV 5's improved
-  `cv2.VideoCapture.set()` behavior into `_devices.py`/`_camera.py`
-  where it simplifies or makes more reliable the existing
-  resolution/fps probing and configuration logic.
-- **Filters and other capabilities** — survey `filters/` and other
-  OpenCV-backed modules (DVR writer/reader, resolution probing) for
-  new OpenCV 5 APIs or behavior changes that could simplify code or
-  unlock new features.
+- ~~**Propagate the per-platform backend fix to all `VideoCapture`
+  call sites.**~~  **Done.**  `capture_backend()` in `_devices.py`
+  factors out the four-way `CAP_V4L2` / `CAP_MSMF` / `CAP_AVFOUNDATION`
+  / `CAP_ANY` platform match and is now reused by `_camera.py`,
+  `_devices.py::_probe_formats`, `_devices.py::_probe_cameras`, and
+  `QListCVCameras.py::_probe_cameras`.
+- ~~**`VideoCapture.get()` now returns `-1` for unsupported
+  properties**~~  **Done.**  `_camera.py::_probeProperties` now skips
+  a property without attempting `set()` when `get()` returns a
+  negative value, except `exposure`, which is exempted because V4L2
+  reports it on a log2 scale where legitimate values are themselves
+  negative.
+- **Lower priority / cosmetic**, no action needed yet:
+  - Python bindings now accept keyword arguments broadly
+    (`cv2.fn(threshold=0.5)`) — could clean up the more
+    parameter-heavy calls in `threshold.py`, `exposure.py`,
+    `artistic.py`.
+  - `warpAffine`/`remap` interpolation was revised for accuracy in
+    5.x — affects `dejitter.py`'s `cv2.warpAffine` call; output will
+    shift slightly (not a bug), relevant only if chasing bit-exact
+    reproducibility across OpenCV versions.
+  - Redesigned DNN engine / ~80% ONNX coverage doesn't apply yet:
+    `overlays/yolo.py` uses `ultralytics` directly, not `cv2.dnn`.
+    Only relevant if QVideo ever wants a zero-extra-dependency
+    detector via `cv2.dnn.readNetFromONNX`.
+  - No legacy C API (`CvMat`/`IplImage`/`cv2.cv`) usage anywhere in
+    the codebase — confirmed by grep, so the biggest OpenCV 5
+    breaking change doesn't touch QVideo at all.
+  - `numpy`/`opencv-python` are both unpinned in `pyproject.toml`, so
+    NumPy 2.x support in OpenCV 5 needs no dependency-constraint
+    action.
 
 ---
 

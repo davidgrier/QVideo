@@ -109,6 +109,20 @@ hardware — the rest of the code is identical.
 | `cameras/Vimbax` | `QVimbaXCamera` | Allied Vision cameras via VimbaX GenTL producer |
 | `cameras/Picamera` | `QPicamera` | Raspberry Pi camera module |
 
+## Compatibility
+
+Verified on real hardware (the unit tests mock all hardware):
+
+| Backend | macOS | Ubuntu | Raspberry Pi OS | Windows |
+|---------|-------|--------|-----------------|---------|
+| OpenCV | 14 – 26 | 24.04 | tested | not tested |
+| FLIR (GenICam) | 14 – 26 | not yet tested | — | not tested |
+
+On macOS 26.7.1 (Tahoe), the OpenCV backend was tested with OpenCV
+5.0.0_11 and the FLIR backend with Spinnaker SDK 4.4.0.246.  Other combinations are expected to work but have not been
+checked.  See the [documentation](https://qvideo.readthedocs.io) for
+details.
+
 ## Writing a new camera backend
 
 Subclass `QCamera` and implement three methods:

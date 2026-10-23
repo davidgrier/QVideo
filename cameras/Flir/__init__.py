@@ -5,12 +5,11 @@ through `Spinnaker <https://www.flir.com/products/spinnaker-sdk/>`_,
 FLIR's machine-vision SDK.  The Spinnaker installer registers the
 GenTL producer path in ``GENICAM_GENTL64_PATH``.
 
-.. warning::
+.. note::
 
-    Spinnaker GenTL producer **4.3.0.189** contains a bug that causes
-    the application to hang on exit when the camera is released.
-    Downgrade to Spinnaker **4.1.0.172** or earlier if you encounter
-    this issue.
+    Spinnaker GenTL producer 4.3.0.189 hangs in ``DevClose()`` when the
+    camera is released, which blocks application exit.  The bug is fixed
+    in Spinnaker 4.4.0.
 
 Classes
 -------

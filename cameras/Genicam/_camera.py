@@ -1,9 +1,11 @@
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import gentl
+from QVideo.lib.errors import QDeviceError, QDriverError
 import numpy as np
-import os
 import logging
+import os
 from pathlib import Path
 
 if TYPE_CHECKING:
@@ -43,7 +45,8 @@ class QGenicamCamera(QCamera):
 
     Subclasses **must** set the :attr:`producer` class attribute to the path
     of the appropriate ``.cti`` file before instantiating.  Attempting to
-    instantiate :class:`QGenicamCamera` directly raises :exc:`TypeError`.
+    instantiate :class:`QGenicamCamera` directly raises
+    :exc:`~QVideo.lib.errors.QDriverError`.
 
     Requires the ``genicam`` and ``harvesters`` packages
     (``pip install genicam harvesters``).
@@ -66,6 +69,7 @@ class QGenicamCamera(QCamera):
 
     producer: str | Path | None = None
     _producer_filenames: tuple[str, ...] = ()
+    _producerHint: str = ''
     _ALIASES = frozenset(('width', 'height', 'fps'))
 
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
@@ -85,30 +89,28 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        producer = (self.producer
-                    or self._findProducer(*self._producer_filenames))
-        if producer is None:
-            logger.warning(
-                f'{type(self).__name__}: no GenTL producer available '
-                f'(set GENICAM_GENTL64_PATH before opening the camera)')
-            return False
+        producer = self._locateProducer()
         self._harvester = Harvester()
         self._device = None
         try:
             self._harvester.add_file(producer)
             self._harvester.update()
         except Exception as ex:
-            logger.warning(
-                f'Failed to load producer {producer!r}: {ex}')
             self._cleanup()
-            return False
+            raise QDriverError(
+                f'{type(self).__name__}: cannot load GenTL producer '
+                f'{producer}: {ex}') from ex
         try:
             self._device = self._harvester.create(self._cameraID)
         except Exception as ex:
-            logger.warning(
-                f'No camera found at index {self._cameraID}: {ex}')
+            count = len(self._harvester.device_info_list)
             self._cleanup()
-            return False
+            raise QDeviceError(
+                f'{type(self).__name__}: cannot open camera '
+                f'{self._cameraID} ({count} found via {Path(producer).name}'
+                f'): {ex}\n'
+                'Check that the camera is connected and powered, and that '
+                'you have permission to access it.') from ex
         self._nodeMap = self._device.remote_device.node_map
         if not self._nodeMap.has_node('Root'):
             logger.warning('harvesters node map unconnected; '
@@ -116,7 +118,9 @@ class QGenicamCamera(QCamera):
             self._nodeMap = self._load_node_map(self._device)
             if self._nodeMap is None:
                 self._cleanup()
-                return False
+                raise QDeviceError(
+                    f'{type(self).__name__}: cannot read the GenICam '
+                    'node map from the camera')
         root = self.node()
         ma = self._scan_modes(root)
         self._device.start()
@@ -135,6 +139,35 @@ class QGenicamCamera(QCamera):
                 self._properties[dst] = self._properties[src]
         return True
 
+    @classmethod
+    def _locateProducer(cls) -> str:
+        '''Return the path to the GenTL producer, or explain why not.
+
+        Raises
+        ------
+        QDriverError
+            If no producer is configured, ``GENICAM_GENTL64_PATH`` is
+            unset, or the producer file is not on that path.
+        '''
+        if cls.producer:
+            return str(cls.producer)
+        name = cls.__name__
+        if not cls._producer_filenames:
+            raise QDriverError(f'{name}: no GenTL producer configured')
+        wanted = ' or '.join(cls._producer_filenames)
+        hint = f'\n{cls._producerHint}' if cls._producerHint else ''
+        if not gentl.gentlPaths():
+            raise QDriverError(
+                f'{name}: {gentl.ENV} is not set, so {wanted} cannot be '
+                f'located.{hint}')
+        found = cls._findProducer(*cls._producer_filenames)
+        if found is None:
+            searched = os.pathsep.join(gentl.gentlPaths())
+            raise QDriverError(
+                f'{name}: {wanted} not found in {gentl.ENV} '
+                f'({searched}).{hint}')
+        return found
+
     def _cleanup(self) -> None:
         '''Release partially initialized resources after a failed _initialize.
 
@@ -152,10 +185,11 @@ class QGenicamCamera(QCamera):
             except Exception:
                 pass
             self._device = None
-        try:
-            self._harvester.reset()
-        except Exception:
-            pass
+        if self._harvester is not None:
+            try:
+                self._harvester.reset()
+            except Exception:
+                pass
         self._nodeMap = None
 
     def _deinitialize(self) -> None:
@@ -221,6 +255,8 @@ class QGenicamCamera(QCamera):
     def _findProducer(*filenames: str) -> 'str | None':
         '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
 
+        See :func:`QVideo.lib.gentl.findProducer`.
+
         Parameters
         ----------
         *filenames : str
@@ -232,13 +268,7 @@ class QGenicamCamera(QCamera):
             Absolute path to the first ``.cti`` file found, or ``None`` if
             none of the requested producers exist on the path.
         '''
-        search_path = os.environ.get('GENICAM_GENTL64_PATH', '')
-        for directory in search_path.split(os.pathsep):
-            for name in filenames:
-                candidate = Path(directory) / name
-                if candidate.exists():
-                    return str(candidate)
-        return None
+        return gentl.findProducer(*filenames)
 
     @staticmethod
     def _load_node_map(device: 'ImageAcquirer') -> 'NodeMap | None':

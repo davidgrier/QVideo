@@ -7,6 +7,9 @@ Classes
 -------
 QCamera
     Abstract base class for all camera backends.
+QCameraError
+    Base class for failures to open a camera (see also
+    ``QDriverError`` and ``QDeviceError``).
 QVideoSource
     Thread that reads frames from a :class:`QCamera` and emits them.
 QCameraTree
@@ -38,6 +41,7 @@ QListCameras
 from .videotypes import Image
 from .clickable import clickable
 from .QCamera import QCamera
+from .errors import QCameraError, QDriverError, QDeviceError
 from .QVideoSource import QVideoSource
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
@@ -57,6 +61,6 @@ from .QSnapshot import QSnapshot
 
 __all__ = '''Image
 clickable Camera choose_camera QListCameras
-QCamera QVideoSource QCameraTree QFilterBank QFilterRack
+QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen
 QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter AsyncVideoFilter'''.split()

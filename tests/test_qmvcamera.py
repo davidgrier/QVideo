@@ -1,4 +1,5 @@
 '''Unit tests for QMVCamera and QMVSource.'''
+import os
 import sys
 import unittest
 import numpy as np
@@ -69,6 +70,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
+from QVideo.lib.errors import QDriverError  # noqa: E402
 from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.cameras.MV._camera import QMVCamera, QMVSource
 
@@ -131,11 +133,10 @@ class TestSubclass(unittest.TestCase):
 
 class TestProducer(unittest.TestCase):
 
-    def test_returns_false_without_producer(self):
+    def test_raises_without_producer(self):
         with patch.object(QMVCamera, 'producer', None):
-            with self.assertLogs(level='WARNING'):
-                cam = QMVCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaises(QDriverError):
+                QMVCamera()
 
     def test_opens_with_mocked_hardware(self):
         cam, _, _ = make_camera()
@@ -184,6 +185,20 @@ class TestSource(unittest.TestCase):
                 src = QMVSource(cameraID=3)
         harvester.create.assert_called_once_with(3)
         src.source.close()
+
+class TestProducerMessages(unittest.TestCase):
+
+    def test_producer_resolved_lazily(self):
+        self.assertIsNone(QMVCamera.producer)
+
+    def test_unset_env_names_file_and_hint(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(QDriverError) as ctx:
+                QMVCamera()
+        message = str(ctx.exception)
+        self.assertIn('GENICAM_GENTL64_PATH is not set', message)
+        self.assertIn('mvGenTLProducer.cti', message)
+        self.assertIn('Install', message)
 
 
 if __name__ == '__main__':  # pragma: no cover

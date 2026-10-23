@@ -57,8 +57,12 @@ def _ensure_qapp() -> None:
         QApplication([])
 
 
-def _open(key: str, camera_id: int = 0):
-    '''Import and instantiate the camera for *key*. Returns None on failure.'''
+def _open(key: str, camera_id: int = 0, errors: list | None = None):
+    '''Import and instantiate the camera for *key*. Returns None on failure.
+
+    If *errors* is given, a ``(label, exception)`` pair is appended to it
+    when the camera cannot be created.
+    '''
     _ensure_qapp()
     entry = _BACKENDS[key]
     try:
@@ -67,6 +71,8 @@ def _open(key: str, camera_id: int = 0):
         return cls(cameraID=camera_id)
     except Exception as ex:
         logger.warning(f'Could not open {entry.label}: {ex}')
+        if errors is not None:
+            errors.append((entry.label, ex))
         return None
 
 
@@ -93,6 +99,20 @@ def _quiet():
         yield
     finally:
         root.setLevel(saved)
+
+
+def _describe(errors: list) -> str:
+    '''Format ``(label, reason)`` pairs, one backend per paragraph.'''
+    return '\n'.join(f'{label}: {reason}' for label, reason in errors)
+
+
+def _unavailable(model: str) -> str:
+    '''Return the reason the backend for *model* cannot be imported.'''
+    try:
+        importlib.import_module(_BACKENDS[model.lower()].module)
+    except (ImportError, ModuleNotFoundError) as ex:
+        return f':\n{ex}'
+    return ''
 
 
 def _working_candidates(
@@ -190,19 +210,26 @@ class _CameraProxy:
             return
         candidates = object.__getattribute__(self, '_candidates')
         hardware = [k for k, _ in candidates if k != 'noise']
+        errors = []
         with _quiet():
             for key, camera_id in candidates:
-                cam = _open(key, camera_id)
+                cam = _open(key, camera_id, errors)
                 if cam is not None and cam.isOpen():
                     object.__setattr__(self, '_camera', cam)
                     object.__setattr__(self, '_selected_key', key)
                     break
+                if cam is not None:
+                    errors.append((_BACKENDS[key].label,
+                                   'device failed to open'))
         if object.__getattribute__(self, '_camera') is None:
-            raise RuntimeError('No camera could be opened')
+            raise RuntimeError(
+                'No camera could be opened'
+                + (f':\n{_describe(errors)}' if errors else ''))
         selected = object.__getattribute__(self, '_selected_key')
         if selected == 'noise' and hardware:
             logger.warning(
-                'No camera hardware detected; using simulated camera')
+                'No camera hardware detected; using simulated camera'
+                + (f':\n{_describe(errors)}' if errors else ''))
 
     def read(self) -> 'Image':
         '''Read one frame and return it as a numpy array.'''
@@ -447,6 +474,6 @@ def Camera(model: str | None = None, cameraID: int = 0) -> _CameraProxy:
     if not candidates:
         raise RuntimeError(
             'No camera available'
-            + (f' for model {model!r}' if model else '')
+            + (f' for model {model!r}{_unavailable(model)}' if model else '')
         )
     return _CameraProxy(candidates)

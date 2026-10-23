@@ -13,7 +13,11 @@ class QIDSCamera(QGenicamCamera):
     whose paths are discovered automatically from the ``GENICAM_GENTL64_PATH``
     environment variable set by the IDS peak installer.
 
-    If IDS peak is not installed, instantiation raises :exc:`TypeError`.
+    If IDS peak is not installed, or the producer or camera cannot be
+    found, instantiation raises :exc:`~QVideo.lib.errors.QCameraError`
+    with a message describing what is missing.  Run
+    ``python -m QVideo.lib.gentl ids_u3vgentl.cti`` for a
+    step-by-step diagnosis.
 
     Parameters
     ----------
@@ -22,6 +26,9 @@ class QIDSCamera(QGenicamCamera):
     '''
 
     _producer_filenames = ('ids_u3vgentl.cti', 'ids_gevgentl.cti')
+    _producerHint = (
+        'Install IDS peak and set GENICAM_GENTL64_PATH to the '
+        'directory containing ids_u3vgentl.cti or ids_gevgentl.cti.')
 
 
 class QIDSSource(QGenicamSource):

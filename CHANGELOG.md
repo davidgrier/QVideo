@@ -7,6 +7,40 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.19.0] — 2026-10-23
+
+### Changed
+
+- **GenICam backends report why a camera cannot be opened** — a missing
+  `GENICAM_GENTL64_PATH`, a producer `.cti` that is not on that path, a
+  producer that fails to load, and a missing camera now raise
+  `QDriverError` / `QDeviceError` (subclasses of the new `QCameraError`)
+  with an actionable message instead of logging a warning and leaving the
+  camera closed.  `Camera()` and `choose_camera()` include each backend's
+  reason when no camera can be opened or when they fall back to the
+  simulated camera, and `Camera('flir')` reports the import failure when
+  `harvesters`/`genicam` are missing.
+- Spinnaker 4.3.0.189 warning replaced by a note that 4.4.0 fixes it.
+
+### Added
+
+- `python -m QVideo.lib.gentl [producer.cti ...]` — step-by-step GenTL
+  diagnostic that works without `harvesters`/`genicam` installed.
+
+### Fixed
+
+- `QListFlirCameras` called `QFlirCamera.producer()` on a `None` class
+  attribute and raised `TypeError`; it now resolves the producer and logs
+  a warning if it cannot be found.
+- `QBaslerCamera` and `QMVCamera` looked for their producer when the module
+  was imported, so setting `GENICAM_GENTL64_PATH` afterward had no effect.
+  They now resolve it when the camera is opened, like the other GenICam
+  backends, and give the same specific error messages.
+- Empty entries in `GENICAM_GENTL64_PATH` no longer cause the current
+  directory to be searched for producers.
+
+---
+
 ## [3.6.9] — 2026-05-04
 
 ### Fixed

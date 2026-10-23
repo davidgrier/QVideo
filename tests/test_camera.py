@@ -156,6 +156,56 @@ class TestCameraProxy(unittest.TestCase):
                 proxy._ensure_open()
 
 
+class TestOpenErrors(unittest.TestCase):
+
+    def test_open_records_exception(self):
+        errors = []
+        boom = RuntimeError('GENICAM_GENTL64_PATH is not set')
+        with patch('importlib.import_module', side_effect=boom):
+            self.assertIsNone(camera_module._open('flir', 0, errors))
+        self.assertEqual(errors, [('Flir', boom)])
+
+    def test_ensure_open_error_lists_reason_per_backend(self):
+        proxy = _CameraProxy([('flir', 0), ('basler', 0)])
+
+        def fake_open(key, camera_id, errors):
+            errors.append((_BACKENDS[key].label, RuntimeError(f'why {key}')))
+        with patch('QVideo.lib._camera._open', side_effect=fake_open):
+            with self.assertRaises(RuntimeError) as ctx:
+                proxy._ensure_open()
+        message = str(ctx.exception)
+        self.assertIn('Flir: why flir', message)
+        self.assertIn('Basler: why basler', message)
+
+    def test_noise_fallback_warning_includes_reasons(self):
+        proxy = _CameraProxy([('flir', 0), ('noise', 0)])
+        noise = make_mock_noise_camera()
+
+        def fake_open(key, camera_id, errors):
+            if key == 'flir':
+                errors.append(('Flir', RuntimeError('no producer')))
+                return None
+            return noise
+        with patch('QVideo.lib._camera._open', side_effect=fake_open):
+            with self.assertLogs('QVideo.lib._camera', 'WARNING') as logs:
+                proxy._ensure_open()
+        self.assertIn('Flir: no producer', logs.output[0])
+
+    def test_closed_camera_is_reported(self):
+        proxy = _CameraProxy([('flir', 0)])
+        with patch('QVideo.lib._camera._open',
+                   return_value=make_mock_noise_camera(open_ok=False)):
+            with self.assertRaisesRegex(RuntimeError, 'Flir: device failed'):
+                proxy._ensure_open()
+
+    def test_explicit_model_reports_import_failure(self):
+        with patch('QVideo.lib._camera._probe', return_value=False), \
+             patch('importlib.import_module',
+                   side_effect=ImportError('pip install genicam harvesters')):
+            with self.assertRaisesRegex(RuntimeError, 'pip install genicam'):
+                Camera('flir')
+
+
 class TestCameraFactory(unittest.TestCase):
 
     def test_returns_camera_proxy(self):
@@ -187,7 +237,7 @@ class TestCameraFactory(unittest.TestCase):
         with patch('QVideo.lib._camera._open', return_value=cam) as mock_open:
             proxy = Camera('noise', cameraID=2)
             proxy._ensure_open()
-        mock_open.assert_called_once_with('noise', 2)
+        mock_open.assert_called_once_with('noise', 2, [])
 
     def test_top_level_export(self):
         import QVideo

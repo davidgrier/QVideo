@@ -69,6 +69,9 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
+import os  # noqa: E402
+from QVideo.lib.errors import QDeviceError, QDriverError  # noqa: E402
+from QVideo.lib.errors import QDriverError  # noqa: E402
 from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.cameras.Flir._camera import QFlirCamera, QFlirSource
 
@@ -131,12 +134,40 @@ class TestSubclass(unittest.TestCase):
 
 class TestProducer(unittest.TestCase):
 
-    def test_returns_false_without_producer(self):
+    def test_raises_without_producer(self):
         with patch.object(QFlirCamera, 'producer', None), \
              patch.object(QFlirCamera, '_producer_filenames', ()):
-            with self.assertLogs(level='WARNING'):
-                cam = QFlirCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaises(QDriverError):
+                QFlirCamera()
+
+    def test_unset_env_message_names_file_and_hint(self):
+        with patch.object(QFlirCamera, 'producer', None), \
+             patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(QDriverError) as ctx:
+                QFlirCamera()
+        message = str(ctx.exception)
+        self.assertIn('GENICAM_GENTL64_PATH is not set', message)
+        self.assertIn('Spinnaker_GenTL.cti', message)
+        self.assertIn('/opt/spinnaker', message)
+
+    def test_missing_cti_message_lists_searched_dirs(self):
+        with patch.object(QFlirCamera, 'producer', None), \
+             patch.dict(os.environ, {'GENICAM_GENTL64_PATH': '/no/dir'}):
+            with self.assertRaises(QDriverError) as ctx:
+                QFlirCamera()
+        message = str(ctx.exception)
+        self.assertIn('Spinnaker_GenTL.cti not found', message)
+        self.assertIn('/no/dir', message)
+
+    def test_no_camera_message_reports_device_count(self):
+        harvester = MagicMock()
+        harvester.create.side_effect = ValueError('index out of range')
+        harvester.device_info_list = []
+        with patch.object(QFlirCamera, 'producer', _PRODUCER), \
+             patch.object(_cam_module, 'Harvester', return_value=harvester):
+            with self.assertRaises(QDeviceError) as ctx:
+                QFlirCamera()
+        self.assertIn('0 found', str(ctx.exception))
 
     def test_opens_with_mocked_hardware(self):
         cam, _, _ = make_camera()

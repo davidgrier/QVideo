@@ -1,4 +1,5 @@
 '''Unit tests for QGenicamCamera and QGenicamSource.'''
+import os
 import subprocess
 import sys
 import unittest
@@ -83,6 +84,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 
 from QVideo.cameras.Genicam._camera import QGenicamCamera, QGenicamSource
 from QVideo.lib.QCamera import QCamera
+from QVideo.lib.errors import QDeviceError, QDriverError
 # Retrieve the module object directly — the `import ... as` form resolves
 # through attribute access and lands on the class (shadowed by __init__.py).
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
@@ -156,6 +158,12 @@ def make_camera(cameraID=0, device=None):
     return cam, harvester, device
 
 
+def make_closed_camera():
+    '''Return a camera whose open() was skipped (no node map).'''
+    with patch.object(_ConcreteCamera, 'open'):
+        return _ConcreteCamera()
+
+
 def make_camera_with_node(feature, **kwargs):
     '''Return (camera, harvester, device) with feature pre-registered.
 
@@ -197,12 +205,11 @@ class TestInit(unittest.TestCase):
         cam, _, _ = make_camera()
         self.assertEqual(cam.producer, PRODUCER)
 
-    def test_returns_false_when_producer_is_none(self):
+    def test_raises_when_no_producer_configured(self):
         class _NullProducer(QGenicamCamera):
             producer = None
-        with self.assertLogs(level='WARNING'):
-            cam = _NullProducer()
-        self.assertFalse(cam.isOpen())
+        with self.assertRaisesRegex(QDriverError, 'no GenTL producer'):
+            _NullProducer()
 
     def test_producer_filenames_resolved_lazily(self):
         '''producer=None + _producer_filenames resolves at _initialize time.'''
@@ -216,14 +223,36 @@ class TestInit(unittest.TestCase):
                 _LazyProducer()
         mock_find.assert_called_once_with('fake.cti')
 
-    def test_returns_false_when_filenames_not_found(self):
+    def test_raises_when_env_var_unset(self):
         class _LazyProducer(QGenicamCamera):
             producer = None
             _producer_filenames = ('missing.cti',)
-        with patch.object(QGenicamCamera, '_findProducer', return_value=None):
-            with self.assertLogs(level='WARNING'):
-                cam = _LazyProducer()
-        self.assertFalse(cam.isOpen())
+            _producerHint = 'Install the SDK.'
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(QDriverError) as ctx:
+                _LazyProducer()
+        message = str(ctx.exception)
+        self.assertIn('GENICAM_GENTL64_PATH is not set', message)
+        self.assertIn('missing.cti', message)
+        self.assertIn('Install the SDK.', message)
+
+    def test_raises_when_env_var_empty(self):
+        class _LazyProducer(QGenicamCamera):
+            producer = None
+            _producer_filenames = ('missing.cti',)
+        with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': ''}):
+            with self.assertRaisesRegex(QDriverError, 'is not set'):
+                _LazyProducer()
+
+    def test_raises_when_filenames_not_found(self):
+        class _LazyProducer(QGenicamCamera):
+            producer = None
+            _producer_filenames = ('missing.cti',)
+        with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': '/no/dir'}):
+            with self.assertRaises(QDriverError) as ctx:
+                _LazyProducer()
+        self.assertIn('missing.cti not found', str(ctx.exception))
+        self.assertIn('/no/dir', str(ctx.exception))
 
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()
@@ -301,53 +330,49 @@ class TestInitialize(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
-    def test_returns_false_when_no_camera_found(self):
+    def test_raises_when_no_camera_found(self):
         harvester = MagicMock()
         harvester.create.side_effect = ValueError('no camera')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaisesRegex(QDeviceError, 'cannot open camera 0'):
+                _ConcreteCamera()
 
     def test_harvester_reset_called_when_no_camera_found(self):
         harvester = MagicMock()
         harvester.create.side_effect = ValueError('no camera')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
+            with self.assertRaises(QDeviceError):
                 _ConcreteCamera()
         harvester.reset.assert_called_once()
 
-    def test_returns_false_when_producer_fails_to_load(self):
+    def test_raises_when_producer_fails_to_load(self):
         harvester = MagicMock()
         harvester.add_file.side_effect = OSError('file not found')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaisesRegex(QDriverError, 'cannot load GenTL producer'):
+                _ConcreteCamera()
 
     def test_harvester_reset_called_when_producer_fails_to_load(self):
         harvester = MagicMock()
         harvester.add_file.side_effect = OSError('file not found')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
+            with self.assertRaises(QDriverError):
                 _ConcreteCamera()
         harvester.reset.assert_called_once()
 
-    def test_returns_false_when_update_fails(self):
+    def test_raises_when_update_fails(self):
         harvester = MagicMock()
         harvester.update.side_effect = RuntimeError('bad cti')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaisesRegex(QDriverError, 'bad cti'):
+                _ConcreteCamera()
 
-    def test_returns_false_when_create_raises_non_value_error(self):
+    def test_raises_when_create_raises_non_value_error(self):
         harvester = MagicMock()
         harvester.create.side_effect = RuntimeError('driver error')
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaisesRegex(QDeviceError, 'driver error'):
+                _ConcreteCamera()
 
 
     def test_exception_propagates_when_device_start_raises(self):
@@ -432,11 +457,7 @@ class TestNode(unittest.TestCase):
         self.assertIsNotNone(node)
 
     def test_returns_none_when_node_map_unset(self):
-        harvester = MagicMock()
-        harvester.create.side_effect = ValueError('no camera')
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
+        cam = make_closed_camera()
         self.assertIsNone(cam.node('Width'))
 
     def test_returns_none_when_not_found(self):
@@ -471,11 +492,7 @@ class TestHasNode(unittest.TestCase):
         self.assertFalse(cam.has_node('Nonexistent'))
 
     def test_returns_false_when_node_map_is_none(self):
-        harvester = MagicMock()
-        harvester.create.side_effect = ValueError('no camera')
-        with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with self.assertLogs(level='WARNING'):
-                cam = _ConcreteCamera()
+        cam = make_closed_camera()
         self.assertFalse(cam.has_node('Width'))
 
     def test_does_not_log_warning_for_unknown_node(self):

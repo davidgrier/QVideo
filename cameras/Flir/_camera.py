@@ -13,15 +13,17 @@ class QFlirCamera(QGenicamCamera):
     path is discovered automatically from the ``GENICAM_GENTL64_PATH``
     environment variable set by the Spinnaker installer.
 
-    If Spinnaker is not installed, instantiation raises :exc:`TypeError`.
+    If the packages, the producer or the camera cannot be found,
+    instantiation raises :exc:`~QVideo.lib.errors.QCameraError` with a
+    message describing what is missing.  Run
+    ``python -m QVideo.lib.gentl Spinnaker_GenTL.cti`` for a step-by-step
+    diagnosis.
 
-    .. warning::
+    .. note::
 
-        Spinnaker GenTL producer **4.3.0.189** contains a bug in which
-        ``DevClose()`` hangs indefinitely when the camera is released.
-        This causes the application to hang on exit.  FLIR customer
-        support has confirmed the bug.  If you experience this issue,
-        downgrade to Spinnaker **4.1.0.172** or earlier.
+        Spinnaker GenTL producer 4.3.0.189 hangs in ``DevClose()`` when
+        the camera is released, which blocks application exit.  The bug
+        is fixed in Spinnaker 4.4.0.
 
     Parameters
     ----------
@@ -30,6 +32,9 @@ class QFlirCamera(QGenicamCamera):
     '''
 
     _producer_filenames = ('Spinnaker_GenTL.cti',)
+    _producerHint = ('Install the Spinnaker SDK and set GENICAM_GENTL64_PATH '
+                     'to the directory containing Spinnaker_GenTL.cti '
+                     '(typically /opt/spinnaker/lib/spinnaker-gentl).')
 
 
 class QFlirSource(QGenicamSource):

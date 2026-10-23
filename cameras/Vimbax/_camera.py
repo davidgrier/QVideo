@@ -15,7 +15,10 @@ class QVimbaXCamera(QGenicamCamera):
     installs a GenTL producer whose path is discovered automatically from the
     ``GENICAM_GENTL64_PATH`` environment variable set by the VimbaX installer.
 
-    If VimbaX is not installed, instantiation raises :exc:`TypeError`.
+    If VimbaX is not installed, or the producer or camera cannot be
+    found, instantiation raises :exc:`~QVideo.lib.errors.QCameraError`
+    with a message describing what is missing.  Run
+    ``python -m QVideo.lib.gentl VimbaUSBTL.cti`` for a step-by-step diagnosis.
 
     Parameters
     ----------
@@ -24,6 +27,8 @@ class QVimbaXCamera(QGenicamCamera):
     '''
 
     _producer_filenames = ('VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
+    _producerHint = ('Install VimbaX and set GENICAM_GENTL64_PATH to the '
+                     'directory containing VimbaUSBTL.cti.')
 
 
 class QVimbaXSource(QGenicamSource):

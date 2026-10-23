@@ -168,6 +168,30 @@ QListCameras
 .. automodule:: QVideo.lib.QListCameras
    :members:
 
+Camera errors
+-------------
+
+Camera backends raise these exceptions when a camera cannot be opened.
+The messages say what is missing and what to do about it.
+
+.. automodule:: QVideo.lib.errors
+   :members:
+
+GenTL diagnostics
+-----------------
+
+When a GenICam camera (Flir, Basler, IDS, MV, VimbaX) cannot be opened,
+run the diagnostic.  It works even if ``harvesters`` or ``genicam`` are
+not installed::
+
+    python -m QVideo.lib.gentl Spinnaker_GenTL.cti
+
+It checks the Python packages, ``GENICAM_GENTL64_PATH``, the producer
+file, and whether the producer can see any cameras.
+
+.. automodule:: QVideo.lib.gentl
+   :members: gentlPaths, findProducer, check
+
 QCamcorder
 ----------
 

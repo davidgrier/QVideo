@@ -204,6 +204,13 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         -------
         QCamera
             ``self``, to allow chaining.
+
+        Raises
+        ------
+        QCameraError
+            If a subclass's :meth:`_initialize` reports why the camera
+            cannot be opened by raising it, rather than returning
+            ``False``.
         '''
         if not self._isOpen:
             self._isOpen = bool(self._initialize(*args, **kwargs))

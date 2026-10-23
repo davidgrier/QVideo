@@ -14,7 +14,11 @@ class QBaslerCamera(QGenicamCamera):
     automatically from the ``GENICAM_GENTL64_PATH`` environment variable
     set by the pylon installer.
 
-    If pylon is not installed, instantiation raises :exc:`TypeError`.
+    If pylon is not installed, or the producer or camera cannot be
+    found, instantiation raises :exc:`~QVideo.lib.errors.QCameraError`
+    with a message describing what is missing.  Run
+    ``python -m QVideo.lib.gentl ProducerU3V.cti`` for a
+    step-by-step diagnosis.
 
     Parameters
     ----------
@@ -22,8 +26,10 @@ class QBaslerCamera(QGenicamCamera):
         Index of the Basler camera to open.  Default: ``0``.
     '''
 
-    producer = QGenicamCamera._findProducer('ProducerU3V.cti',
-                                            'ProducerGEV.cti')
+    _producer_filenames = ('ProducerU3V.cti', 'ProducerGEV.cti')
+    _producerHint = (
+        'Install pylon and set GENICAM_GENTL64_PATH to the '
+        'directory containing ProducerU3V.cti or ProducerGEV.cti.')
 
 
 class QBaslerSource(QGenicamSource):

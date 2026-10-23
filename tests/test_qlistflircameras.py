@@ -1,4 +1,5 @@
 '''Unit tests for cameras.Flir.QListFlirCameras.'''
+import os
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
@@ -95,6 +96,17 @@ class TestQListFlirCamerasInit(unittest.TestCase):
              patch.object(_MODULE, 'Harvester', return_value=mock_h):
             widget = QListFlirCameras()
         self.assertEqual(widget.itemData(1), 0)
+
+
+class TestQListFlirCamerasNoProducer(unittest.TestCase):
+
+    def test_lists_only_placeholder_and_warns(self):
+        with patch.object(QFlirCamera, 'producer', None), \
+             patch.dict(os.environ, {}, clear=True):
+            with self.assertLogs(_MODULE.__name__, 'WARNING') as logs:
+                widget = QListFlirCameras()
+        self.assertEqual(widget.count(), 1)
+        self.assertIn('GENICAM_GENTL64_PATH', logs.output[0])
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -75,6 +75,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
     sys.modules.setdefault(_name, _mod)
 
 # Import directly from the submodule to avoid pulling in QVimbaXTree
+from QVideo.lib.errors import QDriverError  # noqa: E402
 from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.cameras.Vimbax._camera import QVimbaXCamera, QVimbaXSource
 
@@ -200,12 +201,11 @@ class TestQVimbaXCamera(unittest.TestCase):
         self.assertIn('_producer_filenames', QVimbaXCamera.__dict__)
         self.assertTrue(len(QVimbaXCamera._producer_filenames) > 0)
 
-    def test_returns_false_when_producer_is_none(self):
+    def test_raises_when_producer_is_none(self):
         with patch.object(QVimbaXCamera, 'producer', None), \
              patch.object(QVimbaXCamera, '_producer_filenames', ()):
-            with self.assertLogs(level='WARNING'):
-                cam = QVimbaXCamera()
-        self.assertFalse(cam.isOpen())
+            with self.assertRaises(QDriverError):
+                QVimbaXCamera()
 
     def test_opens_on_init(self):
         cam, _, _ = make_camera()
@@ -256,3 +256,17 @@ class TestQVimbaXSource(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class TestProducerMessages(unittest.TestCase):
+
+    def test_producer_resolved_lazily(self):
+        self.assertIsNone(QVimbaXCamera.producer)
+
+    def test_unset_env_names_file_and_hint(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(QDriverError) as ctx:
+                QVimbaXCamera()
+        message = str(ctx.exception)
+        self.assertIn('GENICAM_GENTL64_PATH is not set', message)
+        self.assertIn('VimbaUSBTL.cti', message)
+        self.assertIn('Install', message)

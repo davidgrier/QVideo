@@ -225,6 +225,21 @@ class TestChooseCameraOpenCV(unittest.TestCase):
 
 class TestChooseCameraFallback(unittest.TestCase):
 
+    def test_driver_error_reason_is_logged_before_fallback(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        from QVideo.lib.errors import QDriverError
+        reason = 'GENICAM_GENTL64_PATH is not set'
+        fake = MagicMock(side_effect=QDriverError(reason))
+        module = MagicMock(QFlirCamera=fake)
+        with patch('sys.argv', ['prog', '-f']):
+            with patch('QVideo.lib.chooser.logger') as mock_logger:
+                with patch.dict('sys.modules',
+                                {'QVideo.cameras.Flir': module}):
+                    camera = choose_camera()
+        self.assertIsInstance(camera, QNoiseTree)
+        self.assertIn(reason, mock_logger.warning.call_args[0][0])
+        camera.close()
+
     def test_flir_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-f']):

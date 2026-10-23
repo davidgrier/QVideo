@@ -1,6 +1,10 @@
-from QVideo.lib import QListCameras
+import logging
+from QVideo.lib import QListCameras, QCameraError
 from harvesters.core import Harvester
 from QVideo.cameras.Flir import QFlirCamera
+
+
+logger = logging.getLogger(__name__)
 
 
 __all__ = ['QListFlirCameras']
@@ -18,8 +22,13 @@ class QListFlirCameras(QListCameras):
         return QFlirCamera
 
     def _listCameras(self) -> None:
+        try:
+            producer = QFlirCamera._locateProducer()
+        except QCameraError as ex:
+            logger.warning(str(ex))
+            return
         h = Harvester()
-        h.add_file(QFlirCamera.producer())
+        h.add_file(producer)
         h.update()
         for n, c in enumerate(h.device_info_list):
             p = c.property_dict
@@ -27,5 +36,5 @@ class QListFlirCameras(QListCameras):
         h.reset()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     QListFlirCameras.example()

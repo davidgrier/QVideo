@@ -31,22 +31,68 @@ def make_mock_device(width=640, height=480, fps=30.,
 
 def make_camera(cameraID=0, mirrored=False, flipped=False, gray=False,
                 width=640, height=480, fps=30.,
-                read_ok=True, frame=None):
+                read_ok=True, frame=None, formats=None):
     '''Return a QOpenCVCamera with a mocked VideoCapture device.
 
     *width*, *height*, and *fps* control the values the mock device
     returns from ``get()`` — they do not configure the camera itself.
-    ``configure`` and ``probe_formats`` are patched for isolation.
+    ``configure`` and ``probe_formats`` are patched for isolation;
+    *formats* is what ``probe_formats`` returns (default: one format
+    matching the device).
     '''
+    if formats is None:
+        formats = [(width, height, 1., fps)]
     device = make_mock_device(width=width, height=height, fps=fps,
                               read_ok=read_ok, frame=frame)
     with patch('cv2.VideoCapture', return_value=device):
         with patch('QVideo.cameras.OpenCV._camera.configure'):
             with patch('QVideo.cameras.OpenCV._camera.probe_formats',
-                       return_value=[(width, height, 1., fps)]):
+                       return_value=formats):
                 cam = QOpenCVCamera(cameraID=cameraID, mirrored=mirrored,
                                     flipped=flipped, gray=gray)
     return cam
+
+
+_FORMATS = [(640, 480, 1., 30.), (1280, 720, 1., 30.),
+            (1552, 1552, 1., 30.), (1920, 1080, 1., 15.)]
+
+
+class TestGetResolution(unittest.TestCase):
+    '''The resolution property reports the format nearest the device.'''
+
+    def _label_at(self, width, height):
+        cam = make_camera(formats=_FORMATS)
+        cam._device.get.side_effect = lambda prop: {
+            QOpenCVCamera.WIDTH: width,
+            QOpenCVCamera.HEIGHT: height,
+            QOpenCVCamera.FPS: 30.}.get(prop, 0)
+        return cam._getResolution()
+
+    def test_listed_size_returns_its_own_label(self):
+        for w, h, _min, fps in _FORMATS:
+            with self.subTest(size=(w, h)):
+                self.assertEqual(self._label_at(w, h),
+                                 f'{w}\u00d7{h} @ {fps:.0f} Hz')
+
+    def test_unlisted_size_returns_the_nearest_format(self):
+        self.assertEqual(self._label_at(1920, 1200), '1920\u00d71080 @ 15 Hz')
+
+    def test_unlisted_size_between_formats_returns_the_nearer(self):
+        self.assertEqual(self._label_at(1300, 700), '1280\u00d7720 @ 30 Hz')
+
+    def test_nearest_is_not_always_the_smallest_format(self):
+        self.assertNotEqual(self._label_at(1800, 1000),
+                            '640\u00d7480 @ 30 Hz')
+
+    def test_result_is_always_one_of_the_limits(self):
+        cam = make_camera(formats=_FORMATS)
+        for size in ((10, 10), (5000, 4000), (1000, 1000)):
+            with self.subTest(size=size):
+                cam._device.get.side_effect = lambda prop, s=size: {
+                    QOpenCVCamera.WIDTH: s[0],
+                    QOpenCVCamera.HEIGHT: s[1]}.get(prop, 0)
+                self.assertIn(cam._getResolution(),
+                              cam._properties['resolution']['limits'])
 
 
 class TestInit(unittest.TestCase):

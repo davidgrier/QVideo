@@ -62,6 +62,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   has `limits` (as the Jupyter interface already did), and `QOpenCVTree`
   uses the camera's own `resolution` property instead of a parallel
   tuple-valued control, which also removes about 45 lines.
+- **`QOpenCVCamera.resolution` no longer reports the smallest format when
+  the device size is not in the probed list.**  It now reports the nearest
+  probed format (an exact match when there is one) instead of silently
+  falling back to the first, smallest entry.
 - **PySide6 compatibility of the core classes.**  `QCamera`,
   `QVideoReader` and `QVideoWriter` now share one metaclass, `QABCMeta`
   (`QVideo.lib._qabc`), instead of three identical definitions; it lists

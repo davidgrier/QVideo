@@ -214,11 +214,19 @@ class QOpenCVCamera(QCamera):
         self._device.release()
 
     def _getResolution(self) -> str:
-        w, h = self._getWidth(), self._getHeight()
-        for label, (lw, lh, _) in self._formatLabels.items():
-            if lw == w and lh == h:
-                return label
-        return next(iter(self._formatLabels))
+        '''Return the label of the probed format nearest the device size.
+
+        The nearest format is the exact match when there is one; otherwise
+        it is the format whose width and height differ least from the
+        device's, never merely the first (smallest) one.
+        '''
+        size = (self._getWidth(), self._getHeight())
+
+        def distance(label: str) -> int:
+            return sum(abs(a - b) for a, b in
+                       zip(self._formatLabels[label][:2], size))
+
+        return min(self._formatLabels, key=distance)
 
     def _setResolution(self, label: str) -> None:
         w, h, fps = self._formatLabels[label]

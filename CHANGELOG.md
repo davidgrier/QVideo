@@ -46,12 +46,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and would break Raspberry Pi systems that use the system packages), but
   `import QVideo` without one now raises an `ImportError` that names the
   extras to install instead of qtpy's bare "No Qt bindings could be found".
-  Added the `pyside6` extra; PySide6 is experimental (see below).  CI now
+  Added the `pyside6` extra; PySide6 is experimental.  CI now
   runs PyQt6 on every supported Python version, PyQt5 on the oldest and
   newest, and PySide6 as an allowed-failure job.
 
 ### Fixed
 
+- **PySide6 compatibility of the core classes.**  `QCamera`,
+  `QVideoReader` and `QVideoWriter` now share one metaclass, `QABCMeta`
+  (`QVideo.lib._qabc`), instead of three identical definitions; it lists
+  `ABCMeta` before the `QObject` metaclass, and `QCamera.__setattr__` calls
+  `super().__setattr__`.  Under PySide6, `isinstance(x, QCamera)` raised
+  `AttributeError` (breaking `QCameraTree` and the camera chooser), and on
+  Python 3.12 and earlier every camera constructor raised `TypeError`.
+  PyQt behavior is unchanged.  The `pyside6` extra requires PySide6 6.7 or
+  later, the first series in which this class layout works.
 - **Recording every Nth frame (`nskip` > 1) wrote a single frame.**
   `QVideoWriter.write` decided whether to record a frame from the count of
   frames already written, which stopped advancing after the first write, so

@@ -54,8 +54,8 @@ pip install "QVideo[pyqt5]"   # PyQt5
 pip install QVideo            # use a binding that is already installed
 ```
 
-PySide6 is experimental (`pip install "QVideo[pyside6]"`): frames are
-captured and displayed, but the camera control tree does not work yet.
+PySide6 is experimental (`pip install "QVideo[pyside6]"`): it runs in
+continuous integration, but not all of QVideo's tests have been adapted to it.
 
 ### Raspberry Pi
 

@@ -1,7 +1,8 @@
 '''Abstract base class for video file readers.'''
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from types import TracebackType
 from qtpy import QtCore
+from QVideo.lib._qabc import QABCMeta
 from QVideo.lib import QCamera
 import QVideo
 from pathlib import Path
@@ -13,11 +14,7 @@ logger = logging.getLogger(__name__)
 __all__ = ['QVideoReader']
 
 
-class QVideoReaderMeta(type(QtCore.QObject), ABCMeta):
-    pass
-
-
-class QVideoReader(QtCore.QObject, metaclass=QVideoReaderMeta):
+class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
 
     '''Abstract base class for video-file readers.
 

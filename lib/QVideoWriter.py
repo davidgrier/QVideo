@@ -1,6 +1,7 @@
 '''Abstract base class for video file writers.'''
-from abc import (ABCMeta, abstractmethod)
+from abc import abstractmethod
 from qtpy import QtCore
+from QVideo.lib._qabc import QABCMeta
 from QVideo.lib.videotypes import Image, FrameInfo
 from time import perf_counter
 import numpy as np
@@ -12,11 +13,7 @@ logger = logging.getLogger(__name__)
 __all__ = ['QVideoWriter']
 
 
-class QVideoWriterMeta(type(QtCore.QObject), ABCMeta):
-    pass
-
-
-class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
+class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
     '''Abstract base class for saving videos to files
 
     Parameters

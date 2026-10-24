@@ -70,9 +70,14 @@ QVideo is a Qt framework — compatible with PyQt6 and PyQt5 (PySide6 is experim
 hard dependency: pip cannot say "use whichever is installed", and a forced
 install would break Raspberry Pi systems that use the system `python3-pyqt*`
 packages.  `import QVideo` with no binding raises an `ImportError` naming the
-extras.  PySide6 runs the capture/display pipeline, but `isinstance(x,
-QCamera)` fails under Shiboken (QObject + `ABCMeta` metaclass), which breaks
-`QCameraTree`; CI runs PySide6 as an allowed-failure job.
+extras.  PySide6 is experimental: the library runs under it, but the tests
+use PyQt-style `QtTest.QSignalSpy` (a sequence; PySide6's is not) and
+`button.clicked.emit(False)`, so about 80 tests fail there; CI runs PySide6
+as an allowed-failure job.  Abstract `QObject` classes use the shared
+`QABCMeta` (`lib/_qabc.py`) rather than defining their own metaclass, and
+`__setattr__` overrides on `QObject` subclasses must use
+`super().__setattr__` (`object.__setattr__` is rejected by Python 3.12 and
+earlier under PySide6).
 
 ### Core abstractions (`lib/`)
 

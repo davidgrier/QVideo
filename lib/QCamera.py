@@ -1,8 +1,9 @@
 '''Abstract base class for all QVideo camera backends.'''
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable
 from types import TracebackType
 from qtpy import QtCore
+from QVideo.lib._qabc import QABCMeta
 from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
@@ -18,11 +19,7 @@ class _Auto:
 _AUTO = _Auto()
 
 
-class QCameraMeta(type(QtCore.QObject), ABCMeta):
-    pass
-
-
-class QCamera(QtCore.QObject, metaclass=QCameraMeta):
+class QCamera(QtCore.QObject, metaclass=QABCMeta):
 
     '''Abstract base class for camera devices.
 
@@ -123,16 +120,16 @@ class QCamera(QtCore.QObject, metaclass=QCameraMeta):
         Routes ``camera.fps = 30`` through :meth:`set` (mutex-protected,
         type-coerced) for any name in ``_properties``.  All other names —
         including internal backing attributes and Qt object attributes —
-        fall through to ``object.__setattr__``.
+        fall through to ``super().__setattr__``.
 
         The ``'_properties' in self.__dict__`` guard ensures that writes
         during ``__init__`` (before ``_properties`` is created) are always
-        handled by ``object.__setattr__``.
+        handled by ``super().__setattr__``.
         '''
         if '_properties' in self.__dict__ and name in self._properties:
             self.set(name, value)
         else:
-            object.__setattr__(self, name, value)
+            super().__setattr__(name, value)
 
     # ------------------------------------------------------------------
     # Registration API

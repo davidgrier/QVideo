@@ -12,8 +12,8 @@ QVideo needs a Qt binding.  PyQt6 is recommended; PyQt5 is also supported:
    pip install QVideo[pyqt5]   # PyQt5
    pip install QVideo          # use a binding that is already installed
 
-PySide6 (``QVideo[pyside6]``) is experimental: frames are captured and
-displayed, but the camera control tree does not work yet.
+PySide6 (``QVideo[pyside6]``) is experimental: it runs in continuous
+integration, but not all of QVideo's tests have been adapted to it.
 
 To record video to HDF5 files, add the ``dvr`` extra:
 

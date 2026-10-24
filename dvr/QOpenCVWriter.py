@@ -1,6 +1,6 @@
 '''OpenCV-backed video file writer supporting AVI, MKV, and MP4.'''
 from QVideo.lib import QVideoWriter
-from QVideo.lib.videotypes import Image
+from QVideo.lib.videotypes import Image, FrameInfo
 from pathlib import Path
 import cv2
 import logging
@@ -126,8 +126,12 @@ class QOpenCVWriter(QVideoWriter):
         '''Return ``True`` if the video file is currently open.'''
         return (self._writer is not None) and self._writer.isOpened()
 
-    def _write(self, frame: Image) -> None:
-        '''Write *frame* to the video file, stopping if the shape changes.'''
+    def _write(self, frame: Image, info: FrameInfo | None = None) -> None:
+        '''Write *frame* to the video file, stopping if the shape changes.
+
+        The capture metadata *info* is not stored: video containers
+        record only a nominal frame rate.
+        '''
         if frame.shape != self._shape:
             logger.warning(
                 f'Frame shape {frame.shape} does not match '

@@ -13,6 +13,17 @@ QVideoSource
 .. automodule:: QVideo.lib.QVideoSource
    :members:
 
+FrameInfo
+---------
+
+Every frame emitted by :attr:`QVideo.lib.QVideoSource.QVideoSource.newFrame`
+is accompanied by a :class:`~QVideo.lib.videotypes.FrameInfo` stamped in the
+capture thread.  Slots that need only the image may accept a single
+argument; the extra argument is dropped.
+
+.. automodule:: QVideo.lib.videotypes
+   :members:
+
 QCameraTree
 -----------
 

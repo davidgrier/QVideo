@@ -2,7 +2,8 @@
 from qtpy import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
-from QVideo.lib.videotypes import Image
+from QVideo.lib.videotypes import Image, FrameInfo
+from time import perf_counter
 from typing import TypeAlias
 import numpy as np
 import logging
@@ -27,8 +28,12 @@ class QVideoSource(QtCore.QThread):
 
     Signals
     -------
-    newFrame(Image)
-        Emitted when a new video frame is available.
+    newFrame(Image, FrameInfo)
+        Emitted when a new video frame is available, together with its
+        capture metadata.  The :class:`~QVideo.lib.videotypes.FrameInfo`
+        is stamped in the capture thread immediately after the frame is
+        read.  Slots that need only the frame may accept a single
+        argument.
 
     Properties
     ----------
@@ -66,7 +71,7 @@ class QVideoSource(QtCore.QThread):
     '''
 
     #: Emitted when a new video frame is available.
-    newFrame = QtCore.Signal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray, object)
 
     def __init__(self, source: VideoSourceType) -> None:
         '''Initialise the video source thread.
@@ -85,6 +90,7 @@ class QVideoSource(QtCore.QThread):
         self.waitcondition = QtCore.QWaitCondition()
         self._paused = False
         self._running = True
+        self._frames = 0
 
     @property
     def source(self) -> VideoSourceType:
@@ -122,6 +128,7 @@ class QVideoSource(QtCore.QThread):
         thread and should not be called directly in production code.
         '''
         logger.debug('streaming started')
+        self._frames = 0
         with self.source:
             while True:
                 with QtCore.QMutexLocker(self.mutex):
@@ -132,7 +139,9 @@ class QVideoSource(QtCore.QThread):
                         break
                 ok, frame = self.source.saferead()
                 if ok:
-                    self.newFrame.emit(frame)
+                    info = FrameInfo(self._frames, perf_counter())
+                    self._frames += 1
+                    self.newFrame.emit(frame, info)
         logger.debug('streaming finished')
 
     @QtCore.Slot()

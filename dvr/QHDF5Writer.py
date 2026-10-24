@@ -1,11 +1,11 @@
 '''HDF5 video writer with per-frame timestamps.'''
 from QVideo.lib import QVideoWriter
-from QVideo.lib.videotypes import Image
+from QVideo.lib.videotypes import Image, FrameInfo
 try:
     import h5py
 except (ImportError, ModuleNotFoundError):
     h5py = None
-from time import time
+from time import perf_counter
 import logging
 
 
@@ -42,7 +42,7 @@ class QHDF5Writer(QVideoWriter):
         super().__init__(*args, **kwargs)
         self._file = None
         self._writer = None
-        self._start = None
+        self._t0 = None
 
     def open(self, frame: Image) -> bool:
         '''Open the HDF5 file for writing.
@@ -69,8 +69,7 @@ class QHDF5Writer(QVideoWriter):
         except OSError:
             logger.warning(f'Could not open {self.filename!r} for writing')
             return False
-        self._start = time()
-        self._file.attrs['Timestamp'] = self._start
+        self._t0 = None
         self._writer = self._file.create_group('images')
         return True
 
@@ -78,10 +77,22 @@ class QHDF5Writer(QVideoWriter):
         '''Return ``True`` if the HDF5 file is currently open.'''
         return self._file is not None and bool(self._file)
 
-    def _write(self, frame: Image) -> None:
-        '''Write *frame* as a dataset keyed by elapsed time in seconds.'''
-        now = time() - self._start
-        self._writer.create_dataset(f'{now:.9f}', data=frame)
+    def _write(self, frame: Image, info: FrameInfo | None = None) -> None:
+        '''Write *frame* as a dataset keyed by elapsed capture time.
+
+        The key is the time in seconds between the capture of the first
+        recorded frame and the capture of this frame, so it is
+        unaffected by delays between capture and writing.  The
+        ``Timestamp`` file attribute is the UNIX time at which the first
+        recorded frame was captured.
+        '''
+        if info is None:
+            info = FrameInfo(0, perf_counter())
+        if self._t0 is None:
+            self._t0 = info.timestamp
+            self._file.attrs['Timestamp'] = info.wallclock
+        elapsed = info.timestamp - self._t0
+        self._writer.create_dataset(f'{elapsed:.9f}', data=frame)
 
     def close(self) -> None:
         '''Close the HDF5 file and reset internal state.'''
@@ -89,4 +100,4 @@ class QHDF5Writer(QVideoWriter):
             self._file.close()
         self._file = None
         self._writer = None
-        self._start = None
+        self._t0 = None

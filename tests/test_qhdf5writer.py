@@ -4,6 +4,7 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
 from QVideo.dvr.QHDF5Writer import QHDF5Writer
+from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -64,14 +65,12 @@ class TestQHDF5WriterOpen(unittest.TestCase):
             writer.open(_FRAME)
         mock_file.create_group.assert_called_once_with('images')
 
-    def test_open_writes_timestamp_attribute(self):
+    def test_open_does_not_yet_set_timestamp_attribute(self):
         writer = make_writer()
         mock_file, _ = make_mock_h5file()
         with patch('h5py.File', return_value=mock_file):
             writer.open(_FRAME)
-        mock_file.attrs.__setitem__.assert_called_once()
-        key, _ = mock_file.attrs.__setitem__.call_args[0]
-        self.assertEqual(key, 'Timestamp')
+        mock_file.attrs.__setitem__.assert_not_called()
 
     def test_isopen_true_after_open(self):
         writer = make_writer()
@@ -127,6 +126,44 @@ class TestQHDF5WriterInternalWrite(unittest.TestCase):
         writer._write(_FRAME)
         keys = [call[0][0] for call in mock_group.create_dataset.call_args_list]
         self.assertEqual(len(set(keys)), 2)
+
+
+class TestQHDF5WriterCaptureTimes(unittest.TestCase):
+    '''Datasets are keyed by capture time, not by write time.'''
+
+    def _open_writer(self):
+        writer = make_writer()
+        mock_file, mock_group = make_mock_h5file()
+        with patch('h5py.File', return_value=mock_file):
+            writer.open(_FRAME)
+        return writer, mock_file, mock_group
+
+    def test_keys_follow_capture_timestamps(self):
+        writer, _, group = self._open_writer()
+        writer._write(_FRAME, FrameInfo(0, 10.00))
+        writer._write(_FRAME, FrameInfo(1, 10.25))
+        keys = [c[0][0] for c in group.create_dataset.call_args_list]
+        self.assertEqual(keys, ['0.000000000', '0.250000000'])
+
+    def test_timestamp_attribute_is_first_frame_wallclock(self):
+        writer, mock_file, _ = self._open_writer()
+        info = FrameInfo(0, 10.0)
+        writer._write(_FRAME, info)
+        key, value = mock_file.attrs.__setitem__.call_args[0]
+        self.assertEqual(key, 'Timestamp')
+        self.assertAlmostEqual(value, info.wallclock, delta=0.05)
+
+    def test_timestamp_attribute_set_only_once(self):
+        writer, mock_file, _ = self._open_writer()
+        writer._write(_FRAME, FrameInfo(0, 10.0))
+        writer._write(_FRAME, FrameInfo(1, 10.1))
+        mock_file.attrs.__setitem__.assert_called_once()
+
+    def test_close_resets_start_for_next_recording(self):
+        writer, _, _ = self._open_writer()
+        writer._write(_FRAME, FrameInfo(0, 10.0))
+        writer.close()
+        self.assertIsNone(writer._t0)
 
 
 class TestQHDF5WriterClose(unittest.TestCase):

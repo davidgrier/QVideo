@@ -7,6 +7,31 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [3.20.0] — unreleased
+
+### Changed
+
+- **`QVideoSource.newFrame` is now `newFrame(ndarray, FrameInfo)`.**
+  `FrameInfo` (new, in `QVideo.lib.videotypes`) carries the frame's
+  `index`, a monotonic capture `timestamp` taken in the capture thread
+  immediately after `read()`, an optional `hardware_timestamp`, and a
+  `wallclock` property.  Existing one-argument slots, lambdas and
+  signal-to-signal connections keep working unchanged (tested on PyQt5
+  and PyQt6).
+- **Recordings are time-stamped at capture, not at write.**
+  `QHDF5Writer` keys each frame by the elapsed capture time and sets the
+  file's `Timestamp` attribute to the capture time of the first frame;
+  `QCircularBuffer` stores capture times.  Previously both used the time
+  at which the frame reached the writer, which lagged capture whenever
+  the writer fell behind.
+- `QVideoWriter.write(frame, info=None)` and the abstract
+  `QVideoWriter._write(frame, info)` take the capture metadata.  Custom
+  writer subclasses must accept the new `info` argument in `_write`.
+- Python 3.10 is no longer supported; the package now requires
+  Python 3.11 or later and is tested on 3.11 through 3.14.
+
+---
+
 ## [3.19.0] — 2026-10-23
 
 ### Changed

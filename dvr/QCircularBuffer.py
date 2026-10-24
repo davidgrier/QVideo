@@ -7,7 +7,7 @@ from qtpy import QtCore
 import numpy as np
 import logging
 
-from QVideo.lib.videotypes import Image
+from QVideo.lib.videotypes import Image, FrameInfo
 from .QOpenCVWriter import QOpenCVWriter
 
 
@@ -124,19 +124,23 @@ class QCircularBuffer(QtCore.QObject):
                 f'consider reducing duration or frame rate.'
             )
 
-    @QtCore.Slot(np.ndarray)
-    def append(self, frame: Image) -> None:
-        '''Add *frame* to the buffer with the current wall-clock timestamp.
+    @QtCore.Slot(np.ndarray, object)
+    def append(self, frame: Image, info: FrameInfo | None = None) -> None:
+        '''Add *frame* to the buffer with its capture time.
 
         Parameters
         ----------
         frame : numpy.ndarray
             Video frame to buffer.
+        info : FrameInfo, optional
+            Capture metadata for *frame*.  If omitted, the frame is
+            stamped with the current wall-clock time.
         '''
         self._frameBytes = frame.nbytes
         if not self._warned:
             self._checkMemory()
-        self._buffer.append((time(), frame))
+        stamp = time() if info is None else info.wallclock
+        self._buffer.append((stamp, frame))
 
     def save(self, filename: str) -> bool:
         '''Write buffered frames to *filename*.

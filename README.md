@@ -24,7 +24,7 @@ abstraction and require no camera-specific code.
 - **Auto-built property trees** — `QCameraTree` reads the registered property
   map and builds a `pyqtgraph` parameter tree widget automatically.
 - **Threaded video source** — `QVideoSource` wraps any camera in a `QThread`
-  and emits `newFrame(ndarray)` at acquisition rate.
+  and emits `newFrame(ndarray, FrameInfo)` at acquisition rate.
 - **Composable filter pipeline** — `VideoFilter` / `QFilterBank` sit between
   source and display; filters include blur, edge detection, RGB channel
   selection, sample-and-hold, binary threshold, and blob coloring.

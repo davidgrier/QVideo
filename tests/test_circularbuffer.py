@@ -7,6 +7,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from QVideo.dvr.QCircularBuffer import QCircularBuffer
+from QVideo.lib.videotypes import FrameInfo
 
 _module = sys.modules['QVideo.dvr.QCircularBuffer']
 
@@ -116,6 +117,20 @@ class TestAppend(unittest.TestCase):
         ts, stored = buf._buffer[0]
         self.assertIsInstance(ts, float)
         np.testing.assert_array_equal(stored, frame)
+
+    def test_append_uses_capture_time_when_info_given(self):
+        buf = QCircularBuffer()
+        info = FrameInfo(0, 5.0)
+        buf.append(make_frame(), info)
+        ts, _ = buf._buffer[0]
+        self.assertAlmostEqual(ts, info.wallclock, delta=0.05)
+
+    def test_append_spacing_follows_capture_timestamps(self):
+        buf = QCircularBuffer()
+        buf.append(make_frame(), FrameInfo(0, 5.00))
+        buf.append(make_frame(), FrameInfo(1, 5.25))
+        (t0, _), (t1, _) = buf._buffer
+        self.assertAlmostEqual(t1 - t0, 0.25, places=3)
 
     def test_buffer_wraps_at_maxlen(self):
         buf = QCircularBuffer(fps=5., duration=1)

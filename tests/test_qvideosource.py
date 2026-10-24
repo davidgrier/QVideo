@@ -1,9 +1,11 @@
 '''Unit tests for QVideoSource.'''
+import time
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from qtpy import QtCore, QtWidgets, QtTest
 from QVideo.lib.QVideoSource import QVideoSource
+from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -43,6 +45,22 @@ def one_shot_source(read_ok=True):
 
     source.saferead.side_effect = saferead
     return source, vs_ref
+
+
+def n_shot_source(n):
+    '''Source whose saferead() stops the loop after *n* good frames.'''
+    vs_ref = [None]
+    source = make_mock_source()
+    count = [0]
+
+    def saferead():
+        count[0] += 1
+        if count[0] >= n:
+            vs_ref[0]._running = False
+        return True, _FRAME.copy()
+
+    source.saferead.side_effect = saferead
+    return source, vs_ref, count
 
 
 class TestInit(unittest.TestCase):
@@ -191,6 +209,71 @@ class TestRun(unittest.TestCase):
         spy = QtTest.QSignalSpy(vs.newFrame)
         vs.run()
         self.assertIsInstance(spy[0][0], np.ndarray)
+
+    def test_emits_frame_and_info(self):
+        source, ref = one_shot_source(read_ok=True)
+        vs = make_vs(source)
+        ref[0] = vs
+        spy = QtTest.QSignalSpy(vs.newFrame)
+        vs.run()
+        self.assertEqual(len(spy[0]), 2)
+        self.assertIsInstance(spy[0][1], FrameInfo)
+
+    def test_frame_index_counts_from_zero(self):
+        source, ref, _ = n_shot_source(3)
+        vs = make_vs(source)
+        ref[0] = vs
+        spy = QtTest.QSignalSpy(vs.newFrame)
+        vs.run()
+        self.assertEqual([args[1].index for args in spy], [0, 1, 2])
+
+    def test_failed_reads_do_not_consume_indices(self):
+        source = make_mock_source()
+        vs = make_vs(source)
+        results = iter([(False, None), (True, _FRAME.copy()),
+                        (False, None), (True, _FRAME.copy())])
+
+        def saferead():
+            ok, frame = next(results)
+            if ok and vs._frames == 1:
+                vs._running = False
+            return ok, frame
+        source.saferead.side_effect = saferead
+        spy = QtTest.QSignalSpy(vs.newFrame)
+        vs.run()
+        self.assertEqual([args[1].index for args in spy], [0, 1])
+
+    def test_index_restarts_on_each_run(self):
+        source, ref, count = n_shot_source(2)
+        vs = make_vs(source)
+        ref[0] = vs
+        vs.run()
+        count[0] = 0
+        vs._running = True
+        spy = QtTest.QSignalSpy(vs.newFrame)
+        vs.run()
+        self.assertEqual(spy[0][1].index, 0)
+
+    def test_timestamps_are_monotonic_and_taken_after_read(self):
+        source, ref, _ = n_shot_source(3)
+        vs = make_vs(source)
+        ref[0] = vs
+        spy = QtTest.QSignalSpy(vs.newFrame)
+        before = time.perf_counter()
+        vs.run()
+        after = time.perf_counter()
+        stamps = [args[1].timestamp for args in spy]
+        self.assertEqual(stamps, sorted(stamps))
+        self.assertGreaterEqual(stamps[0], before)
+        self.assertLessEqual(stamps[-1], after)
+
+    def test_hardware_timestamp_is_none_by_default(self):
+        source, ref = one_shot_source(read_ok=True)
+        vs = make_vs(source)
+        ref[0] = vs
+        spy = QtTest.QSignalSpy(vs.newFrame)
+        vs.run()
+        self.assertIsNone(spy[0][1].hardware_timestamp)
 
     def test_opens_and_closes_source(self):
         source = make_mock_source()

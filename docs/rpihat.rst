@@ -17,9 +17,9 @@ QVideo supports the AI Camera through
 
    QPicamera                   QIMXCamera
    ──────────────────────────  ──────────────────────────────────────
-   newFrame (ndarray)          newFrame (ndarray)     ← inherited
-   all picamera2 controls      all picamera2 controls ← inherited
-                               newOutput (list|None)  ← new
+   newFrame (ndarray, info)    newFrame (ndarray, info) ← inherited
+   all picamera2 controls      all picamera2 controls   ← inherited
+                               newOutput (list|None)    ← new
 
 :attr:`~QVideo.cameras.Picamera.QIMXCamera.newOutput` is emitted once
 per frame.  Its payload is either a :class:`list` of

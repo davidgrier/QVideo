@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 from qtpy import QtWidgets, QtTest
 from QVideo.lib.QVideoWriter import QVideoWriter
+from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -17,6 +18,7 @@ class _ConcreteWriter(QVideoWriter):
         super().__init__(*args, **kwargs)
         self._open = False
         self._written = []
+        self._infos = []
 
     def open(self, frame):
         self._open = True
@@ -25,8 +27,9 @@ class _ConcreteWriter(QVideoWriter):
     def isOpen(self):
         return self._open
 
-    def _write(self, frame):
+    def _write(self, frame, info):
         self._written.append(frame.copy())
+        self._infos.append(info)
 
     def close(self):
         self._open = False
@@ -49,11 +52,42 @@ class _SuperCallingWriter(QVideoWriter):
     def isOpen(self):
         return super().isOpen()
 
-    def _write(self, frame):
-        return super()._write(frame)
+    def _write(self, frame, info):
+        return super()._write(frame, info)
 
     def close(self):
         return super().close()
+
+
+class TestQVideoWriterFrameInfo(unittest.TestCase):
+
+    def _open_writer(self):
+        w = _ConcreteWriter('out.avi')
+        w.write(_FRAME)             # first frame opens the file
+        return w
+
+    def test_info_is_passed_to_internal_write(self):
+        w = self._open_writer()
+        info = FrameInfo(7, 12.5)
+        w.write(_FRAME, info)
+        self.assertIs(w._infos[0], info)
+
+    def test_missing_info_is_replaced_by_current_stamp(self):
+        w = self._open_writer()
+        w.write(_FRAME)
+        self.assertIsInstance(w._infos[0], FrameInfo)
+
+    def test_slot_accepts_signal_with_info(self):
+        from qtpy import QtCore
+        w = self._open_writer()
+
+        class Emitter(QtCore.QObject):
+            newFrame = QtCore.Signal(np.ndarray, object)
+        e = Emitter()
+        e.newFrame.connect(w.write)
+        info = FrameInfo(1, 2.)
+        e.newFrame.emit(_FRAME, info)
+        self.assertIs(w._infos[0], info)
 
 
 class TestQVideoWriterInit(unittest.TestCase):
@@ -210,7 +244,7 @@ class TestQVideoWriterAbstractBodies(unittest.TestCase):
 
     def test_super_write_returns_none(self):
         w = _SuperCallingWriter('out.avi')
-        result = w._write(_FRAME)
+        result = w._write(_FRAME, FrameInfo(0, 0.))
         self.assertIsNone(result)
 
     def test_super_close_returns_none(self):

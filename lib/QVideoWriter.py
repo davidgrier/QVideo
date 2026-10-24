@@ -1,7 +1,8 @@
 '''Abstract base class for video file writers.'''
 from abc import (ABCMeta, abstractmethod)
 from qtpy import QtCore
-from QVideo.lib.videotypes import Image
+from QVideo.lib.videotypes import Image, FrameInfo
+from time import perf_counter
 import numpy as np
 import logging
 
@@ -46,7 +47,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
 
     Slots
     -----
-    write(frame: Image) -> None
+    write(frame: Image, info: FrameInfo | None = None) -> None
         Write a video frame to the file.
     close() -> None
         Close the video file.
@@ -68,7 +69,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
         Open the video file for writing.
     isOpen() -> bool
         Check if the video file is open.
-    _write(frame: Image) -> None
+    _write(frame: Image, info: FrameInfo) -> None
         Write a video frame to the file.
     close() -> None
         Close the video file.
@@ -115,8 +116,8 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     def isOpen(self) -> bool:
         '''Return ``True`` if the output file is currently open.'''
 
-    @QtCore.Slot(np.ndarray)
-    def write(self, frame: Image) -> None:
+    @QtCore.Slot(np.ndarray, object)
+    def write(self, frame: Image, info: FrameInfo | None = None) -> None:
         '''Write a video frame.
 
         Opens the file on the first call, skips frames according to
@@ -127,7 +128,13 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
         ----------
         frame : Image
             Video frame to write.
+        info : FrameInfo, optional
+            Capture metadata for *frame*, as emitted by
+            :attr:`~QVideo.lib.QVideoSource.newFrame`.  If omitted, the
+            frame is stamped with the current time.
         '''
+        if info is None:
+            info = FrameInfo(self.framenumber, perf_counter())
         if not self.isOpen():
             if not self.open(frame):
                 logger.warning(f'Could not write to {self.filename}')
@@ -137,12 +144,12 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
             self.finished.emit()
             return
         if self.framenumber % self.nskip == 0:
-            self._write(np.zeros_like(frame) if self.blank else frame)
+            self._write(np.zeros_like(frame) if self.blank else frame, info)
             self.framenumber += 1
             self.frameNumber.emit(self.framenumber)
 
     @abstractmethod
-    def _write(self, frame: Image) -> None:
+    def _write(self, frame: Image, info: FrameInfo) -> None:
         pass
 
     @QtCore.Slot()

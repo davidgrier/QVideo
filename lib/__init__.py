@@ -38,7 +38,7 @@ QSnapshot
 QListCameras
     Widget listing available camera backends.
 '''
-from .videotypes import Image
+from .videotypes import Image, FrameInfo
 from .clickable import clickable
 from .QCamera import QCamera
 from .errors import QCameraError, QDriverError, QDeviceError
@@ -60,6 +60,7 @@ from .QUniformityWidget import QUniformityWidget
 from .QSnapshot import QSnapshot
 
 __all__ = '''Image
+           FrameInfo
 clickable Camera choose_camera QListCameras
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree QFilterBank QFilterRack
 QVideoReader QVideoWriter QVideoScreen

@@ -123,6 +123,11 @@ On macOS 26.7.1 (Tahoe), the OpenCV backend was tested with OpenCV
 checked.  See the [documentation](https://qvideo.readthedocs.io) for
 details.
 
+QVideo itself is pure Python and is tested on Python 3.11 – 3.14.  The
+newest Python release may lag: Python 3.15 is run in CI as an
+allowed-failure job because some dependencies (e.g. scipy) do not yet
+publish wheels for it.
+
 ## Writing a new camera backend
 
 Subclass `QCamera` and implement three methods:

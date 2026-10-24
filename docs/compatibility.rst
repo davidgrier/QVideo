@@ -44,6 +44,15 @@ Tested platforms
 On macOS 26.7.1 (Tahoe), the OpenCV backend was tested with OpenCV
 5.0.0_11 and the FLIR backend with Spinnaker SDK 4.4.0.246.
 
+Python versions
+---------------
+
+QVideo itself is pure Python and is tested on Python 3.11 through 3.14.
+Its dependencies (the Qt bindings, scipy, numba and others) publish
+wheels for new Python releases on their own schedules, so the newest
+Python may lag behind.  Python 3.15 is run in continuous integration as
+an allowed-failure job until its dependencies catch up.
+
 Other backends
 --------------
 

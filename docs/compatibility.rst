@@ -35,8 +35,8 @@ Tested platforms
      - macOS 14 through 26
      - Tested
    * -
-     - Ubuntu
-     - Not yet tested
+     - Ubuntu 24.04
+     - Tested
    * -
      - Windows
      - Not tested

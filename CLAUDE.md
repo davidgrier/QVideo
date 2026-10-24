@@ -63,7 +63,16 @@ The GitHub Release event fires Zenodo's webhook and mints a DOI.
 
 ## Architecture
 
-QVideo is a Qt framework — compatible with PyQt5, PyQt6, and PySide — for integrating scientific cameras into research applications. The design separates hardware communication, threading, property introspection, and UI into distinct layers.
+QVideo is a Qt framework — compatible with PyQt6 and PyQt5 (PySide6 is experimental) — for integrating scientific cameras into research applications. The design separates hardware communication, threading, property introspection, and UI into distinct layers.
+
+**Qt binding.**  A binding is essential but is an optional extra
+(`QVideo[pyqt6]` recommended, `[pyqt5]`, `[pyside6]` experimental), never a
+hard dependency: pip cannot say "use whichever is installed", and a forced
+install would break Raspberry Pi systems that use the system `python3-pyqt*`
+packages.  `import QVideo` with no binding raises an `ImportError` naming the
+extras.  PySide6 runs the capture/display pipeline, but `isinstance(x,
+QCamera)` fails under Shiboken (QObject + `ABCMeta` metaclass), which breaks
+`QCameraTree`; CI runs PySide6 as an allowed-failure job.
 
 ### Core abstractions (`lib/`)
 

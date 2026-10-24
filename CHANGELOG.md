@@ -41,6 +41,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (ultralytics).  The `dev-pyqt5` and `dev-pyqt6` extras no longer install
   ultralytics and PyTorch (53 packages instead of 79); `dev` still does.
 
+- **PyQt6 is the recommended Qt binding.**  Bindings remain optional extras
+  (a hard dependency cannot defer to a binding that is already installed,
+  and would break Raspberry Pi systems that use the system packages), but
+  `import QVideo` without one now raises an `ImportError` that names the
+  extras to install instead of qtpy's bare "No Qt bindings could be found".
+  Added the `pyside6` extra; PySide6 is experimental (see below).  CI now
+  runs PyQt6 on every supported Python version, PyQt5 on the oldest and
+  newest, and PySide6 as an allowed-failure job.
+
 ### Fixed
 
 - **Recording every Nth frame (`nskip` > 1) wrote a single frame.**

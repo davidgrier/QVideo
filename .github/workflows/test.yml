@@ -10,7 +10,7 @@ jobs:
   test:
     name: Python ${{ matrix.python-version }} / ${{ matrix.qt }}${{ matrix.extras }}
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.python-version == '3.15' }}
+    continue-on-error: ${{ matrix.python-version == '3.15' || matrix.qt == 'pyside6' }}
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       QT_QPA_PLATFORM: offscreen
@@ -19,14 +19,20 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        qt: ["pyqt5"]
+        qt: ["pyqt6"]
         include:
-          - python-version: "3.12"
-            qt: "pyqt6"
           # Also install the (large) optional YOLO stack in one job.
           - python-version: "3.12"
-            qt: "pyqt5"
+            qt: "pyqt6"
             extras: ",yolo"
+          # PyQt5 on the oldest and newest supported Python.
+          - python-version: "3.11"
+            qt: "pyqt5"
+          - python-version: "3.14"
+            qt: "pyqt5"
+          # PySide6 is experimental; its failures do not fail the workflow.
+          - python-version: "3.12"
+            qt: "pyside6"
 
     steps:
       - uses: actions/checkout@v4

@@ -8,7 +8,7 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19239402.svg)](https://doi.org/10.5281/zenodo.19239402)
 
 **QVideo** is a framework for integrating video cameras into Qt projects
-(PyQt5, PyQt6, or PySide) for scientific research.  It provides a unified, registration-based property
+(PyQt6 or PyQt5; PySide6 is experimental) for scientific research.  It provides a unified, registration-based property
 system so that every camera backend — USB webcams, GenICam devices, FLIR
 cameras, Raspberry Pi cameras — is controlled through the same API.  Property
 trees, display widgets, and a digital video recorder are built on top of that
@@ -39,18 +39,23 @@ abstraction and require no camera-specific code.
 ## Installation
 
 ```bash
-pip install QVideo
+pip install "QVideo[pyqt6]"
 ```
 
 ### Qt binding
 
-QVideo works with PyQt5, PyQt6, or PySide. On x86/x86_64 a binding can be
-installed alongside QVideo:
+QVideo needs a Qt binding: PyQt6 (recommended) or PyQt5.  The binding is
+an optional extra so that QVideo can use one you already have, such as the
+system packages on a Raspberry Pi, instead of installing a second copy:
 
 ```bash
-pip install "QVideo[pyqt6]"   # PyQt6
+pip install "QVideo[pyqt6]"   # PyQt6 (recommended)
 pip install "QVideo[pyqt5]"   # PyQt5
+pip install QVideo            # use a binding that is already installed
 ```
+
+PySide6 is experimental (`pip install "QVideo[pyside6]"`): frames are
+captured and displayed, but the camera control tree does not work yet.
 
 ### Raspberry Pi
 

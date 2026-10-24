@@ -1,11 +1,11 @@
 QVideo
 ======
 
-QVideo is a Qt framework — compatible with PyQt5, PyQt6, and PySide —
-for integrating scientific cameras into research applications.  It
-separates hardware communication, threading, property introspection, and
-UI into distinct, composable layers so that adding a new camera backend
-or image-processing filter requires minimal boilerplate.
+QVideo is a Qt framework — compatible with PyQt6 and PyQt5 (PySide6 is
+experimental) — for integrating scientific cameras into research applications.
+It separates hardware communication, threading, property introspection, and UI
+into distinct, composable layers so that adding a new camera backend or
+image-processing filter requires minimal boilerplate.
 
 Run the full camcorder application directly::
 

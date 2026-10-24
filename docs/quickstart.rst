@@ -4,18 +4,22 @@ Quickstart
 Installation
 ------------
 
-Install QVideo with a Qt binding.  PyQt5 and PyQt6 are both supported:
+QVideo needs a Qt binding.  PyQt6 is recommended; PyQt5 is also supported:
 
 .. code-block:: bash
 
+   pip install QVideo[pyqt6]   # PyQt6 (recommended)
    pip install QVideo[pyqt5]   # PyQt5
-   pip install QVideo[pyqt6]   # PyQt6
+   pip install QVideo          # use a binding that is already installed
+
+PySide6 (``QVideo[pyside6]``) is experimental: frames are captured and
+displayed, but the camera control tree does not work yet.
 
 To record video to HDF5 files, add the ``dvr`` extra:
 
 .. code-block:: bash
 
-   pip install QVideo[pyqt5,dvr]
+   pip install QVideo[pyqt6,dvr]
 
 Run the full camcorder application
 -----------------------------------

@@ -1,4 +1,3 @@
-from qtpy import QtCore
 from QVideo.lib import QCameraTree
 from QVideo.cameras.OpenCV import QOpenCVCamera
 
@@ -10,9 +9,8 @@ class QOpenCVTree(QCameraTree):
 
     '''Camera control tree for :class:`~QVideo.cameras.OpenCV.QOpenCVCamera`.
 
-    Extends :class:`~QVideo.lib.QCameraTree.QCameraTree` with a
-    ``resolution`` dropdown populated from the formats reported by
-    :class:`~QVideo.cameras.OpenCV._devices.QOpenCVDevices`.  Selecting an
+    The camera's ``resolution`` property, whose allowed values are the
+    formats probed from the device, appears as a dropdown.  Selecting an
     entry atomically updates width, height, and frame rate on the live
     device without stopping the video source.
 
@@ -67,72 +65,8 @@ class QOpenCVTree(QCameraTree):
             if key in self._parameters:
                 self._parameters[key].setOpts(enabled=False)
         # fps is controlled by the resolution dropdown when formats are known
-        if self._hasFormats and 'fps' in self._parameters:
+        if 'resolution' in self._parameters and 'fps' in self._parameters:
             self._parameters['fps'].setOpts(enabled=False)
-
-    def _createTree(self, description=None) -> None:
-        '''Build the parameter tree, prepending a resolution enum when formats
-        are available.'''
-        if description is None:
-            description = self._defaultDescription(self.camera)
-        formats = getattr(self.camera, '_formats', [])
-        self._hasFormats = bool(formats)
-        if formats:
-            description = [self._formatEntry(formats)] + [
-                d for d in description if d.get('name') != 'resolution'
-            ]
-        super()._createTree(description)
-
-    def _formatEntry(self, formats: list) -> dict:
-        '''Build the ``resolution`` list-parameter description dict.'''
-        current_w = self.camera.width
-        current_h = self.camera.height
-        values: dict[str, tuple] = {}
-        current_value = None
-        for w, h, _min_fps, max_fps in formats:
-            label = f'{w}\u00d7{h} @ {max_fps:.0f} Hz'
-            val = (w, h, float(max_fps))
-            values[label] = val
-            if w == current_w and h == current_h and current_value is None:
-                current_value = val
-        if current_value is None:
-            current_value = next(iter(values.values()))
-        return {'name': 'resolution',
-                'type': 'list',
-                'limits': values,
-                'value': current_value,
-                'default': current_value}
-
-    @QtCore.Slot(object, object)
-    def _sync(self, root, changes) -> None:
-        '''Handle parameter changes, routing ``resolution`` entries here.
-
-        A ``resolution`` change is applied directly to the camera (width,
-        height, fps) without going through the base-class ``camera.set``
-        dispatch, since ``resolution`` is not a registered camera property.
-        All other changes are forwarded to the base class.
-        '''
-        if self._ignoreSync:
-            return
-        fmt_value = None
-        other = []
-        for param, change, value in changes:
-            if change == 'value' and param.name() == 'resolution':
-                fmt_value = value
-            else:
-                other.append((param, change, value))
-        if fmt_value is not None:
-            w, h, fps = fmt_value
-            self.camera.set('width', w)
-            self.camera.set('height', h)
-            self.camera.set('fps', fps)
-            self._ignoreSync = True
-            for key, val in self.camera.settings.items():
-                if key != 'resolution':
-                    self.set(key, val)
-            self._ignoreSync = False
-        if other:
-            super()._sync(root, other)
 
 
 if __name__ == '__main__':  # pragma: no cover

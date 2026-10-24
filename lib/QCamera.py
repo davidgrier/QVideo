@@ -168,6 +168,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             is stored for use by UI generators such as ``QCameraTree``.
         **meta :
             Additional metadata (e.g. ``minimum``, ``maximum``, ``step``).
+            For a ``str`` property, ``limits`` is the list of allowed
+            values, which the Qt and Jupyter interfaces present as a
+            drop-down.
         '''
         if getter is _AUTO:
             def getter(): return getattr(self, f'_{name}')

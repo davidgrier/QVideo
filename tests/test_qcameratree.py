@@ -95,6 +95,56 @@ class TestQCameraTreeDefaultDescription(unittest.TestCase):
         self.assertTrue(width_param.opts.get('enabled', True))
 
 
+class TestQCameraTreeChoiceProperty(unittest.TestCase):
+    '''A string property with ``limits`` becomes a list control.'''
+
+    def _camera(self):
+        cam = make_camera()
+        self.mode = 'fast'
+
+        def setMode(value):
+            self.mode = value
+        cam.registerProperty('mode', getter=lambda: self.mode,
+                             setter=setMode, ptype=str,
+                             limits=['fast', 'slow'])
+        cam.registerProperty('plain', getter=lambda: 'abc',
+                             setter=lambda v: None, ptype=str)
+        cam.registerProperty('count', getter=lambda: 3,
+                             setter=lambda v: None, ptype=int,
+                             limits=(0, 10))
+        return cam
+
+    def _entry(self, name):
+        desc = QCameraTree._defaultDescription(self._camera())
+        return next(d for d in desc if d['name'] == name)
+
+    def test_string_property_with_limits_is_a_list(self):
+        entry = self._entry('mode')
+        self.assertEqual(entry['type'], 'list')
+        self.assertEqual(entry['limits'], ['fast', 'slow'])
+        self.assertEqual(entry['value'], 'fast')
+
+    def test_string_property_without_limits_stays_a_string(self):
+        self.assertEqual(self._entry('plain')['type'], 'str')
+        self.assertNotIn('limits', self._entry('plain'))
+
+    def test_numeric_limits_are_not_turned_into_a_list(self):
+        self.assertEqual(self._entry('count')['type'], 'int')
+
+    def test_selecting_an_entry_sets_the_camera_property(self):
+        tree = QCameraTree(make_source(self._camera()))
+        tree._parameters['mode'].setValue('slow')
+        self.assertEqual(self.mode, 'slow')
+
+    def test_unrelated_change_does_not_reset_the_selection(self):
+        tree = QCameraTree(make_source(self._camera()))
+        tree._parameters['mode'].setValue('slow')
+        param = MagicMock()
+        param.name.return_value = 'plain'
+        tree._sync(None, [(param, 'value', 'xyz')])
+        self.assertEqual(tree._parameters['mode'].value(), 'slow')
+
+
 class TestQCameraTreeGet(unittest.TestCase):
 
     def test_get_returns_current_value(self):

@@ -52,6 +52,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`QCamcorder -c` showed the wrong resolution.**  The OpenCV camera
+  control tree's resolution dropdown showed 640×480 (its first entry) while
+  the camera was delivering another resolution, and it jumped back to the
+  first entry whenever any other setting changed.  The dropdown held
+  `(width, height, fps)` tuples while the camera's `resolution` property
+  uses label strings, and every tree sync wrote the label into the tuple
+  list.  `QCameraTree` now builds a drop-down from any `str` property that
+  has `limits` (as the Jupyter interface already did), and `QOpenCVTree`
+  uses the camera's own `resolution` property instead of a parallel
+  tuple-valued control, which also removes about 45 lines.
 - **PySide6 compatibility of the core classes.**  `QCamera`,
   `QVideoReader` and `QVideoWriter` now share one metaclass, `QABCMeta`
   (`QVideo.lib._qabc`), instead of three identical definitions; it lists

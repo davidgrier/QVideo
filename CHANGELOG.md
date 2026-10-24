@@ -30,6 +30,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.10 is no longer supported; the package now requires
   Python 3.11 or later and is tested on 3.11 through 3.14.
 
+### Fixed
+
+- **Recording every Nth frame (`nskip` > 1) wrote a single frame.**
+  `QVideoWriter.write` decided whether to record a frame from the count of
+  frames already written, which stopped advancing after the first write, so
+  no later frame was ever recorded.  `QVideoWriter.framenumber` now counts
+  frames received, and `nskip=N` records every Nth frame as the DVR
+  widget's "Record every Nth frame" control promises.
+- **The first frame of a recording was discarded.**  It was used only to
+  open the output file; it is now recorded like every other frame.
+
 ---
 
 ## [3.19.0] — 2026-10-23

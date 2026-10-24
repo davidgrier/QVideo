@@ -28,7 +28,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     nframes : int
         The maximum number of frames to write.
     nskip : int
-        The number of frames to skip between writes.
+        Write every *nskip*-th frame received; 1 writes every frame.
     kwargs : dict
         Additional keyword arguments to pass to the QObject constructor.
 
@@ -40,8 +40,8 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     Signals
     -------
     frameNumber(int)
-        Emitted when a new frame is written, providing the
-        current frame number.
+        Emitted when a frame is written, providing the number of frames
+        written so far.
     finished()
         Emitted when the video writing is finished.
 
@@ -59,7 +59,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     fps : int
         The frame rate of the output video [frames per second].
     nskip : int
-        The number of frames to skip between writes.
+        Write every *nskip*-th frame received; 1 writes every frame.
     nframes : int
         The maximum number of frames to write.
 
@@ -120,9 +120,11 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
     def write(self, frame: Image, info: FrameInfo | None = None) -> None:
         '''Write a video frame.
 
-        Opens the file on the first call, skips frames according to
-        :attr:`nskip`, and emits :attr:`finished` when :attr:`nframes`
-        have been written or when the file cannot be opened.
+        Opens the file on the first call, writes every :attr:`nskip`-th
+        frame received (starting with the first), and emits
+        :attr:`finished` when :attr:`nframes` have been written or when
+        the file cannot be opened.  :attr:`framenumber` counts frames
+        received, written or not.
 
         Parameters
         ----------
@@ -135,18 +137,17 @@ class QVideoWriter(QtCore.QObject, metaclass=QVideoWriterMeta):
         '''
         if info is None:
             info = FrameInfo(self.framenumber, perf_counter())
-        if not self.isOpen():
-            if not self.open(frame):
-                logger.warning(f'Could not write to {self.filename}')
-                self.finished.emit()
+        if not self.isOpen() and not self.open(frame):
+            logger.warning(f'Could not write to {self.filename}')
+            self.finished.emit()
             return
-        if (self.framenumber >= self.target):
+        if self.framenumber >= self.target * self.nskip:
             self.finished.emit()
             return
         if self.framenumber % self.nskip == 0:
             self._write(np.zeros_like(frame) if self.blank else frame, info)
-            self.framenumber += 1
-            self.frameNumber.emit(self.framenumber)
+            self.frameNumber.emit(self.framenumber // self.nskip + 1)
+        self.framenumber += 1
 
     @abstractmethod
     def _write(self, frame: Image, info: FrameInfo) -> None:

@@ -61,25 +61,20 @@ class _SuperCallingWriter(QVideoWriter):
 
 class TestQVideoWriterFrameInfo(unittest.TestCase):
 
-    def _open_writer(self):
-        w = _ConcreteWriter('out.avi')
-        w.write(_FRAME)             # first frame opens the file
-        return w
-
     def test_info_is_passed_to_internal_write(self):
-        w = self._open_writer()
+        w = _ConcreteWriter('out.avi')
         info = FrameInfo(7, 12.5)
         w.write(_FRAME, info)
         self.assertIs(w._infos[0], info)
 
     def test_missing_info_is_replaced_by_current_stamp(self):
-        w = self._open_writer()
+        w = _ConcreteWriter('out.avi')
         w.write(_FRAME)
         self.assertIsInstance(w._infos[0], FrameInfo)
 
     def test_slot_accepts_signal_with_info(self):
         from qtpy import QtCore
-        w = self._open_writer()
+        w = _ConcreteWriter('out.avi')
 
         class Emitter(QtCore.QObject):
             newFrame = QtCore.Signal(np.ndarray, object)
@@ -137,10 +132,10 @@ class TestQVideoWriterWriteOpen(unittest.TestCase):
         w.write(_FRAME)
         self.assertTrue(w.isOpen())
 
-    def test_write_does_not_write_on_open_call(self):
+    def test_write_records_the_frame_that_opens_the_file(self):
         w = _ConcreteWriter('out.avi')
-        w.write(_FRAME)   # triggers open(), then returns
-        self.assertEqual(len(w._written), 0)
+        w.write(_FRAME)
+        self.assertEqual(len(w._written), 1)
 
     def test_write_open_failure_emits_finished(self):
         w = _FailingWriter('out.avi')
@@ -163,68 +158,86 @@ class TestQVideoWriterWriteOpen(unittest.TestCase):
 
 
 class TestQVideoWriterWriteFrame(unittest.TestCase):
-    '''Tests for writing once the file is open.'''
+    '''Tests for recording frames.'''
 
-    def _opened(self, **kwargs):
-        w = _ConcreteWriter('out.avi', **kwargs)
-        w.write(_FRAME)   # opens
-        return w
+    def _feed(self, w, n):
+        '''Send *n* frames numbered from 0; return the numbers written.'''
+        for i in range(n):
+            w.write(np.full_like(_FRAME, i))
+        return [int(f[0, 0]) for f in w._written]
 
-    def test_second_write_calls_internal_write(self):
-        w = self._opened()
+    def test_write_calls_internal_write(self):
+        w = _ConcreteWriter('out.avi')
         w.write(_FRAME)
         self.assertEqual(len(w._written), 1)
 
     def test_write_increments_framenumber(self):
-        w = self._opened()
+        w = _ConcreteWriter('out.avi')
         w.write(_FRAME)
         self.assertEqual(w.framenumber, 1)
 
     def test_write_emits_frame_number(self):
-        w = self._opened()
+        w = _ConcreteWriter('out.avi')
         spy = QtTest.QSignalSpy(w.frameNumber)
         w.write(_FRAME)
         self.assertEqual(len(spy), 1)
         self.assertEqual(spy[0][0], 1)
 
     def test_multiple_writes_accumulate_framenumber(self):
-        w = self._opened()
-        for _ in range(5):
-            w.write(_FRAME)
+        w = _ConcreteWriter('out.avi')
+        self._feed(w, 5)
         self.assertEqual(w.framenumber, 5)
 
     def test_write_at_target_emits_finished(self):
         w = _ConcreteWriter('out.avi', nframes=2)
-        w.write(_FRAME)   # opens
-        w.write(_FRAME)   # writes frame → framenumber = 1
-        w.write(_FRAME)   # writes frame → framenumber = 2
+        self._feed(w, 2)
         spy = QtTest.QSignalSpy(w.finished)
-        w.write(_FRAME)   # framenumber >= target → finished
+        w.write(_FRAME)   # at target → finished
         self.assertEqual(len(spy), 1)
 
     def test_write_at_target_does_not_write_frame(self):
         w = _ConcreteWriter('out.avi', nframes=1)
-        w.write(_FRAME)   # opens
-        w.write(_FRAME)   # writes → framenumber = 1 = target
-        count_before = len(w._written)
+        self._feed(w, 1)
         w.write(_FRAME)   # at target → finished, no write
-        self.assertEqual(len(w._written), count_before)
-
-    def test_write_skips_frame_when_nskip_not_met(self):
-        w = _ConcreteWriter('out.avi', nskip=2)
-        w.write(_FRAME)   # opens
-        w.write(_FRAME)   # framenumber=0, 0%2==0 → writes
-        w.write(_FRAME)   # framenumber=1, 1%2!=0 → skips
         self.assertEqual(len(w._written), 1)
 
+    def test_nskip_one_writes_every_frame(self):
+        w = _ConcreteWriter('out.avi', nskip=1)
+        self.assertEqual(self._feed(w, 5), [0, 1, 2, 3, 4])
+
+    def test_nskip_two_writes_every_second_frame(self):
+        w = _ConcreteWriter('out.avi', nskip=2)
+        self.assertEqual(self._feed(w, 7), [0, 2, 4, 6])
+
+    def test_nskip_three_writes_every_third_frame(self):
+        w = _ConcreteWriter('out.avi', nskip=3)
+        self.assertEqual(self._feed(w, 10), [0, 3, 6, 9])
+
+    def test_framenumber_counts_frames_seen(self):
+        w = _ConcreteWriter('out.avi', nskip=3)
+        self._feed(w, 10)
+        self.assertEqual(w.framenumber, 10)
+
+    def test_frame_number_signal_counts_frames_written(self):
+        w = _ConcreteWriter('out.avi', nskip=2)
+        spy = QtTest.QSignalSpy(w.frameNumber)
+        self._feed(w, 6)
+        self.assertEqual([args[0] for args in spy], [1, 2, 3])
+
+    def test_nframes_counts_frames_written_with_nskip(self):
+        w = _ConcreteWriter('out.avi', nframes=2, nskip=3)
+        spy = QtTest.QSignalSpy(w.finished)
+        self.assertEqual(self._feed(w, 20), [0, 3])
+        self.assertGreater(len(spy), 0)
+
     def test_blank_mode_writes_zeros(self):
-        w = self._opened()
+        w = _ConcreteWriter('out.avi')
         w.blank = True
-        w.write(_FRAME)
+        w.write(np.ones_like(_FRAME))
         np.testing.assert_array_equal(w._written[0], np.zeros_like(_FRAME))
 
     def test_non_blank_mode_writes_original_frame(self):
-        w = self._opened()
+        w = _ConcreteWriter('out.avi')
         frame = np.ones((480, 640), dtype=np.uint8) * 128
         w.write(frame)
         np.testing.assert_array_equal(w._written[0], frame)

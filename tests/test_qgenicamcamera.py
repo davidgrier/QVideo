@@ -216,11 +216,12 @@ class TestInit(unittest.TestCase):
         class _LazyProducer(QGenicamCamera):
             producer = None
             _producer_filenames = ('fake.cti',)
-        with patch.object(QGenicamCamera, '_findProducer',
-                          return_value=PRODUCER) as mock_find:
-            with patch.object(_cam_module, 'Harvester',
-                               return_value=make_camera()[1]):
-                _LazyProducer()
+        with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': '/gentl'}):
+            with patch.object(QGenicamCamera, '_findProducer',
+                              return_value=PRODUCER) as mock_find:
+                with patch.object(_cam_module, 'Harvester',
+                                   return_value=make_camera()[1]):
+                    _LazyProducer()
         mock_find.assert_called_once_with('fake.cti')
 
     def test_raises_when_env_var_unset(self):

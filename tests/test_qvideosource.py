@@ -178,6 +178,34 @@ class TestPauseResume(unittest.TestCase):
         vs.pause()
         self.assertTrue(vs.isPaused())
 
+    def test_resume_clears_paused(self):
+        vs = make_vs()
+        vs.pause()
+        vs.resume()
+        self.assertFalse(vs.isPaused())
+
+    def test_resume_arriving_during_a_read_is_not_lost(self):
+        '''pause() then resume() while a read is in flight must not stall.'''
+        source = make_mock_source()
+        vs = make_vs(source)
+        calls = []
+
+        def saferead():
+            calls.append(1)
+            if len(calls) == 1:
+                vs.pause()
+                vs.resume()
+            return True, _FRAME.copy()
+
+        source.saferead.side_effect = saferead
+        vs.start()
+        deadline = time.monotonic() + 1.
+        while len(calls) < 5 and time.monotonic() < deadline:
+            QtTest.QTest.qWait(10)
+        vs.stop()
+        self.assertTrue(vs.wait(2000))
+        self.assertGreaterEqual(len(calls), 5)
+
 
 class TestRun(unittest.TestCase):
     '''Tests for run() called directly so coverage can trace the body.

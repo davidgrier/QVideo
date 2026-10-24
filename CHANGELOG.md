@@ -38,6 +38,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   no later frame was ever recorded.  `QVideoWriter.framenumber` now counts
   frames received, and `nskip=N` records every Nth frame as the DVR
   widget's "Record every Nth frame" control promises.
+- **`QVideoSource.resume()` could be lost, leaving capture stalled.**  If
+  `pause()` and `resume()` both arrived while a frame read was in flight
+  (for example during a long exposure), the wake-up was sent before the
+  capture thread started waiting, and the thread then blocked until
+  `stop()`.  `resume()` now clears the paused state under the mutex, so
+  `isPaused()` is also accurate immediately afterward.
 - **The first frame of a recording was discarded.**  It was used only to
   open the output file; it is now recorded like every other frame.
 

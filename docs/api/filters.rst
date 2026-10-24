@@ -379,6 +379,9 @@ responsive even for large frames.  The companion
 :class:`~QVideo.filters.circletransform.QCircleTransformFilter`
 widget exposes a *window* spinbox.
 
+The filter needs scipy, which is not a core dependency of QVideo:
+``pip install "QVideo[circletransform]"``.
+
 .. [KG14] B.J. Krishnatreya and D.G. Grier, 'Fast feature identification
    for holographic tracking: the orientation alignment transform,'
    *Optics Express* **22**, 12773–12778 (2014).

@@ -31,7 +31,6 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
-    "scipy",
     "opencv-python",
     "qtpy",
     "pyqtgraph",
@@ -47,12 +46,16 @@ pyqt5    = ["PyQt5", "PyQt5-sip"]
 pyqt6    = ["PyQt6"]
 jupyter  = ["ipywidgets"]
 dvr      = ["h5py"]
-overlays = ["pandas", "trackpy", "numba", "ultralytics"]
+circletransform = ["scipy"]
+trackpy  = ["trackpy", "pandas", "numba"]
+yolo     = ["ultralytics"]
+overlays = ["QVideo[trackpy,yolo]"]
 genicam  = ["harvesters", "genicam"]
 picamera = ["picamera2"]
-dev-pyqt5 = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics", "ipywidgets"]
-dev-pyqt6 = ["PyQt6", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics", "ipywidgets"]
-dev       = ["PyQt5", "PyQt5-sip", "pytest", "pytest-cov", "h5py", "pandas", "trackpy", "numba", "ultralytics", "ipywidgets"]
+test     = ["QVideo[circletransform,dvr,jupyter,trackpy]", "pytest", "pytest-cov"]
+dev-pyqt5 = ["QVideo[test]", "PyQt5", "PyQt5-sip"]
+dev-pyqt6 = ["QVideo[test]", "PyQt6"]
+dev       = ["QVideo[test,yolo]", "PyQt5", "PyQt5-sip"]
 docs     = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints", "PyQt5"]
 
 [tool.setuptools]

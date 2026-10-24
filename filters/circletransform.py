@@ -6,14 +6,20 @@ from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import savgol_filter
-try:
-    from scipy.fft import fft2, ifft2, fftshift
-except ImportError:
-    from scipy.fftpack import fft2, ifft2, fftshift
 
 
 __all__ = ['CircleTransformFilter', 'QCircleTransformFilter']
+
+
+def _scipy():
+    '''Import scipy, an optional dependency, when a filter is created.'''
+    try:
+        from scipy import fft, signal
+    except ImportError as error:
+        raise ImportError(
+            'CircleTransformFilter requires scipy: '
+            'pip install "QVideo[circletransform]"') from error
+    return fft, signal
 
 
 class CircleTransformFilter(AsyncVideoFilter):
@@ -57,6 +63,7 @@ class CircleTransformFilter(AsyncVideoFilter):
     '''
 
     def __init__(self, window: int = 13, polyorder: int = 3) -> None:
+        self._fft, self._signal = _scipy()
         self._kernel = np.ones((1, 1))
         self.window = window
         self.polyorder = polyorder
@@ -85,8 +92,8 @@ class CircleTransformFilter(AsyncVideoFilter):
         if shape == self._kernel.shape:
             return self._kernel
         ny, nx = shape
-        kx = fftshift(np.linspace(-1., 1., nx, endpoint=False))
-        ky = fftshift(np.linspace(-1., 1., ny, endpoint=False))
+        kx = self._fft.fftshift(np.linspace(-1., 1., nx, endpoint=False))
+        ky = self._fft.fftshift(np.linspace(-1., 1., ny, endpoint=False))
         k = np.hypot.outer(ky, kx) + 0.001
         kernel = np.subtract.outer(1.j * ky, kx) / k
         kernel *= kernel / k
@@ -114,12 +121,13 @@ class CircleTransformFilter(AsyncVideoFilter):
         '''
         gray = image.mean(axis=2) if image.ndim == 3 else image.astype(float)
         psi = np.empty(gray.shape, dtype=complex)
-        psi.real = savgol_filter(gray, self._window, self._polyorder, 1, axis=1)
-        psi.imag = savgol_filter(gray, self._window, self._polyorder, 1, axis=0)
+        savgol = self._signal.savgol_filter
+        psi.real = savgol(gray, self._window, self._polyorder, 1, axis=1)
+        psi.imag = savgol(gray, self._window, self._polyorder, 1, axis=0)
         psi *= psi
-        psi = fft2(psi, workers=-1, overwrite_x=True)
+        psi = self._fft.fft2(psi, workers=-1, overwrite_x=True)
         psi *= self._kernel_for(gray.shape)
-        psi = ifft2(psi, workers=-1, overwrite_x=True)
+        psi = self._fft.ifft2(psi, workers=-1, overwrite_x=True)
         c = psi.real ** 2 + psi.imag ** 2
         cmax = c.max()
         if cmax > np.finfo(float).eps:

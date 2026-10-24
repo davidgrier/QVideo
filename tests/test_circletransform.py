@@ -1,4 +1,5 @@
 '''Unit tests for CircleTransformFilter and QCircleTransformFilter.'''
+import sys
 import unittest
 import numpy as np
 from unittest.mock import patch
@@ -54,6 +55,23 @@ class TestCircleTransformFilterInit(unittest.TestCase):
 
     def test_custom_polyorder(self):
         self.assertEqual(CircleTransformFilter(polyorder=2).polyorder, 2)
+
+
+class TestCircleTransformFilterScipy(unittest.TestCase):
+
+    def test_missing_scipy_raises_actionable_error(self):
+        with patch.dict(sys.modules, {'scipy': None}):
+            with self.assertRaisesRegex(ImportError,
+                                        r'QVideo\[circletransform\]'):
+                CircleTransformFilter()
+
+    def test_importing_the_module_does_not_import_scipy(self):
+        import subprocess
+        code = ('import sys; import QVideo.filters.circletransform; '
+                'sys.exit(int("scipy" in sys.modules))')
+        result = subprocess.run([sys.executable, '-c', code],
+                                capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
 
 
 class TestCircleTransformFilterWindow(unittest.TestCase):

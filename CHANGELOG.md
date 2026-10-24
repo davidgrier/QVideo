@@ -30,6 +30,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.10 is no longer supported; the package now requires
   Python 3.11 or later and is tested on 3.11 through 3.14.
 
+- **Optional packages are no longer imported until needed.**  `import
+  QVideo` takes about 0.2 s instead of 0.9 s because scipy, which only
+  `CircleTransformFilter` uses, is imported when that filter is created;
+  scipy is no longer a core dependency (`pip install
+  "QVideo[circletransform]"`).  `QVideo.overlays` imports its submodules on
+  first use, so the trackpy overlay no longer loads ultralytics and PyTorch.
+- **Optional dependencies are split by feature.**  The `overlays` extra is
+  now the union of `trackpy` (trackpy, pandas, numba) and `yolo`
+  (ultralytics).  The `dev-pyqt5` and `dev-pyqt6` extras no longer install
+  ultralytics and PyTorch (53 packages instead of 79); `dev` still does.
+
 ### Fixed
 
 - **Recording every Nth frame (`nskip` > 1) wrote a single frame.**

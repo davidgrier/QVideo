@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/QVideo)](https://pypi.org/project/QVideo/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
 [![Tests](https://github.com/davidgrier/QVideo/actions/workflows/test.yml/badge.svg)](https://github.com/davidgrier/QVideo/actions/workflows/test.yml)
-[![Documentation](https://readthedocs.org/projects/qvideo/badge/?version=latest)](https://qvideo.readthedocs.io/en/latest/)
+[![Documentation](https://app.readthedocs.org/projects/qvideo/badge/?version=latest)](https://qvideo.readthedocs.io/en/latest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19239402.svg)](https://doi.org/10.5281/zenodo.19239402)
 
 **QVideo** is a framework for integrating video cameras into Qt projects

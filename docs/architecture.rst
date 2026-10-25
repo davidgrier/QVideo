@@ -83,7 +83,9 @@ watches it.  ``QDVRWidget`` compares the capture time of each frame the
 camera delivers (:class:`~QVideo.lib.videotypes.FrameInfo`) with that of
 the newest frame the writer has taken up.  The difference is the backlog,
 and it is measured even while the writer is stuck inside one write.  When
-it exceeds ``lagLimit`` (one second by default) the widget emits
+it exceeds ``lagLimit`` (one second by default), or the time the camera
+needs to fill ``maxMemory`` bytes (80% of the available memory by default),
+the widget emits
 ``behind(lag)`` once, and again after the writer has caught up and fallen
 behind anew.  By default it then stops the recording
 (``stopWhenBehind=True``) after logging the reason and emitting

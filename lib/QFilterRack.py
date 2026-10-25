@@ -447,7 +447,7 @@ class QFilterRack(QtWidgets.QWidget):
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Export Pipeline', 'filter.py', 'Python files (*.py)')
         if path:
-            with open(path, 'w') as fh:
+            with open(path, 'w', encoding='utf-8') as fh:
                 fh.write(self.exportPipeline())
 
     def _removeSlot(self, slot: '_FilterSlot') -> None:

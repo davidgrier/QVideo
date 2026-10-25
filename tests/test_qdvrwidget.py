@@ -1,5 +1,6 @@
 '''Unit tests for QDVRWidget.'''
 import unittest
+from types import SimpleNamespace
 import numpy as np
 from unittest.mock import patch, MagicMock
 from QVideo.lib.videotypes import FrameInfo
@@ -259,6 +260,7 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         widget = make_widget()
         self.assertTrue(widget.stopWhenBehind)
         self.assertEqual(widget.lagLimit, 1.)
+        self.assertIsNone(widget.maxMemory)
 
     def test_a_writer_keeping_up_is_left_alone(self):
         widget, _ = self.watching()
@@ -318,6 +320,38 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         widget, _ = self.watching(lagLimit=5.)
         self.capture(widget, 12.)
         self.assertTrue(widget.isRecording())
+
+    def test_a_small_memory_budget_stops_the_recording(self):
+        # 0.5 s of a 30 Hz source of 16-byte frames
+        widget, _ = self.watching(_budget=0.5 * 30 * _FRAME.nbytes)
+        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
+            self.capture(widget, 10.6)
+        self.assertFalse(widget.isRecording())
+
+    def test_a_large_memory_budget_leaves_the_time_limit_in_charge(self):
+        widget, _ = self.watching(_budget=1e12)
+        self.capture(widget, 10.9)
+        self.assertTrue(widget.isRecording())
+        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
+            self.capture(widget, 12.)
+        self.assertFalse(widget.isRecording())
+
+    def test_the_budget_defaults_to_most_of_the_available_memory(self):
+        widget, source = make_widget_with_source()
+        free = SimpleNamespace(available=1000)
+        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
+                patch.object(QtCore, 'QThread', return_value=MockThread()), \
+                patch('psutil.virtual_memory', return_value=free):
+            widget.record()
+        self.assertEqual(widget._budget, 800)
+
+    def test_max_memory_overrides_the_default_budget(self):
+        widget, source = make_widget_with_source()
+        widget.maxMemory = 123
+        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
+                patch.object(QtCore, 'QThread', return_value=MockThread()):
+            widget.record()
+        self.assertEqual(widget._budget, 123)
 
     def test_a_writer_that_has_seen_nothing_is_not_late(self):
         widget, writer = self.watching()

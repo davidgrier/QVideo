@@ -260,18 +260,6 @@ class TestTotalRAM(unittest.TestCase):
             result = QCircularBuffer._totalRAM()
         self.assertEqual(result, 16 * 1024 ** 3)
 
-    def test_falls_back_to_sysconf(self):
-        with patch.dict('sys.modules', {'psutil': None}):
-            with patch.object(_module.os, 'sysconf', side_effect=[4096, 1024]):
-                result = QCircularBuffer._totalRAM()
-        self.assertEqual(result, 4096 * 1024)
-
-    def test_returns_zero_on_failure(self):
-        with patch.dict('sys.modules', {'psutil': None}):
-            with patch.object(_module.os, 'sysconf', side_effect=ValueError):
-                result = QCircularBuffer._totalRAM()
-        self.assertEqual(result, 0)
-
 
 class TestMemoryWarning(unittest.TestCase):
 
@@ -316,17 +304,6 @@ class TestMemoryWarning(unittest.TestCase):
             self.assertTrue(buf._warned)
             buf.duration = 2  # triggers _resize, resets _warned
             self.assertFalse(buf._warned)
-
-    def test_no_warning_when_total_ram_unknown(self):
-        buf = QCircularBuffer(fps=10., duration=1)
-        with patch.object(buf, '_totalRAM', return_value=0):
-            try:
-                with self.assertLogs('QVideo.dvr.QCircularBuffer', level='WARNING'):
-                    buf.append(self._big_frame())
-                warned = True
-            except AssertionError:
-                warned = False
-        self.assertFalse(warned)
 
 
 if __name__ == '__main__':

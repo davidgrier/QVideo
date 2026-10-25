@@ -1,10 +1,10 @@
 '''Ring buffer that accumulates timestamped frames for later saving.'''
-import os
 from collections import deque
 from pathlib import Path
 from time import time
 from qtpy import QtCore
 import numpy as np
+import psutil
 import logging
 
 from QVideo.lib.videotypes import Image, FrameInfo
@@ -99,22 +99,14 @@ class QCircularBuffer(QtCore.QObject):
 
     @staticmethod
     def _totalRAM() -> int:
-        '''Return total physical RAM in bytes, or 0 if undetermined.'''
-        try:
-            import psutil
-            return psutil.virtual_memory().total
-        except ImportError:
-            pass
-        try:
-            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-        except (AttributeError, ValueError):
-            return 0
+        '''Return total physical RAM in bytes.'''
+        return psutil.virtual_memory().total
 
     def _checkMemory(self) -> None:
         self._warned = True
         estimated = self._buffer.maxlen * self._frameBytes
         total = self._totalRAM()
-        if total > 0 and estimated > _MEMORY_WARN_FRACTION * total:
+        if estimated > _MEMORY_WARN_FRACTION * total:
             est_mb = estimated / 1024 ** 2
             pct = 100 * estimated / total
             total_gb = total / 1024 ** 3

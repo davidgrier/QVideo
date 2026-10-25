@@ -7,7 +7,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [4.1.0] — unreleased
+## [4.2.0] — unreleased
+
+### Added
+
+- **A recording also stops before it fills memory.**  `QDVRWidget` takes
+  `maxMemory`, the bytes that frames waiting for the writer may occupy.
+  The default is 80% of the memory available when recording starts.  The
+  budget is converted to the time the camera needs to fill it, so it joins
+  `lagLimit` as one limit: whichever is smaller decides when the recording
+  is behind.  `psutil` is now a dependency; it reads available memory the
+  same way on Linux, macOS and Windows.
+
+### Fixed
+
+- Exporting a filter pipeline writes UTF-8 on every platform (Windows
+  used its locale encoding).
+- `QCircularBuffer` reads total memory through `psutil` alone; the
+  `os.sysconf` fallback does not exist on Windows.
+
+---
+
+## [4.1.0] — 2026-10-25
 
 ### Added
 

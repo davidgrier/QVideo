@@ -3,6 +3,7 @@ from collections.abc import Callable
 from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
 import numpy as np
+import psutil
 from QVideo.lib import clickable, QVideoSource
 from QVideo.lib.videotypes import Image, FrameInfo
 from .QOpenCVWriter import QOpenCVWriter
@@ -64,6 +65,11 @@ class QDVRWidget(QtWidgets.QFrame):
     lagLimit : float
         How far [seconds] the writer may fall behind the newest captured
         frame.  Default: ``1.``.
+    maxMemory : float or None
+        Memory [bytes] that frames waiting for the writer may occupy.
+        The recording is treated as behind as soon as the backlog would
+        exceed it, whatever *lagLimit* says.  ``None`` means 80% of the
+        memory available when recording starts.  Default: ``None``.
     *args :
         Forwarded to :class:`~qtpy.QtWidgets.QFrame`.
     **kwargs :
@@ -78,8 +84,9 @@ class QDVRWidget(QtWidgets.QFrame):
     playing(bool)
         Emitted when playback starts (``True``) or stops (``False``).
     behind(float)
-        Emitted once each time the recording falls more than *lagLimit*
-        seconds behind the camera, with the lag in seconds.
+        Emitted once each time the recording falls behind the camera by
+        more than *lagLimit* seconds or *maxMemory* bytes, with the lag
+        in seconds.
     stopped(str)
         Emitted with the reason when the widget stops a recording by
         itself, just before ``recording(False)``.
@@ -88,7 +95,8 @@ class QDVRWidget(QtWidgets.QFrame):
     -----
     Stopping waits for the writer to finish the frames already captured,
     so no recorded frame is lost.  With *stopWhenBehind* the wait is
-    bounded by *lagLimit* seconds of data.
+    bounded by the smaller of *lagLimit* seconds and *maxMemory* bytes of
+    data.
     '''
 
     #: Emitted for each frame during playback.
@@ -159,10 +167,13 @@ class QDVRWidget(QtWidgets.QFrame):
                  filename: str = '',
                  stopWhenBehind: bool = True,
                  lagLimit: float = 1.,
+                 maxMemory: float | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.stopWhenBehind = stopWhenBehind
         self.lagLimit = lagLimit
+        self.maxMemory = maxMemory
+        self._budget = float('inf')
         self._source: QVideoSource | None = None
         self._writer: object | None = None
         self._player: QVideoSource | None = None
@@ -361,6 +372,8 @@ class QDVRWidget(QtWidgets.QFrame):
                                     nframes=self.nframes.value(),
                                     nskip=self.nskip.value())
         self._late = False
+        self._budget = (self.maxMemory
+                        or 0.8 * psutil.virtual_memory().available)
         self._writer.frameNumber.connect(self.setFrameNumber)
         self._writer.finished.connect(self.stop)
         self._thread = QtCore.QThread()
@@ -460,13 +473,16 @@ class QDVRWidget(QtWidgets.QFrame):
 
         The comparison uses the capture times, so it measures the backlog
         even while the writer is stuck inside a single write, and it
-        ignores sources that capture slowly.
+        ignores sources that capture slowly.  The memory budget is
+        converted to the time it takes the camera to fill it, so one
+        limit serves both.
         '''
         taken = self._writer and self._writer.received
         if info is None or not taken:
             return
         lag = info.timestamp - taken.timestamp
-        late = lag > self.lagLimit
+        fill = self._budget / (self.source.fps * frame.nbytes)
+        late = lag > min(self.lagLimit, fill)
         if late and not self._late:
             self.behind.emit(lag)
             if self.stopWhenBehind:

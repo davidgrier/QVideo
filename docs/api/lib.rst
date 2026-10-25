@@ -75,6 +75,33 @@ Subclasses override :meth:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter.process
 .. automodule:: QVideo.lib.AsyncVideoFilter
    :members:
 
+QFilterStack
+------------
+
+:class:`~QVideo.lib.QFilterStack.QFilterStack` runs filters on a worker
+thread between a source and its consumers.  It receives ``newFrame`` from
+the source, applies the filters in order, and emits ``newFrame`` with the
+result and the unchanged
+:class:`~QVideo.lib.videotypes.FrameInfo`, so processed frames keep the
+capture time and index of the frames they came from.  It has the same
+``newFrame``, ``shapeChanged``, ``fps`` and ``shape`` as a
+:class:`~QVideo.lib.QVideoSource.QVideoSource`, so a screen or recorder
+can use it as its source.
+
+While the worker is busy it keeps up to ``depth`` waiting frames and drops
+the oldest when more arrive.  The default ``depth=1`` always processes the
+newest frame; a larger depth gives a bounded queue for recording.  Drops
+are counted and reported through ``framesDropped``.
+
+A filter that raises is logged, removed from the stack, and reported
+through ``filterFailed``.  Given a
+:class:`~QVideo.lib.QFilterRack.QFilterRack`, the stack follows the
+rack's switched-on filters and switches off the widget of a filter that
+fails.
+
+.. automodule:: QVideo.lib.QFilterStack
+   :members:
+
 QFilterRack
 -----------
 

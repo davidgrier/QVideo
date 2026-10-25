@@ -16,79 +16,29 @@ Three recording modes are offered:
     The unfiltered camera stream at the full camera frame rate.
 
 **Filtered**
-    The rack-processed stream at the full camera frame rate.  Every
-    frame is filtered, regardless of the display throttle.
+    The rack-processed stream from the filter stack, independent of the
+    display throttle.  The stack works on its own thread and keeps a
+    short queue of frames, so a brief slowdown does not lose frames.
 
 **Display**
     The rack-processed stream at the throttled display rate.  Only
     frames that are actually rendered to screen are recorded.
+
+One :class:`~QVideo.lib.QFilterStack.QFilterStack` runs the rack's
+filters and feeds both the display and the recorder, so stateful filters
+see each frame exactly once.
 '''
 
-import numpy as np
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
-from QVideo.lib import QCameraTree, QFilterRack
+from QVideo.lib import QCameraTree, QFilterRack, QFilterStack
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
-from QVideo.lib.videotypes import Image
 
 
 __all__ = ['FilterRackDemo']
 
-
-class _FilteredSource(QtCore.QObject):
-    '''Applies a :class:`~QVideo.lib.QFilterRack.QFilterRack` to every frame
-    from a source at the camera's full frame rate.
-
-    Connects to ``source.newFrame``, passes each frame through the rack,
-    and re-emits the result.  This gives the DVR a valid source for
-    filtered full-speed recording, independent of the display throttle.
-
-    Parameters
-    ----------
-    source : QVideoSource
-        The raw camera source to intercept.
-    rack : QFilterRack
-        The filter rack to apply to each frame.
-    parent : QtWidgets.QWidget or None
-        Parent object.
-    '''
-
-    newFrame = QtCore.Signal(np.ndarray)
-
-    def __init__(self,
-                 source,
-                 rack: QFilterRack,
-                 parent: QtCore.QObject | None = None) -> None:
-        super().__init__(parent)
-        self._source = source
-        self._rack = rack
-        self._active = True
-        source.newFrame.connect(self._process)
-
-    @property
-    def fps(self) -> float | None:
-        '''Frame rate of the underlying source [fps].'''
-        return self._source.fps
-
-    def setActive(self, active: bool) -> None:
-        '''Connect or disconnect from the source.
-
-        Parameters
-        ----------
-        active : bool
-            ``True`` to resume processing; ``False`` to pause.
-        '''
-        if active == self._active:
-            return
-        self._active = active
-        if active:
-            self._source.newFrame.connect(self._process)
-        else:
-            self._source.newFrame.disconnect(self._process)
-
-    @QtCore.Slot(np.ndarray)
-    def _process(self, frame: Image) -> None:
-        self.newFrame.emit(self._rack(frame))
+#: Frames the filter stack may queue while its filters are busy.
+_QUEUE_DEPTH = 8
 
 
 class FilterRackDemo(QCamcorder):
@@ -101,7 +51,7 @@ class FilterRackDemo(QCamcorder):
     a group of radio buttons to select the DVR recording source:
 
     - **Raw**: unfiltered frames at the camera's full frame rate.
-    - **Filtered**: rack-processed frames at the camera's full frame rate.
+    - **Filtered**: rack-processed frames from the filter stack.
     - **Display**: rack-processed frames at the throttled display rate.
 
     Parameters
@@ -118,8 +68,9 @@ class FilterRackDemo(QCamcorder):
         self.rack = QFilterRack(self)
         self.rack.add(QSmoothingFilter())
         self.rack.add(QThresholdFilter())
-        self.screen.filter = self.rack
-        self._filteredSource = _FilteredSource(self.source, self.rack, self)
+        self.stack = QFilterStack(self.source, rack=self.rack,
+                                  depth=_QUEUE_DEPTH, parent=self)
+        self.screen.source = self.stack
         self._setupModeUi()
         self._connectModeSignals()
         self.controls.layout().addWidget(self._modeBox)
@@ -144,21 +95,24 @@ class FilterRackDemo(QCamcorder):
 
     @QtCore.Slot(bool)
     def dvrPlayback(self, playback: bool) -> None:
-        '''Pause the filtered source during DVR playback.
+        '''Filter the DVR player instead of the camera during playback.
 
-        Extends :meth:`~QVideo.QCamcorder.QCamcorder.dvrPlayback` by
-        suspending :class:`_FilteredSource` while the DVR is playing.
-        This prevents live camera frames from racing through the shared
-        filter rack alongside DVR frames, which would corrupt
-        :class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter` results.
+        The screen keeps displaying the filter stack, so playback frames
+        pass through the rack exactly once and live camera frames never
+        mix with them.
 
         Parameters
         ----------
         playback : bool
             ``True`` when DVR playback begins, ``False`` when it ends.
         '''
-        super().dvrPlayback(playback)
-        self._filteredSource.setActive(not playback)
+        self.stack.source = self.dvr.player if playback else self.source
+        self.cameraWidget.setDisabled(playback)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        '''Stop the filter stack, then the camera source.'''
+        self.stack.stop()
+        super().closeEvent(event)
 
     @QtCore.Slot(QtWidgets.QAbstractButton, bool)
     def _onModeToggled(self,
@@ -178,7 +132,7 @@ class FilterRackDemo(QCamcorder):
         if button is self._modeRaw:
             self.dvr.source = self.source
         elif button is self._modeFiltered:
-            self.dvr.source = self._filteredSource
+            self.dvr.source = self.stack
         elif button is self._modeDisplay:
             self.dvr.source = self.screen
 

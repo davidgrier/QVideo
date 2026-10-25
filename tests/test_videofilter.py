@@ -189,6 +189,25 @@ def make_failing_widget(videoFilter=None) -> QVideoFilter:
     return widget
 
 
+class TestQVideoFilterSwitchOff(unittest.TestCase):
+
+    def test_unchecks_the_widget(self):
+        widget = make_widget(checked=True)
+        widget.switchOff(ValueError('nope'))
+        self.assertFalse(widget.isChecked())
+
+    def test_tooltip_gives_the_reason(self):
+        widget = make_widget(checked=True)
+        widget.switchOff(ValueError('nope'))
+        self.assertIn('nope', widget.toolTip())
+
+    def test_tooltip_is_cleared_when_rechecked(self):
+        widget = make_widget(checked=True)
+        widget.switchOff(ValueError('nope'))
+        widget.setChecked(True)
+        self.assertEqual(widget.toolTip(), '')
+
+
 class TestQVideoFilterFailure(unittest.TestCase):
     '''A filter that raises switches itself off and passes frames through.'''
 

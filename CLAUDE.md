@@ -123,6 +123,17 @@ Self-contained recording subsystem. Supports HDF5 (lossless, with timestamps) an
 
 Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilter`, `QSampleHold`, etc.). Each subclasses `VideoFilter` and implements `__call__(frame) -> frame`.
 
+Filters are applied by `QFilterStack` (`lib/QFilterStack.py`), a worker thread
+between a source and its consumers (screen, DVR, overlays).  It takes
+`VideoFilter` objects or a `QFilterRack` (`rack=`), passes the `FrameInfo` of
+each frame through unchanged, keeps up to `depth` waiting frames (the default
+`depth=1` always processes the newest), removes and reports a filter that
+raises, and never touches a widget from the worker thread: the rack hands it
+plain `VideoFilter` objects.  Connect consumers to the stack
+(`screen.source = stack`), not to the raw source, so they share one filtered
+stream.  `screen.filter` and `AsyncVideoFilter` are the older in-GUI-thread
+and per-filter-thread mechanisms and are slated for removal.
+
 ## Test conventions
 
 - Tests use `unittest` with `unittest.mock`; each file has a module-level `app` singleton.

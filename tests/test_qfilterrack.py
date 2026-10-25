@@ -247,6 +247,106 @@ class TestQFilterRackMoveSlot(unittest.TestCase):
         self.assertEqual(rack.filters, [f1, f2])
 
 
+class TestQFilterRackActiveFilters(unittest.TestCase):
+
+    def test_empty_rack_has_no_active_filters(self):
+        self.assertEqual(make_rack().activeFilters(), [])
+
+    def test_returns_the_video_filters_of_checked_widgets(self):
+        rack = make_rack()
+        a, b = make_filter('A'), make_filter('B')
+        for w in (a, b):
+            w.setChecked(True)
+            rack.add(w)
+        self.assertEqual(rack.activeFilters(), [a.filter, b.filter])
+
+    def test_unchecked_widgets_are_left_out(self):
+        rack = make_rack()
+        a, b = make_filter('A'), make_filter('B')
+        b.setChecked(True)
+        rack.add(a)
+        rack.add(b)
+        self.assertEqual(rack.activeFilters(), [b.filter])
+
+    def test_follows_the_rack_order(self):
+        rack = make_rack()
+        a, b = make_filter('A'), make_filter('B')
+        for w in (a, b):
+            w.setChecked(True)
+            rack.add(w)
+        slot0, slot1 = rack._slotAt(0), rack._slotAt(1)
+        slot0.geometry = lambda: QtCore.QRect(0, 0, 10, 10)
+        slot1.geometry = lambda: QtCore.QRect(0, 20, 10, 10)
+        with patch.object(rack, 'mapFromGlobal',
+                          return_value=QtCore.QPoint(1, 21)):
+            rack._moveSlot(slot0, QtCore.QPoint(0, 0))
+        self.assertEqual(rack.activeFilters(), [b.filter, a.filter])
+
+
+class TestQFilterRackFiltersChanged(unittest.TestCase):
+    '''filtersChanged tells a QFilterStack when to refresh its list.'''
+
+    def setUp(self):
+        self.rack = make_rack()
+        self.count = []
+        self.rack.filtersChanged.connect(lambda: self.count.append(1))
+
+    def test_emitted_when_a_filter_is_added(self):
+        self.rack.add(make_filter())
+        self.assertEqual(len(self.count), 1)
+
+    def test_emitted_when_a_filter_is_toggled(self):
+        widget = make_filter()
+        self.rack.add(widget)
+        self.count.clear()
+        widget.setChecked(True)
+        widget.setChecked(False)
+        self.assertEqual(len(self.count), 2)
+
+    def test_emitted_when_a_filter_is_removed(self):
+        self.rack.add(make_filter())
+        self.count.clear()
+        self.rack._removeSlot(self.rack._slotAt(0))
+        self.assertEqual(len(self.count), 1)
+
+    def test_emitted_when_a_filter_is_moved(self):
+        for title in 'AB':
+            self.rack.add(make_filter(title))
+        self.count.clear()
+        slot0, slot1 = self.rack._slotAt(0), self.rack._slotAt(1)
+        slot0.geometry = lambda: QtCore.QRect(0, 0, 10, 10)
+        slot1.geometry = lambda: QtCore.QRect(0, 20, 10, 10)
+        with patch.object(self.rack, 'mapFromGlobal',
+                          return_value=QtCore.QPoint(1, 21)):
+            self.rack._moveSlot(slot0, QtCore.QPoint(0, 0))
+        self.assertEqual(len(self.count), 1)
+
+    def test_not_emitted_when_a_move_changes_nothing(self):
+        self.rack.add(make_filter())
+        self.count.clear()
+        self.rack._moveSlot(self.rack._slotAt(0), QtCore.QPoint(9999, 9999))
+        self.assertEqual(self.count, [])
+
+
+class TestQFilterRackSwitchOff(unittest.TestCase):
+
+    def test_unchecks_the_widget_holding_the_filter(self):
+        rack = make_rack()
+        a, b = make_filter('A'), make_filter('B')
+        for w in (a, b):
+            w.setChecked(True)
+            rack.add(w)
+        rack.switchOff(b.filter, ValueError('bad'))
+        self.assertTrue(a.isChecked())
+        self.assertFalse(b.isChecked())
+        self.assertIn('bad', b.toolTip())
+
+    def test_unknown_filter_is_ignored(self):
+        rack = make_rack()
+        rack.add(make_filter())
+        rack.switchOff(VideoFilter(), ValueError('bad'))
+
+
 class TestQFilterRackRegistry(unittest.TestCase):
 
     def test_registry_returns_dict(self):

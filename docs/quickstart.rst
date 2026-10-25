@@ -108,23 +108,36 @@ properties and builds a control panel automatically:
 Apply image filters
 -------------------
 
-Insert a :class:`~QVideo.lib.QFilterBank` between the source and
-screen to process frames before display:
+Put a :class:`~QVideo.lib.QFilterStack.QFilterStack` between the source
+and the screen.  It runs the filters, in order, on a worker thread of its
+own, so even a slow filter never makes the interface unresponsive:
 
 .. code-block:: python
 
-   from QVideo.lib import QFilterBank
-   from QVideo.filters import QSmoothingFilter, QEdgeFilter
+   from QVideo.lib import QFilterStack
+   from QVideo.filters import SmoothingFilter, EdgeFilter
 
-   bank = QFilterBank()
-   bank.addFilter(QSmoothingFilter())
-   bank.addFilter(QEdgeFilter())
+   stack = QFilterStack(source, [SmoothingFilter(), EdgeFilter()])
+   screen.source = stack
 
-   source.newFrame.connect(bank.updateFrame)
-   bank.newFrame.connect(screen.setImage)
+The stack looks like a source, so a recorder can use it too
+(``dvr.source = stack``) and record exactly what the screen shows.  If
+the filters cannot keep up with the camera, the stack processes the
+newest frame and counts the frames it skipped (``framesDropped``).  Pass
+``depth=8`` to queue up to eight frames instead.  A filter that raises
+an exception is logged and removed from the stack; the rest keep
+working.
 
-Filters are applied in order.  Enable or disable individual filters at
-runtime via their ``enabled`` property.
+For filters you can add, remove, reorder and switch on or off while the
+program runs, give the stack a :class:`~QVideo.lib.QFilterRack.QFilterRack`:
+
+.. code-block:: python
+
+   from QVideo.lib import QFilterRack
+
+   rack = QFilterRack()
+   stack = QFilterStack(source, rack=rack)
+   layout.addWidget(rack)
 
 Next steps
 ----------

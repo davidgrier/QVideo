@@ -305,19 +305,20 @@ Every frame displayed by the screen passes through the bank automatically.
 :meth:`~QVideo.lib.QFilterBank.QFilterBank.setVisible` controls whether
 the filter widgets appear in the layout.
 
-**Via a standalone filter bank** (useful when the bank itself is a UI component):
+**Via a filter stack** (the filters run on a worker thread, and the screen
+and a recorder share one filtered stream):
 
 .. code-block:: python
 
-   from QVideo.lib import QFilterBank
-   from QVideo.filters import QSmoothingFilter, QEdgeFilter
+   from QVideo.lib import QFilterStack
+   from QVideo.filters import SmoothingFilter, EdgeFilter
 
-   bank = QFilterBank()
-   bank.register(QSmoothingFilter())
-   bank.register(QEdgeFilter())
+   stack = QFilterStack(source, [SmoothingFilter(), EdgeFilter()])
+   screen.source = stack
+   dvr.source = stack
 
-   source.newFrame.connect(bank.updateFrame)
-   bank.newFrame.connect(screen.setImage)
+A stack takes :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, or
+a :class:`~QVideo.lib.QFilterRack.QFilterRack` through ``rack=``.
 
 **By name** (when the filter class is not imported directly):
 

@@ -9,7 +9,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [3.20.0] — unreleased
 
+### Added
+
+- **`QFilterStack`: filters on a worker thread.**  It sits between a source
+  and its consumers, runs the filters in order on one thread of its own,
+  and emits `newFrame(ndarray, FrameInfo)` with the unchanged `FrameInfo`,
+  so processed frames keep the capture time and index of the frames they
+  came from.  It stands in for a `QVideoSource` (`newFrame`,
+  `shapeChanged`, `fps`, `shape`), so a screen and a recorder can share
+  one filtered stream.  With `depth=1` (the default) it always processes
+  the newest frame and counts the frames it skips (`framesDropped`); a
+  larger `depth` keeps a bounded queue for recording.  A filter that
+  raises is logged, removed and reported (`filterFailed`).  With
+  `rack=QFilterRack(...)` it follows the rack's switched-on filters and
+  switches off the widget of a filter that fails.
+- `QFilterRack.activeFilters()`, `QFilterRack.filtersChanged` and
+  `QFilterRack.switchOff()`, and `QVideoFilter.switchOff()`.
+
 ### Changed
+
+- **`FilterRackDemo` now uses one `QFilterStack`.**  The old demo applied
+  the same rack twice, once per camera frame in a tap that stayed
+  connected in every recording mode and again per displayed frame as
+  `screen.filter`, so stateful filters saw two interleaved streams and the
+  GUI thread did full-rate work even when nothing was recording.  The
+  display and the recorder now share the stack's output, and DVR playback
+  is filtered by pointing the stack at the player.
 
 - **`QVideoSource.newFrame` is now `newFrame(ndarray, FrameInfo)`.**
   `FrameInfo` (new, in `QVideo.lib.videotypes`) carries the frame's
@@ -30,6 +55,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Python 3.10 is no longer supported; the package now requires
   Python 3.11 or later and is tested on 3.11 through 3.14.
 
+- **Documentation examples for filtering used methods that do not exist**
+  (`QFilterBank.addFilter`, `updateFrame`, and a `newFrame` signal on the
+  bank); they now show `QFilterStack`.
 - **Optional packages are no longer imported until needed.**  `import
   QVideo` takes about 0.2 s instead of 0.9 s because scipy, which only
   `CircleTransformFilter` uses, is imported when that filter is created;

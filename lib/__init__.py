@@ -25,6 +25,8 @@ QFilterBank
     Fixed, programmatically-configured pipeline of :class:`VideoFilter` instances.
 QFilterRack
     Dynamic, user-reorderable pipeline of :class:`QVideoFilter` widgets.
+QFilterStack
+    Worker thread that applies a stack of filters (or a rack) to a source.
 AsyncVideoFilter
     :class:`VideoFilter` base that runs heavy computation in a background thread.
 QVideoReader
@@ -47,6 +49,7 @@ from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
 from .QFilterBank import QFilterBank
 from .QFilterRack import QFilterRack
+from .QFilterStack import QFilterStack
 from .QVideoFilter import VideoFilter, QVideoFilter
 from .AsyncVideoFilter import AsyncVideoFilter
 from .QVideoReader import QVideoReader
@@ -62,6 +65,6 @@ from .QSnapshot import QSnapshot
 __all__ = '''Image
            FrameInfo
 clickable Camera choose_camera QListCameras
-QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree QFilterBank QFilterRack
+QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree QFilterBank QFilterRack QFilterStack
 QVideoReader QVideoWriter QVideoScreen
 QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter AsyncVideoFilter'''.split()

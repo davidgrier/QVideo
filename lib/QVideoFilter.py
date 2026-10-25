@@ -202,9 +202,21 @@ class QVideoFilter(QtWidgets.QGroupBox):
         except Exception as error:
             logger.exception(f'{type(self.filter).__name__} failed and '
                              'was switched off')
-            self.setToolTip(f'Switched off after an error: {error}')
-            self.setChecked(False)
+            self.switchOff(error)
             return image
+
+    def switchOff(self, error: Exception) -> None:
+        '''Uncheck the filter and show *error* as the reason in its tooltip.
+
+        Checking the filter again clears the message and retries it.
+
+        Parameters
+        ----------
+        error : Exception
+            The exception that made the filter fail.
+        '''
+        self.setToolTip(f'Switched off after an error: {error}')
+        self.setChecked(False)
 
     def _setupUi(self) -> None:
         '''Configure the group box and create the horizontal layout.

@@ -6,8 +6,8 @@ from qtpy import QtCore, QtWidgets
 from qtpy.QtTest import QSignalSpy
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
-from QVideo.demos.filterrackdemo import FilterRackDemo, _FilteredSource
-from QVideo.lib import QFilterRack
+from QVideo.demos.filterrackdemo import FilterRackDemo
+from QVideo.lib import QFilterRack, QFilterStack
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
 
@@ -20,50 +20,6 @@ def make_demo() -> FilterRackDemo:
     with patch.object(QtCore.QThread, 'start'), \
          patch.object(QtCore.QObject, 'moveToThread'):
         return FilterRackDemo(QNoiseTree())
-
-
-class TestFilteredSource(unittest.TestCase):
-
-    def _make_source(self, fps=30.0):
-        source = MagicMock()
-        source.fps = fps
-        return source
-
-    def test_fps_delegates_to_source(self):
-        source = self._make_source(fps=25.0)
-        rack = MagicMock(return_value=_FRAME)
-        fs = _FilteredSource(source, rack)
-        self.assertEqual(fs.fps, 25.0)
-
-    def test_fps_none_when_source_fps_is_none(self):
-        source = self._make_source(fps=None)
-        rack = MagicMock(return_value=_FRAME)
-        fs = _FilteredSource(source, rack)
-        self.assertIsNone(fs.fps)
-
-    def test_process_calls_rack(self):
-        source = self._make_source()
-        rack = MagicMock(return_value=_FRAME)
-        fs = _FilteredSource(source, rack)
-        fs._process(_FRAME)
-        rack.assert_called_once_with(_FRAME)
-
-    def test_process_emits_new_frame(self):
-        source = self._make_source()
-        rack = MagicMock(return_value=_FRAME)
-        fs = _FilteredSource(source, rack)
-        spy = QSignalSpy(fs.newFrame)
-        fs._process(_FRAME)
-        self.assertEqual(len(spy), 1)
-
-    def test_process_emits_filtered_result(self):
-        source = self._make_source()
-        filtered = np.ones((4, 4), dtype=np.uint8) * 42
-        rack = MagicMock(return_value=filtered)
-        fs = _FilteredSource(source, rack)
-        spy = QSignalSpy(fs.newFrame)
-        fs._process(_FRAME)
-        np.testing.assert_array_equal(spy[0][0], filtered)
 
 
 class TestFilterRackDemoInit(unittest.TestCase):
@@ -86,17 +42,28 @@ class TestFilterRackDemoInit(unittest.TestCase):
         self.assertTrue(
             any(isinstance(f, QThresholdFilter) for f in widget.rack.filters))
 
-    def test_screen_filter_is_rack(self):
+    def test_stack_is_a_filter_stack(self):
         widget = make_demo()
-        self.assertIs(widget.screen.filter, widget.rack)
+        self.assertIsInstance(widget.stack, QFilterStack)
 
-    def test_has_filtered_source(self):
+    def test_stack_runs_the_rack(self):
         widget = make_demo()
-        self.assertIsInstance(widget._filteredSource, _FilteredSource)
+        self.assertIs(widget.stack.rack, widget.rack)
 
-    def test_filtered_source_uses_rack(self):
+    def test_stack_reads_the_camera_source(self):
         widget = make_demo()
-        self.assertIs(widget._filteredSource._rack, widget.rack)
+        self.assertIs(widget.stack.source, widget.source)
+
+    def test_screen_displays_the_stack(self):
+        widget = make_demo()
+        self.assertIs(widget.screen.source, widget.stack)
+
+    def test_rack_is_not_also_applied_by_the_screen(self):
+        '''One filtered stream feeds display and recording; the screen's
+        own filter bank stays empty so stateful filters see each frame once.'''
+        widget = make_demo()
+        self.assertIsNot(widget.screen.filter, widget.rack)
+        self.assertEqual(widget.screen.filter.filters, [])
 
     def test_dvr_source_is_camera_source_by_default(self):
         widget = make_demo()
@@ -131,67 +98,31 @@ class TestFilterRackDemoInit(unittest.TestCase):
         self.assertIn(widget.rack, items)
 
 
-class TestFilteredSourceActive(unittest.TestCase):
-
-    def _make_fs(self):
-        source = MagicMock()
-        rack = MagicMock(return_value=_FRAME)
-        fs = _FilteredSource(source, rack)
-        return fs, source
-
-    def test_initially_active(self):
-        fs, _ = self._make_fs()
-        self.assertTrue(fs._active)
-
-    def test_set_active_false_disconnects_source(self):
-        fs, source = self._make_fs()
-        fs.setActive(False)
-        source.newFrame.disconnect.assert_called_once_with(fs._process)
-
-    def test_set_active_true_reconnects_source(self):
-        fs, source = self._make_fs()
-        fs.setActive(False)
-        source.newFrame.connect.reset_mock()
-        fs.setActive(True)
-        source.newFrame.connect.assert_called_once_with(fs._process)
-
-    def test_set_active_false_twice_does_not_disconnect_twice(self):
-        fs, source = self._make_fs()
-        fs.setActive(False)
-        fs.setActive(False)
-        source.newFrame.disconnect.assert_called_once_with(fs._process)
-
-    def test_set_active_true_twice_does_not_connect_twice(self):
-        fs, source = self._make_fs()
-        source.newFrame.connect.reset_mock()
-        fs.setActive(True)
-        fs.setActive(True)
-        source.newFrame.connect.assert_not_called()
-
-
 class TestFilterRackDemoDvrPlayback(unittest.TestCase):
+    '''During playback the stack filters the DVR player instead of the
+    camera, so playback frames are filtered exactly once.'''
 
     def setUp(self):
         self.widget = make_demo()
 
-    def test_dvr_playback_true_suspends_filtered_source(self):
-        with patch.object(self.widget._filteredSource, 'setActive') as mock:
-            self.widget.dvrPlayback(True)
-            mock.assert_called_once_with(False)
-
-    def test_dvr_playback_false_resumes_filtered_source(self):
-        with patch.object(self.widget._filteredSource, 'setActive') as mock:
-            self.widget.dvrPlayback(False)
-            mock.assert_called_once_with(True)
-
-    def test_dvr_playback_true_switches_screen_to_player(self):
+    def test_playback_points_the_stack_at_the_player(self):
         self.widget.dvrPlayback(True)
-        self.assertIs(self.widget.screen.source, self.widget.dvr.player)
+        self.assertIs(self.widget.stack.source, self.widget.dvr.player)
 
-    def test_dvr_playback_false_restores_screen_to_source(self):
+    def test_playback_keeps_the_screen_on_the_stack(self):
+        self.widget.dvrPlayback(True)
+        self.assertIs(self.widget.screen.source, self.widget.stack)
+
+    def test_end_of_playback_restores_the_camera(self):
         self.widget.dvrPlayback(True)
         self.widget.dvrPlayback(False)
-        self.assertIs(self.widget.screen.source, self.widget.source)
+        self.assertIs(self.widget.stack.source, self.widget.source)
+
+    def test_camera_controls_follow_playback(self):
+        self.widget.dvrPlayback(True)
+        self.assertFalse(self.widget.cameraWidget.isEnabled())
+        self.widget.dvrPlayback(False)
+        self.assertTrue(self.widget.cameraWidget.isEnabled())
 
 
 class TestFilterRackDemoModes(unittest.TestCase):
@@ -203,9 +134,9 @@ class TestFilterRackDemoModes(unittest.TestCase):
         self.widget._onModeToggled(self.widget._modeRaw, True)
         self.assertIs(self.widget.dvr.source, self.widget.source)
 
-    def test_filtered_mode_sets_dvr_source_to_filtered_source(self):
+    def test_filtered_mode_sets_dvr_source_to_stack(self):
         self.widget._onModeToggled(self.widget._modeFiltered, True)
-        self.assertIs(self.widget.dvr.source, self.widget._filteredSource)
+        self.assertIs(self.widget.dvr.source, self.widget.stack)
 
     def test_display_mode_sets_dvr_source_to_screen(self):
         self.widget._onModeToggled(self.widget._modeDisplay, True)
@@ -214,7 +145,7 @@ class TestFilterRackDemoModes(unittest.TestCase):
     def test_deselect_does_not_change_source(self):
         self.widget._onModeToggled(self.widget._modeFiltered, True)
         self.widget._onModeToggled(self.widget._modeFiltered, False)
-        self.assertIs(self.widget.dvr.source, self.widget._filteredSource)
+        self.assertIs(self.widget.dvr.source, self.widget.stack)
 
 
 if __name__ == '__main__':  # pragma: no cover

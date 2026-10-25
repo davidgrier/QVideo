@@ -1,7 +1,7 @@
 '''Dynamic, reorderable pipeline of QVideoFilter widgets.'''
 from collections.abc import Iterator
 from qtpy import QtCore, QtWidgets, QtGui
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.lib.videotypes import Image
 import QVideo.filters as videofilters
 import pyqtgraph as pg
@@ -202,6 +202,10 @@ class QFilterRack(QtWidgets.QWidget):
         all hidden.  Default: ``True``.
     '''
 
+    #: Emitted when the filters or their order change, or one is switched
+    #: on or off.
+    filtersChanged = QtCore.Signal()
+
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
                  editable: bool = True) -> None:
@@ -265,6 +269,32 @@ class QFilterRack(QtWidgets.QWidget):
     def __iter__(self) -> Iterator[QVideoFilter]:
         return (slot._widget for slot in self._iterSlots())
 
+    def activeFilters(self) -> list[VideoFilter]:
+        '''The filters that are switched on, in pipeline order.
+
+        These are the :class:`~QVideo.lib.QVideoFilter.VideoFilter`
+        objects, not the widgets, so they can be handed to a
+        :class:`~QVideo.lib.QFilterStack.QFilterStack` on another thread.
+        '''
+        return [widget.filter for widget in self if widget.isChecked()]
+
+    @QtCore.Slot(object, object)
+    def switchOff(self, video_filter: VideoFilter, error: Exception) -> None:
+        '''Switch off the widget that holds *video_filter*.
+
+        Connected to :attr:`QFilterStack.filterFailed`.
+
+        Parameters
+        ----------
+        video_filter : VideoFilter
+            The filter that failed.
+        error : Exception
+            The exception it raised.
+        '''
+        for widget in self:
+            if widget.filter is video_filter:
+                widget.switchOff(error)
+
     @property
     def filters(self) -> list[QVideoFilter]:
         '''Read-only list of registered filter widgets in pipeline order.'''
@@ -306,7 +336,9 @@ class QFilterRack(QtWidgets.QWidget):
         slot.hoverRequested.connect(self._hoverSlot)
         slot.setEditable(self._editable)
         self._slots.addWidget(slot)
+        video_filter.toggled.connect(self.filtersChanged)
         self.adjustSize()
+        self.filtersChanged.emit()
 
     @classmethod
     def _registry(cls) -> dict[str, type[QVideoFilter]]:
@@ -423,6 +455,7 @@ class QFilterRack(QtWidgets.QWidget):
         self._slots.removeWidget(slot)
         slot.deleteLater()
         self.adjustSize()
+        self.filtersChanged.emit()
 
     def _hoverSlot(self,
                    slot: '_FilterSlot',
@@ -449,6 +482,7 @@ class QFilterRack(QtWidgets.QWidget):
         target_index = self._slots.indexOf(target)
         self._slots.removeWidget(slot)
         self._slots.insertWidget(target_index, slot)
+        self.filtersChanged.emit()
 
     def _addFilterDialog(self) -> None:
         registry = self._registry()

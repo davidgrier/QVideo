@@ -49,13 +49,13 @@ class TestQUniformityWidgetScreen(unittest.TestCase):
 
     def test_newframe_connected_via_constructor(self):
         w = QUniformityWidget(self.screen)
-        self.screen.newFrame.emit(_GRAY)
+        self.screen.newFrame.emit(_GRAY, None)
         _, y = w._xcurve.getData()
         self.assertIsNotNone(y)
 
     def test_newframe_connected_via_setter(self):
         self.widget.screen = self.screen
-        self.screen.newFrame.emit(_GRAY)
+        self.screen.newFrame.emit(_GRAY, None)
         _, y = self.widget._xcurve.getData()
         self.assertIsNotNone(y)
 
@@ -63,7 +63,7 @@ class TestQUniformityWidgetScreen(unittest.TestCase):
         other = QVideoScreen()
         self.widget.screen = self.screen
         self.widget.screen = other
-        self.screen.newFrame.emit(_GRAY)
+        self.screen.newFrame.emit(_GRAY, None)
         _, y = self.widget._xcurve.getData()
         self.assertIsNone(y)
 

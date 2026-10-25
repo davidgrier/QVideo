@@ -4,8 +4,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.filters.circletransform import (
     CircleTransformFilter, QCircleTransformFilter)
 
@@ -18,31 +17,17 @@ _COLOR = np.random.randint(0, 256, (*_SHAPE, 3), dtype=np.uint8)
 
 
 def make_filter(**kwargs) -> CircleTransformFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return CircleTransformFilter(**kwargs)
+    return CircleTransformFilter(**kwargs)
 
 
 def make_widget() -> QCircleTransformFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QCircleTransformFilter(parent=None)
+    return QCircleTransformFilter(parent=None)
 
 
 class TestCircleTransformFilterInit(unittest.TestCase):
 
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
-
-    def test_is_async_video_filter(self):
-        self.assertIsInstance(CircleTransformFilter(), AsyncVideoFilter)
+    def test_is_video_filter(self):
+        self.assertIsInstance(CircleTransformFilter(), VideoFilter)
 
     def test_default_window(self):
         self.assertEqual(CircleTransformFilter().window, 13)

@@ -20,16 +20,12 @@ def _mock_bgs(bg=_BG):
 
 
 def make_filter(**kwargs) -> ForegroundEstimator:
-    with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()), \
-         patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
+    with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()):
         return ForegroundEstimator(**kwargs)
 
 
 def make_widget() -> QForegroundEstimator:
-    with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()), \
-         patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
+    with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()):
         return QForegroundEstimator(parent=None)
 
 
@@ -61,9 +57,7 @@ class TestForegroundEstimatorHistory(unittest.TestCase):
         self.assertEqual(f.history, 1)
 
     def test_history_setter_resets_bgs(self):
-        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()) as mock_create, \
-             patch.object(QtCore.QThread, 'start'), \
-             patch.object(QtCore.QObject, 'moveToThread'):
+        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()) as mock_create:
             f = ForegroundEstimator()
             call_count = mock_create.call_count
             f.history = 100
@@ -94,9 +88,7 @@ class TestForegroundEstimatorVarThreshold(unittest.TestCase):
         self.assertAlmostEqual(f.varThreshold, 0.0)
 
     def test_var_threshold_setter_resets_bgs(self):
-        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()) as mock_create, \
-             patch.object(QtCore.QThread, 'start'), \
-             patch.object(QtCore.QObject, 'moveToThread'):
+        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()) as mock_create:
             f = ForegroundEstimator()
             call_count = mock_create.call_count
             f.varThreshold = 32.0
@@ -127,9 +119,7 @@ class TestForegroundEstimatorMean(unittest.TestCase):
         self.assertAlmostEqual(f.mean, 1.0)
 
     def test_mean_does_not_reset_bgs(self):
-        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()) as mock_create, \
-             patch.object(QtCore.QThread, 'start'), \
-             patch.object(QtCore.QObject, 'moveToThread'):
+        with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()) as mock_create:
             f = ForegroundEstimator()
             call_count = mock_create.call_count
             f.mean = 64.0
@@ -141,16 +131,6 @@ class TestForegroundEstimatorMean(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestForegroundEstimatorProcess(unittest.TestCase):
-
-    def setUp(self):
-        self._patch_thread = patch.object(QtCore.QThread, 'start')
-        self._patch_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._patch_thread.start()
-        self._patch_move.start()
-
-    def tearDown(self):
-        self._patch_thread.stop()
-        self._patch_move.stop()
 
     def test_process_returns_uint8(self):
         mock_bgs = _mock_bgs(_BG)
@@ -211,9 +191,7 @@ class TestForegroundEstimatorProcess(unittest.TestCase):
     def test_create_background_subtractor_called_with_correct_params(self):
         with patch('cv2.createBackgroundSubtractorMOG2',
                    return_value=_mock_bgs()) as mock_create:
-            with patch.object(QtCore.QThread, 'start'), \
-                 patch.object(QtCore.QObject, 'moveToThread'):
-                ForegroundEstimator(history=200, varThreshold=8.0)
+            ForegroundEstimator(history=200, varThreshold=8.0)
         mock_create.assert_called_with(
             history=200, varThreshold=8.0, detectShadows=False)
 
@@ -272,9 +250,7 @@ class TestQForegroundEstimator(unittest.TestCase):
 
     def test_call_when_checked_processes_frame(self):
         mock_bgs = _mock_bgs(_BG)
-        with patch('cv2.createBackgroundSubtractorMOG2', return_value=mock_bgs), \
-             patch.object(QtCore.QThread, 'start'), \
-             patch.object(QtCore.QObject, 'moveToThread'):
+        with patch('cv2.createBackgroundSubtractorMOG2', return_value=mock_bgs):
             widget = QForegroundEstimator()
         widget.setChecked(True)
         result = widget(_FRAME)

@@ -1,7 +1,7 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.QVideoSource import QVideoSource
-from QVideo.lib.QFilterBank import QFilterBank
+from QVideo.lib.videotypes import FrameInfo
 from QVideo.lib.videotypes import Image
 import numpy as np
 import pyqtgraph as pg
@@ -19,8 +19,9 @@ class QVideoScreen(GraphicsLayoutWidget):
     '''Video display widget.
 
     Displays frames from a :class:`~QVideo.lib.QVideoSource` in real time,
-    with optional frame-rate throttling and image filtering via
-    :class:`~QVideo.lib.QFilterBank`.
+    with optional frame-rate throttling.  The screen applies no filters;
+    to display filtered frames, make a
+    :class:`~QVideo.lib.QFilterStack.QFilterStack` its source.
 
     Inherits from :class:`pyqtgraph.GraphicsLayoutWidget`.
 
@@ -48,7 +49,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         is connected. Read-only.
     composite : bool
         Controls what :attr:`newFrame` emits.  When ``False`` (default),
-        :attr:`newFrame` carries the filtered video frame.  When ``True``,
+        :attr:`newFrame` carries the displayed video frame.  When ``True``,
         it carries the rendered ViewBox scene (video + overlays) as an
         ``(H, W, 4)`` RGBA uint8 array.
     colormap : str | None
@@ -60,13 +61,15 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     Signals
     -------
-    newFrame(numpy.ndarray)
-        Emitted after each displayed frame.  Carries either the filtered
-        video frame or the rendered composite scene, depending on
-        :attr:`composite`.
+    newFrame(numpy.ndarray, FrameInfo)
+        Emitted after each displayed frame.  Carries either the video
+        frame or the rendered composite scene, depending on
+        :attr:`composite`, and the
+        :class:`~QVideo.lib.videotypes.FrameInfo` of the frame that was
+        displayed (``None`` if the source provided none).
     '''
 
-    newFrame = QtCore.Signal(np.ndarray)
+    newFrame = QtCore.Signal(np.ndarray, object)
 
     def __init__(self, *args,
                  size: tuple[int, int] = (640, 480),
@@ -85,8 +88,6 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._setready)
         self._setupUi()
-        self.filter = QFilterBank(self)
-        self.filter.setVisible(False)
 
     def _setupUi(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -161,35 +162,38 @@ class QVideoScreen(GraphicsLayoutWidget):
     def _setready(self) -> None:
         self._ready = True
         if self._pending is not None:
-            self.setImage(self._pending)
+            self.setImage(*self._pending)
 
     @QtCore.Slot(np.ndarray)
-    def setImage(self, image: Image) -> None:
+    @QtCore.Slot(np.ndarray, object)
+    def setImage(self, image: Image, info: FrameInfo | None = None) -> None:
         '''Display a new video frame and emit :attr:`newFrame`.
 
-        Passes the frame through :attr:`filter` before display.  If the
-        throttle interval has not yet elapsed, the frame is buffered as the
-        most recent pending frame; when the interval expires the buffered
-        frame is displayed immediately so no extra latency accumulates.
+        If the throttle interval has not yet elapsed, the frame is
+        buffered as the most recent pending frame; when the interval
+        expires the buffered frame is displayed immediately so no extra
+        latency accumulates.
 
-        :attr:`newFrame` is emitted with the filtered frame, or with the
-        rendered composite scene when :attr:`composite` is ``True``.
+        :attr:`newFrame` is emitted with the frame, or with the rendered
+        composite scene when :attr:`composite` is ``True``, together with
+        *info*.
 
         Parameters
         ----------
         image : Image
             The frame to display.
+        info : FrameInfo, optional
+            Capture metadata for *image*, passed on with :attr:`newFrame`.
         '''
         if self._ready:
-            filtered = self.filter(image)
-            self.image.setImage(filtered, autoLevels=False)
+            self.image.setImage(image, autoLevels=False)
             self.newFrame.emit(
-                self._renderComposite() if self._composite else filtered)
+                self._renderComposite() if self._composite else image, info)
             self._ready = False
             self._pending = None
             self._timer.start(self._interval)
         else:
-            self._pending = image
+            self._pending = (image, info)
 
     @property
     def fps(self) -> float | None:

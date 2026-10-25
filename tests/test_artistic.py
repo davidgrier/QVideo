@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.filters.artistic import (
     PencilSketchFilter, QPencilSketchFilter,
     CartoonFilter, QCartoonFilter,
@@ -19,43 +19,25 @@ _GRAY = np.random.randint(0, 256, _SHAPE_GRAY, dtype=np.uint8)
 
 
 def make_pencil(**kwargs) -> PencilSketchFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return PencilSketchFilter(**kwargs)
+    return PencilSketchFilter(**kwargs)
 
 
 def make_cartoon(**kwargs) -> CartoonFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return CartoonFilter(**kwargs)
+    return CartoonFilter(**kwargs)
 
 
 def make_pencil_widget() -> QPencilSketchFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QPencilSketchFilter(parent=None)
+    return QPencilSketchFilter(parent=None)
 
 
 def make_cartoon_widget() -> QCartoonFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QCartoonFilter(parent=None)
+    return QCartoonFilter(parent=None)
 
 
 class TestPencilSketchFilter(unittest.TestCase):
 
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
-
-    def test_is_async_video_filter(self):
-        self.assertIsInstance(PencilSketchFilter(), AsyncVideoFilter)
+    def test_is_video_filter(self):
+        self.assertIsInstance(PencilSketchFilter(), VideoFilter)
 
     def test_default_params(self):
         f = PencilSketchFilter()
@@ -104,18 +86,8 @@ class TestPencilSketchFilter(unittest.TestCase):
 
 class TestCartoonFilter(unittest.TestCase):
 
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
-
-    def test_is_async_video_filter(self):
-        self.assertIsInstance(CartoonFilter(), AsyncVideoFilter)
+    def test_is_video_filter(self):
+        self.assertIsInstance(CartoonFilter(), VideoFilter)
 
     def test_default_params(self):
         f = CartoonFilter()
@@ -153,16 +125,6 @@ class TestCartoonFilter(unittest.TestCase):
 
 
 class TestQPencilSketchFilter(unittest.TestCase):
-
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
 
     def test_filter_is_pencilsketch(self):
         self.assertIsInstance(QPencilSketchFilter().filter, PencilSketchFilter)
@@ -215,16 +177,6 @@ class TestQPencilSketchFilter(unittest.TestCase):
 
 
 class TestQCartoonFilter(unittest.TestCase):
-
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
 
     def test_filter_is_cartoon(self):
         self.assertIsInstance(QCartoonFilter().filter, CartoonFilter)

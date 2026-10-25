@@ -118,6 +118,17 @@ class TestAppend(unittest.TestCase):
         self.assertIsInstance(ts, float)
         np.testing.assert_array_equal(stored, frame)
 
+    def test_append_accepts_a_one_argument_signal(self):
+        from qtpy import QtCore
+
+        class Emitter(QtCore.QObject):
+            newFrame = QtCore.Signal(np.ndarray)
+        buf = QCircularBuffer()
+        e = Emitter()
+        e.newFrame.connect(buf.append)
+        e.newFrame.emit(make_frame())
+        self.assertEqual(len(buf), 1)
+
     def test_append_uses_capture_time_when_info_given(self):
         buf = QCircularBuffer()
         info = FrameInfo(0, 5.0)

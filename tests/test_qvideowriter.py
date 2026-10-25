@@ -85,6 +85,20 @@ class TestQVideoWriterFrameInfo(unittest.TestCase):
         self.assertIs(w._infos[0], info)
 
 
+class TestQVideoWriterSignals(unittest.TestCase):
+
+    def test_slot_accepts_a_one_argument_signal(self):
+        from qtpy import QtCore
+
+        class Emitter(QtCore.QObject):
+            newFrame = QtCore.Signal(np.ndarray)
+        w = _ConcreteWriter('out.avi')
+        e = Emitter()
+        e.newFrame.connect(w.write)
+        e.newFrame.emit(_FRAME)
+        self.assertEqual(len(w._written), 1)
+
+
 class TestQVideoWriterInit(unittest.TestCase):
 
     def test_filename_stored(self):

@@ -47,7 +47,7 @@ depends only on the ones below it.
 |-------|------------|
 | Hardware | `QCamera` (abstract base), camera backends in `cameras/` |
 | Threading | `QVideoSource` — wraps a camera in a `QThread`, emits `newFrame` |
-| UI | `QCameraTree`, `QFilterBank`, `QVideoScreen` |
+| UI | `QCameraTree`, `QFilterRack`, `QVideoScreen` |
 | Application | `QCamcorder`, `demos/` |
 
 `cameras/Noise` is the reference backend — read it before writing a new one.

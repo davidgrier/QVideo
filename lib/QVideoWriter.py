@@ -113,6 +113,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
     def isOpen(self) -> bool:
         '''Return ``True`` if the output file is currently open.'''
 
+    @QtCore.Slot(np.ndarray)
     @QtCore.Slot(np.ndarray, object)
     def write(self, frame: Image, info: FrameInfo | None = None) -> None:
         '''Write a video frame.

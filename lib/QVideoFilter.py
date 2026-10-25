@@ -40,8 +40,9 @@ class VideoFilter(QtCore.QObject):
 
     Provides a two-stage ``add``/``get`` interface so that subclasses
     can accumulate state across frames (e.g. running averages) before
-    returning a result.  The default implementation is a passthrough:
-    ``add`` stores the frame and ``get`` returns it unchanged.
+    returning a result.  ``add`` stores the frame and ``get`` returns
+    ``process`` of it; the default ``process`` is a passthrough, so a
+    stateless filter only overrides :meth:`process`.
 
     The :meth:`__call__` operator chains :meth:`add` and :meth:`get`
     so that filters can be used as plain callables.
@@ -92,14 +93,27 @@ class VideoFilter(QtCore.QObject):
         '''
         if self.data is None:
             raise RuntimeError('get() called before add()')
-        return self.data
+        return self.process(self.data)
 
-    def shutdown(self) -> None:
-        '''Release background resources held by this filter.
+    def process(self, data: Image) -> Image:
+        '''Return the filtered version of *data*.
 
-        Called by the pipeline when the filter is removed.  The default
-        is a no-op; subclasses that own background threads override this.
+        A stateless filter overrides this and needs nothing else:
+        :meth:`get` applies it to the frame stored by :meth:`add`.  The
+        default is a passthrough.  A filter that accumulates state across
+        frames overrides :meth:`add` and :meth:`get` instead.
+
+        Parameters
+        ----------
+        data : Image
+            Input frame.
+
+        Returns
+        -------
+        Image
+            Filtered frame.
         '''
+        return data
 
     def to_code(self) -> FilterCode | None:
         '''Return a :class:`FilterCode` fragment for pipeline export.

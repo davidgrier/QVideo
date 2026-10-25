@@ -64,8 +64,8 @@ Connect :attr:`~QVideo.cameras.Picamera.QIMXCamera.newOutput` to a slot
 that interprets the tensor list for the specific model loaded.  The slot
 runs in the Qt main thread, so processing should be lightweight.  For
 heavy post-processing, offload to a ``QThread`` or follow the same
-drop-frame strategy used by
-:class:`~QVideo.lib.VideoFilter.AsyncVideoFilter`.
+latest-frame-wins strategy used by
+:class:`~QVideo.lib.QFilterStack.QFilterStack`.
 
 The example below reads scores and bounding boxes from a NanoDet-Plus
 model:

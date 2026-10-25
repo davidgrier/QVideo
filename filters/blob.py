@@ -1,7 +1,6 @@
 '''Blob-coloring filter using connected-component labeling.'''
 from qtpy import QtWidgets
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 import cv2
 import numpy as np
@@ -10,13 +9,12 @@ import numpy as np
 __all__ = ['BlobFilter', 'QBlobFilter']
 
 
-class BlobFilter(AsyncVideoFilter):
+class BlobFilter(VideoFilter):
 
     '''Blob-coloring filter.
 
     Labels connected foreground regions in a binary frame and renders each
-    blob in a distinct hue using OpenCV's HSV color space.  The labeling
-    runs in a background thread so that large frames do not stall the GUI.
+    blob in a distinct hue using OpenCV's HSV color space.
 
     Notes
     -----

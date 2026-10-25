@@ -1,8 +1,7 @@
 '''Orientation alignment transform filter — detects ring-like features.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -23,7 +22,7 @@ def _scipy():
     return fft, signal
 
 
-class CircleTransformFilter(AsyncVideoFilter):
+class CircleTransformFilter(VideoFilter):
 
     '''Orientation alignment transform (OAT) ring-detection filter.
 
@@ -34,8 +33,9 @@ class CircleTransformFilter(AsyncVideoFilter):
     result is a detection map whose peaks locate ring centres.
 
     The transform integrates evidence from all ring radii simultaneously,
-    so no radius parameter is required.  Computation runs in a background
-    thread via :class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter`.
+    so no radius parameter is required.  The computation is heavy, so run
+    the filter in a :class:`~QVideo.lib.QFilterStack.QFilterStack`, which
+    keeps it off the GUI thread.
 
     Parameters
     ----------
@@ -104,10 +104,9 @@ class CircleTransformFilter(AsyncVideoFilter):
     def process(self, image: Image) -> Image:
         '''Compute the OAT of *image* and return a uint8 heat map.
 
-        Called in the background thread.  Converts colour input to float
-        grayscale, computes orientational order gradients via
-        Savitzky-Golay differentiation, then convolves with the OAT kernel
-        in Fourier space.
+        Converts colour input to float grayscale, computes orientational
+        order gradients via Savitzky-Golay differentiation, then
+        convolves with the OAT kernel in Fourier space.
 
         Parameters
         ----------

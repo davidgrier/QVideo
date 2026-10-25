@@ -28,6 +28,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`VideoFilter.process()` is the hook for a stateless filter.**
+  `get()` returns `process(self.data)`, so a filter that transforms each
+  frame independently overrides only `process`; a filter that keeps state
+  across frames still overrides `add` and `get`.
+- **`QVideoScreen.setImage(image, info=None)` and
+  `newFrame(ndarray, FrameInfo)`.**  The screen passes each frame's
+  `FrameInfo` on with its `newFrame`, so recordings made from the screen
+  (the "Display" mode of `FilterRackDemo`, composite recording) carry true
+  capture times.  `setImage`, `QVideoWriter.write` and
+  `QCircularBuffer.append` accept signals with or without the `FrameInfo`.
+- **`QFilterStack` takes no Qt parent.**  It owns a running thread, which
+  Qt would otherwise delete behind Python's back and abort the process;
+  keep a reference to the stack.  It stops on `stop()`, at application
+  exit, and when the last reference is dropped.
+
 - **Faster filters, with no new dependency.**  Measured at 1080p color:
   the color-to-gray conversion that `SobelFilter`, `LaplacianFilter`,
   `ThresholdFilter`, `DoGFilter`, `CircleTransformFilter` and
@@ -94,6 +109,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Added the `pyside6` extra; PySide6 is experimental.  CI now
   runs PyQt6 on every supported Python version, PyQt5 on the oldest and
   newest, and PySide6 as an allowed-failure job.
+
+### Removed
+
+These removals complete the move of filtering to `QFilterStack`.  To
+migrate:
+
+- **`QVideoScreen.filter` is gone; the screen applies no filters.**
+  Put a `QFilterStack` in front of the screen and display it:
+  `stack = QFilterStack(source, [SmoothingFilter()])` then
+  `screen.source = stack` (or `QFilterStack(source, rack=rack)` for a
+  `QFilterRack`).  The display and any recorder now share one filtered
+  stream, and filters run on a worker thread.
+- **`QFilterBank` is removed.**  Use `QFilterRack` (`editable=False` for a
+  fixed panel) with a `QFilterStack`; `rack.addByName('Smoothing')`
+  replaces `bank.registerByName('QSmoothingFilter')` and takes the display
+  names shown in the rack's picker.
+- **`AsyncVideoFilter` and `VideoFilter.shutdown()` are removed.**  No
+  filter owns a thread any more.  `BlobFilter`, `CartoonFilter`,
+  `CircleTransformFilter`, `DejitterFilter`, `ExposureFilter`,
+  `ForegroundEstimator`, `PencilSketchFilter` and `SmoothingFilter` are
+  plain `VideoFilter` objects; run them in a `QFilterStack` to keep them off
+  the GUI thread.  Their `get()` now raises `RuntimeError` before the first
+  `add()`, like the base class, where it used to return `None`.
+- **`FilterDemo(cameraTree, filters)`** takes display names such as
+  `'Smoothing'` and `'Canny'` instead of class names such as
+  `'QSmoothingFilter'`.
 
 ### Fixed
 

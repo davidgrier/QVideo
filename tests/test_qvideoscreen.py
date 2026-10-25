@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from qtpy import QtCore, QtWidgets, QtTest
 from QVideo.lib.QVideoScreen import QVideoScreen
-from QVideo.lib.QFilterBank import QFilterBank
+from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -48,13 +48,9 @@ class TestInit(unittest.TestCase):
         screen = make_screen()
         self.assertIsInstance(screen._timer, QtCore.QTimer)
 
-    def test_filter_is_filterbank(self):
-        screen = make_screen()
-        self.assertIsInstance(screen.filter, QFilterBank)
-
-    def test_filter_initially_hidden(self):
-        screen = make_screen()
-        self.assertFalse(screen.filter.isVisible())
+    def test_screen_applies_no_filters(self):
+        """Filtering is done by a QFilterStack in front of the screen."""
+        self.assertFalse(hasattr(make_screen(), 'filter'))
 
 
 class TestFramerate(unittest.TestCase):
@@ -159,48 +155,43 @@ class TestSource(unittest.TestCase):
 
 class TestSetImage(unittest.TestCase):
 
-    def test_setimage_when_ready_calls_filter(self):
+    def test_setimage_displays_the_frame_it_is_given(self):
         screen = make_screen()
-        with patch.object(QFilterBank, '__call__', return_value=_FRAME) as mock_filter:
-            with patch.object(screen.image, 'setImage'):
-                screen.setImage(_FRAME)
-        mock_filter.assert_called_once()
+        with patch.object(screen.image, 'setImage') as mock_set:
+            screen.setImage(_FRAME)
+        mock_set.assert_called_once_with(_FRAME, autoLevels=False)
 
     def test_setimage_when_ready_updates_display(self):
         screen = make_screen()
-        with patch.object(screen.filter, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage') as mock_set:
-                screen.setImage(_FRAME)
+        with patch.object(screen.image, 'setImage') as mock_set:
+            screen.setImage(_FRAME)
         mock_set.assert_called_once_with(_FRAME, autoLevels=False)
 
     def test_setimage_when_ready_sets_not_ready(self):
         screen = make_screen()
-        with patch.object(screen.filter, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                screen.setImage(_FRAME)
+        with patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
         self.assertFalse(screen._ready)
 
     def test_setimage_arms_timer(self):
         screen = make_screen()
-        with patch.object(screen.filter, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                with patch.object(screen._timer, 'start') as mock_start:
-                    screen.setImage(_FRAME)
+        with patch.object(screen.image, 'setImage'):
+            with patch.object(screen._timer, 'start') as mock_start:
+                screen.setImage(_FRAME)
         mock_start.assert_called_once_with(screen._interval)
 
     def test_setimage_when_ready_clears_pending(self):
         screen = make_screen()
-        screen._pending = _FRAME.copy()
-        with patch.object(QFilterBank, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                screen.setImage(_FRAME)
+        screen._pending = (_FRAME.copy(), None)
+        with patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
         self.assertIsNone(screen._pending)
 
     def test_setimage_when_not_ready_buffers_frame(self):
         screen = make_screen()
         screen._ready = False
         screen.setImage(_FRAME)
-        self.assertIs(screen._pending, _FRAME)
+        self.assertEqual(screen._pending, (_FRAME, None))
 
     def test_setimage_when_not_ready_skips_display(self):
         screen = make_screen()
@@ -229,19 +220,17 @@ class TestSetready(unittest.TestCase):
     def test_setready_displays_pending_frame(self):
         screen = make_screen()
         screen._ready = False
-        screen._pending = _FRAME.copy()
-        with patch.object(QFilterBank, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage') as mock_set:
-                screen._setready()
+        screen._pending = (_FRAME.copy(), None)
+        with patch.object(screen.image, 'setImage') as mock_set:
+            screen._setready()
         mock_set.assert_called_once()
 
     def test_setready_clears_pending_after_display(self):
         screen = make_screen()
         screen._ready = False
-        screen._pending = _FRAME.copy()
-        with patch.object(QFilterBank, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                screen._setready()
+        screen._pending = (_FRAME.copy(), None)
+        with patch.object(screen.image, 'setImage'):
+            screen._setready()
         # setImage owns clearing _pending when it runs in the _ready branch
         self.assertIsNone(screen._pending)
 
@@ -607,31 +596,98 @@ class TestFps(unittest.TestCase):
         self.assertEqual(screen.fps, 25.)
 
 
+class TestFrameInfo(unittest.TestCase):
+    """The screen passes each frame's FrameInfo on with newFrame."""
+
+    INFO = FrameInfo(7, 12.5)
+
+    def test_new_frame_carries_the_info(self):
+        screen = make_screen()
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME, self.INFO)
+        self.assertIs(spy[0][1], self.INFO)
+
+    def test_info_defaults_to_none(self):
+        screen = make_screen()
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
+        self.assertIsNone(spy[0][1])
+
+    def test_pending_frame_keeps_its_info(self):
+        screen = make_screen()
+        screen._ready = False
+        screen.setImage(_FRAME, self.INFO)          # buffered
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'):
+            screen._setready()
+        self.assertIs(spy[0][1], self.INFO)
+
+    def test_newest_pending_frame_wins(self):
+        screen = make_screen()
+        screen._ready = False
+        screen.setImage(_FRAME, FrameInfo(1, 1.))
+        screen.setImage(_FRAME, self.INFO)
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'):
+            screen._setready()
+        self.assertIs(spy[0][1], self.INFO)
+
+    def test_composite_frame_carries_the_info(self):
+        screen = make_screen()
+        screen._composite = True
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'), \
+             patch.object(screen, '_renderComposite', return_value=_FRAME):
+            screen.setImage(_FRAME, self.INFO)
+        self.assertIs(spy[0][1], self.INFO)
+
+    def test_slot_accepts_a_two_argument_signal(self):
+        class Emitter(QtCore.QObject):
+            newFrame = QtCore.Signal(np.ndarray, object)
+        screen = make_screen()
+        emitter = Emitter()
+        emitter.newFrame.connect(screen.setImage)
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'):
+            emitter.newFrame.emit(_FRAME, self.INFO)
+        self.assertIs(spy[0][1], self.INFO)
+
+    def test_slot_accepts_a_one_argument_signal(self):
+        class Emitter(QtCore.QObject):
+            newFrame = QtCore.Signal(np.ndarray)
+        screen = make_screen()
+        emitter = Emitter()
+        emitter.newFrame.connect(screen.setImage)
+        spy = _spy(screen)
+        with patch.object(screen.image, 'setImage'):
+            emitter.newFrame.emit(_FRAME)
+        self.assertEqual(len(spy), 1)
+
+
 class TestNewFrame(unittest.TestCase):
 
     def test_setimage_emits_newFrame_when_ready(self):
         screen = make_screen()
         spy = _spy(screen)
-        with patch.object(screen.filter, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                screen.setImage(_FRAME)
+        with patch.object(screen.image, 'setImage'):
+            screen.setImage(_FRAME)
         self.assertEqual(len(spy), 1)
 
     def test_setimage_does_not_call_render_composite_when_not_composite(self):
         screen = make_screen()
-        with patch.object(screen.filter, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                with patch.object(screen, '_renderComposite') as mock_render:
-                    screen.setImage(_FRAME)
+        with patch.object(screen.image, 'setImage'):
+            with patch.object(screen, '_renderComposite') as mock_render:
+                screen.setImage(_FRAME)
         mock_render.assert_not_called()
 
     def test_setimage_calls_render_composite_when_composite_true(self):
         screen = make_screen()
         screen._composite = True
-        with patch.object(screen.filter, '__call__', return_value=_FRAME):
-            with patch.object(screen.image, 'setImage'):
-                with patch.object(screen, '_renderComposite', return_value=_FRAME) as mock_render:
-                    screen.setImage(_FRAME)
+        with patch.object(screen.image, 'setImage'):
+            with patch.object(screen, '_renderComposite', return_value=_FRAME) as mock_render:
+                screen.setImage(_FRAME)
         mock_render.assert_called_once()
 
     def test_setimage_does_not_emit_newFrame_when_not_ready(self):

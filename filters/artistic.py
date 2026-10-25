@@ -1,7 +1,6 @@
 '''Artistic non-photorealistic filters and companion Qt widgets.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
@@ -15,11 +14,11 @@ def _ensure_bgr(image: Image) -> Image:
     return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image
 
 
-class PencilSketchFilter(AsyncVideoFilter):
+class PencilSketchFilter(VideoFilter):
 
     '''Pencil-drawing effect via OpenCV non-photorealistic rendering.
 
-    Applies ``cv2.pencilSketch`` in a background thread to produce a
+    Applies ``cv2.pencilSketch`` to produce a
     hand-drawn pencil look without blocking the GUI.  Grayscale input
     is promoted to BGR before processing.
 
@@ -51,7 +50,7 @@ class PencilSketchFilter(AsyncVideoFilter):
         super().__init__()
 
     def process(self, image: Image) -> Image:
-        '''Apply the pencil-sketch transform in the background thread.
+        '''Apply the pencil-sketch transform.
 
         Parameters
         ----------
@@ -97,11 +96,11 @@ class PencilSketchFilter(AsyncVideoFilter):
         )
 
 
-class CartoonFilter(AsyncVideoFilter):
+class CartoonFilter(VideoFilter):
 
     '''Cartoon/painterly stylization via OpenCV non-photorealistic rendering.
 
-    Applies ``cv2.stylization`` in a background thread, smoothing
+    Applies ``cv2.stylization``, smoothing
     low-contrast regions while preserving edges to produce a
     watercolor/cartoon look.  Grayscale input is promoted to BGR before
     processing.
@@ -124,7 +123,7 @@ class CartoonFilter(AsyncVideoFilter):
         super().__init__()
 
     def process(self, image: Image) -> Image:
-        '''Apply cartoon stylization in the background thread.
+        '''Apply cartoon stylization.
 
         Parameters
         ----------

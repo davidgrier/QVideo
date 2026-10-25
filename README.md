@@ -25,9 +25,10 @@ abstraction and require no camera-specific code.
   map and builds a `pyqtgraph` parameter tree widget automatically.
 - **Threaded video source** — `QVideoSource` wraps any camera in a `QThread`
   and emits `newFrame(ndarray, FrameInfo)` at acquisition rate.
-- **Composable filter pipeline** — `VideoFilter` / `QFilterBank` sit between
-  source and display; filters include blur, edge detection, RGB channel
-  selection, sample-and-hold, binary threshold, and blob coloring.
+- **Composable filter pipeline** — `VideoFilter` objects run in a
+  `QFilterStack` on a worker thread between source and consumers (display,
+  recorder); filters include blur, edge detection, RGB channel selection,
+  sample-and-hold, binary threshold, and blob coloring.
 - **Graphical overlays** — `QTrackpyWidget` for live particle tracking and
   `QYoloWidget` for real-time object detection render markers directly on
   `QVideoScreen`; composite mode lets the DVR record the annotated scene.

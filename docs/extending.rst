@@ -46,20 +46,23 @@ logic stays separate from UI concerns.
    ``super()._setupUi()`` first, then add controls to ``self._layout``
    (a horizontal :class:`~pyqtgraph.Qt.QtWidgets.QHBoxLayout`).
 
-:class:`~QVideo.lib.QFilterBank.QFilterBank`
-   An ordered stack of :class:`~QVideo.lib.VideoFilter.QVideoFilter` widgets.
-   :meth:`~QVideo.lib.QFilterBank.QFilterBank.register` appends a filter;
-   the bank applies them left-to-right when called.  A
-   :class:`~QVideo.lib.QVideoScreen.QVideoScreen` owns one internally
-   (``screen.filter``); register filters there to have them applied
-   automatically on every displayed frame.
+:class:`~QVideo.lib.QFilterStack.QFilterStack`
+   Runs :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, in order, on
+   a worker thread between a source and its consumers.  A screen or a
+   recorder uses the stack as its source.
+
+:class:`~QVideo.lib.QFilterRack.QFilterRack`
+   A user-editable list of :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
+   widgets.  Give it to a stack with ``rack=`` and the stack runs the
+   filters that are switched on.
 
 
 Writing a stateless filter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A stateless filter transforms each frame independently.  Override only
-:meth:`~QVideo.lib.VideoFilter.VideoFilter.get`.
+:meth:`~QVideo.lib.QVideoFilter.VideoFilter.process`, which receives a frame
+and returns the filtered frame.
 
 The example below inverts a frame:
 
@@ -73,10 +76,8 @@ The example below inverts a frame:
    class InvertFilter(VideoFilter):
        '''Invert all pixel values.'''
 
-       def get(self) -> Image | None:
-           if self.data is None:
-               return None
-           return 255 - self.data
+       def process(self, data: Image) -> Image:
+           return 255 - data
 
 
    class QInvertFilter(QVideoFilter):
@@ -122,10 +123,8 @@ Override :meth:`_setupUi` to add spinboxes, sliders, or any other widget.
            super().__init__()
            self.gain = gain
 
-       def get(self) -> Image | None:
-           if self.data is None:
-               return None
-           return np.clip(self.data * self.gain, 0, 255).astype(self.data.dtype)
+       def process(self, data: Image) -> Image:
+           return np.clip(data * self.gain, 0, 255).astype(data.dtype)
 
 
    class QBrightnessFilter(QVideoFilter):
@@ -241,10 +240,8 @@ with three fields:
    class InvertFilter(VideoFilter):
        '''Invert all pixel values.'''
 
-       def get(self) -> Image | None:
-           if self.data is None:
-               return None
-           return 255 - self.data
+       def process(self, data: Image) -> Image:
+           return 255 - data
 
        def to_code(self) -> FilterCode:
            return FilterCode(
@@ -265,10 +262,8 @@ the generated source so the exported function is self-contained:
            super().__init__()
            self.gain = gain
 
-       def get(self) -> Image | None:
-           if self.data is None:
-               return None
-           return np.clip(self.data * self.gain, 0, 255).astype(self.data.dtype)
+       def process(self, data: Image) -> Image:
+           return np.clip(data * self.gain, 0, 255).astype(data.dtype)
 
        def to_code(self) -> FilterCode:
            return FilterCode(
@@ -292,19 +287,6 @@ expressed as a single-frame pure function.  Leave ``to_code`` returning ``None``
 Using filters in a pipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Via the screen's built-in filter bank** (simplest):
-
-.. code-block:: python
-
-   screen = QVideoScreen()
-   screen.filter.register(QBrightnessFilter())
-   screen.filter.register(QEdgeFilter())
-   screen.filter.setVisible(True)   # show the filter panel
-
-Every frame displayed by the screen passes through the bank automatically.
-:meth:`~QVideo.lib.QFilterBank.QFilterBank.setVisible` controls whether
-the filter widgets appear in the layout.
-
 **Via a filter stack** (the filters run on a worker thread, and the screen
 and a recorder share one filtered stream):
 
@@ -320,11 +302,13 @@ and a recorder share one filtered stream):
 A stack takes :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, or
 a :class:`~QVideo.lib.QFilterRack.QFilterRack` through ``rack=``.
 
-**By name** (when the filter class is not imported directly):
+**By name, with a rack** (when the filter class is not imported directly):
 
 .. code-block:: python
 
-   screen.filter.registerByName('QBrightnessFilter')
+   rack = QFilterRack()
+   rack.addByName('Smoothing')
+   stack = QFilterStack(source, rack=rack)
 
 ----
 

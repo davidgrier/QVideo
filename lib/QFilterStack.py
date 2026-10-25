@@ -64,8 +64,14 @@ class QFilterStack(QtCore.QThread):
     rack : QFilterRack or None
         Rack whose switched-on filters the stack runs, in place of
         *filters*.
-    parent : QObject or None
-        Parent object.
+
+    Notes
+    -----
+    The stack owns a running thread, so it takes no Qt parent: a parent
+    would let Qt delete the thread while it runs.  Keep a reference to
+    the stack for as long as it is needed.  The thread stops on
+    :meth:`stop`, when the application quits, and when the last
+    reference is dropped.
 
     Signals
     -------
@@ -88,9 +94,8 @@ class QFilterStack(QtCore.QThread):
                  source,
                  filters=(),
                  depth: int = 1,
-                 rack=None,
-                 parent: QtCore.QObject | None = None) -> None:
-        super().__init__(parent)
+                 rack=None) -> None:
+        super().__init__()
         self._mutex = QtCore.QMutex()
         self._wait = QtCore.QWaitCondition()
         self._queue: deque[tuple[Image, FrameInfo]] = deque(maxlen=depth)
@@ -206,6 +211,12 @@ class QFilterStack(QtCore.QThread):
                 return None
             frame = result
         return frame
+
+    def __del__(self) -> None:
+        # Python state only: the flag is absent if construction failed and
+        # False once stopped, when Qt may already have deleted the object.
+        if vars(self).get('_running'):
+            self.stop()
 
     @QtCore.Slot()
     def stop(self) -> None:

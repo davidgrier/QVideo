@@ -1,31 +1,38 @@
 #!/usr/bin/env python3
-'''Demo combining a live video feed, camera controls, and an image-filter bank.
+'''Demo combining a live video feed, camera controls, and image filters.
 
 Run directly::
 
     python -m QVideo.demos.filterdemo
 '''
 
+from qtpy import QtGui
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree
+from QVideo.lib import QCameraTree, QFilterRack, QFilterStack
 
 
 __all__ = ['FilterDemo']
 
 
 class FilterDemo(Demo):
-    '''Extends :class:`~QVideo.demos.demo.Demo` with an image-filter bank.
+    '''Extends :class:`~QVideo.demos.demo.Demo` with image filters.
 
-    Adds a :class:`~QVideo.lib.QFilterBank.QFilterBank` panel below the
-    camera control tree so that image-processing filters can be toggled
-    and adjusted alongside the live feed.
+    A :class:`~QVideo.lib.QFilterStack.QFilterStack` runs the filters on a
+    worker thread between the camera and the screen, so even a slow filter
+    leaves the interface responsive.  The filters appear in a fixed
+    :class:`~QVideo.lib.QFilterRack.QFilterRack` below the camera control
+    tree, where each one can be switched on and off and adjusted alongside
+    the live feed.  See :mod:`~QVideo.demos.filterrackdemo` for a rack
+    that can be edited while the program runs.
 
     Parameters
     ----------
     cameraTree : QCameraTree
         The camera control tree widget to display alongside the video feed.
     filters : list[str]
-        Names of filter classes to register from :mod:`QVideo.filters`.
+        Display names of the filters to add to the rack, for example
+        ``'Smoothing'`` or ``'Canny'`` (see
+        :meth:`~QVideo.lib.QFilterRack.QFilterRack.availableFilters`).
     **kwargs :
         Additional keyword arguments forwarded to :class:`~QVideo.demos.demo.Demo`.
     '''
@@ -35,20 +42,17 @@ class FilterDemo(Demo):
                  filters: list[str],
                  **kwargs) -> None:
         super().__init__(cameraTree, **kwargs)
-        self.addFilters(filters)
-
-    def addFilters(self, filters: list[str]) -> None:
-        '''Register filters by name and show the filter bank.
-
-        Parameters
-        ----------
-        filters : list[str]
-            Names of filter classes to register from :mod:`QVideo.filters`.
-        '''
+        self.rack = QFilterRack(self, editable=False)
         for name in filters:
-            self.screen.filter.registerByName(name)
-        self._controls.addWidget(self.screen.filter)
-        self.screen.filter.setVisible(True)
+            self.rack.addByName(name)
+        self.stack = QFilterStack(self.cameraTree.source, rack=self.rack)
+        self.screen.source = self.stack
+        self._controls.addWidget(self.rack)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        '''Stop the filter stack before the widget closes.'''
+        self.stack.stop()
+        super().closeEvent(event)
 
 
 def main() -> None:  # pragma: no cover
@@ -59,9 +63,8 @@ def main() -> None:  # pragma: no cover
     from qtpy import QtGui, QtWidgets
     app = pg.mkQApp('Filter Demo')
     camera = choose_camera().start()
-    filters = '''QRGBFilter QSmoothingFilter
-                 QSampleHold QThresholdFilter QBlobFilter
-                 QEdgeFilter'''.split()
+    filters = ['Color Channel', 'Smoothing', 'Sample and Hold',
+               'Threshold', 'Blob', 'Canny']
     widget = FilterDemo(camera, filters)
     QtWidgets.QShortcut(
         QtGui.QKeySequence('Ctrl+Q'), widget

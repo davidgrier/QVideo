@@ -58,7 +58,7 @@ class TestQCamcorderInit(unittest.TestCase):
     def test_screen_newframe_connected_to_snapshot(self):
         widget = make_camcorder()
         frame = np.zeros((4, 6, 3), dtype=np.uint8)
-        widget.screen.newFrame.emit(frame)
+        widget.screen.newFrame.emit(frame, None)
         self.assertIs(widget._snapshot._frame, frame)
 
 

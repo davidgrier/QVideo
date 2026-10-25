@@ -12,9 +12,11 @@ demo
     The starting point for building a custom camera application.
 
 filterdemo
-    Extends :mod:`demo` with a :class:`~QVideo.lib.QFilterBank.QFilterBank`
-    panel so that image-processing filters can be toggled and adjusted
-    alongside the live feed.
+    Extends :mod:`demo` with a fixed
+    :class:`~QVideo.lib.QFilterRack.QFilterRack` panel and a
+    :class:`~QVideo.lib.QFilterStack.QFilterStack`, so that
+    image-processing filters can be toggled and adjusted alongside the
+    live feed without slowing the interface.
 
 filterrackdemo
     Extends :class:`~QVideo.QCamcorder.QCamcorder` with a dynamic

@@ -62,8 +62,7 @@ class TestFilterRackDemoInit(unittest.TestCase):
         '''One filtered stream feeds display and recording; the screen's
         own filter bank stays empty so stateful filters see each frame once.'''
         widget = make_demo()
-        self.assertIsNot(widget.screen.filter, widget.rack)
-        self.assertEqual(widget.screen.filter.filters, [])
+        self.assertFalse(hasattr(widget.screen, 'filter'))
 
     def test_dvr_source_is_camera_source_by_default(self):
         widget = make_demo()

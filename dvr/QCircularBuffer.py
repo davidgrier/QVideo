@@ -124,6 +124,7 @@ class QCircularBuffer(QtCore.QObject):
                 f'consider reducing duration or frame rate.'
             )
 
+    @QtCore.Slot(np.ndarray)
     @QtCore.Slot(np.ndarray, object)
     def append(self, frame: Image, info: FrameInfo | None = None) -> None:
         '''Add *frame* to the buffer with its capture time.

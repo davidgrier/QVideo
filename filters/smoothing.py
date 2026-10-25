@@ -1,15 +1,14 @@
 '''Smoothing filter with selectable method and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 import cv2
 
 
 __all__ = ['SmoothingFilter', 'QSmoothingFilter']
 
-class SmoothingFilter(AsyncVideoFilter):
+class SmoothingFilter(VideoFilter):
 
     '''Smoothing filter supporting box, Gaussian, and median blur.
 
@@ -84,8 +83,6 @@ class SmoothingFilter(AsyncVideoFilter):
 
     def process(self, image: Image) -> Image:
         '''Return the smoothed frame.
-
-        Called in the background thread.
 
         Returns
         -------

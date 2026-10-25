@@ -2,9 +2,6 @@
 import unittest
 import numpy as np
 from qtpy import QtWidgets
-from unittest.mock import patch
-from qtpy import QtCore
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 
 
@@ -34,6 +31,27 @@ class TestVideoFilter(unittest.TestCase):
         f = make_filter()
         with self.assertRaises(RuntimeError):
             f.get()
+
+    def test_process_is_a_passthrough_by_default(self):
+        f = make_filter()
+        np.testing.assert_array_equal(f.process(_FRAME), _FRAME)
+
+    def test_get_applies_process_to_the_stored_frame(self):
+        class Double(VideoFilter):
+            def process(self, data):
+                return data * 2
+        f = Double()
+        f.add(_FRAME)
+        np.testing.assert_array_equal(f.get(), _FRAME * 2)
+
+    def test_call_applies_process(self):
+        class Double(VideoFilter):
+            def process(self, data):
+                return data * 2
+        np.testing.assert_array_equal(Double()(_FRAME), _FRAME * 2)
+
+    def test_filters_no_longer_own_threads(self):
+        self.assertFalse(hasattr(VideoFilter, 'shutdown'))
 
     def test_add_stores_data(self):
         f = make_filter()
@@ -178,11 +196,6 @@ class _FailingFilter(VideoFilter):
         raise ValueError('bad frame')
 
 
-class _FailingAsyncFilter(AsyncVideoFilter):
-    def process(self, image):
-        raise ValueError('bad frame')
-
-
 def make_failing_widget(videoFilter=None) -> QVideoFilter:
     widget = QVideoFilter(None, 'Test', videoFilter or _FailingFilter())
     widget.setChecked(True)
@@ -257,14 +270,6 @@ class TestQVideoFilterFailure(unittest.TestCase):
         self._fail(widget)
         widget.setChecked(True)
         self.assertEqual(widget.toolTip(), '')
-
-    def test_failing_async_filter_is_also_disabled(self):
-        with patch.object(QtCore.QThread, 'start'), \
-             patch.object(QtCore.QObject, 'moveToThread'):
-            widget = make_failing_widget(_FailingAsyncFilter())
-        result, _ = self._fail(widget)
-        np.testing.assert_array_equal(result, _FRAME)
-        self.assertFalse(widget.isChecked())
 
 
 if __name__ == '__main__':

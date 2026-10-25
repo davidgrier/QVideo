@@ -18,22 +18,19 @@ _EMPTY_FRAME = np.zeros((10, 10), dtype=np.uint8)
 
 def make_filter() -> BlobFilter:
     '''Create a BlobFilter with threading patched to be synchronous.'''
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return BlobFilter()
+    return BlobFilter()
 
 
 def make_widget() -> QBlobFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QBlobFilter(parent=None)
+    return QBlobFilter(parent=None)
 
 
 class TestBlobFilter(unittest.TestCase):
 
-    def test_get_returns_none_before_add(self):
+    def test_get_before_add_raises(self):
         f = make_filter()
-        self.assertIsNone(f.get())
+        with self.assertRaises(RuntimeError):
+            f.get()
 
     def test_process_returns_ndarray(self):
         f = make_filter()

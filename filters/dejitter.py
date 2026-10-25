@@ -1,8 +1,7 @@
 '''Dejitter filter using phase-correlation image stabilization.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
 import cv2
@@ -11,7 +10,7 @@ import cv2
 __all__ = ['DejitterFilter', 'QDejitterFilter']
 
 
-class DejitterFilter(AsyncVideoFilter):
+class DejitterFilter(VideoFilter):
 
     '''Translation-only video stabilizer using phase correlation.
 
@@ -89,9 +88,8 @@ class DejitterFilter(AsyncVideoFilter):
     def process(self, image: Image) -> Image:
         '''Estimate and correct the translational shift of *image*.
 
-        Called in the background thread.  The first frame after
-        construction or :meth:`reset` seeds the reference and is
-        returned unchanged.
+        The first frame after construction or :meth:`reset` seeds the
+        reference and is returned unchanged.
 
         Parameters
         ----------

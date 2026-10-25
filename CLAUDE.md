@@ -92,7 +92,7 @@ earlier under PySide6).
 
 **`QCameraTree`** is a `pyqtgraph.parametertree` widget. It reads `camera._properties` to auto-build a control tree — no manual UI code needed per camera. It requires `_properties` to be a proper dict (populated via `registerProperty`).
 
-**`VideoFilter`** / **`QFilterBank`** provide a composable image-processing pipeline that sits between a source and a display widget.
+**`VideoFilter`** objects run in a **`QFilterStack`** (a worker thread), optionally driven by a **`QFilterRack`** of filter widgets, between a source and its consumers.
 
 ### Camera backends (`cameras/`)
 
@@ -137,8 +137,9 @@ each frame through unchanged, keeps up to `depth` waiting frames (the default
 raises, and never touches a widget from the worker thread: the rack hands it
 plain `VideoFilter` objects.  Connect consumers to the stack
 (`screen.source = stack`), not to the raw source, so they share one filtered
-stream.  `screen.filter` and `AsyncVideoFilter` are the older in-GUI-thread
-and per-filter-thread mechanisms and are slated for removal.
+stream.  The screen applies no filters.  A filter overrides `process(frame)`
+if it is stateless, or `add`/`get` if it keeps state; none of them owns a
+thread.
 
 ## Test conventions
 

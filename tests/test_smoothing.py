@@ -12,15 +12,11 @@ _FRAME = np.zeros((480, 640), dtype=np.uint8)
 
 
 def make_filter(**kwargs) -> SmoothingFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return SmoothingFilter(**kwargs)
+    return SmoothingFilter(**kwargs)
 
 
 def make_widget() -> QSmoothingFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QSmoothingFilter(parent=None)
+    return QSmoothingFilter(parent=None)
 
 
 # ---------------------------------------------------------------------------

@@ -69,7 +69,7 @@ class FilterRackDemo(QCamcorder):
         self.rack.add(QSmoothingFilter())
         self.rack.add(QThresholdFilter())
         self.stack = QFilterStack(self.source, rack=self.rack,
-                                  depth=_QUEUE_DEPTH, parent=self)
+                                  depth=_QUEUE_DEPTH)
         self.screen.source = self.stack
         self._setupModeUi()
         self._connectModeSignals()

@@ -42,14 +42,14 @@ QVideoScreen
 .. automodule:: QVideo.lib.QVideoScreen
    :members:
 
-QFilterBank and VideoFilter
----------------------------
+VideoFilter
+-----------
 
 :class:`~QVideo.lib.QVideoFilter.VideoFilter` is the base class for all
 image-processing filters.  Its ``add`` / ``get`` interface separates frame
 ingestion from result production, supporting both stateless transforms
-(override ``get`` only) and stateful accumulators (override both ``add`` and
-``get``).
+(override ``process`` only) and stateful accumulators (override both ``add``
+and ``get``).
 
 Stateless filters can also implement
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code`, which returns a
@@ -59,26 +59,7 @@ and NumPy calls the filter makes.
 fragments to produce a standalone ``filter.py`` file.  See
 :ref:`extending-export` for how to add export support to a custom filter.
 
-.. automodule:: QVideo.lib.QFilterBank
-   :members:
-
 .. automodule:: QVideo.lib.QVideoFilter
-   :members:
-
-AsyncVideoFilter
-----------------
-
-:class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter` is a base class for
-filters that run heavy computation in a background :class:`~qtpy.QtCore.QThread`
-so the GUI remains responsive even when inference is slower than the camera
-frame rate.  Frames are dropped rather than queued when the worker is busy,
-preventing latency build-up.
-
-Subclasses override :meth:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter.process`
-(called in the background thread) and inherit :meth:`add` / :meth:`get` /
-:meth:`__call__` from the base.
-
-.. automodule:: QVideo.lib.AsyncVideoFilter
    :members:
 
 QFilterStack
@@ -112,7 +93,7 @@ QFilterRack
 -----------
 
 :class:`~QVideo.lib.QFilterRack.QFilterRack` is a dynamic, user-editable
-alternative to :class:`~QVideo.lib.QFilterBank.QFilterBank`.  It wraps each
+list of filters with controls.  It wraps each
 filter in a slot that carries a ⋮ drag handle for reordering and a × button
 for removal.  Set :attr:`~QVideo.lib.QFilterRack.QFilterRack.editable` to
 ``False`` to hide all editing controls while keeping the pipeline callable.

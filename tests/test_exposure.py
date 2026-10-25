@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.filters.exposure import ExposureFilter, QExposureFilter
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -13,15 +13,11 @@ _COLOR = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
 
 
 def make_filter(**kwargs) -> ExposureFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return ExposureFilter(**kwargs)
+    return ExposureFilter(**kwargs)
 
 
 def make_widget() -> QExposureFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QExposureFilter(parent=None)
+    return QExposureFilter(parent=None)
 
 
 def log_reference(image):
@@ -90,9 +86,9 @@ class TestExposureFilterLookupTable(unittest.TestCase):
 
 class TestExposureFilterIsAsync(unittest.TestCase):
 
-    def test_is_async_video_filter(self):
+    def test_is_video_filter(self):
         f = make_filter()
-        self.assertIsInstance(f, AsyncVideoFilter)
+        self.assertIsInstance(f, VideoFilter)
 
 
 class TestExposureFilterDefaults(unittest.TestCase):

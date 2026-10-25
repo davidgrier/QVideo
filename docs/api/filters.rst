@@ -4,7 +4,7 @@ Filters
 All filters subclass :class:`~QVideo.lib.QVideoFilter.VideoFilter` and are
 callable: ``filtered = f(frame)``.  The ``Q``-prefixed variants add a
 :class:`~pyqtgraph.parametertree` control panel so they can be inserted into a
-:class:`~QVideo.lib.QFilterBank.QFilterBank`.
+:class:`~QVideo.lib.QFilterRack.QFilterRack`.
 
 Stateless filters also implement
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` and participate in
@@ -225,8 +225,6 @@ Two reference-update modes are supported:
   while only fast jitter is corrected.  Best for long acquisitions where
   deliberate stage motion should be preserved.
 
-Computation runs in a background thread via
-:class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter`.
 The companion :class:`~QVideo.filters.dejitter.QDejitterFilter` widget
 exposes a mode selector, an *α* spinbox (shown only in Rolling mode), and
 a *Reset* button to reseed the reference.
@@ -373,9 +371,9 @@ A larger *window* reduces noise but broadens detected peaks.  The output is
 normalised per-frame to ``[0, 255]`` and returned as ``uint8``; bright peaks
 indicate ring centres.
 
-Computation runs in a background thread via
-:class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter`, keeping the GUI
-responsive even for large frames.  The companion
+The computation is heavy, so run the filter in a
+:class:`~QVideo.lib.QFilterStack.QFilterStack` to keep it off the GUI
+thread.  The companion
 :class:`~QVideo.filters.circletransform.QCircleTransformFilter`
 widget exposes a *window* spinbox.
 

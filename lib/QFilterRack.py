@@ -188,10 +188,11 @@ class QFilterRack(QtWidgets.QWidget):
     is ``True``, a ⋮ drag handle to reorder it.  The rack applies each
     filter in pipeline order, honoring each widget's own enabled checkbox.
 
-    Unlike :class:`~QVideo.lib.QFilterBank.QFilterBank`, which is
-    configured programmatically and holds a fixed set of filters,
-    ``QFilterRack`` is designed for interactive use where the pipeline
-    should be discoverable and adjustable at runtime.
+    The rack is designed for interactive use, where the pipeline should
+    be discoverable and adjustable at runtime.  With ``editable=False`` it
+    is a fixed panel of filters.  A
+    :class:`~QVideo.lib.QFilterStack.QFilterStack` given the rack runs
+    its switched-on filters on a worker thread.
 
     Parameters
     ----------
@@ -450,7 +451,6 @@ class QFilterRack(QtWidgets.QWidget):
                 fh.write(self.exportPipeline())
 
     def _removeSlot(self, slot: '_FilterSlot') -> None:
-        slot._widget.filter.shutdown()
         self._filter_refs.remove(slot._widget)
         self._slots.removeWidget(slot)
         slot.deleteLater()

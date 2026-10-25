@@ -10,7 +10,7 @@ layers below it, so individual components can be used in isolation.
    │  QCamcorder  Demo  FilterDemo  ROIDemo           │  application layer
    │  TrackpyDemo  YoloDemo  CompositeDemo            │
    ├──────────────┬───────────────────────────────────┤
-   │  QCameraTree │  QVideoScreen  QFilterBank  DVR   │  UI layer
+   │  QCameraTree │  QVideoScreen  QFilterRack  DVR   │  UI layer
    ├──────────────┴───────────────────────────────────┤
    │  QVideoSource  (QThread)                         │  threading layer
    ├──────────────────────────────────────────────────┤
@@ -70,9 +70,13 @@ source for composite recording.  Setting
 false-color LUT to grayscale frames at display time without affecting
 the underlying frame data.
 
-:class:`~QVideo.lib.QFilterBank.QFilterBank` and
-:class:`~QVideo.lib.VideoFilter.VideoFilter` provide a composable
-image-processing pipeline that sits between a source and a display widget.
+:class:`~QVideo.lib.QFilterStack.QFilterStack` runs
+:class:`~QVideo.lib.QVideoFilter.VideoFilter` objects on a worker thread
+between a source and its consumers (a screen, a recorder, an overlay), so
+every consumer sees the same filtered stream and a slow filter never makes
+the interface unresponsive.  A
+:class:`~QVideo.lib.QFilterRack.QFilterRack` lets the user add, remove,
+reorder, and adjust the filters while the program runs.
 
 Application layer
 -----------------
@@ -87,7 +91,8 @@ built on the framework, following two inheritance chains:
 
 * :class:`~QVideo.demos.demo.Demo` — minimal layout: screen + camera tree.
   :class:`~QVideo.demos.filterdemo.FilterDemo` extends it with a
-  :class:`~QVideo.lib.QFilterBank.QFilterBank` panel.
+  :class:`~QVideo.lib.QFilterRack.QFilterRack` panel and a
+  :class:`~QVideo.lib.QFilterStack.QFilterStack`.
   :class:`~QVideo.demos.trackpydemo.TrackpyDemo` extends it with a
   :class:`~QVideo.overlays.trackpy.QTrackpyWidget` panel and live particle
   markers.

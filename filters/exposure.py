@@ -2,8 +2,7 @@
 import logging
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
 import cv2
@@ -13,7 +12,7 @@ __all__ = ['ExposureFilter', 'QExposureFilter']
 logger = logging.getLogger(__name__)
 
 
-class ExposureFilter(AsyncVideoFilter):
+class ExposureFilter(VideoFilter):
 
     '''Exposure tone-mapping with three selectable methods.
 
@@ -30,9 +29,8 @@ class ExposureFilter(AsyncVideoFilter):
     is applied to the L channel in LAB colour space so hue and saturation are
     preserved.
 
-    Computation runs in a background thread via
-    :class:`~QVideo.lib.AsyncVideoFilter.AsyncVideoFilter`, keeping the GUI
-    responsive even for large frames.
+    Log and Sigmoid are applied as a lookup table; CLAHE depends on
+    neighboring pixels and is computed per frame.
 
     Parameters
     ----------
@@ -144,8 +142,6 @@ class ExposureFilter(AsyncVideoFilter):
 
     def process(self, image: Image) -> Image:
         '''Apply the selected tone-mapping method to *image*.
-
-        Called in the background thread.
 
         Parameters
         ----------

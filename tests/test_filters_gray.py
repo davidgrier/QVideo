@@ -2,8 +2,7 @@
 import unittest
 import cv2
 import numpy as np
-from unittest.mock import patch
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 from QVideo.filters import (CircleTransformFilter, DoGFilter,
                             LaplacianFilter, SobelFilter, ThresholdFilter)
 from QVideo.lib.imageops import grayscale
@@ -15,20 +14,10 @@ _COLOR = np.random.default_rng(3).integers(0, 256, (40, 48, 3),
                                            dtype=np.uint8)
 
 
-def make(cls):
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return cls()
-
-
 class TestColorIsProcessedAsLuminance(unittest.TestCase):
 
     def check(self, cls):
-        f = make(cls)
-        color = f.process(_COLOR) if hasattr(f, 'process') else f(_COLOR)
-        gray = f.process(grayscale(_COLOR)) if hasattr(f, 'process') \
-            else make(cls)(grayscale(_COLOR))
-        np.testing.assert_array_equal(color, gray)
+        np.testing.assert_array_equal(cls()(_COLOR), cls()(grayscale(_COLOR)))
 
     def test_sobel(self):
         self.check(SobelFilter)
@@ -56,7 +45,7 @@ class TestExportedCode(unittest.TestCase):
         return code, namespace['image']
 
     def check(self, cls):
-        f = make(cls)
+        f = cls()
         code, exported = self.run_code(f)
         source = '\n'.join(code.lines)
         self.assertIn('COLOR_RGB2GRAY', source)

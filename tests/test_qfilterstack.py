@@ -1,4 +1,7 @@
 '''Unit tests for QFilterStack.'''
+import inspect
+import subprocess
+import sys
 import threading
 import time
 import unittest
@@ -345,6 +348,60 @@ class TestNoSource(StackTestCase):
         self.source.send(3)
         self.assertTrue(wait_until(lambda: self.out))
         self.assertEqual(self.values(), [3])
+
+
+class TestDroppingAStack(unittest.TestCase):
+    """Dropping the last reference to a running stack must not abort Qt
+    ("QThread: Destroyed while thread is still running")."""
+
+    CODE = """
+import os, gc
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+import numpy as np
+from qtpy import QtCore, QtWidgets
+app = QtWidgets.QApplication([])
+from QVideo.lib import QFilterStack
+
+
+class Source(QtCore.QObject):
+    newFrame = QtCore.Signal(np.ndarray, object)
+    shapeChanged = QtCore.Signal(QtCore.QSize)
+
+
+def build():
+    stack = QFilterStack(Source())
+    assert stack.isRunning()
+
+
+build()
+gc.collect()
+print('survived')
+"""
+
+    def test_dropping_a_running_stack_is_safe(self):
+        result = subprocess.run([sys.executable, '-c', self.CODE],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr[-400:])
+        self.assertIn('survived', result.stdout)
+        self.assertNotIn('Destroyed while thread', result.stderr)
+
+    def test_a_stack_takes_no_parent(self):
+        """A parent would let Qt delete the running thread."""
+        self.assertNotIn('parent', inspect.signature(QFilterStack).parameters)
+
+    def test_a_failed_construction_is_quiet(self):
+        code = ("import os\n"
+                "os.environ['QT_QPA_PLATFORM'] = 'offscreen'\n"
+                "from qtpy import QtWidgets\n"
+                "app = QtWidgets.QApplication([])\n"
+                "from QVideo.lib import QFilterStack\n"
+                "try:\n    QFilterStack()\n"
+                "except TypeError:\n    pass\n"
+                "import gc; gc.collect(); print('done')\n")
+        result = subprocess.run([sys.executable, '-c', code],
+                                capture_output=True, text=True)
+        self.assertIn('done', result.stdout)
+        self.assertNotIn('Exception ignored', result.stderr)
 
 
 class TestLifecycle(StackTestCase):

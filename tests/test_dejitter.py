@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.filters.dejitter import DejitterFilter, QDejitterFilter
 
 
@@ -22,31 +22,17 @@ _COLOR[12:20, 12:20] = [255, 128, 64]
 
 
 def make_filter(**kwargs) -> DejitterFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return DejitterFilter(**kwargs)
+    return DejitterFilter(**kwargs)
 
 
 def make_widget() -> QDejitterFilter:
-    with patch.object(QtCore.QThread, 'start'), \
-         patch.object(QtCore.QObject, 'moveToThread'):
-        return QDejitterFilter(parent=None)
+    return QDejitterFilter(parent=None)
 
 
 class TestDejitterFilterInit(unittest.TestCase):
 
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
-
-    def test_is_async_video_filter(self):
-        self.assertIsInstance(DejitterFilter(), AsyncVideoFilter)
+    def test_is_video_filter(self):
+        self.assertIsInstance(DejitterFilter(), VideoFilter)
 
     def test_default_mode(self):
         self.assertEqual(DejitterFilter().mode, 'static')
@@ -185,16 +171,6 @@ class TestDejitterFilterReset(unittest.TestCase):
 
 
 class TestQDejitterFilter(unittest.TestCase):
-
-    def setUp(self):
-        self._p_start = patch.object(QtCore.QThread, 'start')
-        self._p_move = patch.object(QtCore.QObject, 'moveToThread')
-        self._p_start.start()
-        self._p_move.start()
-
-    def tearDown(self):
-        self._p_start.stop()
-        self._p_move.stop()
 
     def test_filter_is_dejitter_filter(self):
         self.assertIsInstance(QDejitterFilter().filter, DejitterFilter)

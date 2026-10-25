@@ -1,8 +1,7 @@
 '''Foreground estimator using MOG2 Gaussian-mixture background model.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
-from QVideo.lib.QVideoFilter import QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 import cv2
 import numpy as np
@@ -11,7 +10,7 @@ import numpy as np
 __all__ = ['ForegroundEstimator', 'QForegroundEstimator']
 
 
-class ForegroundEstimator(AsyncVideoFilter):
+class ForegroundEstimator(VideoFilter):
 
     '''Foreground estimator using OpenCV MOG2 background subtraction.
 
@@ -96,8 +95,6 @@ class ForegroundEstimator(AsyncVideoFilter):
 
     def process(self, image: Image) -> Image:
         '''Divide *image* by the MOG2 background estimate.
-
-        Called in the background thread.
 
         Parameters
         ----------

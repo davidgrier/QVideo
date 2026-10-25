@@ -103,6 +103,65 @@ class TestAsyncVideoFilterCall(unittest.TestCase):
         np.testing.assert_array_equal(result, _FRAME)
 
 
+class _FlakyFilter(AsyncVideoFilter):
+    '''Filter whose process() raises for frames filled with 255.'''
+
+    def process(self, image):
+        if image.max() == 255:
+            raise ValueError('cannot process this frame')
+        return image * 2
+
+
+def make_flaky() -> _FlakyFilter:
+    with patch.object(QtCore.QThread, 'start'), \
+         patch.object(QtCore.QObject, 'moveToThread'):
+        return _FlakyFilter()
+
+
+_GOOD = np.full((4, 4), 3, dtype=np.uint8)
+_BAD = np.full((4, 4), 255, dtype=np.uint8)
+
+
+class TestAsyncVideoFilterFailure(unittest.TestCase):
+    '''A process() that raises must not leave the filter stuck, and the
+    error must reach the consumer rather than disappear in the worker.'''
+
+    def test_get_reraises_the_process_error(self):
+        f = make_flaky()
+        f.add(_BAD)
+        with self.assertRaises(ValueError):
+            f.get()
+
+    def test_calling_the_filter_raises_the_error_to_the_caller(self):
+        f = make_flaky()
+        with self.assertRaises(ValueError):
+            f(_BAD)
+
+    def test_the_error_is_raised_only_once(self):
+        f = make_flaky()
+        f.add(_BAD)
+        with self.assertRaises(ValueError):
+            f.get()
+        np.testing.assert_array_equal(f.get(), _BAD)    # raw passthrough
+
+    def test_filter_accepts_frames_after_a_failure(self):
+        f = make_flaky()
+        f.add(_BAD)
+        self.assertTrue(f._ready)
+
+    def test_next_frame_is_processed_after_a_failure(self):
+        f = make_flaky()
+        f.add(_BAD)
+        with self.assertRaises(ValueError):
+            f.get()
+        f.add(_GOOD)
+        np.testing.assert_array_equal(f.get(), _GOOD * 2)
+
+    def test_a_failure_does_not_escape_the_worker(self):
+        f = make_flaky()
+        f.add(_BAD)          # would raise here if the worker let it escape
+
+
 class TestAsyncVideoFilterCleanup(unittest.TestCase):
 
     def setUp(self):

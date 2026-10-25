@@ -1,10 +1,13 @@
 '''Base classes for image-processing filters in the QVideo filter pipeline.'''
 from __future__ import annotations
 import dataclasses
+import logging
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.videotypes import Image
 import pyqtgraph as pg
 
+
+logger = logging.getLogger(__name__)
 
 __all__ = ['FilterCode', 'VideoFilter', 'QVideoFilter']
 
@@ -161,6 +164,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
         self._filter = videoFilter
         self._setupUi()
         self._connectSignals()
+        self.toggled.connect(self._clearError)
 
     @property
     def filter(self) -> VideoFilter:
@@ -177,6 +181,10 @@ class QVideoFilter(QtWidgets.QGroupBox):
     def __call__(self, image: Image) -> Image | None:
         '''Apply the filter if enabled, otherwise return *image* unchanged.
 
+        A filter that raises is logged once and switched off, so frames
+        pass through unchanged until it is checked again.  Call from the
+        GUI thread, as it changes the state of the widget.
+
         Parameters
         ----------
         image : Image
@@ -187,7 +195,16 @@ class QVideoFilter(QtWidgets.QGroupBox):
         Image or None
             Filtered frame if checked, otherwise *image* unchanged.
         '''
-        return self.filter(image) if self.isChecked() else image
+        if not self.isChecked():
+            return image
+        try:
+            return self.filter(image)
+        except Exception as error:
+            logger.exception(f'{type(self.filter).__name__} failed and '
+                             'was switched off')
+            self.setToolTip(f'Switched off after an error: {error}')
+            self.setChecked(False)
+            return image
 
     def _setupUi(self) -> None:
         '''Configure the group box and create the horizontal layout.
@@ -207,6 +224,11 @@ class QVideoFilter(QtWidgets.QGroupBox):
         Subclasses should call ``super()._connectSignals()`` and then
         connect their own signals.
         '''
+
+    def _clearError(self, checked: bool) -> None:
+        '''Remove the failure message when the filter is switched on again.'''
+        if checked:
+            self.setToolTip('')
 
     @classmethod
     def example(cls: type['QVideoFilter']) -> None:  # pragma: no cover

@@ -40,7 +40,8 @@ class BlobFilter(AsyncVideoFilter):
         Parameters
         ----------
         image : Image
-            Binary (uint8) input frame.
+            Binary (uint8) input frame.  A color frame is treated as a
+            mask: a pixel is foreground if any of its channels is nonzero.
 
         Returns
         -------
@@ -48,6 +49,8 @@ class BlobFilter(AsyncVideoFilter):
             BGR image with each connected foreground region rendered in a
             distinct hue.  Background pixels are black.
         '''
+        if image.ndim == 3:
+            image = image.max(axis=2)
         _, labels = cv2.connectedComponents(image)
         max_label = int(np.max(labels))
         if max_label == 0:

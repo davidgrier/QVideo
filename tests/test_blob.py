@@ -71,6 +71,34 @@ class TestBlobFilter(unittest.TestCase):
         self.assertEqual(result.shape[2], 3)
 
 
+class TestBlobFilterColorInput(unittest.TestCase):
+    '''A color frame is treated as a mask: any nonzero channel is foreground.'''
+
+    def test_color_frame_does_not_raise(self):
+        f = make_filter()
+        color = np.dstack([_BINARY_FRAME] * 3)
+        self.assertEqual(f.process(color).shape, (10, 10, 3))
+
+    def test_replicated_mask_matches_the_gray_result(self):
+        f = make_filter()
+        color = np.dstack([_BINARY_FRAME] * 3)
+        np.testing.assert_array_equal(f.process(color),
+                                      f.process(_BINARY_FRAME))
+
+    def test_foreground_in_a_single_channel_is_detected(self):
+        f = make_filter()
+        color = np.zeros((10, 10, 3), dtype=np.uint8)
+        color[3:7, 3:7, 1] = 200
+        np.testing.assert_array_equal(f.process(color),
+                                      f.process(_BINARY_FRAME))
+
+    def test_empty_color_frame_returns_black_with_three_channels(self):
+        f = make_filter()
+        out = f.process(np.zeros((10, 10, 3), dtype=np.uint8))
+        self.assertEqual(out.shape, (10, 10, 3))
+        self.assertFalse(out.any())
+
+
 class TestQBlobFilter(unittest.TestCase):
 
     def test_filter_is_blob_filter(self):

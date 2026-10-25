@@ -62,6 +62,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   has `limits` (as the Jupyter interface already did), and `QOpenCVTree`
   uses the camera's own `resolution` property instead of a parallel
   tuple-valued control, which also removes about 45 lines.
+- **A filter that raises now switches itself off instead of breaking the
+  pipeline.**  `QVideoFilter` logs the error once, unchecks itself (with
+  the error in its tooltip) and passes frames through unchanged; checking
+  it again retries.  Previously a synchronous filter's exception was raised
+  from `QVideoScreen.setImage` on every frame, freezing the display, and an
+  asynchronous filter whose `process()` raised in its worker thread never
+  became ready again and silently stopped accepting frames.
+  `AsyncVideoFilter` now hands the exception to the consumer: `get()`
+  re-raises it once, in the calling thread, and the filter stays ready for
+  the next frame.
+- **`BlobFilter` accepts color frames.**  It passed them straight to
+  `cv2.connectedComponents`, which needs one channel, so on a color camera
+  it raised on every frame (and, by the bug above, then stopped).  A color
+  frame is now treated as a mask: a pixel is foreground if any channel is
+  nonzero.
 - **`QOpenCVCamera.resolution` no longer reports the smallest format when
   the device size is not in the probed list.**  It now reports the nearest
   probed format (an exact match when there is one) instead of silently

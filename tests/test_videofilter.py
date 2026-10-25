@@ -2,6 +2,9 @@
 import unittest
 import numpy as np
 from qtpy import QtWidgets
+from unittest.mock import patch
+from qtpy import QtCore
+from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 
 
@@ -161,6 +164,88 @@ class TestQVideoFilter(unittest.TestCase):
     def test_title_set(self):
         widget = QVideoFilter(None, 'My Filter', make_filter())
         self.assertEqual(widget.title(), 'My Filter')
+
+
+class _FailingFilter(VideoFilter):
+    '''Filter that raises every time it is called.'''
+
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def add(self, data):
+        self.calls += 1
+        raise ValueError('bad frame')
+
+
+class _FailingAsyncFilter(AsyncVideoFilter):
+    def process(self, image):
+        raise ValueError('bad frame')
+
+
+def make_failing_widget(videoFilter=None) -> QVideoFilter:
+    widget = QVideoFilter(None, 'Test', videoFilter or _FailingFilter())
+    widget.setChecked(True)
+    return widget
+
+
+class TestQVideoFilterFailure(unittest.TestCase):
+    '''A filter that raises switches itself off and passes frames through.'''
+
+    LOGGER = 'QVideo.lib.QVideoFilter'
+
+    def _fail(self, widget):
+        with self.assertLogs(self.LOGGER, level='ERROR') as cm:
+            result = widget(_FRAME)
+        return result, cm
+
+    def test_failed_call_returns_the_image_unchanged(self):
+        result, _ = self._fail(make_failing_widget())
+        np.testing.assert_array_equal(result, _FRAME)
+
+    def test_failed_filter_is_unchecked(self):
+        widget = make_failing_widget()
+        self._fail(widget)
+        self.assertFalse(widget.isChecked())
+
+    def test_failure_is_logged_once_with_the_filter_name(self):
+        widget = make_failing_widget()
+        _, cm = self._fail(widget)
+        self.assertEqual(len(cm.records), 1)
+        self.assertIn('_FailingFilter', cm.output[0])
+
+    def test_disabled_filter_is_not_called_again(self):
+        widget = make_failing_widget()
+        self._fail(widget)
+        widget(_FRAME)
+        widget(_FRAME)
+        self.assertEqual(widget.filter.calls, 1)
+
+    def test_rechecking_retries_the_filter(self):
+        widget = make_failing_widget()
+        self._fail(widget)
+        widget.setChecked(True)
+        self._fail(widget)
+        self.assertEqual(widget.filter.calls, 2)
+
+    def test_tooltip_explains_the_failure(self):
+        widget = make_failing_widget()
+        self._fail(widget)
+        self.assertIn('bad frame', widget.toolTip())
+
+    def test_tooltip_is_cleared_when_rechecked(self):
+        widget = make_failing_widget()
+        self._fail(widget)
+        widget.setChecked(True)
+        self.assertEqual(widget.toolTip(), '')
+
+    def test_failing_async_filter_is_also_disabled(self):
+        with patch.object(QtCore.QThread, 'start'), \
+             patch.object(QtCore.QObject, 'moveToThread'):
+            widget = make_failing_widget(_FailingAsyncFilter())
+        result, _ = self._fail(widget)
+        np.testing.assert_array_equal(result, _FRAME)
+        self.assertFalse(widget.isChecked())
 
 
 if __name__ == '__main__':

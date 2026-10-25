@@ -35,7 +35,10 @@ class _AsyncWorker(QtCore.QObject):
         f = self._ref()
         if f is None:
             return
-        result = f.process(image)
+        try:
+            result = f.process(image)
+        except Exception as error:
+            result = error          # re-raised by get() in the consumer
         f = self._ref()      # re-check: process() may have released the GIL
         if f is not None:
             f._result = result
@@ -77,7 +80,7 @@ class AsyncVideoFilter(VideoFilter):
     def __init__(self) -> None:
         super().__init__()
         self._ready = True
-        self._result: Image | None = None
+        self._result: Image | Exception | None = None
         self._worker = _AsyncWorker(weakref.ref(self))
         self._thread = QtCore.QThread()
         self._worker.moveToThread(self._thread)
@@ -135,7 +138,17 @@ class AsyncVideoFilter(VideoFilter):
         Image or None
             Processed frame, raw input frame, or ``None`` if
             :meth:`add` has never been called.
+
+        Raises
+        ------
+        Exception
+            The exception, if any, that :meth:`process` raised in the
+            worker thread.  It is raised once, here, in the calling
+            thread; the filter stays ready for the next frame.
         '''
+        if isinstance(self._result, Exception):
+            error, self._result = self._result, None
+            raise error
         if self._result is not None:
             return self._result
         return self.data

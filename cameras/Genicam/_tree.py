@@ -243,34 +243,31 @@ class QGenicamTree(QCameraTree):
             name = p.opts.get('name')
             if not self.camera.has_node(name):
                 continue
-            node = self.camera.node(name)
-            if isinstance(node, IInteger):
-                p.setOpts(limits=(node.min, node.max), step=node.inc)
-            elif isinstance(node, IFloat):
+            state = self.camera.state(name)
+            kind, inc = state['kind'], state.get('inc')
+            if kind == 'int':
+                p.setOpts(limits=(state['min'], state['max']), step=inc)
+            elif kind == 'float':
                 scale = self._scaleFactors.get(name, 1.0)
-                opts = {'limits': (node.min * scale, node.max * scale)}
+                opts = {'limits': (state['min'] * scale,
+                                   state['max'] * scale)}
                 if name in self._decParams:
                     value = p.value()
                     if value > 0:
                         step = 10 ** (math.floor(math.log10(value)) - 1)
-                        if node.has_inc():
-                            step = max(step, node.inc * scale)
+                        if inc is not None:
+                            step = max(step, inc * scale)
                         opts['step'] = step
-                elif node.has_inc():
-                    opts['step'] = node.inc * scale
+                elif inc is not None:
+                    opts['step'] = inc * scale
                 p.setOpts(**opts)
-            elif isinstance(node, IEnumeration):
-                p.setOpts(limits=[v.symbolic for v in node.entries])
+            elif kind == 'enum':
+                p.setOpts(limits=state['entries'])
 
-    def _nodeValue(self, name: str, node: IValue) -> object:
-        '''Read the current value of a node, applying any scale factor.'''
-        if isinstance(node, IEnumeration):
-            value = node.to_string()
-        elif isinstance(node, (IBoolean, IInteger, IFloat, IString)):
-            value = node.value
-        else:
-            return None
-        if name in self._scaleFactors:
+    def _scaledValue(self, name: str, state: dict) -> object:
+        '''Return the value in a node snapshot, applying any scale factor.'''
+        value = state.get('value')
+        if value is not None and name in self._scaleFactors:
             value *= self._scaleFactors[name]
         return value
 
@@ -289,10 +286,10 @@ class QGenicamTree(QCameraTree):
             name = p.opts.get('name')
             if not self.camera.has_node(name):
                 continue
-            node = self.camera.node(name)
-            if node.node.get_access_mode() != EAccessMode.RO:
+            state = self.camera.state(name)
+            if state['access'] != EAccessMode.RO:
                 continue
-            value = self._nodeValue(name, node)
+            value = self._scaledValue(name, state)
             if value is None:
                 continue
             p.blockSignals(True)
@@ -333,11 +330,10 @@ class QGenicamTree(QCameraTree):
                 name = p.opts.get('name')
                 if not self.camera.has_node(name):
                     continue
-                node = self.camera.node(name)
-                mode = node.node.get_access_mode()
-                if mode not in (EAccessMode.RO, EAccessMode.RW):
+                state = self.camera.state(name)
+                if state['access'] not in (EAccessMode.RO, EAccessMode.RW):
                     continue
-                value = self._nodeValue(name, node)
+                value = self._scaledValue(name, state)
                 if value is None:
                     continue
                 p.setValue(value)

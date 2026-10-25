@@ -1,4 +1,6 @@
 '''Unit tests for QCamera.'''
+import threading
+import time
 import unittest
 import numpy as np
 from unittest.mock import patch
@@ -75,7 +77,7 @@ class TestInit(unittest.TestCase):
 
     def test_has_mutex(self):
         cam = make_camera()
-        self.assertIsInstance(cam._mutex, QtCore.QMutex)
+        self.assertIsInstance(cam._mutex, type(threading.RLock()))
 
 
 
@@ -426,6 +428,61 @@ class TestExecute(unittest.TestCase):
         cam = make_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='ERROR'):
             cam.execute('nonexistent')
+
+
+class TestSerialization(unittest.TestCase):
+    '''No device access overlaps a frame read, by any route.'''
+
+    def setUp(self):
+        self.cam = make_camera()
+        self.reading = threading.Event()
+        self.overlaps = []
+
+        def slow_read():
+            self.reading.set()
+            time.sleep(0.15)
+            self.reading.clear()
+            return True, np.zeros((4, 4), dtype=np.uint8)
+
+        def checked(value):
+            def getter():
+                self.overlaps.append(self.reading.is_set())
+                return value
+            return getter
+
+        self.cam.read = slow_read
+        self.cam.registerProperty('probe', getter=checked(1), ptype=int)
+        self.cam.registerMethod('act', checked(None))
+
+    def during_a_read(self, access):
+        thread = threading.Thread(target=self.cam.saferead)
+        thread.start()
+        self.reading.wait(1)
+        access()
+        thread.join()
+        self.assertEqual(self.overlaps, [False])
+
+    def test_attribute_access(self):
+        self.during_a_read(lambda: self.cam.probe)
+
+    def test_get(self):
+        self.during_a_read(lambda: self.cam.get('probe'))
+
+    def test_settings(self):
+        self.during_a_read(lambda: self.cam.settings)
+
+    def test_execute(self):
+        self.during_a_read(lambda: self.cam.execute('act'))
+
+    def test_set(self):
+        self.cam.registerProperty('probe', getter=lambda: 1, ptype=int,
+                                  setter=lambda v: self.overlaps.append(
+                                      self.reading.is_set()))
+        self.during_a_read(lambda: self.cam.set('probe', 2))
+
+    def test_a_setter_may_read_other_properties(self):
+        self.cam.set('width', 320)
+        self.assertEqual(self.cam.shape.width(), 320)
 
 
 if __name__ == '__main__':

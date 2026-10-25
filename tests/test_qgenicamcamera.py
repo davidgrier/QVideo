@@ -2,6 +2,7 @@
 import os
 import subprocess
 import sys
+import threading
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
@@ -725,6 +726,73 @@ class TestExecute(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # TestIsReadwrite
 # ---------------------------------------------------------------------------
+
+class TestState(unittest.TestCase):
+    '''A snapshot of a node, read under the device lock.'''
+
+    def state_of(self, feature):
+        cam, _, device = make_camera()
+        device.remote_device.node_map.get_node.return_value = feature
+        return cam, cam.state(feature.node.name)
+
+    def test_integer(self):
+        feature = _make_feature(_IInteger, name='Width', value=640,
+                                min=64, max=1920, inc=4)
+        _, state = self.state_of(feature)
+        self.assertEqual(state, dict(access=_EAccessMode.RW, kind='int',
+                                     min=64, max=1920, inc=4, value=640))
+
+    def test_float_with_increment(self):
+        feature = _make_feature(_IFloat, name='Gamma', value=1.,
+                                min=.1, max=4., inc=.1)
+        feature.has_inc.return_value = True
+        _, state = self.state_of(feature)
+        self.assertEqual((state['kind'], state['inc']), ('float', .1))
+
+    def test_float_without_increment(self):
+        feature = _make_feature(_IFloat, name='Gamma', value=1.,
+                                min=.1, max=4.)
+        feature.has_inc.return_value = False
+        _, state = self.state_of(feature)
+        self.assertIsNone(state['inc'])
+
+    def test_enumeration(self):
+        feature = _make_feature(_IEnumeration, name='PixelFormat')
+        feature.to_string.return_value = 'Mono8'
+        entry = MagicMock()
+        entry.symbolic = 'Mono8'
+        feature.entries = [entry]
+        _, state = self.state_of(feature)
+        self.assertEqual(state['kind'], 'enum')
+        self.assertEqual(state['entries'], ['Mono8'])
+        self.assertEqual(state['value'], 'Mono8')
+
+    def test_command_has_neither_value_nor_limits(self):
+        feature = _make_feature(_ICommand, name='AcquisitionStop')
+        _, state = self.state_of(feature)
+        self.assertEqual(state, dict(access=_EAccessMode.RW, kind='other'))
+
+    def test_unreadable_node_reports_no_value(self):
+        feature = _make_feature(_IInteger, name='Width', mode='WO',
+                                min=0, max=1, inc=1)
+        feature.value = None
+        _, state = self.state_of(feature)
+        self.assertNotIn('value', state)
+
+    def test_state_waits_for_a_read_in_progress(self):
+        feature = _make_feature(_IInteger, name='Width', value=1,
+                                min=0, max=1, inc=1)
+        cam, _, device = make_camera()
+        device.remote_device.node_map.get_node.return_value = feature
+        done = threading.Event()
+        thread = threading.Thread(
+            target=lambda: (cam.state('Width'), done.set()))
+        with cam._mutex:
+            thread.start()
+            self.assertFalse(done.wait(0.1))
+        self.assertTrue(done.wait(1))
+        thread.join()
+
 
 class TestIsReadwrite(unittest.TestCase):
 

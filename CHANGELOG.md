@@ -16,6 +16,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   running, so a source that went out of scope without `stop()` crashed
   the interpreter.  The source now stops and joins its thread when it is
   garbage collected, as `QFilterStack` does.
+- **Device access could overlap a frame read.**  `shape`, `settings` and
+  `camera.width` called the registered getters without the camera mutex,
+  so they could run during a `read()`; OpenCV on macOS (AVFoundation)
+  answers such a query with -1.  `QCamera` now wraps every registered
+  getter, setter and method in one reentrant lock, and `saferead` holds
+  it for each frame, so every route to the device is serialized for every
+  backend.  A setter may now read other properties and `read()` may call
+  them.  `QGenicamTree`, which polled the node map from the GUI thread,
+  now asks the camera for a snapshot (`QGenicamCamera.state`) that is read
+  under the lock.
 - **The Qt camera tree ignored `hidden` properties.**  A property
   registered with `hidden=True` is now invisible in `QCameraTree`, as it
   already was in the Jupyter controls.  The OpenCV tree no longer lists

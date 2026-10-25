@@ -86,7 +86,13 @@ earlier under PySide6).
 - `_deinitialize()` — release the device
 - `read() -> (bool, ndarray | None)` — capture one frame
 
-`registerProperty(name, getter, setter, ptype, **meta)` stores a property spec in `self._properties` (a dict). The base-class `get` / `set` / `execute` all route through this dict, holding `self.mutex` (a `QMutex`). `__getattr__` delegates attribute access (`camera.fps`) to registered getters, so subclasses do not need explicit Python properties for every camera parameter.
+`registerProperty(name, getter, setter, ptype, **meta)` stores a property spec in `self._properties` (a dict). The base-class `get` / `set` / `execute` all route through this dict. One reentrant lock (`camera._mutex`, a
+`threading.RLock`) serializes all device access: `registerProperty` and
+`registerMethod` wrap every getter, setter and method in it and `saferead`
+holds it per frame, so nothing is read or written during a frame read and
+backends need no locking of their own.  The lock is private: code above a
+camera never takes it.  A GUI that must poll the hardware asks the camera
+for a snapshot (`QGenicamCamera.state`), which is read under the lock. `__getattr__` delegates attribute access (`camera.fps`) to registered getters, so subclasses do not need explicit Python properties for every camera parameter.
 
 **`QVideoSource`** wraps a camera in a `QThread`, calling `camera.saferead()` in a loop and emitting `newFrame(ndarray)`. It is the standard way to drive a camera from the GUI thread.
 

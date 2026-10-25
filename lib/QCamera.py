@@ -1,12 +1,14 @@
 '''Abstract base class for all QVideo camera backends.'''
 from abc import abstractmethod
 from collections.abc import Callable
+from functools import wraps
 from types import TracebackType
 from qtpy import QtCore
 from QVideo.lib._qabc import QABCMeta
 from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
+import threading
 
 
 logger = logging.getLogger(__name__)
@@ -68,11 +70,14 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
 
     Notes
     -----
-    ``QCamera`` holds a single non-recursive :attr:`mutex`.  :meth:`set`,
-    :meth:`get`, :meth:`execute`, and :meth:`saferead` all acquire it,
-    so subclass :meth:`read` implementations must not call back into
-    any of those methods or a deadlock will result.  Pause and resume
-    control is the responsibility of the enclosing :class:`QVideoSource`.
+    One reentrant lock serializes all access to the device.  Every
+    registered getter, setter and method, and :meth:`saferead`, runs
+    holding it, so no property is read or written while a frame is
+    being read, and a multi-step change (stop acquisition, set, restart)
+    is never interleaved with anything else.  Backends need no locking of
+    their own, and may freely call one another's properties.  Pause and
+    resume control is the responsibility of the enclosing
+    :class:`QVideoSource`.
     '''
 
     PropertyValue = bool | int | float | str
@@ -86,7 +91,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._mutex = QtCore.QMutex()
+        self._mutex = threading.RLock()
         self._properties: dict[str, dict[str, object]] = {}
         self._methods: dict[str, Callable[[], object]] = {}
         self._isOpen = False
@@ -117,7 +122,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def __setattr__(self, name: str, value) -> None:
         '''Delegate attribute assignment to registered property setters.
 
-        Routes ``camera.fps = 30`` through :meth:`set` (mutex-protected,
+        Routes ``camera.fps = 30`` through :meth:`set` (serialized with reads,
         type-coerced) for any name in ``_properties``.  All other names —
         including internal backing attributes and Qt object attributes —
         fall through to ``super().__setattr__``.
@@ -177,7 +182,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         if setter is _AUTO:
             def setter(v): return setattr(self, f'_{name}', ptype(v))
         self._properties[name] = dict(
-            getter=getter, setter=setter, ptype=ptype, **meta)
+            getter=self._serialized(getter),
+            setter=self._serialized(setter),
+            ptype=ptype, **meta)
 
     def registerMethod(self, name: str, method: Callable[[], object]) -> None:
         '''Register a named callable method.
@@ -189,7 +196,18 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         method : callable
             Zero-argument callable to invoke.
         '''
-        self._methods[name] = method
+        self._methods[name] = self._serialized(method)
+
+    def _serialized(self, function: Callable | None) -> Callable | None:
+        '''Wrap *function* so that it runs holding the device lock.'''
+        if function is None:
+            return None
+
+        @wraps(function)
+        def locked(*args):
+            with self._mutex:
+                return function(*args)
+        return locked
 
     # ------------------------------------------------------------------
     # Open / close lifecycle
@@ -299,16 +317,15 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         value : PropertyValue
             New value to assign.
         '''
-        with QtCore.QMutexLocker(self._mutex):
-            if key not in self._properties:
-                logger.error(f'Unknown property: {key}')
-                return
-            setter = self._properties[key]['setter']
-            if setter is None:
-                logger.warning(f'Property {key!r} is read-only')
-            else:
-                logger.debug(f'Setting {key}: {value}')
-                setter(value)
+        if key not in self._properties:
+            logger.error(f'Unknown property: {key}')
+            return
+        setter = self._properties[key]['setter']
+        if setter is None:
+            logger.warning(f'Property {key!r} is read-only')
+        else:
+            logger.debug(f'Setting {key}: {value}')
+            setter(value)
 
     @QtCore.Slot(str)
     def get(self, key: str) -> PropertyValue | None:
@@ -326,12 +343,10 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         PropertyValue or None
             Current value, or ``None`` if the property is unknown.
         '''
-        with QtCore.QMutexLocker(self._mutex):
-            if key in self._properties:
-                value = self._properties[key]['getter']()
-            else:
-                logger.error(f'Unknown property: {key}')
-                return None
+        if key not in self._properties:
+            logger.error(f'Unknown property: {key}')
+            return None
+        value = self._properties[key]['getter']()
         self.propertyValue.emit(key, value)
         return value
 
@@ -344,11 +359,10 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         key : str
             Method name.
         '''
-        with QtCore.QMutexLocker(self._mutex):
-            if key in self._methods:
-                self._methods[key]()
-            else:
-                logger.error(f'Unknown method: {key}')
+        if key in self._methods:
+            self._methods[key]()
+        else:
+            logger.error(f'Unknown method: {key}')
 
     # ------------------------------------------------------------------
     # Frame acquisition
@@ -363,11 +377,6 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         tuple[bool, Image or None]
             ``(True, frame)`` on success, ``(False, None)`` on failure.
 
-        Notes
-        -----
-        Must not call :meth:`set`, :meth:`get`, :meth:`execute`, or
-        :meth:`saferead` — those methods acquire the same non-recursive
-        mutex that :meth:`saferead` holds while invoking ``read()``.
         '''
 
     def saferead(self) -> CameraData:
@@ -381,7 +390,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         tuple[bool, Image or None]
             Result of :meth:`read`.
         '''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._mutex:
             return self.read()
 
     # ------------------------------------------------------------------

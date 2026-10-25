@@ -243,9 +243,7 @@ class QOpenCVCamera(QCamera):
         Stores the value for the next :meth:`_initialize` and writes it to
         the device immediately.  OpenCV's V4L2 backend handles the required
         ``VIDIOC_STREAMOFF`` / ``VIDIOC_S_FMT`` / ``VIDIOC_STREAMON`` cycle
-        internally, so no device close/reopen is needed.  The caller must not
-        be holding :attr:`~QVideo.lib.QCamera.QCamera.mutex` — use
-        :meth:`~QVideo.lib.QCamera.QCamera.set` which acquires it.
+        internally, so no device close/reopen is needed.
         '''
         self._configWidth = int(value)
         self._device.set(self.WIDTH, self._configWidth)

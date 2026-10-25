@@ -34,9 +34,18 @@ Subclasses implement three methods:
 spec in ``self._properties``.  :meth:`~QVideo.lib.QCamera.QCamera.get`,
 :meth:`~QVideo.lib.QCamera.QCamera.set`, and
 :meth:`~QVideo.lib.QCamera.QCamera.execute` all route through this dict
-under ``self.mutex``.  Attribute access (``camera.fps``) delegates to
+through this dict.  Attribute access (``camera.fps``) delegates to
 registered getters via ``__getattr__``, so subclasses need no explicit
 Python properties for camera parameters.
+
+One reentrant lock serializes all access to the device.
+``registerProperty`` and ``registerMethod`` wrap every getter, setter and
+method in it, and ``saferead`` holds it for each frame, so no property is
+read or written while a frame is being read and a multi-step change (stop
+acquisition, set, restart) is never interleaved with anything else.
+Neither backends nor the code above them lock anything themselves: a GUI
+that needs to poll the hardware asks the camera for a snapshot
+(``QGenicamCamera.state``), which the camera reads under the lock.
 
 Threading layer — ``QVideo.lib.QVideoSource``
 ----------------------------------------------

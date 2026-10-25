@@ -477,8 +477,50 @@ class QGenicamCamera(QCamera):
         node = self.node(feature)
         if node is None:
             return False
-        mode = node.node.get_access_mode()
+        with self._mutex:
+            mode = node.node.get_access_mode()
         return (mode == EAccessMode.RW) or (feature in self._protected)
+
+    def state(self, name: str) -> dict[str, object]:
+        '''Return a snapshot of the named node, read under the device lock.
+
+        Read the device through this method, not through :meth:`node`,
+        wherever acquisition may be running (for example a GUI that polls
+        the hardware): it never overlaps a frame read.
+
+        Parameters
+        ----------
+        name : str
+            GenICam node name.  It must exist (see :meth:`has_node`).
+
+        Returns
+        -------
+        dict
+            ``access`` (:class:`EAccessMode`) and ``kind`` (``'int'``,
+            ``'float'``, ``'enum'`` or ``'other'``) always; ``min``,
+            ``max`` and ``inc`` for numbers (``inc`` is ``None`` when the
+            node has no increment); ``entries`` (symbolic names) for an
+            enumeration; and ``value`` when the node is readable.
+        '''
+        node = self.node(name)
+        with self._mutex:
+            access = node.node.get_access_mode()
+            state = {'access': access, 'kind': 'other'}
+            if isinstance(node, IInteger):
+                state.update(kind='int', min=node.min, max=node.max,
+                             inc=node.inc)
+            elif isinstance(node, IFloat):
+                state.update(kind='float', min=node.min, max=node.max,
+                             inc=node.inc if node.has_inc() else None)
+            elif isinstance(node, IEnumeration):
+                state.update(kind='enum',
+                             entries=[v.symbolic for v in node.entries])
+            if access in (EAccessMode.RO, EAccessMode.RW):
+                if isinstance(node, IEnumeration):
+                    state['value'] = node.to_string()
+                elif isinstance(node, IProperty):
+                    state['value'] = node.value
+        return state
 
 
 class QGenicamSource(QVideoSource):

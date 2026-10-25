@@ -1,6 +1,7 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.QVideoSource import QVideoSource
+from QVideo.lib.QFrameRelay import QFrameRelay
 from QVideo.lib.videotypes import FrameInfo
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -112,14 +113,15 @@ class QVideoScreen(GraphicsLayoutWidget):
     def source(self, source: QVideoSource | None) -> None:
         if self._source is not None:
             self._source.shapeChanged.disconnect(self.updateShape)
-            self._source.newFrame.disconnect(self.setImage)
         self._source = source
+        self._relay = None
         if source is None:
             return
         if source.shape is not None:
             self.updateShape(source.shape)
         self._source.shapeChanged.connect(self.updateShape)
-        self._source.newFrame.connect(self.setImage)
+        self._relay = QFrameRelay(source)
+        self._relay.newFrame.connect(self.setImage)
 
     @property
     def framerate(self) -> int | None:

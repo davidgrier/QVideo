@@ -7,6 +7,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.3.0] — unreleased
+
+### Added
+
+- **A busy GUI thread no longer buffers the video stream.**  The screen
+  received every frame through a queued connection, so while the GUI
+  thread was blocked (a modal dialog, a window drag) the frames piled up in
+  its event queue: three seconds of a 200 fps, 2048 x 2048 camera held
+  1.5 GB.  `QVideoScreen` now receives frames through the new
+  `QFrameRelay`, which keeps only the newest frame and wakes the GUI
+  thread at most once, so the same stall holds about 13 MB and the last
+  frame shown is as fresh as before.  The relay runs in the capture thread
+  and never blocks it.  Consumers that need every frame, such as the
+  recorder, keep their direct connection to the source.
+
+---
+
 ## [4.2.0] — 2026-10-25
 
 ### Added

@@ -101,7 +101,17 @@ closes the file and ends its thread.
 :class:`~QVideo.lib.QVideoScreen.QVideoScreen` are latest-wins.  The stack
 keeps ``depth`` waiting frames (one by default) and reports its drops with
 ``framesDropped``; the screen shows at most one frame per throttle
-interval.  The detection overlays (trackpy, YOLO) run one frame at a time
+interval.
+
+The screen also guards the GUI thread.  A queued connection would leave
+every frame in the GUI thread's event queue while the thread is busy (a
+modal dialog, a window drag), and three seconds of a 200 fps, 2048 x 2048
+camera would hold 1.5 GB.  The screen therefore receives frames through a
+:class:`~QVideo.lib.QFrameRelay.QFrameRelay`, which keeps only the newest
+frame and wakes the GUI thread at most once; the same stall then holds
+about 13 MB.  The capture thread never waits for it.  Code that needs the
+same protection for its own GUI-thread consumer wraps the source in a
+relay and connects to ``relay.newFrame``.  The detection overlays (trackpy, YOLO) run one frame at a time
 on a worker and skip the frames that arrive meanwhile.  Interactive
 overlays, which draw graphics and respond to the user in the GUI thread,
 have no worker and no policy to choose.

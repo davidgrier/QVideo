@@ -19,6 +19,8 @@ QVideoScreen
     Widget that displays frames emitted by a :class:`QVideoSource`.
 VideoFilter
     Base class for composable image-processing filters.
+QFrameRelay
+    Latest-frame handoff from a capture thread to a GUI-thread consumer.
 QVideoFilter
     Qt widget wrapper around a :class:`VideoFilter`.
 QFilterRack
@@ -45,6 +47,7 @@ from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
 from .QFilterRack import QFilterRack
 from .QFilterStack import QFilterStack
+from .QFrameRelay import QFrameRelay
 from .QVideoFilter import VideoFilter, QVideoFilter
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
@@ -60,6 +63,6 @@ __all__ = '''Image
            FrameInfo
 clickable Camera choose_camera QListCameras
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
-QFilterRack QFilterStack
+QFilterRack QFilterStack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
 QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter'''.split()

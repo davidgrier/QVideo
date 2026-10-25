@@ -21,6 +21,14 @@ def make_mock_source(fps=30., width=640, height=480):
     return source
 
 
+class _Emitter(QtCore.QObject):
+    '''A source with real Qt signals.'''
+    newFrame = QtCore.Signal(np.ndarray, object)
+    shapeChanged = QtCore.Signal(QtCore.QSize)
+    fps = 30.
+    shape = QtCore.QSize(640, 480)
+
+
 def _spy(screen, signal_name='newFrame'):
     return QtTest.QSignalSpy(getattr(screen, signal_name))
 
@@ -108,11 +116,24 @@ class TestSource(unittest.TestCase):
         screen.source = source
         source.shapeChanged.connect.assert_called_once_with(screen.updateShape)
 
-    def test_source_connects_new_frame(self):
+    def test_frames_from_the_source_are_displayed(self):
         screen = make_screen()
-        source = make_mock_source()
+        source = _Emitter()
         screen.source = source
-        source.newFrame.connect.assert_called_once_with(screen.setImage)
+        info = FrameInfo(3, 1.)
+        with patch.object(screen.image, 'setImage') as show:
+            source.newFrame.emit(_FRAME, info)
+        show.assert_called_once()
+
+    def test_the_info_of_a_frame_is_passed_on(self):
+        screen = make_screen()
+        source = _Emitter()
+        screen.source = source
+        seen = []
+        screen.newFrame.connect(lambda frame, info: seen.append(info))
+        info = FrameInfo(3, 1.)
+        source.newFrame.emit(_FRAME, info)
+        self.assertEqual(seen, [info])
 
     def test_source_disconnects_old_shape_changed(self):
         screen = make_screen()
@@ -121,12 +142,23 @@ class TestSource(unittest.TestCase):
         screen.source = make_mock_source()
         old_source.shapeChanged.disconnect.assert_called_once_with(screen.updateShape)
 
-    def test_source_disconnects_old_new_frame(self):
+    def test_frames_from_the_old_source_are_ignored(self):
         screen = make_screen()
-        old_source = make_mock_source()
-        screen.source = old_source
-        screen.source = make_mock_source()
-        old_source.newFrame.disconnect.assert_called_once_with(screen.setImage)
+        old = _Emitter()
+        screen.source = old
+        screen.source = _Emitter()
+        with patch.object(screen.image, 'setImage') as show:
+            old.newFrame.emit(_FRAME, FrameInfo(0, 0.))
+        show.assert_not_called()
+
+    def test_clearing_the_source_stops_the_frames(self):
+        screen = make_screen()
+        source = _Emitter()
+        screen.source = source
+        screen.source = None
+        with patch.object(screen.image, 'setImage') as show:
+            source.newFrame.emit(_FRAME, FrameInfo(0, 0.))
+        show.assert_not_called()
 
     def test_source_no_disconnect_when_none(self):
         '''Setting source for the first time should not attempt to disconnect.'''

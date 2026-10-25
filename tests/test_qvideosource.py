@@ -367,6 +367,18 @@ print('survived')
         self.assertIn('survived', result.stdout)
         self.assertNotIn('Destroyed while thread', result.stderr)
 
+    def test_finalizer_leaves_an_unstarted_source_alone(self):
+        vs = make_vs()
+        with patch.object(vs, 'stop') as stop:
+            vs.__del__()
+        stop.assert_not_called()
+
+    def test_finalizer_ignores_a_deleted_thread(self):
+        vs = make_vs()
+        with patch.object(QVideoSource, 'isRunning',
+                          side_effect=RuntimeError):
+            vs.__del__()
+
 
 if __name__ == '__main__':
     unittest.main()

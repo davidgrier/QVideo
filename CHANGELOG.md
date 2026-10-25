@@ -21,6 +21,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- A source or filter stack that the garbage collector frees no longer
+  touches a Qt object whose C++ side is already gone, which crashed the
+  test suite on Python 3.11.  The finalizers now ask Qt whether the
+  thread is running.
 - Exporting a filter pipeline writes UTF-8 on every platform (Windows
   used its locale encoding).
 - `QCircularBuffer` reads total memory through `psutil` alone; the

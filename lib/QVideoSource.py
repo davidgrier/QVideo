@@ -144,9 +144,13 @@ class QVideoSource(QtCore.QThread):
         logger.debug('streaming finished')
 
     def __del__(self) -> None:
-        # Python state only: the flag is absent if construction failed and
-        # False once stopped, when Qt may already have deleted the object.
-        if vars(self).get('_running'):
+        # The garbage collector may get here after Qt has deleted the C++
+        # object (or before it was built): then there is no thread to stop.
+        try:
+            running = self.isRunning()
+        except RuntimeError:
+            return
+        if running:
             self.stop()
             self.wait()
 

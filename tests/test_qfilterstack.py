@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
 import numpy as np
 from qtpy import QtCore, QtTest, QtWidgets
 from QVideo.lib.QFilterStack import QFilterStack
@@ -405,6 +406,13 @@ print('survived')
 
 
 class TestLifecycle(StackTestCase):
+
+    def test_finalizer_ignores_a_deleted_thread(self):
+        stack = self.make()
+        with patch.object(QFilterStack, 'isRunning',
+                          side_effect=RuntimeError):
+            stack.__del__()
+        self.assertTrue(stack.isRunning())
 
     def test_thread_is_running_after_creation(self):
         self.make()

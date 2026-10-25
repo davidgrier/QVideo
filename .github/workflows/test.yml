@@ -8,9 +8,9 @@ on:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }} / ${{ matrix.qt }}${{ matrix.extras }}
-    runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.python-version == '3.15' || matrix.qt == 'pyside6' }}
+    name: Python ${{ matrix.python-version }} / ${{ matrix.qt }}${{ matrix.extras }}${{ matrix.os && format(' / {0}', matrix.os) }}
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+    continue-on-error: ${{ matrix.python-version == '3.15' || matrix.qt == 'pyside6' || matrix.os == 'windows-latest' }}
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       QT_QPA_PLATFORM: offscreen
@@ -33,6 +33,11 @@ jobs:
           # PySide6 is experimental; its failures do not fail the workflow.
           - python-version: "3.12"
             qt: "pyside6"
+          # Windows is untested by hand; its failures do not fail the
+          # workflow until the platform is known to be sound.
+          - python-version: "3.12"
+            qt: "pyqt6"
+            os: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +48,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install system dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q \

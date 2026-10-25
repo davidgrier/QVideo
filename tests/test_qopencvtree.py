@@ -149,6 +149,17 @@ class TestResolutionEnum(unittest.TestCase):
         if 'fps' in tree._parameters:
             self.assertFalse(tree._parameters['fps'].opts.get('enabled', True))
 
+    def test_width_height_fps_hidden_when_formats_available(self):
+        tree, _ = make_tree()
+        for name in ('width', 'height', 'fps'):
+            if name in tree._parameters:
+                self.assertFalse(tree._parameters[name].opts['visible'])
+
+    def test_width_height_shown_when_no_formats(self):
+        tree, _ = make_tree(formats=[])
+        for name in ('width', 'height'):
+            self.assertTrue(tree._parameters[name].opts.get('visible', True))
+
     def test_resolution_labels_contain_dimensions(self):
         tree, _ = make_tree()
         limits = tree._parameters['resolution'].opts.get('limits', {})

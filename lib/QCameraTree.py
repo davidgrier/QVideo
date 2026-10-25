@@ -76,6 +76,8 @@ class QCameraTree(ParameterTree):
                      'default': value}
             if spec['setter'] is None:
                 entry['enabled'] = False
+            if spec.get('hidden'):
+                entry['visible'] = False
             if spec['ptype'] is str and spec.get('limits'):
                 entry.update(type='list', limits=spec['limits'])
             entries.append(entry)

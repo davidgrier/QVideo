@@ -5,7 +5,7 @@ and DVR.
 
 Run directly to launch a full camcorder application with camera selection::
 
-    python -m QVideo.QCamcorder [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
+    python -m QVideo.QCamcorder [-b|-c|-f|-i|-m|-p|-v] [cameraID]
 
 Camera flags (mutually exclusive):
 
@@ -17,7 +17,6 @@ Camera flags (mutually exclusive):
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
-    -r [cameraID]   OpenCV camera with resolution drop-down selector
     -v [cameraID]   Allied Vision VimbaX camera
     -h              Show help and exit
 

@@ -7,6 +7,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.0.1] — unreleased
+
+### Fixed
+
+- **Dropping a running `QVideoSource` aborted the process.**  Qt
+  terminates the application when a `QThread` is destroyed while it is
+  running, so a source that went out of scope without `stop()` crashed
+  the interpreter.  The source now stops and joins its thread when it is
+  garbage collected, as `QFilterStack` does.
+- **The Qt camera tree ignored `hidden` properties.**  A property
+  registered with `hidden=True` is now invisible in `QCameraTree`, as it
+  already was in the Jupyter controls.  The OpenCV tree no longer lists
+  `width`, `height` and `fps` beside the `resolution` drop-down that sets
+  them.
+- **Stale `-r` flag.**  `QCamcorder` and the quickstart listed a `-r`
+  option that does not exist; the quickstart now shows `-v` for VimbaX.
+
+---
+
 ## [4.0.0] — 2026-10-25
 
 ### Added

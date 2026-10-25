@@ -59,6 +59,7 @@ from .QSnapshot import QSnapshot
 __all__ = '''Image
            FrameInfo
 clickable Camera choose_camera QListCameras
-QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree QFilterRack QFilterStack
+QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
+QFilterRack QFilterStack
 QVideoReader QVideoWriter QVideoScreen
 QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter'''.split()

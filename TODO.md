@@ -208,15 +208,12 @@ the way `Camera()` already assembles a camera in one? The pieces
 mostly already exist; what's missing is a thin factory layer over
 them:
 
-- **`Filter()` factory, analogous to `Camera()`/`Screen()`** — wraps
-  a `QFilterBank`/`QFilterRack` around a source and re-emits filtered
-  frames as a `newFrame`-duck-typed object, so it can feed a
-  `Screen()` or a DVR in turn. This already exists in embryonic,
-  private form: `demos/filterrackdemo.py::_FilteredSource` connects to
-  `source.newFrame`, runs the frame through a `QFilterRack`, and
-  re-emits it, exposing `.fps` — promoting this into a public
-  `lib/_filter.py::Filter(source, *filters)` would make it reusable
-  outside that one demo.
+- **`Filter()` factory, analogous to `Camera()`/`Screen()`** — this is
+  now `QFilterStack` (`lib/QFilterStack.py`): it wraps a source (and
+  optionally a `QFilterRack`), filters on a worker thread, and
+  re-emits `newFrame(ndarray, FrameInfo)` with `.fps` and `.shape`, so
+  it feeds a `Screen()` or a DVR in turn.  A public
+  `Filter(source, *filters)` would be a one-line convenience over it.
 - **`Screen(source, overlay=...)`** — construct the requested overlay
   widget (`QYoloWidget`, `QTrackpyWidget`, ...), wire
   `overlay.source = source`, and call
@@ -247,16 +244,16 @@ them:
 
 Today `QYoloWidget`/`QTrackpyWidget` connect to `source.newFrame`
 directly and run their own detection, independent of whatever
-`QFilterBank`/`QFilterRack` is doing for display. That's a latent
+`QFilterStack` is doing. That's a latent
 correctness gap: if a display filter crops or geometrically
 transforms the frame, the overlay's boxes are computed in raw-source
 coordinates but drawn on top of a transformed frame. It also
 duplicates work — `overlays/yolo.py`'s `_YoloWorker` is a hand-rolled
-`QThread` + drop-frame implementation structurally identical to
-`AsyncVideoFilter`'s `_AsyncWorker`.
+`QThread` + drop-frame implementation of the latest-wins handoff that
+`QFilterStack` now provides.
 
 Proposed fix: move detection into a filter stage — e.g.
-`YOLOFilter(AsyncVideoFilter)` sitting in the rack, pass-through on
+`YOLOFilter(VideoFilter)` sitting in the rack, pass-through on
 the image, emitting a results signal — so detection runs on the frame
 *as it exists at that point in the pipeline*, staying correctly
 aligned with what's actually displayed, and one inference pass can
@@ -264,11 +261,11 @@ feed the overlay, the planned [[project_analysis_writer]]
 (`QAnalysisWriter`), and a live stats readout simultaneously instead
 of each running its own detector.
 
-- **No base-class change needed.** `VideoFilter`/`AsyncVideoFilter`
-  are `QObject` subclasses already; any filter can declare its own
+- **No base-class change needed.** `QVideoFilter` widgets are
+  `QObject` subclasses; a filter's widget can declare its own
   `Signal` directly (`YOLOFilter.detectionsReady = QtCore.Signal
   (object)`) with zero changes to the shared base. Baking a results
-  signal into `VideoFilter`/`AsyncVideoFilter` themselves would be the
+  signal into `VideoFilter` itself would be the
   wrong call — those classes back nearly every filter in the project,
   and only detector-style filters (YOLO, Trackpy, maybe a future
   blob/DNN filter) ever need one; the other dozen-plus filters
@@ -280,7 +277,7 @@ of each running its own detector.
   needs a consistent signal name (`resultsReady`) or a tiny marker
   mixin (`class ResultsFilter: resultsReady = QtCore.Signal(object)`)
   that just `YOLOFilter`/`TrackpyFilter` additionally inherit from —
-  additive and opt-in, not a change to `VideoFilter`/`AsyncVideoFilter`.
+  additive and opt-in, not a change to `VideoFilter`.
 - **Registration/enable API needed on `QFilterRack`** — the overlay
   needs to find-or-create the detector filter instance by name/type,
   connect to its results signal, and enable it if it isn't already
@@ -288,11 +285,9 @@ of each running its own detector.
   rack, the overlay needs to notice and clear its drawn results rather
   than show stale boxes.
 - **Migration cost:** a real refactor of two shipped widgets
-  (`QYoloWidget`, `QTrackpyWidget`) plus their tests — the
-  `AsyncVideoFilter` test-threading pattern (patching `QThread.start`/
-  `moveToThread` in `setUp`/`tearDown`, see
-  [[feedback_asyncfilter_test_threading]]) would apply to the
-  refactored overlay tests too.
+  (`QYoloWidget`, `QTrackpyWidget`) plus their tests.  A slow detector
+  would run on the stack's single worker thread and set the pace of
+  every later filter, so a detector probably wants its own stack.
 - **Natural pairing with the YOLO `cv2.dnn` test case** above — worth
   designing the filter/signal split and the torch-free backend
   together rather than migrating YOLO twice.
@@ -363,7 +358,7 @@ page gives a user enough context to use the module without reading source.
   OpenCV video), the `.newFrame` / `.fps` duck-typing contract, and a short
   wiring example.
 - **Filters** — add prose to any filter section that is still directive-only;
-  include a pipeline composition example using `QFilterBank`.
+  include a pipeline composition example using `QFilterStack`.
 - **Overlays** — verify Trackpy and YOLO prose is current; add a paragraph
   covering `QVideoScreen.composite` and composite-frame recording.
 - **Architecture** — add a section on the task framework (`lib/tasks/`) and
@@ -481,12 +476,11 @@ ordered by value vs. effort — see
 - **Anomaly/novelty detection** — a small autoencoder-style ONNX
   model flagging frames that deviate from a learned baseline; pairs
   with the hot-plug / long-duration-recording themes above.
-- **Foundational: shared `AsyncDNNFilter`/`QDNNOverlay` base class**
+- **Foundational: shared `DNNFilter`/`QDNNOverlay` base class**
   — wraps `cv2.dnn.Net` (model loading, `blobFromImage`
   preprocessing, `ENGINE_AUTO` selection, a postprocessing hook).
   Every item above needs the same boilerplate; one abstraction
-  avoids duplicating it the way `AsyncVideoFilter` already does for
-  background-thread filters generally. Worth building this first if
+  avoids duplicating it across filters.  Worth building this first if
   more than one DNN-backed filter is planned.
 
 ### Test case: torch-free YOLO via `cv2.dnn`

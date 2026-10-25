@@ -1,4 +1,6 @@
 '''Unit tests for QVideoSource.'''
+import subprocess
+import sys
 import time
 import unittest
 import numpy as np
@@ -334,6 +336,36 @@ class TestRun(unittest.TestCase):
         vs.quit()
         finished = vs.wait(2000)
         self.assertTrue(finished)
+
+
+class TestDroppingARunningSource(unittest.TestCase):
+
+    CODE = """
+import os
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+import gc
+from qtpy import QtWidgets
+app = QtWidgets.QApplication([])
+from QVideo.cameras.Noise import QNoiseCamera
+from QVideo.lib import QVideoSource
+
+
+def build():
+    source = QVideoSource(QNoiseCamera()).start()
+    assert source.isRunning()
+
+
+build()
+gc.collect()
+print('survived')
+"""
+
+    def test_dropping_a_running_source_is_safe(self):
+        result = subprocess.run([sys.executable, '-c', self.CODE],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr[-400:])
+        self.assertIn('survived', result.stdout)
+        self.assertNotIn('Destroyed while thread', result.stderr)
 
 
 if __name__ == '__main__':

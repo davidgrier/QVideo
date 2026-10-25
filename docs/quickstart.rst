@@ -34,7 +34,7 @@ camcorder.  Use the flag for your camera type:
    python -m QVideo -f          # FLIR camera
    python -m QVideo -i          # IDS camera
    python -m QVideo -m          # MATRIX VISION / generic GenICam
-   python -m QVideo -r          # Allied Vision VimbaX
+   python -m QVideo -v          # Allied Vision VimbaX
    python -m QVideo -p          # Raspberry Pi camera
 
 The camcorder window shows the live feed, a property tree for adjusting

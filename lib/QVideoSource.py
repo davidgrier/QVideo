@@ -143,6 +143,13 @@ class QVideoSource(QtCore.QThread):
                     self.newFrame.emit(frame, info)
         logger.debug('streaming finished')
 
+    def __del__(self) -> None:
+        # Python state only: the flag is absent if construction failed and
+        # False once stopped, when Qt may already have deleted the object.
+        if vars(self).get('_running'):
+            self.stop()
+            self.wait()
+
     @QtCore.Slot()
     def start(self) -> 'QVideoSource':
         '''Start the capture thread.

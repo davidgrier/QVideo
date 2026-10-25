@@ -203,14 +203,15 @@ and `configure`.
 `QOpenCVCamera._initialize()` calls `probe_formats(self.device)` on the already-open
 device to discover the actual maximum fps per resolution (by requesting 120 fps and
 reading back what the V4L2 driver accepts).  The resulting `_formats` list is stored
-on the camera and consumed by `QOpenCVTree` to populate the resolution dropdown.
+on the camera, which registers a `resolution` property (a `str` with
+`limits`) that `QCameraTree` renders as a dropdown.
 
 `width` and `height` are registered as writable properties.  Runtime resolution
 changes are applied directly via OpenCV's V4L2 backend, which handles the required
 `VIDIOC_STREAMOFF`/`VIDIOC_S_FMT`/`VIDIOC_STREAMON` cycle internally — no device
-close or source stop is needed.  `QOpenCVTree` exposes them as read-only display
-fields; format changes are made through the `resolution` dropdown, which updates
-width, height, and fps atomically.
+close or source stop is needed.  They are registered `hidden` when a
+`resolution` property exists, so the tree shows only the `resolution`
+dropdown, which updates width, height, and fps atomically.
 
 The `-c` CLI flag opens `QOpenCVTree` in quality mode.
 

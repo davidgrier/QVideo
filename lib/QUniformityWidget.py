@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from qtpy import QtCore
 import numpy as np
 import pyqtgraph as pg
+from QVideo.lib.imageops import grayscale
 
 if TYPE_CHECKING:
     from QVideo.lib.QVideoScreen import QVideoScreen
@@ -85,7 +86,6 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
         image : numpy.ndarray
             Current video frame, shape ``(H, W)`` or ``(H, W, C)``.
         '''
-        if image.ndim == 3:
-            image = image.mean(axis=2)
+        image = grayscale(image)
         self._xcurve.setData(image.mean(axis=0))
         self._ycurve.setData(image.mean(axis=1))

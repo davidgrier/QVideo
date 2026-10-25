@@ -13,6 +13,12 @@ QVideoSource
 .. automodule:: QVideo.lib.QVideoSource
    :members:
 
+Image operations
+----------------
+
+.. automodule:: QVideo.lib.imageops
+   :members:
+
 FrameInfo
 ---------
 

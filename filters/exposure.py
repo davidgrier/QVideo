@@ -64,8 +64,26 @@ class ExposureFilter(AsyncVideoFilter):
         self._clahe = cv2.createCLAHE(clipLimit=self._clip_limit,
                                        tileGridSize=(self._tile_size,
                                                      self._tile_size))
+        self._lut = self._buildLut()
         self.method = method
         super().__init__()
+
+    def _buildLut(self) -> Image | None:
+        '''Lookup table for the methods that map each value independently.
+
+        ``None`` for CLAHE, which depends on neighboring pixels.  Applying
+        the table is exactly equivalent to evaluating the formula at every
+        pixel, at a fraction of the cost.
+        '''
+        x = np.arange(256, dtype=np.float32)
+        if self._method == 'Log':
+            table = np.log1p(x) / np.log1p(255) * 255
+        elif self._method == 'Sigmoid':
+            table = 255 / (1 + np.exp(
+                -self._gain * (x / 255 - self._cutoff / 255)))
+        else:
+            return None
+        return np.clip(table, 0, 255).astype(np.uint8)
 
     @property
     def method(self) -> str:
@@ -78,6 +96,7 @@ class ExposureFilter(AsyncVideoFilter):
             logger.warning(f'method must be one of {self.METHODS}; ignoring')
             return
         self._method = value
+        self._lut = self._buildLut()
 
     @property
     def cutoff(self) -> float:
@@ -87,6 +106,7 @@ class ExposureFilter(AsyncVideoFilter):
     @cutoff.setter
     def cutoff(self, value: float) -> None:
         self._cutoff = max(0.0, min(255.0, float(value)))
+        self._lut = self._buildLut()
 
     @property
     def gain(self) -> float:
@@ -96,6 +116,7 @@ class ExposureFilter(AsyncVideoFilter):
     @gain.setter
     def gain(self, value: float) -> None:
         self._gain = max(0.1, float(value))
+        self._lut = self._buildLut()
 
     @property
     def clip_limit(self) -> float:
@@ -136,15 +157,8 @@ class ExposureFilter(AsyncVideoFilter):
         Image
             Tone-mapped uint8 frame.
         '''
-        if self._method == 'Log':
-            f = image.astype(np.float32)
-            return np.clip(
-                np.log1p(f) / np.log1p(255) * 255, 0, 255).astype(np.uint8)
-        if self._method == 'Sigmoid':
-            f = image.astype(np.float32)
-            return np.clip(
-                255 / (1 + np.exp(-self._gain * (f / 255 - self._cutoff / 255))),
-                0, 255).astype(np.uint8)
+        if self._lut is not None:
+            return cv2.LUT(image, self._lut)
         if image.ndim == 3:
             lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
             lab[:, :, 0] = self._clahe.apply(lab[:, :, 0])

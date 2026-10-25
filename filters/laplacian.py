@@ -3,6 +3,7 @@ from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
+from QVideo.lib.imageops import grayscale
 import numpy as np
 import cv2
 
@@ -61,7 +62,7 @@ class LaplacianFilter(VideoFilter):
         from QVideo.lib.QVideoFilter import FilterCode
         lines = [
             'if image.ndim == 3:',
-            '    image = image.mean(axis=2).astype(np.uint8)',
+            '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
         ]
         imports = frozenset({'import cv2', 'import numpy as np'})
         if self._sigma > 0:
@@ -86,8 +87,7 @@ class LaplacianFilter(VideoFilter):
         '''
         if self.data is None:
             return None
-        gray = (self.data.mean(axis=2).astype(np.uint8)
-                if self.data.ndim == 3 else self.data)
+        gray = grayscale(self.data)
         if self._sigma > 0:
             gray = cv2.GaussianBlur(gray, (0, 0), self._sigma)
         result = cv2.Laplacian(gray, cv2.CV_32F, ksize=self._ksize)

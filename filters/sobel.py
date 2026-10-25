@@ -3,6 +3,7 @@ from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
+from QVideo.lib.imageops import grayscale
 import numpy as np
 import cv2
 
@@ -64,7 +65,7 @@ class SobelFilter(VideoFilter):
         from QVideo.lib.QVideoFilter import FilterCode
         _GRAY = [
             'if image.ndim == 3:',
-            '    image = image.mean(axis=2).astype(np.uint8)',
+            '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
         ]
         imports = frozenset({'import cv2', 'import numpy as np'})
         k = self._ksize
@@ -104,8 +105,7 @@ class SobelFilter(VideoFilter):
         '''
         if self.data is None:
             return None
-        gray = (self.data.mean(axis=2).astype(np.uint8)
-                if self.data.ndim == 3 else self.data)
+        gray = grayscale(self.data)
         if self._direction == 'Horizontal':
             result = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=self._ksize)
             return cv2.convertScaleAbs(result)

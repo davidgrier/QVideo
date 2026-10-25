@@ -92,8 +92,9 @@ class _NormalizeMixin:
         if self._fg is None:
             raise RuntimeError('get() called before add()')
         bg = super().get()
-        result = np.zeros_like(self._fg, dtype=np.float32)
-        np.divide(self._fg, bg, out=result, where=(bg != 0))
+        zero = bg == 0
+        result = np.divide(self._fg, bg + zero, dtype=np.float32)
+        result[zero] = 0
         if self.scale:
             result = self.mean * result
         return result.astype(np.uint8)

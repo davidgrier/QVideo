@@ -4,6 +4,7 @@ from pyqtgraph import SpinBox
 from QVideo.lib.AsyncVideoFilter import AsyncVideoFilter
 from QVideo.lib.QVideoFilter import QVideoFilter
 from QVideo.lib.videotypes import Image
+from QVideo.lib.imageops import grayscale
 import numpy as np
 from numpy.typing import NDArray
 
@@ -119,7 +120,7 @@ class CircleTransformFilter(AsyncVideoFilter):
             OAT heat map, same spatial shape as *image*, dtype ``uint8``.
             Bright peaks indicate ring centres.
         '''
-        gray = image.mean(axis=2) if image.ndim == 3 else image.astype(float)
+        gray = grayscale(image).astype(float)
         psi = np.empty(gray.shape, dtype=complex)
         savgol = self._signal.savgol_filter
         psi.real = savgol(gray, self._window, self._polyorder, 1, axis=1)

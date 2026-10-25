@@ -123,6 +123,12 @@ Self-contained recording subsystem. Supports HDF5 (lossless, with timestamps) an
 
 Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`, `QRGBFilter`, `QSampleHold`, etc.). Each subclasses `VideoFilter` and implements `__call__(frame) -> frame`.
 
+Filters share `QVideo.lib.imageops.grayscale` for color-to-gray conversion
+(luminance, RGB ordered, one `cv2.cvtColor`); do not write
+`image.mean(axis=2)`, which is about 100 times slower.  Prefer OpenCV calls
+and lookup tables (`cv2.LUT`, as in `GammaFilter` and `ExposureFilter`) to
+NumPy expressions on whole float images; numba is not used.
+
 Filters are applied by `QFilterStack` (`lib/QFilterStack.py`), a worker thread
 between a source and its consumers (screen, DVR, overlays).  It takes
 `VideoFilter` objects or a `QFilterRack` (`rack=`), passes the `FrameInfo` of

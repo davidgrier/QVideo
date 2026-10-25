@@ -111,14 +111,15 @@ class TestQUniformityWidgetSetFrame(unittest.TestCase):
         _, y = self.widget._ycurve.getData()
         np.testing.assert_array_almost_equal(y, np.full(8, 100.0))
 
-    def test_color_channel_mean(self):
+    def test_color_is_reduced_to_luminance(self):
         image = np.zeros((4, 8, 3), dtype=np.uint8)
         image[:, :, 0] = 60   # R
         image[:, :, 1] = 120  # G
         image[:, :, 2] = 180  # B
         self.widget.setFrame(image)
         _, y = self.widget._xcurve.getData()
-        np.testing.assert_array_almost_equal(y, np.full(8, 120.0))
+        luminance = 0.299 * 60 + 0.587 * 120 + 0.114 * 180
+        np.testing.assert_allclose(y, np.full(8, luminance), atol=1.0)
 
 
 if __name__ == '__main__':

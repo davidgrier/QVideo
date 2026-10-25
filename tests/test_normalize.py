@@ -1,5 +1,6 @@
 '''Unit tests for Normalize and SmoothNormalize.'''
 import unittest
+import unittest.mock
 import numpy as np
 from QVideo.filters.normalize import Normalize, SmoothNormalize
 from QVideo.filters.median import Median
@@ -88,6 +89,59 @@ class TestNormalize(unittest.TestCase):
         result = f.get()
         # All pixels should be mean (100) when fg == bg
         np.testing.assert_array_equal(result, np.full(_SHAPE, 100, dtype=np.uint8))
+
+
+def reference_normalize(fg, bg, scale, mean):
+    '''The original masked-divide implementation.'''
+    result = np.zeros_like(fg, dtype=np.float32)
+    np.divide(fg, bg, out=result, where=(bg != 0))
+    if scale:
+        result = mean * result
+    return result.astype(np.uint8)
+
+
+class TestNormalizeMatchesReference(unittest.TestCase):
+
+    def frames(self):
+        rng = np.random.default_rng(5)
+        fg = rng.integers(0, 256, (24, 32, 3), dtype=np.uint8)
+        bg = rng.integers(0, 256, (24, 32, 3), dtype=np.uint8)
+        bg[::5] = 0                       # some zero background
+        return fg, bg
+
+    def test_matches_the_masked_divide_with_scaling(self):
+        fg, bg = self.frames()
+        f = make_normalize(scale=True, mean=100.)
+        f._fg = fg
+        with unittest.mock.patch.object(Median, 'get', return_value=bg):
+            result = f.get()
+        np.testing.assert_array_equal(
+            result, reference_normalize(fg, bg, True, 100.))
+
+    def test_matches_the_masked_divide_without_scaling(self):
+        fg, bg = self.frames()
+        f = make_normalize(scale=False)
+        f._fg = fg
+        with unittest.mock.patch.object(Median, 'get', return_value=bg):
+            result = f.get()
+        np.testing.assert_array_equal(
+            result, reference_normalize(fg, bg, False, 1.))
+
+    def test_zero_background_gives_zero_output(self):
+        fg = np.full((4, 4), 50, dtype=np.uint8)
+        bg = np.zeros((4, 4), dtype=np.uint8)
+        f = make_normalize(scale=False)
+        f._fg = fg
+        with unittest.mock.patch.object(Median, 'get', return_value=bg):
+            self.assertFalse(f.get().any())
+
+    def test_fractional_background_is_not_clamped(self):
+        fg = np.full((4, 4), 1, dtype=np.float32)
+        bg = np.full((4, 4), 0.5, dtype=np.float32)
+        f = make_normalize(scale=False)
+        f._fg = fg
+        with unittest.mock.patch.object(Median, 'get', return_value=bg):
+            self.assertTrue((f.get() == 2).all())
 
 
 class TestSmoothNormalize(unittest.TestCase):

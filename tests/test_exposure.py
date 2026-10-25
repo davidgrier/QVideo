@@ -24,6 +24,70 @@ def make_widget() -> QExposureFilter:
         return QExposureFilter(parent=None)
 
 
+def log_reference(image):
+    f = image.astype(np.float32)
+    return np.clip(np.log1p(f) / np.log1p(255) * 255, 0, 255).astype(np.uint8)
+
+
+def sigmoid_reference(image, gain, cutoff):
+    f = image.astype(np.float32)
+    return np.clip(
+        255 / (1 + np.exp(-gain * (f / 255 - cutoff / 255))),
+        0, 255).astype(np.uint8)
+
+
+class TestExposureFilterLookupTable(unittest.TestCase):
+    '''Log and sigmoid map each value independently, so they are applied
+    as a lookup table; the result must equal the per-pixel formula.'''
+
+    def test_log_matches_the_formula(self):
+        f = make_filter(method='Log')
+        for image in (_GRAY, _COLOR):
+            np.testing.assert_array_equal(f.process(image),
+                                          log_reference(image))
+
+    def test_sigmoid_matches_the_formula(self):
+        f = make_filter(method='Sigmoid', cutoff=100., gain=7.)
+        for image in (_GRAY, _COLOR):
+            np.testing.assert_array_equal(
+                f.process(image), sigmoid_reference(image, 7., 100.))
+
+    def test_every_possible_value_matches_the_formula(self):
+        every = np.arange(256, dtype=np.uint8).reshape(16, 16)
+        np.testing.assert_array_equal(
+            make_filter(method='Log').process(every), log_reference(every))
+        np.testing.assert_array_equal(
+            make_filter(method='Sigmoid').process(every),
+            sigmoid_reference(every, 10., 128.))
+
+    def test_changing_gain_changes_the_result(self):
+        f = make_filter(method='Sigmoid')
+        before = f.process(_GRAY)
+        f.gain = 40.
+        np.testing.assert_array_equal(f.process(_GRAY),
+                                      sigmoid_reference(_GRAY, 40., 128.))
+        self.assertFalse(np.array_equal(before, f.process(_GRAY)))
+
+    def test_changing_cutoff_changes_the_result(self):
+        f = make_filter(method='Sigmoid')
+        f.cutoff = 50.
+        np.testing.assert_array_equal(f.process(_GRAY),
+                                      sigmoid_reference(_GRAY, 10., 50.))
+
+    def test_switching_methods_uses_the_new_method(self):
+        f = make_filter(method='Log')
+        f.method = 'Sigmoid'
+        np.testing.assert_array_equal(f.process(_GRAY),
+                                      sigmoid_reference(_GRAY, 10., 128.))
+        f.method = 'Log'
+        np.testing.assert_array_equal(f.process(_GRAY), log_reference(_GRAY))
+
+    def test_clahe_still_works_after_a_lookup_table_method(self):
+        f = make_filter(method='Log')
+        f.method = 'CLAHE'
+        self.assertEqual(f.process(_GRAY).shape, _GRAY.shape)
+
+
 class TestExposureFilterIsAsync(unittest.TestCase):
 
     def test_is_async_video_filter(self):

@@ -28,6 +28,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Faster filters, with no new dependency.**  Measured at 1080p color:
+  the color-to-gray conversion that `SobelFilter`, `LaplacianFilter`,
+  `ThresholdFilter`, `DoGFilter`, `CircleTransformFilter` and
+  `QUniformityWidget` used cost about 15 ms (`image.mean(axis=2)`) and
+  now costs 0.1 ms (`QVideo.lib.imageops.grayscale`, a single
+  `cv2.cvtColor`); `ThresholdFilter` goes from 15.4 to 0.2 ms,
+  `LaplacianFilter` from 16.1 to 0.8 ms, `DoGFilter` from 17.1 to 3.2 ms
+  and `SobelFilter` from 21.6 to 6.2 ms.  `ExposureFilter`'s Log and
+  Sigmoid modes now apply a lookup table, 26.8 to 0.3 ms, with output
+  identical to the old per-pixel formula, and `Normalize` divides by the
+  background without the slow masked ufunc path, with identical output.
+- **Color frames are converted to gray by luminance, not by the plain
+  channel mean.**  `0.299 R + 0.587 G + 0.114 B` replaces
+  `(R + G + B) / 3` in the filters above, in their exported `to_code`
+  fragments, and in `QUniformityWidget`.  The two agree for a monochrome
+  sensor whose image is replicated into three channels, and differ for a
+  true color camera (by up to 65 gray levels for saturated colors).
 - **`FilterRackDemo` now uses one `QFilterStack`.**  The old demo applied
   the same rack twice, once per camera frame in a tap that stayed
   connected in every recording mode and again per displayed frame as

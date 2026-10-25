@@ -4,6 +4,7 @@ from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
+from QVideo.lib.imageops import grayscale
 import numpy as np
 import cv2
 
@@ -90,8 +91,7 @@ class DoGFilter(VideoFilter):
         '''
         if self.data is None:
             return None
-        gray = (self.data.mean(axis=2).astype(np.float32)
-                if self.data.ndim == 3 else self.data.astype(np.float32))
+        gray = grayscale(self.data).astype(np.float32)
         lo = cv2.GaussianBlur(gray, (0, 0), self._low_sigma)
         hi = cv2.GaussianBlur(gray, (0, 0), self._high_sigma)
         return cv2.convertScaleAbs(lo - hi)
@@ -102,9 +102,8 @@ class DoGFilter(VideoFilter):
             imports=frozenset({'import cv2', 'import numpy as np'}),
             lines=[
                 'if image.ndim == 3:',
-                '    image = image.mean(axis=2).astype(np.float32)',
-                'else:',
-                '    image = image.astype(np.float32)',
+                '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
+                'image = image.astype(np.float32)',
                 f'_lo = cv2.GaussianBlur(image, (0, 0), {self._low_sigma})',
                 f'_hi = cv2.GaussianBlur(image, (0, 0), {self._high_sigma})',
                 'image = cv2.convertScaleAbs(_lo - _hi)',

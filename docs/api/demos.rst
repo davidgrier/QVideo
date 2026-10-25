@@ -7,11 +7,14 @@ Each demo composes a :class:`~QVideo.lib.QCameraTree.QCameraTree` with one
 or more QVideo widgets into a standalone window.  All demos use
 :func:`~QVideo.lib.chooser.choose_camera` to present a camera-selection
 dialog at startup, so no camera-specific code is needed in the demo itself.
+Each demo's entry point is a single call to
+:func:`~QVideo.lib.launch`, which an application of your own can use in the
+same way.
 
 The default application is :class:`~QVideo.QCamcorder.QCamcorder` and can
 be launched via the package entry point::
 
-    python -m QVideo [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
+    python -m QVideo [-b|-c|-f|-i|-m|-p|-v] [cameraID]
 
 Each demo can also be launched directly::
 
@@ -22,6 +25,7 @@ Each demo can also be launched directly::
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
     python -m QVideo.demos.compositedemo
+    python -m QVideo.demos.combineddemo
 
 All demos accept the same command-line flags to select a camera backend.
 If no flag is given, a noise camera is used as a fallback.
@@ -118,4 +122,16 @@ checkbox is enabled, the DVR records the fully rendered scene — video frame
 plus particle markers — rather than the raw camera frames.
 
 .. automodule:: QVideo.demos.compositedemo
+   :members:
+
+CombinedDemo
+------------
+
+Extends :class:`~QVideo.demos.filterrackdemo.FilterRackDemo` with a trackpy
+overlay that locates particles in the *filtered* video, and a *Composite*
+recording mode.  It is a recipe for an application that combines filters, an
+overlay and composite recording: each extension is added by a short method
+of its own, and the module docstring shows the data flow.
+
+.. automodule:: QVideo.demos.combineddemo
    :members:

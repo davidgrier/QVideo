@@ -8,7 +8,7 @@ Run directly::
 
 from qtpy import QtGui
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree, QFilterRack, QFilterStack
+from QVideo.lib import QCameraTree, QFilterRack, QFilterStack, launch
 
 
 __all__ = ['FilterDemo']
@@ -55,23 +55,7 @@ class FilterDemo(Demo):
         super().closeEvent(event)
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the filter demo with an interactively chosen camera.'''
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui, QtWidgets
-    app = pg.mkQApp('Filter Demo')
-    camera = choose_camera().start()
-    filters = ['Color Channel', 'Smoothing', 'Sample and Hold',
-               'Threshold', 'Blob', 'Canny']
-    widget = FilterDemo(camera, filters)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(FilterDemo, 'Filter Demo',
+           filters=['Color Channel', 'Smoothing', 'Sample and Hold',
+                    'Threshold', 'Blob', 'Canny'])

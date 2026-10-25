@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree, QUniformityWidget
+from QVideo.lib import QCameraTree, QUniformityWidget, launch
 
 
 __all__ = ['UniformityDemo']
@@ -39,21 +39,5 @@ class UniformityDemo(Demo):
         self._controls.addWidget(self.uniformity)
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the uniformity demo with an interactively chosen camera.'''
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui, QtWidgets
-    app = pg.mkQApp('Uniformity Demo')
-    camera = choose_camera().start()
-    widget = UniformityDemo(camera)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(UniformityDemo, 'Uniformity Demo')

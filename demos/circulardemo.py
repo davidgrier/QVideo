@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree
+from QVideo.lib import QCameraTree, launch
 from QVideo.dvr import QCircularDVRWidget
 
 
@@ -38,21 +38,5 @@ class CircularDemo(Demo):
         self._controls.addWidget(self.dvr)
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the circular buffer demo with an interactively chosen camera.'''
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui, QtWidgets
-    app = pg.mkQApp('Circular Buffer Demo')
-    camera = choose_camera().start()
-    widget = CircularDemo(camera)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(CircularDemo, 'Circular Buffer Demo')

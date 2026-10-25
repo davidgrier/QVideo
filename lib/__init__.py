@@ -53,6 +53,7 @@ from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
 from ._camera import Camera
 from .chooser import choose_camera
+from ._launch import launch
 from .QListCameras import QListCameras
 from .QFPSMeter import QFPSMeter
 from .QHistogramWidget import QHistogramWidget
@@ -61,7 +62,7 @@ from .QSnapshot import QSnapshot
 
 __all__ = '''Image
            FrameInfo
-clickable Camera choose_camera QListCameras
+clickable Camera choose_camera launch QListCameras
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
 QFilterRack QFilterStack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen

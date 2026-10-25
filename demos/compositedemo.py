@@ -12,7 +12,7 @@ camera frames.
 
 from qtpy import QtCore, QtWidgets
 from QVideo.QCamcorder import QCamcorder
-from QVideo.lib import QCameraTree
+from QVideo.lib import QCameraTree, launch
 from QVideo.overlays import QTrackpyWidget
 
 
@@ -65,26 +65,5 @@ class CompositeDemo(QCamcorder):
         self.dvr.source = self.screen if checked else self.source
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the composite demo with an interactively chosen camera.'''
-    import sys
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui
-    app = pg.mkQApp()
-    camera = choose_camera().start()
-    try:
-        widget = CompositeDemo(camera)
-    except ImportError as e:
-        print(f'Error: {e}', file=sys.stderr)
-        sys.exit(1)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(CompositeDemo, 'Composite Demo')

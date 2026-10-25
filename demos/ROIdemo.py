@@ -11,6 +11,7 @@ import pyqtgraph as pg
 import numpy as np
 from pathlib import Path
 from QVideo.QCamcorder import QCamcorder
+from QVideo.lib import launch
 
 
 __all__ = ['ROIFilter', 'ROIDemo']
@@ -153,20 +154,5 @@ class ROIDemo(QCamcorder):
             self.source.newFrame.disconnect(self.roi.crop)
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the ROI demo with an interactively chosen camera.'''
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui, QtWidgets
-    app = pg.mkQApp('ROI Demo')
-    camera = choose_camera().start()
-    widget = ROIDemo(camera)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(ROIDemo, 'ROI Demo')

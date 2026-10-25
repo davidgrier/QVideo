@@ -55,7 +55,7 @@ The minimal wiring is a source connected to a display widget:
 
    source = QNoiseSource()
    screen = QVideoScreen()
-   source.newFrame.connect(screen.setImage)
+   screen.source = source
 
    screen.show()
    source.start()
@@ -78,23 +78,23 @@ Add camera controls
 -------------------
 
 :class:`~QVideo.lib.QCameraTree` reads the camera's registered
-properties and builds a control panel automatically:
+properties and builds a control panel automatically.  Each backend has
+a tree class (here the noise camera's ``QNoiseTree``) that opens its
+camera and provides the source to display:
 
 .. code-block:: python
 
    import pyqtgraph as pg
-   from QVideo.cameras.Noise import QNoiseCamera, QNoiseSource
-   from QVideo.lib import QCameraTree, QVideoScreen
-   from qtpy.QtWidgets import QApplication, QHBoxLayout, QWidget
+   from QVideo.cameras.Noise import QNoiseTree
+   from QVideo.lib import QVideoScreen
+   from qtpy.QtWidgets import QHBoxLayout, QWidget
 
-   app = QApplication([])
+   app = pg.mkQApp()
 
-   camera = QNoiseCamera()
-   source = QNoiseSource(camera=camera)
+   tree = QNoiseTree()
+   source = tree.source
    screen = QVideoScreen()
-   tree   = QCameraTree(camera=camera)
-
-   source.newFrame.connect(screen.setImage)
+   screen.source = source
 
    window = QWidget()
    layout = QHBoxLayout(window)

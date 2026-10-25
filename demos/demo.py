@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from qtpy import QtWidgets
-from QVideo.lib import QVideoScreen, QCameraTree
+from QVideo.lib import QVideoScreen, QCameraTree, launch
 
 
 __all__ = ['Demo']
@@ -47,21 +47,5 @@ class Demo(QtWidgets.QWidget):
         self._controls.addWidget(self.cameraTree)
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the demo with an interactively chosen camera.'''
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui, QtWidgets
-    app = pg.mkQApp('QVideo Demo')
-    camera = choose_camera().start()
-    widget = Demo(camera)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(Demo, 'QVideo Demo')

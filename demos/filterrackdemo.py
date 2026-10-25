@@ -31,7 +31,7 @@ see each frame exactly once.
 
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
-from QVideo.lib import QCameraTree, QFilterRack, QFilterStack
+from QVideo.lib import QCameraTree, QFilterRack, QFilterStack, launch
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
 
@@ -137,21 +137,5 @@ class FilterRackDemo(QCamcorder):
             self.dvr.source = self.screen
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the filter rack demo with an interactively chosen camera.'''
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui
-    app = pg.mkQApp('Filter Rack Demo')
-    camera = choose_camera().start()
-    widget = FilterRackDemo(camera)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(FilterRackDemo, 'Filter Rack Demo')

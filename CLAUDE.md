@@ -121,6 +121,15 @@ When adding a new backend, update all four of the following:
 
 **`cameras/Genicam`** uses the [Harvesters](https://github.com/genicam/harvesters) library and a GenTL producer `.cti` file to communicate with GenICam-compliant cameras. Producer files live in `cameras/Genicam/producer/`. The `protected` list tracks features whose access mode changes after `device.start()` (i.e. features that require stopping acquisition to reconfigure).
 
+### Applications and demos
+
+(`QCameraTree`) as its first argument.  Its `__main__` block is one call,
+(`QCameraTree`) as its first argument.  Its `main()` is one call,
+`launch(Class, 'Title')` (`lib/_launch.py`), which chooses the camera from
+the command line, shows the window and runs it.  Demos are recipes: each
+extension is a short named method, and combining extensions is application
+code (see `demos/combineddemo.py`), not a framework feature.
+
 ### DVR (`dvr/`)
 
 Self-contained recording subsystem. Supports HDF5 (lossless, with timestamps) and OpenCV video formats. `QDVRWidget` is the composite UI widget.

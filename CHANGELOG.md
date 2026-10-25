@@ -7,6 +7,31 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.4.0] — 2026-10-25
+
+### Added
+
+- **`QVideo.lib.launch(widget, title, **kwargs)`** runs a camera
+  application: it chooses the camera from the command line, shows the
+  window, closes it on Ctrl+Q and ends with the message when an optional
+  package is missing.  Each demo and `QCamcorder` repeated this startup
+  by hand; each is now one call.  An application of your own can use it
+  the same way.
+- **`CombinedDemo`** (`python -m QVideo.demos.combineddemo`) is a recipe
+  for an application that combines filters, a trackpy overlay and
+  composite recording.  The overlay detects particles in the filtered
+  stream, and a fourth recording mode saves the rendered scene.
+
+### Fixed
+
+- The quickstart's camera-controls example called a constructor that no
+  longer exists, and both examples connected the source to the screen in a
+  way that bypassed `QFrameRelay`.  They now run, and a test runs them.
+- `docs/api/lib.rst` lists `QFrameRelay`, and `docs/api/demos.rst` no
+  longer shows the removed `-r` camera flag.
+
+---
+
 ## [4.3.0] — 2026-10-25
 
 ### Added

@@ -150,6 +150,14 @@ Camera chooser
 .. automodule:: QVideo.lib.chooser
    :members:
 
+.. autofunction:: QVideo.lib.launch
+
+QFrameRelay
+-----------
+
+.. automodule:: QVideo.lib.QFrameRelay
+   :members:
+
 QVideoReader
 ------------
 

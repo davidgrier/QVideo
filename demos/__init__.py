@@ -62,6 +62,12 @@ compositedemo
     and a "Composite" checkbox.  When checked, the DVR records the rendered
     scene (video + overlay markers) instead of raw camera frames.
 
+combineddemo
+    Extends :mod:`filterrackdemo` with a trackpy overlay that locates
+    particles in the filtered video, and a fourth recording mode that saves
+    the rendered scene.  It is a recipe for an application that combines
+    filters, an overlay and composite recording.
+
 Running
 -------
 Each demo can be launched directly::
@@ -76,6 +82,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
     python -m QVideo.demos.compositedemo
+    python -m QVideo.demos.combineddemo
 
 Camera selection
 ----------------
@@ -113,4 +120,5 @@ from .ROIdemo import ROIFilter, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo
 from .compositedemo import CompositeDemo
+from .combineddemo import CombinedDemo
 

@@ -24,7 +24,8 @@ If no flag is given, a noise camera is used as a fallback.
 '''
 
 from qtpy import QtCore, QtWidgets, QtGui
-from QVideo.lib import QCameraTree, QVideoSource, QVideoScreen, QSnapshot
+from QVideo.lib import (QCameraTree, QVideoSource, QVideoScreen, QSnapshot,
+                        launch)
 from QVideo.dvr import QDVRWidget
 
 
@@ -128,17 +129,7 @@ class QCamcorder(QtWidgets.QWidget):
 
 def main() -> None:  # pragma: no cover
     '''Launch the camcorder with an interactively chosen camera.'''
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    app = pg.mkQApp('QCamcorder')
-    camera = choose_camera()
-    widget = QCamcorder(camera.start())
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
+    launch(QCamcorder, 'QCamcorder')
 
 
 if __name__ == '__main__':

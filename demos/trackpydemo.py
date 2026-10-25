@@ -9,7 +9,7 @@ See :mod:`QVideo.overlays.trackpy` for literature references.
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree
+from QVideo.lib import QCameraTree, launch
 from QVideo.overlays import QTrackpyWidget
 
 
@@ -39,26 +39,5 @@ class TrackpyDemo(Demo):
         self._controls.addWidget(self.trackpy)
 
 
-def main() -> None:  # pragma: no cover
-    '''Launch the trackpy demo with an interactively chosen camera.'''
-    import sys
-    import pyqtgraph as pg
-    from QVideo.lib import choose_camera
-
-    from qtpy import QtGui, QtWidgets
-    app = pg.mkQApp()
-    camera = choose_camera().start()
-    try:
-        widget = TrackpyDemo(camera)
-    except ImportError as e:
-        print(f'Error: {e}', file=sys.stderr)
-        sys.exit(1)
-    QtWidgets.QShortcut(
-        QtGui.QKeySequence('Ctrl+Q'), widget
-    ).activated.connect(app.quit)
-    widget.show()
-    pg.exec()
-
-
 if __name__ == '__main__':  # pragma: no cover
-    main()
+    launch(TrackpyDemo, 'Trackpy Demo')

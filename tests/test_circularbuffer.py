@@ -253,10 +253,10 @@ class TestTotalRAM(unittest.TestCase):
         result = QCircularBuffer._totalRAM()
         self.assertIsInstance(result, int)
 
-    def test_uses_psutil_when_available(self):
+    def test_reads_total_from_psutil(self):
         mock_psutil = MagicMock()
         mock_psutil.virtual_memory.return_value.total = 16 * 1024 ** 3
-        with patch.dict('sys.modules', {'psutil': mock_psutil}):
+        with patch.object(_module, 'psutil', mock_psutil):
             result = QCircularBuffer._totalRAM()
         self.assertEqual(result, 16 * 1024 ** 3)
 

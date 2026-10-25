@@ -1,7 +1,8 @@
 '''Unit tests for QVideoWriter.'''
+import time
 import unittest
 import numpy as np
-from qtpy import QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets, QtTest
 from QVideo.lib.QVideoWriter import QVideoWriter
 from QVideo.lib.videotypes import FrameInfo
 
@@ -97,6 +98,70 @@ class TestQVideoWriterSignals(unittest.TestCase):
         e.newFrame.connect(w.write)
         e.newFrame.emit(_FRAME)
         self.assertEqual(len(w._written), 1)
+
+
+class TestQVideoWriterReceived(unittest.TestCase):
+
+    def test_nothing_received_at_first(self):
+        self.assertIsNone(_ConcreteWriter('out.avi').received)
+
+    def test_the_newest_frame_info_is_kept(self):
+        w = _ConcreteWriter('out.avi')
+        w.write(_FRAME, FrameInfo(0, 1.))
+        newest = FrameInfo(1, 2.)
+        w.write(_FRAME, newest)
+        self.assertIs(w.received, newest)
+
+    def test_skipped_frames_count_as_received(self):
+        w = _ConcreteWriter('out.avi', nskip=3)
+        w.write(_FRAME, FrameInfo(0, 1.))
+        skipped = FrameInfo(1, 2.)
+        w.write(_FRAME, skipped)
+        self.assertIs(w.received, skipped)
+        self.assertEqual(len(w._written), 1)
+
+    def test_a_missing_info_is_replaced_by_a_stamp(self):
+        w = _ConcreteWriter('out.avi')
+        w.write(_FRAME)
+        self.assertIsInstance(w.received, FrameInfo)
+
+
+class TestQVideoWriterShutdown(unittest.TestCase):
+    '''shutdown() runs in the writer's thread, after the waiting frames.'''
+
+    class Driver(QtCore.QObject):
+        frame = QtCore.Signal(np.ndarray, object)
+        stop = QtCore.Signal()
+
+    def run_in_thread(self, nframes):
+        w = _ConcreteWriter('out.avi')
+        order = []
+        write, close = w._write, w.close
+        w._write = lambda frame, info: (time.sleep(0.002), write(frame, info))
+        w.close = lambda: (order.append(len(w._written)), close())
+        thread = QtCore.QThread()
+        w.moveToThread(thread)
+        driver = self.Driver()
+        driver.frame.connect(w.write)
+        driver.stop.connect(w.shutdown)
+        thread.start()
+        for n in range(nframes):
+            driver.frame.emit(_FRAME, FrameInfo(n, float(n)))
+        driver.stop.emit()
+        finished = thread.wait(5000)
+        return w, order, finished
+
+    def test_every_waiting_frame_is_written_before_closing(self):
+        w, order, _ = self.run_in_thread(50)
+        self.assertEqual(order, [50])
+
+    def test_the_thread_ends(self):
+        _, _, finished = self.run_in_thread(5)
+        self.assertTrue(finished)
+
+    def test_the_file_is_closed(self):
+        w, _, _ = self.run_in_thread(5)
+        self.assertFalse(w.isOpen())
 
 
 class TestQVideoWriterInit(unittest.TestCase):

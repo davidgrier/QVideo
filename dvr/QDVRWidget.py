@@ -4,7 +4,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
 import numpy as np
 from QVideo.lib import clickable, QVideoSource
-from QVideo.lib.videotypes import Image
+from QVideo.lib.videotypes import Image, FrameInfo
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVSource
 
@@ -55,6 +55,15 @@ class QDVRWidget(QtWidgets.QFrame):
     filename : str or None
         Default file path for saving.  If ``None``, defaults to
         ``~/default.mkv``.
+    stopWhenBehind : bool
+        Stop recording when the writer falls more than *lagLimit* seconds
+        behind the camera.  A recorder must not drop frames, so frames
+        queue in memory while storage is slower than the camera; stopping
+        keeps a slow disk from filling memory.  Set ``False`` to record
+        through the backlog.  Default: ``True``.
+    lagLimit : float
+        How far [seconds] the writer may fall behind the newest captured
+        frame.  Default: ``1.``.
     *args :
         Forwarded to :class:`~qtpy.QtWidgets.QFrame`.
     **kwargs :
@@ -68,6 +77,18 @@ class QDVRWidget(QtWidgets.QFrame):
         Emitted when recording starts (``True``) or stops (``False``).
     playing(bool)
         Emitted when playback starts (``True``) or stops (``False``).
+    behind(float)
+        Emitted once each time the recording falls more than *lagLimit*
+        seconds behind the camera, with the lag in seconds.
+    stopped(str)
+        Emitted with the reason when the widget stops a recording by
+        itself, just before ``recording(False)``.
+
+    Notes
+    -----
+    Stopping waits for the writer to finish the frames already captured,
+    so no recorded frame is lost.  With *stopWhenBehind* the wait is
+    bounded by *lagLimit* seconds of data.
     '''
 
     #: Emitted for each frame during playback.
@@ -76,6 +97,11 @@ class QDVRWidget(QtWidgets.QFrame):
     recording = QtCore.Signal(bool)
     #: Emitted when playback starts (``True``) or stops (``False``).
     playing = QtCore.Signal(bool)
+    #: Emitted when the recording falls behind the camera, with the lag [s].
+    behind = QtCore.Signal(float)
+    #: Emitted with the reason when the widget stops a recording itself.
+    stopped = QtCore.Signal(str)
+    _shutdown = QtCore.Signal()
 
     FILENAME = 'default.mkv'
 
@@ -131,12 +157,17 @@ class QDVRWidget(QtWidgets.QFrame):
                  *args,
                  source: QVideoSource | None = None,
                  filename: str = '',
+                 stopWhenBehind: bool = True,
+                 lagLimit: float = 1.,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.stopWhenBehind = stopWhenBehind
+        self.lagLimit = lagLimit
         self._source: QVideoSource | None = None
         self._writer: object | None = None
         self._player: QVideoSource | None = None
         self._thread: QtCore.QThread | None = None
+        self._late = False
         self._setupUi()
         self._connectSignals()
         self.source = source
@@ -329,12 +360,15 @@ class QDVRWidget(QtWidgets.QFrame):
                                     fps=self.source.fps,
                                     nframes=self.nframes.value(),
                                     nskip=self.nskip.value())
+        self._late = False
         self._writer.frameNumber.connect(self.setFrameNumber)
         self._writer.finished.connect(self.stop)
         self._thread = QtCore.QThread()
         self._writer.moveToThread(self._thread)
+        self._shutdown.connect(self._writer.shutdown)
         self._thread.start()
         self.source.newFrame.connect(self._writer.write)
+        self.source.newFrame.connect(self._watch)
         self.recording.emit(True)
 
     @QtCore.Slot()
@@ -390,14 +424,14 @@ class QDVRWidget(QtWidgets.QFrame):
             logger.debug('Stopping Recording')
             try:
                 self.source.newFrame.disconnect(self._writer.write)
+                self.source.newFrame.disconnect(self._watch)
                 self._writer.frameNumber.disconnect(self.setFrameNumber)
                 self._writer.finished.disconnect(self.stop)
             except (RuntimeError, TypeError):
                 logger.debug(
                     'Some recording signals were already disconnected')
-            self._thread.quit()
+            self._shutdown.emit()
             self._thread.wait()
-            self._writer.close()
             self._thread = None
             self._writer = None
             self.recording.emit(False)
@@ -417,6 +451,30 @@ class QDVRWidget(QtWidgets.QFrame):
         '''Stop recording or playback when the widget is closed.'''
         self.stop()
         super().closeEvent(event)
+
+    @QtCore.Slot(np.ndarray)
+    @QtCore.Slot(np.ndarray, object)
+    def _watch(self, frame: Image, info: FrameInfo | None = None) -> None:
+        '''Compare each captured frame with the newest one the writer has
+        taken up, and report once each time the writer falls behind.
+
+        The comparison uses the capture times, so it measures the backlog
+        even while the writer is stuck inside a single write, and it
+        ignores sources that capture slowly.
+        '''
+        taken = self._writer and self._writer.received
+        if info is None or not taken:
+            return
+        lag = info.timestamp - taken.timestamp
+        late = lag > self.lagLimit
+        if late and not self._late:
+            self.behind.emit(lag)
+            if self.stopWhenBehind:
+                reason = f'recording fell {lag:.1f} s behind the camera'
+                logger.error(reason)
+                self.stopped.emit(reason)
+                self.stop()
+        self._late = late
 
     @QtCore.Slot(int)
     def setFrameNumber(self, framenumber: int) -> None:

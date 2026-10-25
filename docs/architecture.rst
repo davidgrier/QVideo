@@ -58,6 +58,52 @@ thread immediately after the camera returns the frame; slots that need
 only the image may accept a single argument.  It is the standard way to
 drive a camera from the GUI thread.
 
+Frame delivery
+--------------
+
+A source emits every frame it captures.  What happens when a consumer
+cannot keep up is that consumer's policy, and each consumer states its
+own:
+
+========================  ==================================================
+Policy                    Behavior when the consumer falls behind
+========================  ==================================================
+Guaranteed                No frame is dropped.  Frames queue in memory and
+                          the consumer reports that it is behind.
+Soft                      Frames are time-stamped; analysis tolerates gaps
+                          because it can see them.
+Latest                    Only the newest waiting frame is kept; the rest
+                          are dropped and counted.
+Display only              As for latest; nothing downstream depends on it.
+========================  ==================================================
+
+The recorders (:class:`~QVideo.lib.QVideoWriter.QVideoWriter`) are
+guaranteed.  Their queue is unbounded, so the code that owns a recording
+watches it.  ``QDVRWidget`` compares the capture time of each frame the
+camera delivers (:class:`~QVideo.lib.videotypes.FrameInfo`) with that of
+the newest frame the writer has taken up.  The difference is the backlog,
+and it is measured even while the writer is stuck inside one write.  When
+it exceeds ``lagLimit`` (one second by default) the widget emits
+``behind(lag)`` once, and again after the writer has caught up and fallen
+behind anew.  By default it then stops the recording
+(``stopWhenBehind=True``) after logging the reason and emitting
+``stopped(reason)``, so a slow disk cannot fill memory.  An application
+that prefers to record through the backlog sets ``stopWhenBehind=False``,
+raises ``lagLimit``, or both.
+
+Stopping a recording never discards captured frames: the widget stops
+sending new ones, and the writer finishes those already waiting before it
+closes the file and ends its thread.
+
+:class:`~QVideo.lib.QFilterStack.QFilterStack` and
+:class:`~QVideo.lib.QVideoScreen.QVideoScreen` are latest-wins.  The stack
+keeps ``depth`` waiting frames (one by default) and reports its drops with
+``framesDropped``; the screen shows at most one frame per throttle
+interval.  The detection overlays (trackpy, YOLO) run one frame at a time
+on a worker and skip the frames that arrive meanwhile.  Interactive
+overlays, which draw graphics and respond to the user in the GUI thread,
+have no worker and no policy to choose.
+
 UI layer
 --------
 
@@ -69,7 +115,7 @@ auto-build a control panel — no manual UI code is needed per camera.
 a :class:`~QVideo.lib.QVideoSource.QVideoSource`.  It maintains the
 video aspect ratio by resizing its containing window whenever the frame
 dimensions change.  After each displayed frame it emits ``newFrame``
-carrying either the filtered video frame or, when
+carrying either the video frame or, when
 :attr:`~QVideo.lib.QVideoScreen.QVideoScreen.composite` is enabled, the
 rendered scene (video + overlays) as an RGBA array.  Its
 :attr:`~QVideo.lib.QVideoScreen.QVideoScreen.fps` property reports the

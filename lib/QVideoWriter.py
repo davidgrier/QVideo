@@ -48,6 +48,9 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         Write a video frame to the file.
     close() -> None
         Close the video file.
+    shutdown() -> None
+        Close the file and end the writer's thread, after the frames
+        already waiting have been written.
 
     Properties
     ----------
@@ -59,6 +62,17 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         Write every *nskip*-th frame received; 1 writes every frame.
     nframes : int
         The maximum number of frames to write.
+    received : FrameInfo or None
+        Capture metadata of the newest frame handed to :meth:`write`, or
+        ``None`` before the first.  Compared with the newest frame the
+        camera has captured, it measures how far the writer is behind.
+
+    Notes
+    -----
+    A writer must not drop frames, so frames queue in memory while storage
+    is slower than the camera.  The writer does not police that backlog;
+    the code that owns the recording does (see
+    :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`).
 
     Abstract Methods
     ----------------
@@ -90,6 +104,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         self.nskip = nskip
         self.target = nframes
         self.blank = False
+        self.received: FrameInfo | None = None
 
     @abstractmethod
     def open(self, frame: Image) -> bool:
@@ -135,6 +150,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         '''
         if info is None:
             info = FrameInfo(self.framenumber, perf_counter())
+        self.received = info
         if not self.isOpen() and not self.open(frame):
             logger.warning(f'Could not write to {self.filename}')
             self.finished.emit()
@@ -155,3 +171,14 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
     @abstractmethod
     def close(self) -> None:
         pass
+
+    @QtCore.Slot()
+    def shutdown(self) -> None:
+        '''Close the file and end the thread this writer lives in.
+
+        Invoke it through a signal, so that it is queued behind the frames
+        already waiting and none of them is lost.  The writer must live
+        in a worker thread.
+        '''
+        self.close()
+        self.thread().quit()

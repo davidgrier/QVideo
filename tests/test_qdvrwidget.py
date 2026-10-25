@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 from unittest.mock import patch, MagicMock
+from QVideo.lib.videotypes import FrameInfo
 from qtpy import QtCore, QtGui, QtWidgets, QtTest
 from QVideo.dvr.QDVRWidget import QDVRWidget, _h5py_available
 
@@ -17,6 +18,8 @@ class MockSource(QtCore.QObject):
         super().__init__()
         self.fps = 30.
 
+_FRAME = np.zeros((4, 4), dtype=np.uint8)
+
 
 class MockWriter(QtCore.QObject):
     '''Minimal writer with real Qt signals.'''
@@ -25,12 +28,17 @@ class MockWriter(QtCore.QObject):
 
     def __init__(self, *args, **kwargs):
         super().__init__()
+        self.received = None
+        self.shutdowns = 0
 
     def write(self, frame):
         pass
 
     def close(self):
         pass
+
+    def shutdown(self):
+        self.shutdowns += 1
 
     def moveToThread(self, thread):
         pass
@@ -96,7 +104,8 @@ def setup_recording(widget, source):
     source.newFrame.connect(writer.write)
     writer.frameNumber.connect(widget.setFrameNumber)
     writer.finished.connect(widget.stop)
-    thread.finished.connect(writer.close)
+    source.newFrame.connect(widget._watch)
+    widget._shutdown.connect(writer.shutdown)
     widget._writer = writer
     widget._thread = thread
     return writer, thread
@@ -234,6 +243,98 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         self.assertEqual(len(spy), 1)
         self.assertTrue(spy[0][0])
 
+    def watching(self, **kwargs):
+        '''A recording whose writer has taken up the frame stamped t=10.'''
+        widget, source = make_widget_with_source()
+        for key, value in kwargs.items():
+            setattr(widget, key, value)
+        writer, _ = setup_recording(widget, source)
+        writer.received = FrameInfo(0, 10.)
+        return widget, writer
+
+    def capture(self, widget, t):
+        widget._watch(_FRAME, FrameInfo(1, t))
+
+    def test_defaults(self):
+        widget = make_widget()
+        self.assertTrue(widget.stopWhenBehind)
+        self.assertEqual(widget.lagLimit, 1.)
+
+    def test_a_writer_keeping_up_is_left_alone(self):
+        widget, _ = self.watching()
+        self.capture(widget, 10.5)
+        self.assertTrue(widget.isRecording())
+
+    def test_falling_behind_stops_the_recording_by_default(self):
+        widget, _ = self.watching()
+        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
+            self.capture(widget, 12.)
+        self.assertFalse(widget.isRecording())
+
+    def test_the_reason_is_reported(self):
+        widget, _ = self.watching()
+        reasons = []
+        widget.stopped.connect(reasons.append)
+        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
+            self.capture(widget, 12.)
+        self.assertEqual(len(reasons), 1)
+        self.assertIn('2.0 s behind', reasons[0])
+
+    def test_behind_is_emitted_before_the_recording_stops(self):
+        widget, _ = self.watching()
+        states = []
+        widget.behind.connect(lambda lag: states.append(widget.isRecording()))
+        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
+            self.capture(widget, 12.)
+        self.assertEqual(states, [True])
+
+    def test_recording_continues_when_stopping_is_disabled(self):
+        widget, _ = self.watching(stopWhenBehind=False)
+        stops = []
+        widget.stopped.connect(stops.append)
+        self.capture(widget, 12.)
+        self.assertTrue(widget.isRecording())
+        self.assertEqual(stops, [])
+
+    def test_staying_behind_is_reported_once(self):
+        widget, _ = self.watching(stopWhenBehind=False)
+        lags = []
+        widget.behind.connect(lags.append)
+        for t in (12., 12.1, 12.2):
+            self.capture(widget, t)
+        self.assertEqual(lags, [2.])
+
+    def test_catching_up_rearms_the_report(self):
+        widget, writer = self.watching(stopWhenBehind=False)
+        lags = []
+        widget.behind.connect(lags.append)
+        self.capture(widget, 12.)
+        writer.received = FrameInfo(1, 12.)
+        self.capture(widget, 12.1)
+        self.capture(widget, 14.)
+        self.assertEqual(len(lags), 2)
+
+    def test_the_limit_can_be_changed(self):
+        widget, _ = self.watching(lagLimit=5.)
+        self.capture(widget, 12.)
+        self.assertTrue(widget.isRecording())
+
+    def test_a_writer_that_has_seen_nothing_is_not_late(self):
+        widget, writer = self.watching()
+        writer.received = None
+        self.capture(widget, 99.)
+        self.assertTrue(widget.isRecording())
+
+    def test_a_frame_without_info_is_ignored(self):
+        widget, _ = self.watching()
+        widget._watch(_FRAME)
+        self.assertTrue(widget.isRecording())
+
+    def test_a_late_event_after_stopping_is_harmless(self):
+        widget, _ = self.watching()
+        widget.stop()
+        self.capture(widget, 99.)  # queued before stop, delivered after
+
     def test_record_when_recording_calls_stop(self):
         widget, source = make_widget_with_source()
         setup_recording(widget, source)
@@ -357,12 +458,11 @@ class TestQDVRWidgetStop(unittest.TestCase):
         widget.stop()
         self.assertIsNone(widget._writer)
 
-    def test_stop_calls_writer_close(self):
+    def test_stop_shuts_the_writer_down_once(self):
         widget, source = make_widget_with_source()
         writer, _ = setup_recording(widget, source)
-        with patch.object(writer, 'close') as mock_close:
-            widget.stop()
-        mock_close.assert_called_once()
+        widget.stop()
+        self.assertEqual(writer.shutdowns, 1)
 
     def test_stop_is_safe_when_signals_already_disconnected(self):
         widget, source = make_widget_with_source()

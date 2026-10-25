@@ -7,6 +7,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.1.0] — unreleased
+
+### Added
+
+- **A recording stops when storage cannot keep up.**  A recorder must not
+  drop frames, so frames queued in memory when storage was slower than the
+  camera, and nothing said so: a writer needing 10 ms per frame fell a
+  second behind a 150 fps source in two seconds and held about 200 MB.
+  `QDVRWidget` now compares the capture time of each frame the camera
+  delivers with that of the newest frame the writer has taken up, which
+  also catches a writer stuck inside a single write.  Past `lagLimit`
+  (default one second) it emits `behind(lag)` once and, by default
+  (`stopWhenBehind=True`), logs the reason, emits `stopped(reason)` and
+  stops, so a slow disk cannot fill memory.  Pass `stopWhenBehind=False`
+  to record through the backlog.
+- **Stopping a recording keeps every captured frame.**  The widget used to
+  end the writer's thread at once, which discarded frames still waiting
+  (20 of 238 in one test).  `QVideoWriter.shutdown()`, queued behind the
+  waiting frames, now closes the file and ends the thread, and the writer
+  closes its file in its own thread.  `QVideoWriter.received` holds the
+  capture metadata of the newest frame it has been handed.
+- **A "Frame delivery" section in the architecture guide** states the four
+  delivery policies and which consumer follows which.
+
+### Fixed
+
+- The architecture guide said the screen emits the *filtered* frame; the
+  screen has applied no filters since 4.0.0.
+
+---
+
 ## [4.0.1] — 2026-10-25
 
 ### Fixed

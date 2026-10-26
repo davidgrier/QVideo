@@ -2,7 +2,8 @@
 import unittest
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.QVideoFilter import FilterCode, VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import (
+    FilterCode, VideoFilter, QVideoFilter, renderPipeline)
 from QVideo.lib.QFilterRackWidget import QFilterRackWidget
 from QVideo.filters.smoothing import SmoothingFilter
 from QVideo.filters.threshold import ThresholdFilter
@@ -297,6 +298,45 @@ class TestExportPipeline(unittest.TestCase):
         rack.add(w)
         src = rack.exportPipeline()
         compile(src, '<generated>', 'exec')
+
+
+class TestRenderPipeline(unittest.TestCase):
+
+    def fragment(self, comment='', imports=(), lines=('image = image',)):
+        return FilterCode(frozenset(imports), list(lines), comment)
+
+    def test_an_empty_pipeline_returns_the_image(self):
+        src = renderPipeline([], [])
+        self.assertTrue(src.endswith(
+            'def filter(image: np.ndarray) -> np.ndarray:\n'
+            '    return image\n'))
+
+    def test_the_numpy_import_is_always_present(self):
+        self.assertIn('import numpy as np\n', renderPipeline([], []))
+
+    def test_imports_are_merged_and_sorted(self):
+        src = renderPipeline(
+            [self.fragment(imports={'import cv2'}),
+             self.fragment(imports={'import cv2', 'import math'})], [])
+        lines = src.split('\n')
+        self.assertEqual(lines.count('import cv2'), 1)
+        self.assertLess(lines.index('import cv2'),
+                        lines.index('import math'))
+
+    def test_fragments_keep_their_order_and_comments(self):
+        src = renderPipeline(
+            [self.fragment('first', lines=['image = 1']),
+             self.fragment('second', lines=['image = 2'])], [])
+        self.assertLess(src.index('# first'), src.index('image = 1'))
+        self.assertLess(src.index('image = 1'), src.index('# second'))
+        self.assertLess(src.index('image = 2'), src.index('return image'))
+
+    def test_skipped_filters_are_listed_in_a_comment(self):
+        src = renderPipeline([], ['SampleHold'])
+        self.assertIn('#   SampleHold', src)
+
+    def test_the_result_compiles(self):
+        compile(renderPipeline([self.fragment('x')], ['Y']), '<g>', 'exec')
 
 
 if __name__ == '__main__':  # pragma: no cover

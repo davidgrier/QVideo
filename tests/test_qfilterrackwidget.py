@@ -284,6 +284,23 @@ class TestQFilterRackWidgetActiveFilters(unittest.TestCase):
         self.assertEqual(rack.activeFilters(), [b.filter, a.filter])
 
 
+class TestSlotUnder(unittest.TestCase):
+
+    def test_finds_the_slot_at_a_point_and_none_elsewhere(self):
+        rack = make_rack()
+        a, b = make_filter('A'), make_filter('B')
+        for w in (a, b):
+            rack.add(w)
+        slot0, slot1 = rack._slotAt(0), rack._slotAt(1)
+        slot0.geometry = lambda: QtCore.QRect(0, 0, 10, 10)
+        slot1.geometry = lambda: QtCore.QRect(0, 20, 10, 10)
+        for point, expected in ((QtCore.QPoint(1, 1), slot0),
+                                (QtCore.QPoint(1, 21), slot1),
+                                (QtCore.QPoint(50, 50), None)):
+            with patch.object(rack, 'mapFromGlobal', return_value=point):
+                self.assertIs(rack._slotUnder(QtCore.QPoint(0, 0)), expected)
+
+
 class TestQFilterRackWidgetFiltersChanged(unittest.TestCase):
     '''filtersChanged tells a QFilterPipeline when to refresh its list.'''
 

@@ -1,5 +1,5 @@
 '''Composite DVR widget for recording and playing back video streams.'''
-from collections.abc import Callable
+import importlib.util
 import math
 from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
@@ -13,11 +13,6 @@ from .QOpenCVReader import QOpenCVSource
 from .QHDF5Writer import QHDF5Writer
 from .QHDF5Reader import QHDF5Source
 
-try:
-    import h5py as _h5py
-    _h5py_available = True
-except (ImportError, ModuleNotFoundError):
-    _h5py_available = False
 import logging
 
 
@@ -25,6 +20,8 @@ __all__ = ['QDVRWidget']
 
 #: Steps in which the backlog is reported.
 _BACKLOG_STEPS = 20
+
+_h5py_available = importlib.util.find_spec('h5py') is not None
 
 
 logger = logging.getLogger(__name__)
@@ -195,113 +192,95 @@ class QDVRWidget(QtWidgets.QFrame):
         self.filename = filename if filename else str(
             Path.home() / self.FILENAME)
 
+    def _button(self,
+                text: str,
+                tip: str,
+                icon: str,
+                shortcut: str | None = None) -> QtWidgets.QPushButton:
+        button = QtWidgets.QPushButton(text, self)
+        button.setStatusTip(tip)
+        button.setIcon(QtGui.QIcon(f':/icons/icons/{icon}.svg'))
+        if shortcut:
+            button.setShortcut(shortcut)
+        return button
+
+    def _fileRow(self,
+                 text: str,
+                 tip: str) -> tuple[QtWidgets.QHBoxLayout,
+                                    QtWidgets.QLineEdit]:
+        edit = QtWidgets.QLineEdit(self)
+        edit.setReadOnly(True)
+        edit.setStatusTip(tip)
+        label = QtWidgets.QLabel(text, self)
+        label.setBuddy(edit)
+        return self._row(6, (6, 0, 6, 0), label, edit), edit
+
+    def _spinBox(self,
+                 text: str,
+                 tip: str,
+                 minimum: int,
+                 maximum: int) -> tuple[QtWidgets.QLabel,
+                                        QtWidgets.QSpinBox]:
+        spinBox = QtWidgets.QSpinBox(self)
+        spinBox.setToolTip(tip)
+        spinBox.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        spinBox.setRange(minimum, maximum)
+        label = QtWidgets.QLabel(text, self)
+        label.setBuddy(spinBox)
+        return label, spinBox
+
+    @staticmethod
+    def _row(spacing: int,
+             margins: tuple[int, int, int, int],
+             *widgets: QtWidgets.QWidget) -> QtWidgets.QHBoxLayout:
+        row = QtWidgets.QHBoxLayout()
+        row.setSpacing(spacing)
+        row.setContentsMargins(*margins)
+        for widget in widgets:
+            row.addWidget(widget)
+        return row
+
     def _setupUi(self) -> None:
         self.setFrameShape(QtWidgets.QFrame.Shape.Box)
 
-        self.recordButton = QtWidgets.QPushButton('&Record', self)
-        self.recordButton.setStatusTip('Record video')
-        self.recordButton.setIcon(
-            QtGui.QIcon(':/icons/icons/media-record.svg'))
-        self.recordButton.setShortcut('R')
-
-        self.stopButton = QtWidgets.QPushButton('&Stop', self)
-        self.stopButton.setStatusTip('Stop recording')
-        self.stopButton.setIcon(
-            QtGui.QIcon(':/icons/icons/media-playback-stop.svg'))
-        self.stopButton.setShortcut('S')
-
+        self.recordButton = self._button(
+            '&Record', 'Record video', 'media-record', 'R')
+        self.stopButton = self._button(
+            '&Stop', 'Stop recording', 'media-playback-stop', 'S')
         self.frameNumber = QtWidgets.QLCDNumber(self)
         self.frameNumber.setSegmentStyle(
             QtWidgets.QLCDNumber.SegmentStyle.Flat)
+        recordRow = self._row(2, (0, 0, 6, 0), self.recordButton,
+                              self.stopButton, self.frameNumber)
 
-        recordRow = QtWidgets.QHBoxLayout()
-        recordRow.setSpacing(2)
-        recordRow.setContentsMargins(0, 0, 6, 0)
-        recordRow.addWidget(self.recordButton)
-        recordRow.addWidget(self.stopButton)
-        recordRow.addWidget(self.frameNumber)
+        self.rewindButton = self._button(
+            '&Rewind', 'Rewind video file', 'media-skip-backward')
+        self.pauseButton = self._button(
+            '&Pause', 'Pause video playback', 'media-playback-pause')
+        self.playButton = self._button(
+            'P&lay', 'Play video file', 'media-playback-start')
+        playRow = self._row(2, (0, 1, 0, 1), self.rewindButton,
+                            self.pauseButton, self.playButton)
 
-        saveLabel = QtWidgets.QLabel('Save As', self)
-        self.saveEdit = QtWidgets.QLineEdit(self)
-        self.saveEdit.setReadOnly(True)
-        self.saveEdit.setStatusTip('Video file name')
-        saveLabel.setBuddy(self.saveEdit)
+        saveRow, self.saveEdit = self._fileRow('Save As', 'Video file name')
+        playFileRow, self.playEdit = self._fileRow('Play', 'Video file')
 
-        saveRow = QtWidgets.QHBoxLayout()
-        saveRow.setSpacing(6)
-        saveRow.setContentsMargins(6, 0, 6, 0)
-        saveRow.addWidget(saveLabel)
-        saveRow.addWidget(self.saveEdit)
-
-        self.rewindButton = QtWidgets.QPushButton('&Rewind', self)
-        self.rewindButton.setStatusTip('Rewind video file')
-        self.rewindButton.setIcon(
-            QtGui.QIcon(':/icons/icons/media-skip-backward.svg'))
-
-        self.pauseButton = QtWidgets.QPushButton('&Pause', self)
-        self.pauseButton.setStatusTip('Pause video playback')
-        self.pauseButton.setIcon(
-            QtGui.QIcon(':/icons/icons/media-playback-pause.svg'))
-
-        self.playButton = QtWidgets.QPushButton('P&lay', self)
-        self.playButton.setStatusTip('Play video file')
-        self.playButton.setIcon(
-            QtGui.QIcon(':/icons/icons/media-playback-start.svg'))
-
-        playRow = QtWidgets.QHBoxLayout()
-        playRow.setSpacing(2)
-        playRow.setContentsMargins(0, 1, 0, 1)
-        playRow.addWidget(self.rewindButton)
-        playRow.addWidget(self.pauseButton)
-        playRow.addWidget(self.playButton)
-
-        labelPlayFile = QtWidgets.QLabel('Play', self)
-        self.playEdit = QtWidgets.QLineEdit(self)
-        self.playEdit.setReadOnly(True)
-        self.playEdit.setStatusTip('Video file')
-        labelPlayFile.setBuddy(self.playEdit)
-
-        playFileRow = QtWidgets.QHBoxLayout()
-        playFileRow.setSpacing(6)
-        playFileRow.setContentsMargins(6, 0, 6, 0)
-        playFileRow.addWidget(labelPlayFile)
-        playFileRow.addWidget(self.playEdit)
-
-        labelNFrames = QtWidgets.QLabel('Duration', self)
-        self.nframes = QtWidgets.QSpinBox(self)
-        self.nframes.setToolTip('number of frames to record')
-        self.nframes.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight)
-        self.nframes.setRange(10, 99000)
+        durationLabel, self.nframes = self._spinBox(
+            'Duration', 'number of frames to record', 10, 99000)
         self.nframes.setSingleStep(10)
         self.nframes.setValue(10000)
-        labelNFrames.setBuddy(self.nframes)
-
-        labelInterval = QtWidgets.QLabel('Interval', self)
-        self.nskip = QtWidgets.QSpinBox(self)
-        self.nskip.setToolTip(
-            'Record every Nth frame; the video plays N times faster')
-        self.nskip.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight)
-        self.nskip.setRange(1, 999)
-        labelInterval.setBuddy(self.nskip)
-
-        framesRow = QtWidgets.QHBoxLayout()
-        framesRow.setSpacing(6)
-        framesRow.setContentsMargins(6, 4, 6, 4)
-        framesRow.addWidget(labelNFrames)
-        framesRow.addWidget(self.nframes)
-        framesRow.addWidget(labelInterval)
-        framesRow.addWidget(self.nskip)
+        intervalLabel, self.nskip = self._spinBox(
+            'Interval',
+            'Record every Nth frame; the video plays N times faster',
+            1, 999)
+        framesRow = self._row(6, (6, 4, 6, 4), durationLabel, self.nframes,
+                              intervalLabel, self.nskip)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(6)
         layout.setContentsMargins(6, 6, 6, 6)
-        layout.addLayout(recordRow)
-        layout.addLayout(saveRow)
-        layout.addLayout(playRow)
-        layout.addLayout(playFileRow)
-        layout.addLayout(framesRow)
+        for row in (recordRow, saveRow, playRow, playFileRow, framesRow):
+            layout.addLayout(row)
 
     def _connectSignals(self) -> None:
         clickable(self.playEdit).connect(lambda: self.getFileName(False))
@@ -343,14 +322,10 @@ class QDVRWidget(QtWidgets.QFrame):
             return ''
         get = (QtWidgets.QFileDialog.getSaveFileName if save
                else QtWidgets.QFileDialog.getOpenFileName)
-        try:
-            options = QtWidgets.QFileDialog.Option.DontUseNativeDialog
-        except AttributeError:
-            options = QtWidgets.QFileDialog.DontUseNativeDialog
-        filename, _ = get(self, 'Video File Name',
-                          str(self.filename),
-                          self._buildFilter(save),
-                          options=options)
+        filename, _ = get(
+            self, 'Video File Name', str(self.filename),
+            self._buildFilter(save),
+            options=QtWidgets.QFileDialog.Option.DontUseNativeDialog)
         if filename:
             if save:
                 self.filename = filename
@@ -377,7 +352,11 @@ class QDVRWidget(QtWidgets.QFrame):
             logger.error(f'Unsupported file format: {suffix!r}')
             return
         logger.debug(f'Recording: {self.filename}')
-        writer_class = self.Writer[suffix]
+        self._startWriter(self.Writer[suffix])
+        self.recording.emit(True)
+
+    def _startWriter(self, writer_class: type) -> None:
+        '''Create the writer, run it on its own thread and feed it frames.'''
         self._writer = writer_class(self.filename,
                                     fps=self.source.fps,
                                     nframes=self.nframes.value(),
@@ -393,7 +372,6 @@ class QDVRWidget(QtWidgets.QFrame):
         self._thread.start()
         self.source.newFrame.connect(self._writer.write)
         self.source.newFrame.connect(self._watch)
-        self.recording.emit(True)
 
     @QtCore.Slot()
     def play(self) -> None:
@@ -444,32 +422,39 @@ class QDVRWidget(QtWidgets.QFrame):
     @QtCore.Slot()
     def stop(self) -> None:
         '''Stop recording or playback.'''
-        if self.isRecording():
-            logger.debug('Stopping Recording')
-            try:
-                self.source.newFrame.disconnect(self._writer.write)
-                self.source.newFrame.disconnect(self._watch)
-                self._writer.frameNumber.disconnect(self.setFrameNumber)
-                self._writer.finished.disconnect(self.stop)
-            except (RuntimeError, TypeError):
-                logger.debug(
-                    'Some recording signals were already disconnected')
-            self._shutdown.emit()
-            self._thread.wait()
-            self._thread = None
-            self._writer = None
-            self.recording.emit(False)
-        if self.isPlaying():
-            logger.debug('Stopping Playback')
-            try:
-                self._player.newFrame.disconnect(self.stepFrameNumber)
-                self._player.newFrame.disconnect(self.newFrame)
-            except (RuntimeError, TypeError):
-                logger.debug('Playback signal was already disconnected')
-            self._player.stop()
-            self._player = None
-            self.playing.emit(False)
+        self._stopRecording()
+        self._stopPlayback()
         self.framenumber = 0
+
+    def _stopRecording(self) -> None:
+        if not self.isRecording():
+            return
+        logger.debug('Stopping Recording')
+        try:
+            self.source.newFrame.disconnect(self._writer.write)
+            self.source.newFrame.disconnect(self._watch)
+            self._writer.frameNumber.disconnect(self.setFrameNumber)
+            self._writer.finished.disconnect(self.stop)
+        except (RuntimeError, TypeError):
+            logger.debug('Some recording signals were already disconnected')
+        self._shutdown.emit()
+        self._thread.wait()
+        self._thread = None
+        self._writer = None
+        self.recording.emit(False)
+
+    def _stopPlayback(self) -> None:
+        if not self.isPlaying():
+            return
+        logger.debug('Stopping Playback')
+        try:
+            self._player.newFrame.disconnect(self.stepFrameNumber)
+            self._player.newFrame.disconnect(self.newFrame)
+        except (RuntimeError, TypeError):
+            logger.debug('Playback signal was already disconnected')
+        self._player.stop()
+        self._player = None
+        self.playing.emit(False)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         '''Stop recording or playback when the widget is closed.'''

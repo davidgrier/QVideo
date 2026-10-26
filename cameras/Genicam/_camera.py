@@ -1,4 +1,6 @@
+'''GenICam cameras and sources, driven through Harvesters.'''
 from collections.abc import Callable
+from contextlib import suppress
 from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
 from QVideo.lib import gentl
@@ -70,7 +72,13 @@ class QGenicamCamera(QCamera):
     producer: str | Path | None = None
     _producer_filenames: tuple[str, ...] = ()
     _producerHint: str = ''
-    _ALIASES = frozenset(('width', 'height', 'fps'))
+    #: SFNC nodes behind the lowercase names that every camera shares, in
+    #: order of preference.
+    _ALIAS_NODES = {'width': ('Width',),
+                    'height': ('Height',),
+                    'fps': ('AcquisitionFrameRate',
+                            'AcquisitionFrameRateAbs')}
+    _ALIASES = frozenset(_ALIAS_NODES)
 
     #: Nodes that report the frame rate that the camera delivers, in order
     #: of preference: the standard name, then names of older firmware.
@@ -95,7 +103,18 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        producer = self._locateProducer()
+        self._openDevice(self._locateProducer())
+        self._connectNodeMap()
+        root = self.node()
+        self._protected = self._startAcquisition(root)
+        self._register_features(root)
+        with suppress(Exception):
+            self._modelName = str(self._nodeMap.DeviceModelName.value)
+        self._registerAliases()
+        return True
+
+    def _openDevice(self, producer: str) -> None:
+        '''Load the GenTL *producer* and open the camera that it finds.'''
         self._harvester = Harvester()
         self._device = None
         try:
@@ -117,33 +136,40 @@ class QGenicamCamera(QCamera):
                 f'): {ex}\n'
                 'Check that the camera is connected and powered, and that '
                 'you have permission to access it.') from ex
+
+    def _connectNodeMap(self) -> None:
+        '''Take the node map from the device, loading it by hand if
+        harvesters did not connect it.'''
         self._nodeMap = self._device.remote_device.node_map
-        if not self._isConnected(self._nodeMap):
-            logger.debug('harvesters node map unconnected; '
-                         'loading manually from device port')
-            self._nodeMap = self._load_node_map(self._device)
-            if self._nodeMap is None:
-                self._cleanup()
-                raise QDeviceError(
-                    f'{type(self).__name__}: cannot read the GenICam '
-                    'node map from the camera')
-        root = self.node()
-        ma = self._scan_modes(root)
+        if self._isConnected(self._nodeMap):
+            return
+        logger.debug('harvesters node map unconnected; '
+                     'loading manually from device port')
+        self._nodeMap = self._load_node_map(self._device)
+        if self._nodeMap is None:
+            self._cleanup()
+            raise QDeviceError(
+                f'{type(self).__name__}: cannot read the GenICam '
+                'node map from the camera')
+
+    def _startAcquisition(self, root: IValue) -> set[str]:
+        '''Start acquisition and return the features that it makes read-only.
+
+        These are the features whose access mode differs before and after
+        the start, so that writing them requires stopping acquisition.
+        '''
+        before = self._scan_modes(root)
         self._device.start()
-        mb = self._scan_modes(root)
-        self._protected = {k for k, v in ma.items()
-                          if k in mb and mb[k] != v}
-        self._register_features(root)
-        try:
-            self._modelName = str(self._nodeMap.DeviceModelName.value)
-        except Exception:
-            pass
-        for src, dst in (('Width', 'width'), ('Height', 'height'),
-                         ('AcquisitionFrameRate', 'fps'),
-                         ('AcquisitionFrameRateAbs', 'fps')):
-            if src in self._properties and dst not in self._properties:
-                self._properties[dst] = self._properties[src]
-        return True
+        after = self._scan_modes(root)
+        return {name for name, mode in before.items()
+                if name in after and after[name] != mode}
+
+    def _registerAliases(self) -> None:
+        '''Register the lowercase names for the standard nodes that exist.'''
+        for alias, nodes in self._ALIAS_NODES.items():
+            for node in nodes:
+                if node in self._properties and alias not in self._properties:
+                    self._properties[alias] = self._properties[node]
 
     @classmethod
     def _locateProducer(cls) -> str:
@@ -182,20 +208,14 @@ class QGenicamCamera(QCamera):
         original exception.
         '''
         if self._device is not None:
-            try:
+            with suppress(Exception):
                 self._device.stop()
-            except Exception:
-                pass
-            try:
+            with suppress(Exception):
                 self._device.destroy()
-            except Exception:
-                pass
             self._device = None
         if self._harvester is not None:
-            try:
+            with suppress(Exception):
                 self._harvester.reset()
-            except Exception:
-                pass
         self._nodeMap = None
 
     def _deinitialize(self) -> None:
@@ -543,22 +563,17 @@ class QGenicamCamera(QCamera):
         '''
         node = self.node(name)
         with self._mutex:
-            access = node.node.get_access_mode()
-            state = {'access': access, 'kind': 'other'}
-            if isinstance(node, IInteger):
-                state.update(kind='int', min=node.min, max=node.max,
-                             inc=node.inc)
-            elif isinstance(node, IFloat):
-                state.update(kind='float', min=node.min, max=node.max,
-                             inc=node.inc if node.has_inc() else None)
-            elif isinstance(node, IEnumeration):
-                state.update(kind='enum',
-                             entries=[v.symbolic for v in node.entries])
-            if access in (EAccessMode.RO, EAccessMode.RW):
-                if isinstance(node, IEnumeration):
-                    state['value'] = node.to_string()
-                elif isinstance(node, IProperty):
-                    state['value'] = node.value
+            state = {'access': node.node.get_access_mode(), 'kind': 'other'}
+            ptype, meta = self._feature_spec(node)
+            if 'limits' in meta:
+                state.update(kind='enum', entries=meta['limits'])
+            elif ptype in (int, float):
+                state.update(kind=ptype.__name__, min=meta['minimum'],
+                             max=meta['maximum'], inc=meta.get('step'))
+            if isinstance(node, IProperty):
+                value = self._make_getter(node)()
+                if value is not None:
+                    state['value'] = value
         return state
 
 

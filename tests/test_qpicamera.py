@@ -246,6 +246,29 @@ class TestInitializationFailure(unittest.TestCase):
         cam, _ = make_camera(capture_ok=False)
         self.assertFalse(cam.isOpen())
 
+    def test_no_frame_releases_the_device(self):
+        _, device = make_camera(capture_ok=False)
+        device.stop.assert_called_once()
+        device.close.assert_called_once()
+
+    def test_a_configuration_failure_releases_the_device(self):
+        device = make_mock_device()
+        device.configure.side_effect = RuntimeError('bad configuration')
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.assertFalse(cam.isOpen())
+        device.close.assert_called_once()
+
+    def test_a_failing_release_does_not_hide_the_failure(self):
+        device = make_mock_device()
+        device.configure.side_effect = RuntimeError('bad configuration')
+        device.stop.side_effect = RuntimeError('not running')
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.assertFalse(cam.isOpen())
+
 
 class TestProperties(unittest.TestCase):
 
@@ -356,6 +379,18 @@ class TestSetControl(unittest.TestCase):
     def test_set_exposure_value(self):
         self.cam.set('ExposureTime', 20000)
         self.device.set_controls.assert_called_with({'ExposureTime': 20000})
+
+
+class TestLimits(unittest.TestCase):
+
+    def test_both_limits(self):
+        self.assertEqual(QPicamera._limits(1, 9),
+                         {'minimum': 1, 'maximum': 9})
+
+    def test_a_missing_limit_is_left_out(self):
+        self.assertEqual(QPicamera._limits(None, 9), {'maximum': 9})
+        self.assertEqual(QPicamera._limits(1, None), {'minimum': 1})
+        self.assertEqual(QPicamera._limits(None, None), {})
 
 
 class TestReconfigure(unittest.TestCase):

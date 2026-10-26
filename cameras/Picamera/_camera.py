@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
 import logging
@@ -124,7 +125,7 @@ class QPicamera(QCamera):
         return Picamera2(camera_num=self._cameraID)
 
     def _onRequest(self, metadata: dict) -> None:
-        '''Hook called with each frame\'s metadata before the request is released.
+        '''Hook called with a frame's metadata before its request ends.
 
         Subclasses can override this to extract additional per-frame data
         (e.g. IMX500 inference outputs) while the request buffer is still
@@ -165,23 +166,16 @@ class QPicamera(QCamera):
         # _controlValues from fresh metadata, so we save them here and
         # re-apply them afterwards.
         prior_controls = dict(self._controlValues)
-        fmt = 'YUV420' if self._gray else 'BGR888'
-        cfg_kwargs = {
-            'main': {'size': (self._width, self._height), 'format': fmt}}
-        t = self._makeTransform()
-        if t is not None:
-            cfg_kwargs['transform'] = t
-        config = self._device.create_preview_configuration(**cfg_kwargs)
-        self._device.configure(config)
-        self._device.start()
-        self._deviceOpen = True
         try:
+            self._configure((self._width, self._height))
+            self._device.start()
+            self._deviceOpen = True
             self._device.capture_array()
         except Exception as ex:
-            logger.warning(f'Camera did not deliver a frame: {ex}')
-            self._deviceOpen = False
-            self._device.stop()
-            self._device.close()
+            logger.warning(f'Could not start Raspberry Pi camera '
+                           f'{self._cameraID}: {ex}')
+            with suppress(Exception):
+                self._deinitialize()
             return False
         register = self.registerProperty
         register('width', getter=self._getWidth,
@@ -208,6 +202,13 @@ class QPicamera(QCamera):
             self._controlValues.update(pending)
         return True
 
+    @staticmethod
+    def _limits(lo: float | None, hi: float | None) -> dict[str, float]:
+        '''The ``minimum`` and ``maximum`` that a camera reports, if any.'''
+        return {key: value
+                for key, value in (('minimum', lo), ('maximum', hi))
+                if value is not None}
+
     def _probeControls(self, metadata: dict[str, object]) -> None:
         '''Register picamera2 controls supported by this camera.
 
@@ -227,12 +228,7 @@ class QPicamera(QCamera):
             lo, hi, default = self._device.camera_controls[name]
             current = metadata.get(name, default)
             self._controlValues[name] = ptype(current)
-            meta = {}
-            if ptype is not bool:
-                if lo is not None:
-                    meta['minimum'] = lo
-                if hi is not None:
-                    meta['maximum'] = hi
+            meta = {} if ptype is bool else self._limits(lo, hi)
             self.registerProperty(
                 name,
                 getter=lambda n=name, t=ptype: t(self._controlValues[n]),
@@ -317,11 +313,7 @@ class QPicamera(QCamera):
             current = (1.0, 1.0)
         self._controlValues['ColourGains'] = (
             float(current[0]), float(current[1]))
-        meta = {}
-        if lo is not None:
-            meta['minimum'] = lo
-        if hi is not None:
-            meta['maximum'] = hi
+        meta = self._limits(lo, hi)
         self.registerProperty(
             'ColourGainR',
             getter=lambda: self._controlValues['ColourGains'][0],
@@ -421,38 +413,29 @@ class QPicamera(QCamera):
         '''
         self._height = int(value)
 
-    def _reconfigure(self,
-                     width: int | None = None,
-                     height: int | None = None) -> None:
-        '''Reconfigure the camera stream at a new resolution.
-
-        Stops acquisition, applies the new resolution, restarts, and
-        reapplies any controls that were set before reconfiguring.
-
-        Parameters
-        ----------
-        width : int or None
-            New frame width in pixels.  ``None`` keeps the current width.
-        height : int or None
-            New frame height in pixels.  ``None`` keeps the current height.
-        '''
-        w, h = self._device.camera_config['main']['size']
-        if width is not None:
-            w = int(width)
-        if height is not None:
-            h = int(height)
-        self._device.stop()
+    def _configure(self, size: tuple[int, int]) -> None:
+        '''Configure the stream with *size*, the pixel format and the flips.'''
         fmt = 'YUV420' if self._gray else 'BGR888'
-        cfg_kwargs = {'main': {'size': (w, h), 'format': fmt}}
-        t = self._makeTransform()
-        if t is not None:
-            cfg_kwargs['transform'] = t
-        config = self._device.create_preview_configuration(**cfg_kwargs)
-        self._device.configure(config)
+        kwargs = {'main': {'size': size, 'format': fmt}}
+        transform = self._makeTransform()
+        if transform is not None:
+            kwargs['transform'] = transform
+        self._device.configure(
+            self._device.create_preview_configuration(**kwargs))
+
+    def _reconfigure(self) -> None:
+        '''Restart the stream at its current size with the current format
+        and flips, and reapply the cached controls.
+
+        The size that :meth:`_setWidth` and :meth:`_setHeight` store takes
+        effect at the next :meth:`_initialize`, not here.
+        '''
+        self._device.stop()
+        self._configure(self._device.camera_config['main']['size'])
         self._device.start()
-        # Re-apply cached controls.  Note: _reconfigure does not rebuild
-        # _properties, so if the new configuration changes available controls
-        # or their ranges the stale registrations will persist silently.
+        # _reconfigure does not rebuild _properties, so if the new
+        # configuration changes the available controls or their ranges the
+        # stale registrations persist silently.
         if self._controlValues:
             self._device.set_controls(self._controlValues)
 

@@ -534,6 +534,34 @@ class TestUnconnectedNodeMap(unittest.TestCase):
                     make_camera(device=_make_device(node_map))
 
 
+class TestLoadNodeMap(unittest.TestCase):
+    '''The node map that harvesters did not connect is built from the port.'''
+
+    def test_the_map_is_built_from_the_remote_port(self):
+        device = MagicMock()
+        node_map = _make_node_map()
+        device.remote_device._create_node_map.return_value = node_map
+        result = _ConcreteCamera._load_node_map(device)
+        self.assertIs(result, node_map)
+        device.remote_device._create_node_map.assert_called_once_with(
+            port=device.remote_device.module.remote_port)
+
+    def test_the_map_is_patched_back_onto_the_device(self):
+        device = MagicMock()
+        node_map = _make_node_map()
+        device.remote_device._create_node_map.return_value = node_map
+        _ConcreteCamera._load_node_map(device)
+        self.assertIs(device.remote_device._node_map, node_map)
+
+    def test_a_failure_returns_none_and_is_logged(self):
+        device = MagicMock()
+        device.remote_device._create_node_map.side_effect = RuntimeError(
+            'port not ready')
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
+                             level='WARNING'):
+            self.assertIsNone(_ConcreteCamera._load_node_map(device))
+
+
 # ---------------------------------------------------------------------------
 # TestHasNode
 # ---------------------------------------------------------------------------

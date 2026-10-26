@@ -1,7 +1,8 @@
 '''Dynamic, reorderable pipeline of QVideoFilter widgets.'''
 from collections.abc import Iterator
 from qtpy import QtCore, QtWidgets, QtGui
-from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
+from QVideo.lib.QVideoFilter import (
+    QVideoFilter, VideoFilter, renderPipeline)
 from QVideo.lib.videotypes import Image
 import QVideo.filters as videofilters
 import pyqtgraph as pg
@@ -60,9 +61,11 @@ class _FilterSlot(QtWidgets.QWidget):
     removeRequested : object
         Emitted when × is clicked, carrying this slot.
     dropRequested : object, QtCore.QPoint
-        Emitted on drag release, carrying this slot and the global drop position.
+        Emitted on drag release, carrying this slot and the global drop
+        position.
     hoverRequested : object, QtCore.QPoint
-        Emitted during drag, carrying this slot and the current global position.
+        Emitted during drag, carrying this slot and the current global
+        position.
     '''
 
     removeRequested = QtCore.Signal(object)
@@ -73,7 +76,7 @@ class _FilterSlot(QtWidgets.QWidget):
                  widget: QVideoFilter,
                  parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self._widget = widget
+        self.widget = widget
         self._setupUi()
         self._connectSignals()
 
@@ -83,7 +86,7 @@ class _FilterSlot(QtWidgets.QWidget):
         layout.setSpacing(0)
         self._handle = _DragHandle(self)
         layout.addWidget(self._handle)
-        layout.addWidget(self._widget)
+        layout.addWidget(self.widget)
         self._closeButton = QtWidgets.QPushButton('×', self)
         self._closeButton.setFixedSize(18, 18)
         self._closeButton.setFlat(True)
@@ -132,7 +135,7 @@ class _FilterSlot(QtWidgets.QWidget):
 
 
 class _FilterPicker(QtWidgets.QDialog):
-    '''Dialog for selecting a filter to add to the rack, grouped by category.'''
+    '''Dialog for choosing a filter to add to the rack, by category.'''
 
     def __init__(self,
                  registry: dict[str, type[QVideoFilter]],
@@ -180,7 +183,8 @@ class _FilterPicker(QtWidgets.QDialog):
 
 class QFilterRackWidget(QtWidgets.QWidget):
 
-    '''A dynamic, reorderable pipeline of :class:`~QVideo.lib.QVideoFilter.QVideoFilter` widgets.
+    '''A dynamic, reorderable pipeline of
+    :class:`~QVideo.lib.QVideoFilter.QVideoFilter` widgets.
 
     Filters are added interactively via an "Add filter…" toolbar button
     or programmatically via :meth:`add` / :meth:`addByName`.  Each slot
@@ -216,7 +220,6 @@ class QFilterRackWidget(QtWidgets.QWidget):
                  editable: bool = True) -> None:
         super().__init__(parent)
         self._editable = editable
-        self._filter_refs: list[QVideoFilter] = []
         self._setupUi()
 
     def _setupUi(self) -> None:
@@ -268,11 +271,11 @@ class QFilterRackWidget(QtWidgets.QWidget):
             Frame after all enabled filters have been applied.
         '''
         for slot in self._iterSlots():
-            image = slot._widget(image)
+            image = slot.widget(image)
         return image
 
     def __iter__(self) -> Iterator[QVideoFilter]:
-        return (slot._widget for slot in self._iterSlots())
+        return (slot.widget for slot in self._iterSlots())
 
     def activeFilters(self) -> list[VideoFilter]:
         '''The filters that are switched on, in pipeline order.
@@ -303,7 +306,7 @@ class QFilterRackWidget(QtWidgets.QWidget):
     @property
     def filters(self) -> list[QVideoFilter]:
         '''Read-only list of registered filter widgets in pipeline order.'''
-        return [slot._widget for slot in self._iterSlots()]
+        return [slot.widget for slot in self._iterSlots()]
 
     @property
     def editable(self) -> bool:
@@ -334,7 +337,6 @@ class QFilterRackWidget(QtWidgets.QWidget):
         if not isinstance(video_filter, QVideoFilter):
             raise TypeError(f'expected QVideoFilter, '
                             f'got {type(video_filter).__name__}')
-        self._filter_refs.append(video_filter)
         slot = _FilterSlot(video_filter, self)
         slot.removeRequested.connect(self._removeSlot)
         slot.dropRequested.connect(self._moveSlot)
@@ -348,8 +350,9 @@ class QFilterRackWidget(QtWidgets.QWidget):
     @classmethod
     def _registry(cls) -> dict[str, type[QVideoFilter]]:
         '''Map :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
-        to class for every exported :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
-        that has a non-empty :attr:`display_name`.
+        to class for every exported
+        :class:`~QVideo.lib.QVideoFilter.QVideoFilter` that has a
+        non-empty :attr:`display_name`.
         '''
         return {
             klass.display_name: klass
@@ -385,7 +388,8 @@ class QFilterRackWidget(QtWidgets.QWidget):
         Returns
         -------
         list[str]
-            Sorted list of :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
+            Sorted list of
+            :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
             values for every exported filter with a non-empty display name.
         '''
         return sorted(cls._registry())
@@ -406,45 +410,15 @@ class QFilterRackWidget(QtWidgets.QWidget):
             Source of a ``filter.py`` module defining
             ``filter(image: np.ndarray) -> np.ndarray``.
         '''
-        fragments = []
-        skipped = []
+        fragments, skipped = [], []
         for widget in self:
-            if not widget.isChecked():
-                continue
-            code = widget.filter.to_code()
-            if code is not None:
-                fragments.append(code)
-            else:
-                skipped.append(type(widget.filter).__name__)
-
-        all_imports: set[str] = {'import numpy as np'}
-        for frag in fragments:
-            all_imports |= frag.imports
-
-        body: list[str] = []
-        for frag in fragments:
-            if frag.comment:
-                body.append(f'    # {frag.comment}')
-            for line in frag.lines:
-                body.append(f'    {line}')
-            body.append('')
-        body.append('    return image')
-
-        parts: list[str] = ["'''Image-processing pipeline generated by QVideo.'''"]
-        parts.append('')
-        parts.extend(sorted(all_imports))
-        parts.append('')
-        parts.append('')
-        if skipped:
-            parts.append('# NOTE: the following filters are stateful and were omitted:')
-            for name in skipped:
-                parts.append(f'#   {name}')
-            parts.append('')
-            parts.append('')
-        parts.append('def filter(image: np.ndarray) -> np.ndarray:')
-        parts.extend(body)
-
-        return '\n'.join(parts) + '\n'
+            if widget.isChecked():
+                code = widget.filter.to_code()
+                if code is None:
+                    skipped.append(type(widget.filter).__name__)
+                else:
+                    fragments.append(code)
+        return renderPipeline(fragments, skipped)
 
     @QtCore.Slot()
     def _exportDialog(self) -> None:
@@ -455,19 +429,21 @@ class QFilterRackWidget(QtWidgets.QWidget):
                 fh.write(self.exportPipeline())
 
     def _removeSlot(self, slot: '_FilterSlot') -> None:
-        self._filter_refs.remove(slot._widget)
         self._slots.removeWidget(slot)
         slot.deleteLater()
         self.adjustSize()
         self.filtersChanged.emit()
 
+    def _slotUnder(self, global_pos: QtCore.QPoint) -> '_FilterSlot | None':
+        '''The slot at *global_pos*, or ``None``.'''
+        pos = self.mapFromGlobal(global_pos)
+        return next((s for s in self._iterSlots()
+                     if s.geometry().contains(pos)), None)
+
     def _hoverSlot(self,
                    slot: '_FilterSlot',
                    hover_pos: QtCore.QPoint) -> None:
-        local_pos = self.mapFromGlobal(hover_pos)
-        target = next(
-            (w for w in self._iterSlots() if w.geometry().contains(local_pos)),
-            None)
+        target = self._slotUnder(hover_pos)
         for s in self._iterSlots():
             s.setHighlighted(s is target and s is not slot)
 
@@ -476,11 +452,7 @@ class QFilterRackWidget(QtWidgets.QWidget):
                   drop_pos: QtCore.QPoint) -> None:
         for s in self._iterSlots():
             s.setHighlighted(False)
-        local_pos = self.mapFromGlobal(drop_pos)
-        target = next(
-            (w for w in self._iterSlots()
-             if w.geometry().contains(local_pos)),
-            None)
+        target = self._slotUnder(drop_pos)
         if target is None or target is slot:
             return
         target_index = self._slots.indexOf(target)

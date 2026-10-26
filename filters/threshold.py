@@ -1,7 +1,7 @@
 '''Binary threshold filter with global, Otsu, and adaptive methods.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -92,8 +92,7 @@ class ThresholdFilter(VideoFilter):
     def C(self, value: int) -> None:
         self._C = int(value)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         _GRAY = [
             'if image.ndim == 3:',
             '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',

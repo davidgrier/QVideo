@@ -1,6 +1,6 @@
 '''RGB color-channel selection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 
 
@@ -36,8 +36,7 @@ class RGBFilter(VideoFilter):
             raise ValueError(f'channel must be 0, 1, or 2; got {channel}')
         self._channel = channel
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         names = {0: 'Red', 1: 'Green', 2: 'Blue'}
         ch = self._channel
         return FilterCode(

@@ -1,7 +1,7 @@
 '''Sobel gradient edge-detection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -61,8 +61,7 @@ class SobelFilter(VideoFilter):
         value = max(1, min(7, int(value)))
         self._ksize = value + (1 - value % 2)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         _GRAY = [
             'if image.ndim == 3:',
             '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',

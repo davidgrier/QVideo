@@ -4,7 +4,8 @@ import time
 import unittest
 import numpy as np
 from unittest.mock import patch
-from qtpy import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets
+from QVideo.tests.signals import record
 from QVideo.lib.QCamera import QCamera
 
 
@@ -335,13 +336,13 @@ class TestShape(unittest.TestCase):
 
     def test_shape_changed_emitted_on_width_change(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('width', 320)
         self.assertEqual(len(spy), 1)
 
     def test_shape_changed_emitted_on_height_change(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('height', 240)
         self.assertEqual(len(spy), 1)
 
@@ -366,7 +367,7 @@ class TestSettings(unittest.TestCase):
 
     def test_settings_does_not_emit_property_value_signal(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.propertyValue)
+        spy = record(cam.propertyValue)
         cam.settings
         self.assertEqual(len(spy), 0)
 
@@ -397,7 +398,7 @@ class TestSettings(unittest.TestCase):
 
     def test_get_emits_property_value_signal(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.propertyValue)
+        spy = record(cam.propertyValue)
         cam.get('width')
         self.assertEqual(len(spy), 1)
         name, value = spy[0]

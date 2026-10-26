@@ -93,7 +93,7 @@ See `filters/QBlurFilter.py` for a minimal example.  Filters live in
   under test.
 - For GenICam backends, provide real Python types for `ICategory`, `ICommand`,
   etc. (not plain `MagicMock`) so `isinstance` checks in `QGenicamCamera` work.
-- Use `QtTest.QSignalSpy` to test Qt signals.
+- Use `record(signal)` from `tests/signals.py` to test Qt signals.
 
 ## Submitting changes
 

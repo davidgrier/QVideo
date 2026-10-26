@@ -170,7 +170,8 @@ class TestQSampleHold(unittest.TestCase):
     def test_resetButton_triggers_filter_reset(self):
         widget = make_widget()
         with patch.object(widget.filter, 'reset') as mock_reset:
-            widget._resetButton.clicked.emit(False)
+            widget._resetButton.setEnabled(True)
+            widget._resetButton.click()
         mock_reset.assert_called_once()
 
     def test_call_when_unchecked_returns_frame_unchanged(self):

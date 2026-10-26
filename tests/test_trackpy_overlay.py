@@ -3,9 +3,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
-from qtpy import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets
 
 
+from QVideo.tests.signals import record
 import QVideo.overlays.trackpy as _mod  # noqa: E402
 from QVideo.overlays.trackpy import (  # noqa: E402
     _TrackpyWorker, QTrackpyOverlay, QTrackpyWidget,
@@ -76,7 +77,7 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         self._worker = _TrackpyWorker(diameter=11, minmass=50.)
 
     def _collect(self, n: int = 1):
-        spy = QtTest.QSignalSpy(self._worker.newData)
+        spy = record(self._worker.newData)
         return spy
 
     def test_locate_calls_trackpy(self):
@@ -213,7 +214,7 @@ class TestQTrackpyWidgetSource(unittest.TestCase):
         w.source = src1
         w.source = src2
         # src1.newFrame should no longer reach the worker
-        spy = QtTest.QSignalSpy(w.newData)
+        spy = record(w.newData)
         w.setChecked(True)
         src1.newFrame.emit(_make_frame())
         QtWidgets.QApplication.processEvents()
@@ -228,13 +229,13 @@ class TestQTrackpyWidgetNewFrame(unittest.TestCase):
         mock_tp.locate.return_value = _make_features()
 
     def test_new_frame_ignored_when_unchecked(self):
-        spy = QtTest.QSignalSpy(self._w._locate)
+        spy = record(self._w._locate)
         self._w._onNewFrame(_make_frame())
         self.assertEqual(len(spy), 0)
 
     def test_new_frame_dispatched_when_checked_and_ready(self):
         self._w.setChecked(True)
-        spy = QtTest.QSignalSpy(self._w._locate)
+        spy = record(self._w._locate)
         self._w._onNewFrame(_make_frame())
         self.assertEqual(len(spy), 1)
 
@@ -251,7 +252,7 @@ class TestQTrackpyWidgetNewFrame(unittest.TestCase):
     def test_second_frame_dropped_while_busy(self):
         self._w.setChecked(True)
         self._w._ready = False   # simulate worker still running
-        spy = QtTest.QSignalSpy(self._w._locate)
+        spy = record(self._w._locate)
         self._w._onNewFrame(_make_frame())
         self.assertEqual(len(spy), 0)
 
@@ -267,7 +268,7 @@ class TestQTrackpyWidgetNewData(unittest.TestCase):
         self.assertTrue(self._w._ready)
 
     def test_new_data_signal_emitted(self):
-        spy = QtTest.QSignalSpy(self._w.newData)
+        spy = record(self._w.newData)
         features = _make_features()
         self._w._onNewData(features)
         self.assertEqual(len(spy), 1)

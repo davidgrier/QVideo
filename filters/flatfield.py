@@ -44,6 +44,7 @@ class FlatFieldFilter(VideoFilter):
         Number of frames to average during capture.  Default: ``16``.
     '''
 
+    #: Emitted when a flat field has been captured.
     captured = QtCore.Signal()
 
     def __init__(self, nFrames: int = 16) -> None:

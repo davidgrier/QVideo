@@ -3,8 +3,9 @@ import sys
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from qtpy import QtWidgets, QtTest
+from qtpy import QtWidgets
 
+from QVideo.tests.signals import record
 from QVideo.cameras.Picamera._camera import QPicamera, QPicameraSource
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -848,13 +849,13 @@ class TestFlip(unittest.TestCase):
 
     def test_hflip_does_not_emit_shape_changed(self):
         from qtpy import QtTest
-        spy = QtTest.QSignalSpy(self.cam.shapeChanged)
+        spy = record(self.cam.shapeChanged)
         self.cam.set('hflip', True)
         self.assertEqual(len(spy), 0)
 
     def test_vflip_does_not_emit_shape_changed(self):
         from qtpy import QtTest
-        spy = QtTest.QSignalSpy(self.cam.shapeChanged)
+        spy = record(self.cam.shapeChanged)
         self.cam.set('vflip', True)
         self.assertEqual(len(spy), 0)
 

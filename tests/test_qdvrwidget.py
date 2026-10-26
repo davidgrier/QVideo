@@ -3,8 +3,9 @@ import unittest
 from types import SimpleNamespace
 import numpy as np
 from unittest.mock import patch, MagicMock
+from QVideo.tests.signals import record
 from QVideo.lib.videotypes import FrameInfo
-from qtpy import QtCore, QtGui, QtWidgets, QtTest
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.dvr.QDVRWidget import QDVRWidget, _h5py_available
 
 
@@ -236,7 +237,7 @@ class TestQDVRWidgetRecord(unittest.TestCase):
 
     def test_record_emits_recording_true(self):
         widget, source = make_widget_with_source()
-        spy = QtTest.QSignalSpy(widget.recording)
+        spy = record(widget.recording)
         mock_thread = MockThread()
         with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}):
             with patch.object(QtCore, 'QThread', return_value=mock_thread):
@@ -459,7 +460,7 @@ class TestQDVRWidgetPlay(unittest.TestCase):
     def test_play_emits_playing_true(self):
         widget = make_widget()
         widget.playname = 'test.avi'
-        spy = QtTest.QSignalSpy(widget.playing)
+        spy = record(widget.playing)
         with patch.dict(QDVRWidget.Player, {'.avi': MockPlayer}):
             widget.play()
         self.assertEqual(len(spy), 1)
@@ -518,7 +519,7 @@ class TestQDVRWidgetStop(unittest.TestCase):
     def test_stop_emits_playing_false(self):
         widget = make_widget()
         setup_playing(widget)
-        spy = QtTest.QSignalSpy(widget.playing)
+        spy = record(widget.playing)
         widget.stop()
         self.assertEqual(len(spy), 1)
         self.assertFalse(spy[0][0])
@@ -532,7 +533,7 @@ class TestQDVRWidgetStop(unittest.TestCase):
     def test_stop_emits_recording_false(self):
         widget, source = make_widget_with_source()
         setup_recording(widget, source)
-        spy = QtTest.QSignalSpy(widget.recording)
+        spy = record(widget.recording)
         widget.stop()
         self.assertEqual(len(spy), 1)
         self.assertFalse(spy[0][0])

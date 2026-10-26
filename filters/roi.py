@@ -1,6 +1,6 @@
 '''ROI crop filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from pyqtgraph import SpinBox
 from QVideo.lib.videotypes import Image
 
@@ -53,8 +53,7 @@ class ROIFilter(VideoFilter):
             self._clamp(image.shape)
         super().add(image)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         x, y, w, h = int(self._x), int(self._y), int(self._w), int(self._h)
         return FilterCode(
             imports=frozenset(),

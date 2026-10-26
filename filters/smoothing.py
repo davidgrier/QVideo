@@ -1,7 +1,7 @@
 '''Smoothing filter with selectable method and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
 
@@ -60,8 +60,7 @@ class SmoothingFilter(VideoFilter):
             raise ValueError(f'method must be one of {self.METHODS}')
         self._method = method
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         k = self._width
         if self._method == 'box':
             return FilterCode(

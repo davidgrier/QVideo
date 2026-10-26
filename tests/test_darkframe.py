@@ -2,8 +2,9 @@
 import unittest
 import numpy as np
 from unittest.mock import patch
-from qtpy import QtCore, QtTest, QtWidgets
+from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
+from QVideo.tests.signals import record
 from QVideo.filters.darkframe import DarkFrameFilter, QDarkFrameFilter
 
 
@@ -89,13 +90,13 @@ class TestDarkFrameFilterCapture(unittest.TestCase):
 
     def test_captured_signal_emitted(self):
         f = make_filter(nFrames=2)
-        spy = QtTest.QSignalSpy(f.captured)
+        spy = record(f.captured)
         _capture(f, _DARK)
         self.assertEqual(len(spy), 1)
 
     def test_captured_signal_not_emitted_before_complete(self):
         f = make_filter(nFrames=4)
-        spy = QtTest.QSignalSpy(f.captured)
+        spy = record(f.captured)
         f.capture()
         f.add(_DARK)
         self.assertEqual(len(spy), 0)
@@ -257,13 +258,14 @@ class TestQDarkFrameFilterSlots(unittest.TestCase):
     def test_capture_button_click_disables_button(self):
         w = make_widget()
         with patch.object(w.filter, 'capture'):
-            w._captureButton.clicked.emit(False)
+            w._captureButton.click()
         self.assertFalse(w._captureButton.isEnabled())
 
     def test_reset_button_click_calls_filter_reset(self):
         w = make_widget()
         with patch.object(w.filter, 'reset') as mock_reset:
-            w._resetButton.clicked.emit(False)
+            w._resetButton.setEnabled(True)
+            w._resetButton.click()
         mock_reset.assert_called_once()
 
     def test_filter_captured_signal_re_enables_button(self):

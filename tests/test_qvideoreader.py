@@ -2,7 +2,8 @@
 import unittest
 import numpy as np
 from unittest.mock import patch
-from qtpy import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets
+from QVideo.tests.signals import record
 from QVideo.lib.QVideoReader import QVideoReader
 
 
@@ -115,7 +116,7 @@ class TestOpen(unittest.TestCase):
     def test_open_emits_shape_changed(self):
         reader = make_reader()
         reader.close()
-        spy = QtTest.QSignalSpy(reader.shapeChanged)
+        spy = record(reader.shapeChanged)
         reader.open()
         self.assertEqual(len(spy), 1)
 
@@ -131,7 +132,7 @@ class TestOpen(unittest.TestCase):
 
     def test_open_does_not_emit_shape_changed_on_failure(self):
         reader = _FakeVideoReader(initialize_ok=False)
-        spy = QtTest.QSignalSpy(reader.shapeChanged)
+        spy = record(reader.shapeChanged)
         with self.assertLogs('QVideo.lib.QVideoReader', level='WARNING'):
             reader.open()
         self.assertEqual(len(spy), 0)

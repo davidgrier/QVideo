@@ -2,7 +2,8 @@
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from qtpy import QtWidgets, QtCore, QtTest
+from qtpy import QtWidgets, QtCore
+from QVideo.tests.signals import record
 from QVideo.cameras.OpenCV._camera import QOpenCVCamera, QOpenCVSource
 
 
@@ -294,7 +295,7 @@ class TestProperties(unittest.TestCase):
     def test_width_setter_emits_shape_changed(self):
         from qtpy import QtTest
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('width', 1280)
         self.assertEqual(len(spy), 1)
 
@@ -312,7 +313,7 @@ class TestProperties(unittest.TestCase):
     def test_height_setter_emits_shape_changed(self):
         from qtpy import QtTest
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('height', 720)
         self.assertEqual(len(spy), 1)
 

@@ -6,7 +6,7 @@ import threading
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from qtpy import QtWidgets, QtTest
+from qtpy import QtWidgets
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -83,6 +83,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
     sys.modules.setdefault(_name, _mod)
 
 
+from QVideo.tests.signals import record
 from QVideo.cameras.Genicam._camera import QGenicamCamera, QGenicamSource
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.errors import QDeviceError, QDriverError
@@ -732,7 +733,7 @@ class TestGet(unittest.TestCase):
     def test_get_emits_property_value_signal(self):
         feature = _make_feature(_IInteger, name='Width', value=640)
         cam, _, _ = make_camera_with_node(feature)
-        spy = QtTest.QSignalSpy(cam.propertyValue)
+        spy = record(cam.propertyValue)
         cam.get('Width')
         self.assertEqual(len(spy), 1)
         self.assertEqual(spy[0][0], 'Width')
@@ -904,14 +905,14 @@ class TestWidthHeight(unittest.TestCase):
     def test_width_setter_emits_shape_changed(self):
         feature = self._make_dim_feature('Width', 640)
         cam, _, _ = make_camera_with_node(feature)
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('Width', 640)
         self.assertEqual(len(spy), 1)
 
     def test_height_setter_emits_shape_changed(self):
         feature = self._make_dim_feature('Height', 480)
         cam, _, _ = make_camera_with_node(feature)
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('Height', 480)
         self.assertEqual(len(spy), 1)
 

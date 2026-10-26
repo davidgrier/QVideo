@@ -53,10 +53,6 @@ level.  :class:`~QVideo.filters.median.Median` produces a new estimate every
 third frame; :class:`~QVideo.filters.momedian.MoMedian` produces one on every
 frame by rolling the buffer.
 
-.. [R90] P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
-   averaging method for large data sets", *Journal of the American Statistical
-   Association*, 85(409):97–104, 1990.
-
 .. automodule:: QVideo.filters.median
    :members:
 

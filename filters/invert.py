@@ -1,6 +1,6 @@
 '''Intensity-inversion filter and companion Qt widget.'''
 from qtpy import QtWidgets
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
 
@@ -29,8 +29,7 @@ class InvertFilter(VideoFilter):
             return None
         return cv2.bitwise_not(self.data)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         return FilterCode(
             imports=frozenset({'import cv2'}),
             lines=['image = cv2.bitwise_not(image)'],

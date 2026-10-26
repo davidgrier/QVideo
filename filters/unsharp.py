@@ -1,7 +1,7 @@
 '''Unsharp masking filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
 
@@ -74,8 +74,7 @@ class UnsharpFilter(VideoFilter):
         return cv2.addWeighted(self.data, 1 + self._amount,
                                blurred, -self._amount, 0)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         return FilterCode(
             imports=frozenset({'import cv2'}),
             lines=[

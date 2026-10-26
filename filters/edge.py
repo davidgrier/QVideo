@@ -1,7 +1,7 @@
 '''Canny edge-detection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
 import logging
@@ -83,8 +83,7 @@ class EdgeFilter(VideoFilter):
         else:
             self.data = image
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         return FilterCode(
             imports=frozenset({'import cv2'}),
             lines=[

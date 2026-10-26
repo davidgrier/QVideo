@@ -85,9 +85,13 @@ class QFilterPipeline(QtCore.QThread):
         A filter and the exception it raised.
     '''
 
+    #: A filtered frame and its info.
     newFrame = QtCore.Signal(np.ndarray, object)
+    #: The source's frame shape changed.
     shapeChanged = QtCore.Signal(QtCore.QSize)
+    #: Number of frames dropped since the previous report.
     framesDropped = QtCore.Signal(int)
+    #: A filter and the exception that made the pipeline remove it.
     filterFailed = QtCore.Signal(object, object)
 
     def __init__(self,

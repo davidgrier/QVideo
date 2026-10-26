@@ -41,6 +41,7 @@ class QFrameRelay(QtCore.QObject):
         The newest frame since the previous emission.
     '''
 
+    #: The newest frame since the previous emission, and its info.
     newFrame = QtCore.Signal(np.ndarray, object)
     _wake = QtCore.Signal()
 

@@ -6,6 +6,7 @@ import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from qtpy import QtCore, QtWidgets, QtTest
+from QVideo.tests.signals import record
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.videotypes import FrameInfo
 
@@ -222,7 +223,7 @@ class TestRun(unittest.TestCase):
         source, ref = one_shot_source(read_ok=True)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertGreater(len(spy), 0)
 
@@ -230,7 +231,7 @@ class TestRun(unittest.TestCase):
         source, ref = one_shot_source(read_ok=False)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertEqual(len(spy), 0)
 
@@ -238,7 +239,7 @@ class TestRun(unittest.TestCase):
         source, ref = one_shot_source(read_ok=True)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertIsInstance(spy[0][0], np.ndarray)
 
@@ -246,7 +247,7 @@ class TestRun(unittest.TestCase):
         source, ref = one_shot_source(read_ok=True)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertEqual(len(spy[0]), 2)
         self.assertIsInstance(spy[0][1], FrameInfo)
@@ -255,7 +256,7 @@ class TestRun(unittest.TestCase):
         source, ref, _ = n_shot_source(3)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertEqual([args[1].index for args in spy], [0, 1, 2])
 
@@ -271,7 +272,7 @@ class TestRun(unittest.TestCase):
                 vs._running = False
             return ok, frame
         source.saferead.side_effect = saferead
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertEqual([args[1].index for args in spy], [0, 1])
 
@@ -282,7 +283,7 @@ class TestRun(unittest.TestCase):
         vs.run()
         count[0] = 0
         vs._running = True
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertEqual(spy[0][1].index, 0)
 
@@ -290,7 +291,7 @@ class TestRun(unittest.TestCase):
         source, ref, _ = n_shot_source(3)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         before = time.perf_counter()
         vs.run()
         after = time.perf_counter()
@@ -303,7 +304,7 @@ class TestRun(unittest.TestCase):
         source, ref = one_shot_source(read_ok=True)
         vs = make_vs(source)
         ref[0] = vs
-        spy = QtTest.QSignalSpy(vs.newFrame)
+        spy = record(vs.newFrame)
         vs.run()
         self.assertIsNone(spy[0][1].hardware_timestamp)
 

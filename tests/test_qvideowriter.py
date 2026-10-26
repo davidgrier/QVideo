@@ -2,7 +2,8 @@
 import time
 import unittest
 import numpy as np
-from qtpy import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets
+from QVideo.tests.signals import record
 from QVideo.lib.QVideoWriter import QVideoWriter
 from QVideo.lib.videotypes import FrameInfo
 
@@ -218,7 +219,7 @@ class TestQVideoWriterWriteOpen(unittest.TestCase):
 
     def test_write_open_failure_emits_finished(self):
         w = _FailingWriter('out.avi')
-        spy = QtTest.QSignalSpy(w.finished)
+        spy = record(w.finished)
         with self.assertLogs('QVideo.lib.QVideoWriter', level='WARNING'):
             w.write(_FRAME)
         self.assertEqual(len(spy), 1)
@@ -257,7 +258,7 @@ class TestQVideoWriterWriteFrame(unittest.TestCase):
 
     def test_write_emits_frame_number(self):
         w = _ConcreteWriter('out.avi')
-        spy = QtTest.QSignalSpy(w.frameNumber)
+        spy = record(w.frameNumber)
         w.write(_FRAME)
         self.assertEqual(len(spy), 1)
         self.assertEqual(spy[0][0], 1)
@@ -270,7 +271,7 @@ class TestQVideoWriterWriteFrame(unittest.TestCase):
     def test_write_at_target_emits_finished(self):
         w = _ConcreteWriter('out.avi', nframes=2)
         self._feed(w, 2)
-        spy = QtTest.QSignalSpy(w.finished)
+        spy = record(w.finished)
         w.write(_FRAME)   # at target → finished
         self.assertEqual(len(spy), 1)
 
@@ -299,13 +300,13 @@ class TestQVideoWriterWriteFrame(unittest.TestCase):
 
     def test_frame_number_signal_counts_frames_written(self):
         w = _ConcreteWriter('out.avi', nskip=2)
-        spy = QtTest.QSignalSpy(w.frameNumber)
+        spy = record(w.frameNumber)
         self._feed(w, 6)
         self.assertEqual([args[0] for args in spy], [1, 2, 3])
 
     def test_nframes_counts_frames_written_with_nskip(self):
         w = _ConcreteWriter('out.avi', nframes=2, nskip=3)
-        spy = QtTest.QSignalSpy(w.finished)
+        spy = record(w.finished)
         self.assertEqual(self._feed(w, 20), [0, 3])
         self.assertGreater(len(spy), 0)
 

@@ -3,7 +3,8 @@ import unittest
 import numpy as np
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
-from qtpy import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets
+from QVideo.tests.signals import record
 from QVideo.lib.QVideoScreen import QVideoScreen
 from QVideo.lib.videotypes import FrameInfo
 
@@ -30,7 +31,7 @@ class _Emitter(QtCore.QObject):
 
 
 def _spy(screen, signal_name='newFrame'):
-    return QtTest.QSignalSpy(getattr(screen, signal_name))
+    return record(getattr(screen, signal_name))
 
 
 def make_screen(**kwargs) -> QVideoScreen:

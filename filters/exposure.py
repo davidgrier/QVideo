@@ -2,7 +2,7 @@
 import logging
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import numpy as np
 import cv2
@@ -161,8 +161,7 @@ class ExposureFilter(VideoFilter):
             return cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
         return self._clahe.apply(image)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         if self._method == 'Log':
             return FilterCode(
                 imports=frozenset({'import numpy as np'}),

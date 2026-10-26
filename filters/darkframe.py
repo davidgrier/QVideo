@@ -35,6 +35,7 @@ class DarkFrameFilter(VideoFilter):
         Number of frames to average during capture.  Default: ``16``.
     '''
 
+    #: Emitted when a dark reference has been captured.
     captured = QtCore.Signal()
 
     def __init__(self, nFrames: int = 16) -> None:

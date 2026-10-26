@@ -2,7 +2,7 @@
 import logging
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -96,8 +96,7 @@ class DoGFilter(VideoFilter):
         hi = cv2.GaussianBlur(gray, (0, 0), self._high_sigma)
         return cv2.convertScaleAbs(lo - hi)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         return FilterCode(
             imports=frozenset({'import cv2', 'import numpy as np'}),
             lines=[

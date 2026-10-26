@@ -3,8 +3,9 @@ import sys
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from qtpy import QtWidgets, QtCore, QtTest
+from qtpy import QtWidgets, QtCore
 
+from QVideo.tests.signals import record
 from QVideo.cameras.Picamera._imx500 import QIMXCamera, QIMXSource
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -155,14 +156,14 @@ class TestNewOutput(unittest.TestCase):
 
     def test_new_output_emitted_on_read(self):
         cam, _ = make_camera()
-        spy = QtTest.QSignalSpy(cam.newOutput)
+        spy = record(cam.newOutput)
         cam.read()
         self.assertEqual(len(spy), 1)
         cam.close()
 
     def test_new_output_value_matches_get_outputs(self):
         cam, device = make_camera(outputs=_OUTPUTS)
-        spy = QtTest.QSignalSpy(cam.newOutput)
+        spy = record(cam.newOutput)
         cam.read()
         emitted = spy[0][0]
         self.assertEqual(len(emitted), len(_OUTPUTS))
@@ -170,7 +171,7 @@ class TestNewOutput(unittest.TestCase):
 
     def test_new_output_none_when_get_outputs_returns_none(self):
         cam, device = make_camera(outputs=None)
-        spy = QtTest.QSignalSpy(cam.newOutput)
+        spy = record(cam.newOutput)
         cam.read()
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
@@ -185,7 +186,7 @@ class TestNewOutput(unittest.TestCase):
                 patch.object(_CAMERA_MODULE, 'Transform', MockTransform):
             cam2 = QIMXCamera(model='/fake/model.rpk')
         cam2.close()
-        spy = QtTest.QSignalSpy(cam2.newOutput)
+        spy = record(cam2.newOutput)
         cam2._isOpen = True  # force isOpen() to pass
         cam2._deviceOpen = True
         cam2._device = device

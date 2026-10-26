@@ -1,7 +1,7 @@
 '''Gamma intensity-correction filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import numpy as np
 import cv2
@@ -62,8 +62,7 @@ class GammaFilter(VideoFilter):
             return None
         return cv2.LUT(self.data, self._lut)
 
-    def to_code(self) -> 'FilterCode':
-        from QVideo.lib.QVideoFilter import FilterCode
+    def to_code(self) -> FilterCode:
         return FilterCode(
             imports=frozenset({'import numpy as np'}),
             lines=[

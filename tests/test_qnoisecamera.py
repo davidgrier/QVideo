@@ -2,7 +2,8 @@
 import unittest
 import numpy as np
 from unittest.mock import patch
-from qtpy import QtWidgets, QtTest
+from qtpy import QtWidgets
+from QVideo.tests.signals import record
 from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
 
 
@@ -179,13 +180,13 @@ class TestProperties(unittest.TestCase):
 
     def test_width_setter_emits_shape_changed(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('width', 320)
         self.assertEqual(len(spy), 1)
 
     def test_height_setter_emits_shape_changed(self):
         cam = make_camera()
-        spy = QtTest.QSignalSpy(cam.shapeChanged)
+        spy = record(cam.shapeChanged)
         cam.set('height', 240)
         self.assertEqual(len(spy), 1)
 

@@ -70,6 +70,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         displayed (``None`` if the source provided none).
     '''
 
+    #: Emitted after each displayed frame with the frame and its info.
     newFrame = QtCore.Signal(np.ndarray, object)
 
     def __init__(self, *args,

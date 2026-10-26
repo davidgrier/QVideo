@@ -3,11 +3,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
-from qtpy import QtCore, QtWidgets, QtTest
+from qtpy import QtCore, QtWidgets
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
+from QVideo.tests.signals import record
 import QVideo.overlays.yolo as _mod  # noqa: E402
 from QVideo.overlays.yolo import (  # noqa: E402
     _YoloWorker, QYoloOverlay, QYoloWidget,
@@ -109,7 +110,7 @@ class TestYoloWorkerDetect(unittest.TestCase):
 
     def test_detect_emits_dataframe_on_detections(self):
         self._worker.model.return_value = _make_mock_results(2)
-        spy = QtTest.QSignalSpy(self._worker.newData)
+        spy = record(self._worker.newData)
         self._worker.detect(_make_frame())
         self.assertEqual(len(spy), 1)
         features = spy[0][0]
@@ -118,21 +119,21 @@ class TestYoloWorkerDetect(unittest.TestCase):
 
     def test_detect_emits_none_on_no_detections(self):
         self._worker.model.return_value = _make_mock_results(0)
-        spy = QtTest.QSignalSpy(self._worker.newData)
+        spy = record(self._worker.newData)
         self._worker.detect(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
     def test_detect_emits_none_on_exception(self):
         self._worker.model.side_effect = RuntimeError('oops')
-        spy = QtTest.QSignalSpy(self._worker.newData)
+        spy = record(self._worker.newData)
         self._worker.detect(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
     def test_detect_dataframe_has_expected_columns(self):
         self._worker.model.return_value = _make_mock_results(1)
-        spy = QtTest.QSignalSpy(self._worker.newData)
+        spy = record(self._worker.newData)
         self._worker.detect(_make_frame())
         features = spy[0][0]
         for col in ('x1', 'y1', 'x2', 'y2', 'confidence', 'class', 'label'):
@@ -210,7 +211,7 @@ class TestQYoloWidgetSource(unittest.TestCase):
         w.source = src1
         w.source = src2
         w.setChecked(True)
-        spy = QtTest.QSignalSpy(w.newData)
+        spy = record(w.newData)
         src1.newFrame.emit(_make_frame())
         QtWidgets.QApplication.processEvents()
         self.assertEqual(len(spy), 0)
@@ -222,13 +223,13 @@ class TestQYoloWidgetNewFrame(unittest.TestCase):
         self._w = _make_widget()
 
     def test_new_frame_ignored_when_unchecked(self):
-        spy = QtTest.QSignalSpy(self._w._detect)
+        spy = record(self._w._detect)
         self._w._onNewFrame(_make_frame())
         self.assertEqual(len(spy), 0)
 
     def test_new_frame_dispatched_when_checked_and_ready(self):
         self._w.setChecked(True)
-        spy = QtTest.QSignalSpy(self._w._detect)
+        spy = record(self._w._detect)
         self._w._onNewFrame(_make_frame())
         self.assertEqual(len(spy), 1)
 
@@ -244,7 +245,7 @@ class TestQYoloWidgetNewFrame(unittest.TestCase):
     def test_second_frame_dropped_while_busy(self):
         self._w.setChecked(True)
         self._w._ready = False
-        spy = QtTest.QSignalSpy(self._w._detect)
+        spy = record(self._w._detect)
         self._w._onNewFrame(_make_frame())
         self.assertEqual(len(spy), 0)
 
@@ -260,7 +261,7 @@ class TestQYoloWidgetNewData(unittest.TestCase):
         self.assertTrue(self._w._ready)
 
     def test_new_data_signal_emitted(self):
-        spy = QtTest.QSignalSpy(self._w.newData)
+        spy = record(self._w.newData)
         features = _make_features()
         self._w._onNewData(features)
         self.assertEqual(len(spy), 1)

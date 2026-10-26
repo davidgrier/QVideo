@@ -43,9 +43,19 @@ developer's machine and must never be committed.
 duplicate it there.  `CITATION.cff` is auto-updated by CI (`.github/workflows/
 update-citation.yml`) on tag push — **never edit `CITATION.cff` manually**.
 
+The package is imported from the source tree through an editable install
+(`pip install -e . --no-deps`).  The code is always current, but the
+metadata that `importlib.metadata` serves (version, dependencies) is a
+snapshot of `pyproject.toml`.  Run the command again in each development
+environment after changing the version, the dependencies or the package
+list; `pip uninstall` cannot remove an old install while a stale
+`QVideo.egg-info` is in the repository directory, so delete the old
+`qvideo-*.dist-info` entries from `site-packages` by hand.
+
 Release steps:
 
-1. Bump `version` in `pyproject.toml` only.
+1. Bump `version` in `pyproject.toml` only, then refresh the editable
+   install.
 2. Commit and push.
 3. Tag and push the tag:
 

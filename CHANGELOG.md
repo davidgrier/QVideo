@@ -18,6 +18,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the log when debug logging is on.  The quickstart shows how to turn it
   on.
 
+### Fixed
+
+- **Recording through `ROIDemo`'s ROI keeps the capture information.**  The
+  demo's crop dropped the `FrameInfo` of each frame, so the recorder lost
+  the capture times and the backlog watch of `QDVRWidget` for ROI
+  recordings.  The crop now passes it on, and is a copy, so the recorder's
+  queue holds the cropped pixels and not the whole camera frame (the
+  memory budget counts the cropped size).  The demo's ROI class is renamed
+  `CropROI` (it was `ROIFilter`, the name of the unrelated crop filter in
+  `QVideo.filters.roi`).
+
 ---
 
 ## [4.7.1] — 2026-10-26

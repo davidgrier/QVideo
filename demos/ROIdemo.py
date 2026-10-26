@@ -12,17 +12,24 @@ import numpy as np
 from pathlib import Path
 from QVideo.QCamcorder import QCamcorder
 from QVideo.lib import launch
+from QVideo.lib.videotypes import FrameInfo
 
 
-__all__ = ['ROIFilter', 'ROIDemo']
+__all__ = ['CropROI', 'ROIDemo']
 
 
-class ROIFilter(pg.RectROI):
+class CropROI(pg.RectROI):
     '''Draggable rectangular ROI that crops video frames to its bounds.
 
     Subclasses :class:`pyqtgraph.RectROI` and adds a :attr:`newFrame`
     signal and :meth:`crop` slot, making it compatible with
-    :class:`~QVideo.lib.QVideoWriter` as a frame source.
+    :class:`~QVideo.lib.QVideoWriter` as a frame source.  The
+    :class:`~QVideo.lib.videotypes.FrameInfo` of each frame passes through
+    unchanged, so the recorder keeps the capture times and the backlog
+    watch of :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`.  (The filter
+    :class:`~QVideo.filters.roi.ROIFilter` crops without a graphical ROI.)
+    The crop is a copy, so a queued frame holds only the cropped pixels and
+    not the camera frame that they came from.
 
     Parameters
     ----------
@@ -40,30 +47,33 @@ class ROIFilter(pg.RectROI):
 
     Signals
     -------
-    newFrame : np.ndarray
+    newFrame : np.ndarray, FrameInfo
         Emitted with the cropped frame each time :meth:`crop` is called.
     '''
 
-    #: Emitted with the cropped frame each time :meth:`crop` is called.
-    newFrame = QtCore.Signal(np.ndarray)
+    #: Emitted with the cropped frame and its capture information each
+    #: time :meth:`crop` is called.
+    newFrame = QtCore.Signal(np.ndarray, object)
 
     def __init__(self, fps: float, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.fps = fps
 
-    @QtCore.Slot(np.ndarray)
-    def crop(self, frame: np.ndarray) -> None:
+    @QtCore.Slot(np.ndarray, object)
+    def crop(self, frame: np.ndarray, info: FrameInfo | None = None) -> None:
         '''Crop *frame* to the current ROI bounds and emit :attr:`newFrame`.
 
         Parameters
         ----------
         frame : np.ndarray
             Input video frame to crop.
+        info : FrameInfo, optional
+            Capture information for *frame*, passed on with the crop.
         '''
         x, y = self.pos()
         w, h = self.size()
         crop = frame[int(y):int(y + h), int(x):int(x + w)]
-        self.newFrame.emit(crop)
+        self.newFrame.emit(crop.copy(), info)
 
 
 class ROIDemo(QCamcorder):
@@ -75,7 +85,7 @@ class ROIDemo(QCamcorder):
            '----> ROI crop -> recorder, while recording
 
     Extends :class:`~QVideo.QCamcorder.QCamcorder` with a resizable
-    :class:`ROIFilter` drawn on the video screen.  While recording, the
+    :class:`CropROI` drawn on the video screen.  While recording, the
     ROI is locked and camera frames are cropped to it before the DVR saves
     them.
 
@@ -119,15 +129,15 @@ class ROIDemo(QCamcorder):
         super()._setupUi()
         self.screen.framerate = self.DISPLAY_RATE
         pos, size = self._roiGeometry()
-        self.roi = ROIFilter(self.source.fps,
-                             pos, size,
-                             snapSize=8,
-                             scaleSnap=True,
-                             sideScalers=True,
-                             movable=True,
-                             invertible=False,
-                             rotatable=False,
-                             removable=False)
+        self.roi = CropROI(self.source.fps,
+                           pos, size,
+                           snapSize=8,
+                           scaleSnap=True,
+                           sideScalers=True,
+                           movable=True,
+                           invertible=False,
+                           rotatable=False,
+                           removable=False)
         self.screen.view.addItem(self.roi)
         self.dvr.filename = str(Path.home() / 'roidemo.avi')
         self.dvr.source = self.roi

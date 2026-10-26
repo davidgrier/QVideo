@@ -105,7 +105,7 @@ from .filterrackdemo import FilterRackDemo
 from .histogramdemo import HistogramDemo
 from .uniformitydemo import UniformityDemo
 from .circulardemo import CircularDemo
-from .ROIdemo import ROIFilter, ROIDemo
+from .ROIdemo import CropROI, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo
 from .compositedemo import CompositeDemo

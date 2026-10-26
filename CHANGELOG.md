@@ -7,6 +7,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.5.1] — 2026-10-25
+
+### Changed
+
+- **A `QFilterRack` shuts its pipeline down by itself.**  The pipeline
+  already stopped when the application quit; it now also stops when the rack
+  is deleted, so `FilterDemo` and `FilterRackDemo` no longer override
+  `closeEvent` to stop it.  Closing a window only hides a rack, so an
+  application that outlives its window can still call
+  `rack.pipeline.stop()` to stop the thread sooner.
+- `FilterRackDemo` chooses the recording source from a dictionary of
+  mode buttons instead of an if/elif chain, and `CombinedDemo` adds its
+  Composite button to the same dictionary.
+
+---
+
 ## [4.5.0] — 2026-10-25
 
 These changes are made as if they had been part of 4.0.0, which was released

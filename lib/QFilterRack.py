@@ -22,6 +22,10 @@ class QFilterRack(QFilterRackWidget):
         rack = QFilterRack(source=camera)
         screen.source = rack.pipeline
 
+    The pipeline stops when the application quits and when the rack is
+    deleted, so a rack needs no explicit shutdown.  Closing a window only
+    hides the rack: call ``rack.pipeline.stop()`` to stop it sooner.
+
     Use :class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget` to
     apply the filters to recorded frames, or to design a pipeline,
     without a thread.
@@ -48,6 +52,7 @@ class QFilterRack(QFilterRackWidget):
                  depth: int = 1) -> None:
         super().__init__(parent, editable)
         self.pipeline = QFilterPipeline(source, rack=self, depth=depth)
+        self.destroyed.connect(self.pipeline.stop)
 
     @property
     def source(self):

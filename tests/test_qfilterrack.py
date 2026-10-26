@@ -120,6 +120,29 @@ class TestFiltering(RackTestCase):
         self.assertEqual(out, [6])
 
 
+class TestShutdown(RackTestCase):
+
+    def test_deleting_the_rack_stops_the_pipeline(self):
+        parent = QtWidgets.QWidget()
+        rack = self.make(parent=parent)
+        pipeline = rack.pipeline
+        parent.deleteLater()
+        app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+        self.assertFalse(pipeline.isRunning())
+
+    def test_quitting_the_application_stops_the_pipeline(self):
+        rack = self.make()
+        app.aboutToQuit.emit()
+        self.assertFalse(rack.pipeline.isRunning())
+
+    def test_closing_a_window_only_hides_the_rack(self):
+        parent = QtWidgets.QWidget()
+        rack = self.make(parent=parent)
+        parent.show()
+        parent.close()
+        self.assertTrue(rack.pipeline.isRunning())
+
+
 class TestWidgetStaysThreadFree(unittest.TestCase):
 
     def test_the_widget_alone_starts_no_thread(self):

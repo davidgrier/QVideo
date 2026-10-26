@@ -1,6 +1,6 @@
 '''Unit tests for demos.filterdemo.'''
 import unittest
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.lib import QFilterRack, QFilterPipeline, QVideoScreen
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.demo import Demo
@@ -77,10 +77,12 @@ class TestFilterDemo(unittest.TestCase):
         with self.assertRaises(ValueError):
             FilterDemo(QNoiseTree(), ['No Such Filter'])
 
-    def test_closing_stops_the_pipeline(self):
+    def test_deleting_the_demo_stops_the_pipeline(self):
         widget = self._make_demo()
-        widget.close()
-        self.assertFalse(widget.rack.pipeline.isRunning())
+        pipeline = widget.rack.pipeline
+        widget.deleteLater()
+        app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+        self.assertFalse(pipeline.isRunning())
 
 
 if __name__ == '__main__':  # pragma: no cover

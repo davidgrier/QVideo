@@ -80,6 +80,7 @@ class CombinedDemo(FilterRackDemo):
         self._modeComposite = QtWidgets.QRadioButton('Composite')
         self._modeBox.layout().addWidget(self._modeComposite)
         self._modeGroup.addButton(self._modeComposite)
+        self._sources[self._modeComposite] = self.screen
 
     def _onModeToggled(self,
                        button: QtWidgets.QAbstractButton,
@@ -89,8 +90,6 @@ class CombinedDemo(FilterRackDemo):
         if checked:
             self.screen.composite = button is self._modeComposite
         super()._onModeToggled(button, checked)
-        if checked and button is self._modeComposite:
-            self.dvr.source = self.screen
 
 
 if __name__ == '__main__':  # pragma: no cover

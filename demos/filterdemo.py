@@ -6,7 +6,6 @@ Run directly::
     python -m QVideo.demos.filterdemo
 '''
 
-from qtpy import QtGui
 from QVideo.demos.demo import Demo
 from QVideo.lib import QCameraTree, QFilterRack, launch
 
@@ -48,11 +47,6 @@ class FilterDemo(Demo):
         self._controls.addWidget(self.rack)
         for name in filters:
             self.rack.addByName(name)
-
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the filter pipeline before the widget closes.'''
-        self.rack.pipeline.stop()
-        super().closeEvent(event)
 
 
 if __name__ == '__main__':  # pragma: no cover

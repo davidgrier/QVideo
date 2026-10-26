@@ -29,7 +29,7 @@ filters and feeds both the display and the recorder, so stateful filters
 see each frame exactly once.
 '''
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.lib import QCameraTree, QFilterRack, launch
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
@@ -88,6 +88,9 @@ class FilterRackDemo(QCamcorder):
         self._modeGroup.addButton(self._modeRaw)
         self._modeGroup.addButton(self._modeFiltered)
         self._modeGroup.addButton(self._modeDisplay)
+        self._sources = {self._modeRaw: self.source,
+                         self._modeFiltered: self.rack.pipeline,
+                         self._modeDisplay: self.screen}
 
     def _connectModeSignals(self) -> None:
         self._modeGroup.buttonToggled.connect(self._onModeToggled)
@@ -108,11 +111,6 @@ class FilterRackDemo(QCamcorder):
         self.rack.source = self.dvr.player if playback else self.source
         self.cameraWidget.setDisabled(playback)
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the filter pipeline, then the camera source.'''
-        self.rack.pipeline.stop()
-        super().closeEvent(event)
-
     @QtCore.Slot(QtWidgets.QAbstractButton, bool)
     def _onModeToggled(self,
                        button: QtWidgets.QAbstractButton,
@@ -126,14 +124,8 @@ class FilterRackDemo(QCamcorder):
         checked : bool
             ``True`` when the button is selected; ``False`` on deselection.
         '''
-        if not checked:
-            return
-        if button is self._modeRaw:
-            self.dvr.source = self.source
-        elif button is self._modeFiltered:
-            self.dvr.source = self.rack.pipeline
-        elif button is self._modeDisplay:
-            self.dvr.source = self.screen
+        if checked:
+            self.dvr.source = self._sources[button]
 
 
 if __name__ == '__main__':  # pragma: no cover

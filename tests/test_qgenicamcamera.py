@@ -478,6 +478,59 @@ class TestNode(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestUnconnectedNodeMap
+# ---------------------------------------------------------------------------
+
+class TestUnconnectedNodeMap(unittest.TestCase):
+    '''harvesters can hand over a node map that is not connected.
+
+    Older versions of genicam answer ``has_node('Root')`` with ``False`` for
+    such a map; version 1.6 raises an ``AccessException``.  Both must lead
+    to loading the map by hand.
+    '''
+
+    def open_with(self, **has_node):
+        node_map = _make_node_map()
+        node_map.has_node.configure_mock(**has_node)
+        connected = _make_node_map()
+        with patch.object(_ConcreteCamera, '_load_node_map',
+                          return_value=connected) as load:
+            with self.assertLogs('QVideo.cameras.Genicam._camera',
+                                 level='WARNING'):
+                cam, _, _ = make_camera(device=_make_device(node_map))
+        return cam, load, connected
+
+    def test_an_answer_of_false_loads_the_map_by_hand(self):
+        cam, load, connected = self.open_with(return_value=False)
+        load.assert_called_once()
+        self.assertIs(cam._nodeMap, connected)
+        self.assertTrue(cam.isOpen())
+
+    def test_an_access_exception_loads_the_map_by_hand(self):
+        cam, load, connected = self.open_with(
+            side_effect=RuntimeError('Feature not present'))
+        load.assert_called_once()
+        self.assertIs(cam._nodeMap, connected)
+        self.assertTrue(cam.isOpen())
+
+    def test_a_connected_map_is_used_as_it_is(self):
+        with patch.object(_ConcreteCamera, '_load_node_map') as load:
+            cam, _, device = make_camera()
+        load.assert_not_called()
+        self.assertIs(cam._nodeMap, device.remote_device.node_map)
+
+    def test_a_map_that_cannot_be_loaded_is_reported(self):
+        node_map = _make_node_map()
+        node_map.has_node.side_effect = RuntimeError('Feature not present')
+        with patch.object(_ConcreteCamera, '_load_node_map',
+                          return_value=None):
+            with self.assertLogs('QVideo.cameras.Genicam._camera',
+                                 level='WARNING'):
+                with self.assertRaises(QDeviceError):
+                    make_camera(device=_make_device(node_map))
+
+
+# ---------------------------------------------------------------------------
 # TestHasNode
 # ---------------------------------------------------------------------------
 

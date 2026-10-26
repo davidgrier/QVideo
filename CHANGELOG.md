@@ -7,6 +7,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.7.1] — 2026-10-26
+
+### Fixed
+
+- **GenICam cameras (FLIR) could not be opened with `genicam` 1.6.**
+  When the Spinnaker producer hands over a node map that harvesters has not
+  connected to the camera, `QGenicamCamera` loads the map by hand.  It
+  decided that by asking the map for `Root`.  Older `genicam` answers
+  `False` for an unconnected map, but version 1.6 raises `AccessException`
+  ("Feature not present (reference not valid)"), so the open failed before
+  the fallback ran.  Either answer now leads to the fallback.
+
+---
+
 ## [4.7.0] — unreleased
 
 ### Added

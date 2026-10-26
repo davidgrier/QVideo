@@ -118,7 +118,7 @@ class QGenicamCamera(QCamera):
                 'Check that the camera is connected and powered, and that '
                 'you have permission to access it.') from ex
         self._nodeMap = self._device.remote_device.node_map
-        if not self._nodeMap.has_node('Root'):
+        if not self._isConnected(self._nodeMap):
             logger.warning('harvesters node map unconnected; '
                            'loading manually from device port')
             self._nodeMap = self._load_node_map(self._device)
@@ -294,6 +294,20 @@ class QGenicamCamera(QCamera):
             none of the requested producers exist on the path.
         '''
         return gentl.findProducer(*filenames)
+
+    @staticmethod
+    def _isConnected(nodeMap: 'NodeMap') -> bool:
+        '''Return whether harvesters connected *nodeMap* to the camera.
+
+        A node map that is not connected has no ``Root``.  Older versions of
+        ``genicam`` answer ``False`` for it, and version 1.6 raises
+        ``AccessException`` ("reference not valid") instead; both mean that
+        the map must be loaded by hand.
+        '''
+        try:
+            return nodeMap.has_node('Root')
+        except Exception:
+            return False
 
     @staticmethod
     def _load_node_map(device: 'ImageAcquirer') -> 'NodeMap | None':

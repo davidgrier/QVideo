@@ -173,7 +173,10 @@ state; none of them owns a thread.
 ## Test conventions
 
 - Tests use `unittest` with `unittest.mock`; each file has a module-level `app` singleton.
-- Qt signals are tested with `QtTest.QSignalSpy`.
+- Qt signals are tested by connecting them to a plain list
+  (`signal.connect(received.append)`), which works under every binding.
+  Older tests use `QtTest.QSignalSpy`, which PySide6 does not support;
+  convert them when touching them.
 - Hardware is always mocked — never rely on physical devices in tests.
 - For cameras with optional dependencies, inject mock modules into `sys.modules` **before** importing the module under test:
   ```python

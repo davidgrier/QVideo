@@ -31,6 +31,13 @@ from QVideo.dvr import QDVRWidget
 
 __all__ = ['QCamcorder']
 
+#: Compact layout of the screen and the controls [pixels].
+_MARGINS = (4, 4, 4, 4)
+_SPACING = 3
+
+#: Backlog, as a fraction of the allowance, from which it is shown.
+_SHOW_BACKLOG = 0.25
+
 
 class QCamcorder(QtWidgets.QWidget):
     '''A widget combining a video screen, camera controls, and DVR.
@@ -41,6 +48,11 @@ class QCamcorder(QtWidgets.QWidget):
     frames from the camera source are routed to the screen; when the DVR
     starts playback the screen is switched to the playback stream and the
     camera controls are disabled until playback ends.
+
+    The widget emits :attr:`message` to warn when a recording starts to fall
+    behind the camera and to say why when the DVR stops one.  The host
+    decides where to show it, for instance in the status bar of its main
+    window, as :func:`~QVideo.lib.launch` does.
 
     A :class:`~QVideo.lib.QSnapshot.QSnapshot` is wired to the screen's
     ``newFrame`` signal, enabling still-frame capture via two hotkeys:
@@ -58,7 +70,15 @@ class QCamcorder(QtWidgets.QWidget):
     **kwargs :
         Additional keyword arguments forwarded to
         :class:`~pyqtgraph.Qt.QtWidgets.QWidget`.
+
+    Signals
+    -------
+    message(str)
+        Text for the user, or an empty string to clear it.
     '''
+
+    #: Emitted with text for the user, or ``''`` to clear it.
+    message = QtCore.Signal(str)
 
     def __init__(self,
                  cameraWidget: QCameraTree,
@@ -77,10 +97,14 @@ class QCamcorder(QtWidgets.QWidget):
 
         self.controls = QtWidgets.QWidget(self)
         controlsLayout = QtWidgets.QVBoxLayout(self.controls)
+        controlsLayout.setContentsMargins(*_MARGINS)
+        controlsLayout.setSpacing(_SPACING)
         controlsLayout.addWidget(self.dvr)
         controlsLayout.addWidget(self.cameraWidget)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(*_MARGINS)
+        layout.setSpacing(_SPACING)
         layout.addWidget(self.screen)
         layout.addWidget(self.controls)
         layout.setStretch(0, 1)
@@ -88,6 +112,11 @@ class QCamcorder(QtWidgets.QWidget):
 
     def _connectSignals(self) -> None:
         self.dvr.playing.connect(self.dvrPlayback)
+        self.dvr.recording.connect(self._clearMessage)
+        self.dvr.backlog.connect(self._showBacklog)
+        # Queued, so that the reason follows the end of the recording,
+        # which clears the message.
+        self.dvr.stopped.connect(self.message, QtCore.Qt.QueuedConnection)
         self.screen.newFrame.connect(self._snapshot.newFrame)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -119,6 +148,17 @@ class QCamcorder(QtWidgets.QWidget):
         '''
         self.screen.source = self.dvr.player if playback else self.source
         self.cameraWidget.setDisabled(playback)
+
+    @QtCore.Slot(bool)
+    def _clearMessage(self, recording: bool) -> None:
+        '''Clear the message when a recording starts or ends.'''
+        self.message.emit('')
+
+    @QtCore.Slot(float)
+    def _showBacklog(self, fraction: float) -> None:
+        '''Warn while the writer falls behind the camera.'''
+        self.message.emit(f'Writer backlog: {fraction:.0%} of the limit'
+                          if fraction >= _SHOW_BACKLOG else '')
 
     @property
     def source(self) -> QVideoSource:

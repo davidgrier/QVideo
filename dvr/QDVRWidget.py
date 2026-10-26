@@ -1,5 +1,6 @@
 '''Composite DVR widget for recording and playing back video streams.'''
 from collections.abc import Callable
+import math
 from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
 import numpy as np
@@ -21,6 +22,9 @@ import logging
 
 
 __all__ = ['QDVRWidget']
+
+#: Steps in which the backlog is reported.
+_BACKLOG_STEPS = 20
 
 
 logger = logging.getLogger(__name__)
@@ -83,6 +87,10 @@ class QDVRWidget(QtWidgets.QFrame):
         Emitted when recording starts (``True``) or stops (``False``).
     playing(bool)
         Emitted when playback starts (``True``) or stops (``False``).
+    backlog(float)
+        Emitted while recording whenever the backlog changes by 5% of what
+        is allowed, with the backlog as a fraction of the allowance:
+        ``1.`` is the point at which ``behind`` is emitted.
     behind(float)
         Emitted once each time the recording falls behind the camera by
         more than *lagLimit* seconds or *maxMemory* bytes, with the lag
@@ -105,6 +113,8 @@ class QDVRWidget(QtWidgets.QFrame):
     recording = QtCore.Signal(bool)
     #: Emitted when playback starts (``True``) or stops (``False``).
     playing = QtCore.Signal(bool)
+    #: Emitted as the backlog changes, as a fraction of what is allowed.
+    backlog = QtCore.Signal(float)
     #: Emitted when the recording falls behind the camera, with the lag [s].
     behind = QtCore.Signal(float)
     #: Emitted with the reason when the widget stops a recording itself.
@@ -178,7 +188,7 @@ class QDVRWidget(QtWidgets.QFrame):
         self._writer: object | None = None
         self._player: QVideoSource | None = None
         self._thread: QtCore.QThread | None = None
-        self._late = False
+        self._level = 0
         self._setupUi()
         self._connectSignals()
         self.source = source
@@ -371,7 +381,7 @@ class QDVRWidget(QtWidgets.QFrame):
                                     fps=self.source.fps,
                                     nframes=self.nframes.value(),
                                     nskip=self.nskip.value())
-        self._late = False
+        self._level = 0
         self._budget = (self.maxMemory
                         or 0.8 * psutil.virtual_memory().available)
         self._writer.frameNumber.connect(self.setFrameNumber)
@@ -469,28 +479,34 @@ class QDVRWidget(QtWidgets.QFrame):
     @QtCore.Slot(np.ndarray, object)
     def _watch(self, frame: Image, info: FrameInfo | None = None) -> None:
         '''Compare each captured frame with the newest one the writer has
-        taken up, and report once each time the writer falls behind.
+        taken up, report the backlog, and report once each time the writer
+        falls behind.
 
         The comparison uses the capture times, so it measures the backlog
         even while the writer is stuck inside a single write, and it
         ignores sources that capture slowly.  The memory budget is
         converted to the time it takes the camera to fill it, so one
-        limit serves both.
+        limit serves both.  The backlog is reported in steps, not for
+        every frame.
         '''
         taken = self._writer and self._writer.received
         if info is None or not taken:
             return
-        lag = info.timestamp - taken.timestamp
+        lag = max(info.timestamp - taken.timestamp, 0.)
         fill = self._budget / (self.source.fps * frame.nbytes)
-        late = lag > min(self.lagLimit, fill)
-        if late and not self._late:
+        fraction = lag / min(self.lagLimit, fill)
+        level = math.ceil(fraction * _BACKLOG_STEPS)
+        if level == self._level:
+            return
+        was, self._level = self._level, level
+        self.backlog.emit(fraction)
+        if level > _BACKLOG_STEPS >= was:
             self.behind.emit(lag)
             if self.stopWhenBehind:
                 reason = f'recording fell {lag:.1f} s behind the camera'
                 logger.error(reason)
                 self.stopped.emit(reason)
                 self.stop()
-        self._late = late
 
     @QtCore.Slot(int)
     def setFrameNumber(self, framenumber: int) -> None:

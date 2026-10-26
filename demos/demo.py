@@ -39,8 +39,12 @@ class Demo(QtWidgets.QWidget):
 
     def _setupUi(self) -> None:
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(3)
         layout.addWidget(self.screen)
         self._controls = QtWidgets.QVBoxLayout()
+        self._controls.setContentsMargins(0, 0, 0, 0)
+        self._controls.setSpacing(3)
         layout.addLayout(self._controls)
         layout.setStretch(0, 1)  # screen fills horizontal space
         layout.setStretch(1, 0)  # controls retain natural width

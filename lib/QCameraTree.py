@@ -1,5 +1,5 @@
 '''Auto-building pyqtgraph parameter tree for QCamera property inspection.'''
-from qtpy import QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from QVideo.lib import QCamera, QVideoSource
 import math
@@ -7,6 +7,9 @@ import logging
 
 
 __all__ = ['QCameraTree']
+
+#: Height [pixels] that the tree asks for and is squeezed to at most.
+_MIN_HEIGHT = 120
 
 
 logger = logging.getLogger(__name__)
@@ -132,6 +135,15 @@ class QCameraTree(ParameterTree):
         header.setSectionResizeMode(count - 1, header.ResizeMode.Stretch)
         self.adjustSize()
         self.setMinimumWidth(self.width())
+        # The tree scrolls, so it asks for a few rows and takes the height
+        # that its neighbors leave.
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred,
+                           QtWidgets.QSizePolicy.Policy.Expanding)
+        self.setMinimumHeight(_MIN_HEIGHT)
+
+    def sizeHint(self) -> QtCore.QSize:
+        '''Ask for a few rows of height: the tree scrolls.'''
+        return QtCore.QSize(super().sizeHint().width(), _MIN_HEIGHT)
 
     @staticmethod
     def _updateStep(param: Parameter) -> None:

@@ -108,5 +108,52 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
         self.widget.dvrPlayback(False)  # should not raise
 
 
+class TestQCamcorderMessage(unittest.TestCase):
+
+    def setUp(self):
+        self.widget = make_camcorder()
+        self.addCleanup(self.widget.cameraWidget.stop)
+        self.messages = []
+        self.widget.message.connect(self.messages.append)
+
+    def last(self):
+        app.processEvents()
+        return self.messages[-1] if self.messages else ''
+
+    def test_nothing_is_said_at_first(self):
+        app.processEvents()
+        self.assertEqual(self.messages, [])
+
+    def test_a_large_backlog_is_reported(self):
+        self.widget.dvr.backlog.emit(0.6)
+        self.assertEqual(self.last(), 'Writer backlog: 60% of the limit')
+
+    def test_a_small_backlog_is_not_reported(self):
+        self.widget.dvr.backlog.emit(0.6)
+        self.widget.dvr.backlog.emit(0.1)
+        self.assertEqual(self.last(), '')
+
+    def test_the_end_of_a_recording_clears_the_message(self):
+        self.widget.dvr.backlog.emit(0.6)
+        self.widget.dvr.recording.emit(False)
+        self.assertEqual(self.last(), '')
+
+    def test_the_reason_for_a_stop_is_reported(self):
+        self.widget.dvr.stopped.emit('recording fell 2.0 s behind')
+        self.assertEqual(self.last(), 'recording fell 2.0 s behind')
+
+    def test_the_reason_follows_the_end_of_the_recording(self):
+        self.widget.dvr.backlog.emit(0.9)
+        self.widget.dvr.stopped.emit('recording fell 2.0 s behind')
+        self.widget.dvr.recording.emit(False)
+        self.assertEqual(self.last(), 'recording fell 2.0 s behind')
+
+    def test_a_new_recording_clears_the_reason(self):
+        self.widget.dvr.stopped.emit('recording fell 2.0 s behind')
+        app.processEvents()
+        self.widget.dvr.recording.emit(True)
+        self.assertEqual(self.last(), '')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -7,6 +7,39 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.6.0] — 2026-10-25
+
+### Added
+
+- **`QDVRWidget.backlog(fraction)`** reports how far a recording has fallen
+  behind the camera, as a fraction of what is allowed (`1.` is the point at
+  which `behind` is emitted), in steps of 5% so that it never floods the
+  interface.  An application can warn before anything is lost, and see
+  what `lagLimit` and `maxMemory` should be.
+- **`QCamcorder.message(str)`** carries what the user should know about the
+  recording: the backlog once a recording is a quarter of the way to
+  falling behind, and, when the DVR stopped the recording by itself, why.
+  The host decides where to show it.
+
+### Changed
+
+- **`launch()` shows the application in a `QMainWindow`**, as real
+  applications embed QVideo components, so that sizing and shutdown are
+  exercised in that setting.  The window is titled, closes on Ctrl+Q, and
+  its status bar shows the `message(str)` signal of a widget that has one,
+  such as `QCamcorder`.  `tests/test_mainwindow.py` shows every
+  application as the center of a main window at several video shapes and
+  resizes it.
+- **The control column is more compact**, so the video, not the controls,
+  sets the height of a window and the black bars above and below it shrink.
+  `QCameraTree` asks for 120 pixels of height, instead of its preferred
+  196, and takes the height that its neighbors leave, the screen and
+  controls use 4-pixel margins and 3-pixel spacing, and the record-mode box
+  of `FilterRackDemo` is flat.  `FilterRackDemo` and `CombinedDemo` need
+  about 110 pixels less height and 20 pixels less width.
+
+---
+
 ## [4.5.1] — 2026-10-25
 
 ### Changed

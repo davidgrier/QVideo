@@ -316,6 +316,63 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         self.capture(widget, 14.)
         self.assertEqual(len(lags), 2)
 
+    def test_the_backlog_is_a_fraction_of_the_allowance(self):
+        widget, _ = self.watching()
+        fractions = []
+        widget.backlog.connect(fractions.append)
+        self.capture(widget, 10.5)
+        self.assertEqual(fractions, [0.5])
+
+    def test_the_backlog_is_reported_in_steps(self):
+        widget, _ = self.watching()
+        fractions = []
+        widget.backlog.connect(fractions.append)
+        for t in (10.46, 10.48, 10.5):  # all within one 5% step
+            self.capture(widget, t)
+        self.assertEqual(len(fractions), 1)
+        self.capture(widget, 10.6)
+        self.assertEqual(len(fractions), 2)
+
+    def test_a_writer_keeping_up_reports_nothing(self):
+        widget, _ = self.watching()
+        fractions = []
+        widget.backlog.connect(fractions.append)
+        self.capture(widget, 10.)
+        self.assertEqual(fractions, [])
+
+    def test_a_writer_ahead_of_the_capture_reports_nothing(self):
+        widget, _ = self.watching()
+        fractions = []
+        widget.backlog.connect(fractions.append)
+        self.capture(widget, 9.)
+        self.assertEqual(fractions, [])
+
+    def test_catching_up_is_reported(self):
+        widget, writer = self.watching()
+        fractions = []
+        widget.backlog.connect(fractions.append)
+        self.capture(widget, 10.8)
+        writer.received = FrameInfo(1, 10.8)
+        self.capture(widget, 10.85)
+        self.assertEqual(len(fractions), 2)
+        self.assertLess(fractions[1], fractions[0])
+
+    def test_the_backlog_is_reported_before_the_report_of_falling_behind(self):
+        widget, _ = self.watching(stopWhenBehind=False)
+        events = []
+        widget.backlog.connect(lambda f: events.append('backlog'))
+        widget.behind.connect(lambda lag: events.append('behind'))
+        self.capture(widget, 12.)
+        self.assertEqual(events, ['backlog', 'behind'])
+
+    def test_recording_starts_with_no_backlog(self):
+        widget, source = make_widget_with_source()
+        widget._level = 7
+        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
+                patch.object(QtCore, 'QThread', return_value=MockThread()):
+            widget.record()
+        self.assertEqual(widget._level, 0)
+
     def test_the_limit_can_be_changed(self):
         widget, _ = self.watching(lagLimit=5.)
         self.capture(widget, 12.)

@@ -3,7 +3,7 @@ import runpy
 import unittest
 import warnings
 from unittest.mock import MagicMock, patch
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 from QVideo.lib import QFilterRack
 from QVideo.lib import launch
 from QVideo.lib import _launch as launch_module
@@ -12,33 +12,69 @@ from QVideo.lib import _launch as launch_module
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
+class _Widget(QtWidgets.QWidget):
+    '''Stands in for an application: it records how it was built.'''
+
+    def __init__(self, tree, **kwargs):
+        super().__init__()
+        self.tree = tree
+        self.kwargs = kwargs
+
+
+class _Talker(_Widget):
+    message = QtCore.Signal(str)
+
+
 class TestLaunch(unittest.TestCase):
 
     def run_launch(self, widget, **kwargs):
+        '''Launch *widget*; return the camera chooser and the window.'''
+        shown = []
+
+        def run():
+            shown.extend(w for w in app.topLevelWidgets()
+                         if isinstance(w, QtWidgets.QMainWindow)
+                         and w.isVisible())
+
         with patch.object(launch_module, 'choose_camera') as choose, \
                 patch.object(launch_module.pg, 'mkQApp') as make_app, \
-                patch.object(launch_module.pg, 'exec') as run, \
+                patch.object(launch_module.pg, 'exec', run), \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
             launch(widget, 'Title', **kwargs)
-        return choose, make_app, run
+        self.make_app = make_app
+        for window in shown:
+            self.addCleanup(window.close)
+        return choose, shown[0]
 
-    def test_the_window_is_built_from_the_started_camera(self):
-        window = MagicMock()
-        widget = MagicMock(return_value=window)
-        choose, _, _ = self.run_launch(widget)
-        widget.assert_called_once_with(choose.return_value.start.return_value)
+    def test_the_widget_is_built_from_the_started_camera(self):
+        choose, window = self.run_launch(_Widget)
+        tree = choose.return_value.start.return_value
+        self.assertIs(window.centralWidget().tree, tree)
 
-    def test_further_arguments_reach_the_window(self):
-        widget = MagicMock()
-        self.run_launch(widget, filters=['Canny'])
-        self.assertEqual(widget.call_args.kwargs, {'filters': ['Canny']})
+    def test_further_arguments_reach_the_widget(self):
+        _, window = self.run_launch(_Widget, filters=['Canny'])
+        self.assertEqual(window.centralWidget().kwargs,
+                         {'filters': ['Canny']})
 
-    def test_the_application_is_named_and_the_window_shown_and_run(self):
-        window = MagicMock()
-        _, make_app, run = self.run_launch(MagicMock(return_value=window))
-        make_app.assert_called_once_with('Title')
-        window.show.assert_called_once()
-        run.assert_called_once()
+    def test_the_widget_is_the_center_of_a_main_window(self):
+        _, window = self.run_launch(_Widget)
+        self.assertIsInstance(window, QtWidgets.QMainWindow)
+        self.assertIsInstance(window.centralWidget(), _Widget)
+
+    def test_the_application_and_the_window_are_titled(self):
+        _, window = self.run_launch(_Widget)
+        self.make_app.assert_called_once_with('Title')
+        self.assertEqual(window.windowTitle(), 'Title')
+
+    def test_messages_appear_in_the_status_bar(self):
+        _, window = self.run_launch(_Talker)
+        window.centralWidget().message.emit('falling behind')
+        self.assertEqual(window.statusBar().currentMessage(),
+                         'falling behind')
+
+    def test_a_widget_without_messages_is_left_alone(self):
+        _, window = self.run_launch(_Widget)
+        self.assertIsNone(window.findChild(QtWidgets.QStatusBar))
 
     def test_a_missing_package_ends_the_program_with_its_message(self):
         widget = MagicMock(side_effect=ImportError('install trackpy'))

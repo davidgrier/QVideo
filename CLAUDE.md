@@ -123,12 +123,14 @@ When adding a new backend, update all four of the following:
 
 ### Applications and demos
 
+A demo or application is a widget class that takes the camera tree
 (`QCameraTree`) as its first argument.  Its `__main__` block is one call,
-(`QCameraTree`) as its first argument.  Its `main()` is one call,
 `launch(Class, 'Title')` (`lib/_launch.py`), which chooses the camera from
-the command line, shows the window and runs it.  Demos are recipes: each
-extension is a short named method, and combining extensions is application
-code (see `demos/combineddemo.py`), not a framework feature.
+the command line, makes the widget the center of a `QMainWindow` (as real
+applications embed it; a `message(str)` signal goes to the status bar), and
+runs it.  Demos are recipes: each extension is a short named method, and
+combining extensions is application code (see `demos/combineddemo.py`), not
+a framework feature.
 
 ### DVR (`dvr/`)
 

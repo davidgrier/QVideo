@@ -77,7 +77,9 @@ class FilterRackDemo(QCamcorder):
 
     def _setupModeUi(self) -> None:
         self._modeBox = QtWidgets.QGroupBox('Record from')
+        self._modeBox.setFlat(True)
         layout = QtWidgets.QHBoxLayout(self._modeBox)
+        layout.setContentsMargins(4, 0, 4, 0)
         self._modeRaw = QtWidgets.QRadioButton('Raw')
         self._modeFiltered = QtWidgets.QRadioButton('Filtered')
         self._modeDisplay = QtWidgets.QRadioButton('Display')

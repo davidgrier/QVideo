@@ -15,17 +15,22 @@ def launch(widget: type[QtWidgets.QWidget],
 
     The camera backend comes from the command-line flags described in
     :func:`~QVideo.lib.chooser.choose_camera` (a noise camera if there are
-    none).  The window closes on Ctrl+Q.  A widget that needs an optional
-    package that is not installed ends the program with the error message.
+    none).  The widget becomes the central widget of a
+    :class:`~qtpy.QtWidgets.QMainWindow`, which is how applications embed
+    QVideo components, so that sizing and shutdown are exercised in that
+    setting.  The window has a status bar that shows the messages of a
+    widget with a ``message(str)`` signal, and it closes on Ctrl+Q.  A
+    widget that needs an optional package that is not installed ends the
+    program with the error message.
 
     Parameters
     ----------
     widget : type
-        Class of the application window.  It is called with the camera
-        tree as its first argument, as :class:`~QVideo.demos.demo.Demo` and
+        Class of the central widget.  It is called with the camera tree as
+        its first argument, as :class:`~QVideo.demos.demo.Demo` and
         :class:`~QVideo.QCamcorder.QCamcorder` expect.
     title : str, optional
-        Name of the application.
+        Name of the application and title of the window.
     **kwargs :
         Further keyword arguments for *widget*.
 
@@ -41,9 +46,14 @@ def launch(widget: type[QtWidgets.QWidget],
     app = pg.mkQApp(title)
     tree = choose_camera().start()
     try:
-        window = widget(tree, **kwargs)
+        central = widget(tree, **kwargs)
     except ImportError as error:
         sys.exit(f'Error: {error}')
+    window = QtWidgets.QMainWindow()
+    window.setCentralWidget(central)
+    window.setWindowTitle(title or '')
+    if hasattr(central, 'message'):
+        central.message.connect(window.statusBar().showMessage)
     QtWidgets.QShortcut(
         QtGui.QKeySequence('Ctrl+Q'), window).activated.connect(app.quit)
     window.show()

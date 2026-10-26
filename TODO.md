@@ -304,6 +304,12 @@ of each running its own detector.
   retrospectively.
 - **Playback speed control** — the DVR player currently plays at
   real time; add a rate spinbox for slow-motion and fast-forward review.
+- **Review the layout of `QDVRWidget`** — it stacks five rows (record,
+  save-as, play, play-file, duration/interval) and is 178 pixels tall,
+  the largest fixed part of the control column, so it sets how tall a
+  window must be before the video fits without black bars.  The transport
+  buttons and the two file rows could share rows.  Review the layout in
+  detail, as an interface and not only by size, before changing it.
 
 ---
 

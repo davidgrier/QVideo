@@ -82,7 +82,9 @@ guaranteed.  Their queue is unbounded, so the code that owns a recording
 watches it.  ``QDVRWidget`` compares the capture time of each frame the
 camera delivers (:class:`~QVideo.lib.videotypes.FrameInfo`) with that of
 the newest frame the writer has taken up.  The difference is the backlog,
-and it is measured even while the writer is stuck inside one write.  When
+and it is measured even while the writer is stuck inside one write.
+``backlog(fraction)`` reports it, in steps of 5%, as a fraction of the
+allowance, so an interface can warn before anything is lost.  When
 it exceeds ``lagLimit`` (one second by default), or the time the camera
 needs to fill ``maxMemory`` bytes (80% of the available memory by default),
 the widget emits

@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import threading
+import logging
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
@@ -497,8 +498,10 @@ class TestUnconnectedNodeMap(unittest.TestCase):
         with patch.object(_ConcreteCamera, '_load_node_map',
                           return_value=connected) as load:
             with self.assertLogs('QVideo.cameras.Genicam._camera',
-                                 level='WARNING'):
+                                 level='DEBUG') as logs:
                 cam, _, _ = make_camera(device=_make_device(node_map))
+        self.assertFalse([record for record in logs.records
+                          if record.levelno >= logging.WARNING])
         return cam, load, connected
 
     def test_an_answer_of_false_loads_the_map_by_hand(self):
@@ -526,7 +529,7 @@ class TestUnconnectedNodeMap(unittest.TestCase):
         with patch.object(_ConcreteCamera, '_load_node_map',
                           return_value=None):
             with self.assertLogs('QVideo.cameras.Genicam._camera',
-                                 level='WARNING'):
+                                 level='DEBUG'):
                 with self.assertRaises(QDeviceError):
                     make_camera(device=_make_device(node_map))
 

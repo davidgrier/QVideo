@@ -119,8 +119,8 @@ class QGenicamCamera(QCamera):
                 'you have permission to access it.') from ex
         self._nodeMap = self._device.remote_device.node_map
         if not self._isConnected(self._nodeMap):
-            logger.warning('harvesters node map unconnected; '
-                           'loading manually from device port')
+            logger.debug('harvesters node map unconnected; '
+                         'loading manually from device port')
             self._nodeMap = self._load_node_map(self._device)
             if self._nodeMap is None:
                 self._cleanup()

@@ -26,6 +26,10 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         The maximum number of frames to write.
     nskip : int
         Write every *nskip*-th frame received; 1 writes every frame.
+        The file declares *fps* whatever *nskip* is, so a recording of
+        a source at its own frame rate plays back *nskip* times
+        faster than the scene happened (a time-lapse); HDF5 files
+        also store each frame's capture time.
     kwargs : dict
         Additional keyword arguments to pass to the QObject constructor.
 
@@ -60,6 +64,10 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         The frame rate of the output video [frames per second].
     nskip : int
         Write every *nskip*-th frame received; 1 writes every frame.
+        The file declares *fps* whatever *nskip* is, so a recording of
+        a source at its own frame rate plays back *nskip* times
+        faster than the scene happened (a time-lapse); HDF5 files
+        also store each frame's capture time.
     nframes : int
         The maximum number of frames to write.
     received : FrameInfo or None

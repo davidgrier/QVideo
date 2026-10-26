@@ -338,18 +338,22 @@ acquisition on the host and make the iPad a client in its browser.
   retrospectively.
 - **Playback speed control** — the DVR player currently plays at
   real time; add a rate spinbox for slow-motion and fast-forward review.
-- **Delivered frame rate: to settle on hardware.**  `QCamera.actualFps`
-  (4.7.0) is the rate that a camera delivers, beside `fps`, the rate that
-  was asked for, and `QVideoSource.fps` reports it.  `QGenicamCamera` reads
-  `AcquisitionResultingFrameRate` (then the older names) and falls back to
-  `fps`.  To settle on a FLIR camera: whether the node is the delivered
-  rate or the maximum that the settings allow (then use the smaller of it
-  and the setpoint), and whether it drops when the camera's buffers
-  overrun; compare it with the rate from `FrameInfo` timestamps.  OpenCV
-  cameras use the rate that the driver reports; QVideo does not measure it
-  (decided 2026-10-26).  Separately, the file header ignores the interval
-  setting (`nskip`), so recording every Nth frame plays N times too fast;
-  decide whether that is intended.
+- **Delivered frame rate: settled on a FLIR camera (2026-10-27).**
+  `QCamera.actualFps` (4.7.0) is the rate that a camera delivers, beside
+  `fps`, the rate that was asked for, and `QVideoSource.fps` reports it.
+  `QGenicamCamera` reads `AcquisitionResultingFrameRate` (then the older
+  names) and falls back to `fps`.  On the FLIR camera the node is the
+  delivered rate, not the maximum: 32.640 against 32.63 measured, and
+  13.039 against 13.04 measured with a 2.5-frame exposure.  With
+  `AcquisitionFrameRateEnable` off the camera free-runs and
+  `AcquisitionFrameRate` is read-only and does not follow the exposure, so
+  `fps` alone would mislead; no change to `actualFps` is needed.  Not
+  tested: whether the node falls when the camera's buffers overrun, and
+  whether a request above the maximum is clamped (it needs the frame-rate
+  enable).  OpenCV cameras use the rate that the driver reports; QVideo
+  does not measure it (decided 2026-10-26).  The file header ignores the
+  interval setting (`nskip`) on purpose: recording every Nth frame plays N
+  times faster, a time-lapse (decided 2026-10-27); transcode to change it.
 - **Review the layout of `QDVRWidget`** — it stacks five rows (record,
   save-as, play, play-file, duration/interval) and is 178 pixels tall,
   the largest fixed part of the control column, so it sets how tall a

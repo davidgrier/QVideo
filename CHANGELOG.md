@@ -25,6 +25,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   when an application removes part of its interface.  A regression test
   runs both ways in a subprocess.
 
+### Changed
+
+- **Opening a GenICam camera is quiet.**  Loading the node map by hand,
+  which `genicam` 1.6 with some producers always needs (as with the FLIR
+  camera), is logged at the DEBUG level and no longer as a warning.  A
+  node map that cannot be loaded still stops the open with an error.
+- **Recording every Nth frame is documented as a time-lapse.**  The file
+  declares the frame rate of the source, so it plays back N times faster;
+  HDF5 files keep the capture time of each frame.  The tooltip of the
+  interval control and the `nskip` documentation say so.
+
 ### Fixed
 
 - **Recording through `ROIDemo`'s ROI keeps the capture information.**  The

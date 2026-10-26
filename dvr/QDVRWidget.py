@@ -279,7 +279,8 @@ class QDVRWidget(QtWidgets.QFrame):
 
         labelInterval = QtWidgets.QLabel('Interval', self)
         self.nskip = QtWidgets.QSpinBox(self)
-        self.nskip.setToolTip('Record every Nth frame')
+        self.nskip.setToolTip(
+            'Record every Nth frame; the video plays N times faster')
         self.nskip.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignRight)
         self.nskip.setRange(1, 999)

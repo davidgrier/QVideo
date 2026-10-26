@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''Demo combining a live video feed, camera controls, and a circular-buffer DVR.
+'''Demo: a circular-buffer DVR beside the video.
 
 Run directly::
 
@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree, launch
+from QVideo.lib import launch
 from QVideo.dvr import QCircularDVRWidget
 
 
@@ -16,25 +16,24 @@ __all__ = ['CircularDemo']
 
 class CircularDemo(Demo):
 
-    '''Extends :class:`~QVideo.demos.demo.Demo` with a circular-buffer DVR.
+    '''A recorder that always holds the last few seconds of video.
 
-    Adds a :class:`~QVideo.dvr.QCircularDVRWidget.QCircularDVRWidget`
-    below the camera control tree.  The buffer accumulates continuously;
-    clicking **Save** writes the last N seconds to disk without any
-    prior *record* action.
+    Data flow::
 
-    Parameters
-    ----------
-    cameraTree : QCameraTree
-        The camera control tree widget to display alongside the video feed.
-    **kwargs :
-        Additional keyword arguments forwarded to
-        :class:`~QVideo.demos.demo.Demo`.
+        camera -> screen
+           '----> circular buffer -> file, when you click Save
+
+    The recipe is one widget that listens to the camera, not to the screen,
+    so it keeps every frame at the camera's full rate:
+    :class:`~QVideo.dvr.QCircularDVRWidget.QCircularDVRWidget`.  The buffer
+    fills continuously, and **Save** writes the last N seconds to disk
+    without a prior *record*.  See :class:`~QVideo.demos.demo.Demo` for the
+    parameters.
     '''
 
-    def __init__(self, cameraTree: QCameraTree, **kwargs) -> None:
-        super().__init__(cameraTree, **kwargs)
-        self.dvr = QCircularDVRWidget(self.screen.source)
+    def _setupUi(self) -> None:
+        super()._setupUi()
+        self.dvr = QCircularDVRWidget(self.cameraTree.source)
         self._controls.addWidget(self.dvr)
 
 

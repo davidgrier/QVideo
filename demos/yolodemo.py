@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''Demo combining a live video feed, camera controls, and a YOLO overlay.
+'''Demo: object detection with YOLO, drawn over the video.
 
 Run directly::
 
@@ -17,30 +17,43 @@ __all__ = ['YoloDemo']
 
 
 class YoloDemo(Demo):
-    '''Extends :class:`~QVideo.demos.demo.Demo` with a YOLO overlay.
 
-    Adds a :class:`~QVideo.overlays.yolo.QYoloWidget` control panel
-    below the camera control tree.  Detected object bounding boxes are
-    rendered in real time as a rectangle overlay on the video screen.
+    '''Detected objects marked on the live video.
+
+    Data flow::
+
+        camera -> screen
+           '----> YOLO (worker thread) -> boxes on the screen
+
+    The recipe is the same as for
+    :class:`~QVideo.demos.trackpydemo.TrackpyDemo` with another detector:
+    :class:`~QVideo.overlays.yolo.QYoloWidget` holds the controls, and its
+    ``overlay`` draws the bounding boxes.
 
     Parameters
     ----------
     cameraTree : QCameraTree
         The camera control tree widget to display alongside the video feed.
     model_name : str
-        YOLO model weights file passed to :class:`~QVideo.overlays.yolo.QYoloWidget`.
+        YOLO model weights file passed to
+        :class:`~QVideo.overlays.yolo.QYoloWidget`.
         Default: ``'yolo11n.pt'``.
     **kwargs :
-        Additional keyword arguments forwarded to :class:`~QVideo.demos.demo.Demo`.
+        Additional keyword arguments forwarded to
+        :class:`~QVideo.demos.demo.Demo`.
     '''
 
     def __init__(self,
                  cameraTree: QCameraTree,
                  model_name: str = 'yolo11n.pt',
                  **kwargs) -> None:
+        self._modelName = model_name  # _setupUi runs inside super().__init__
         super().__init__(cameraTree, **kwargs)
-        self.yolo = QYoloWidget(self, model_name=model_name)
-        self.yolo.source = self.screen.source
+
+    def _setupUi(self) -> None:
+        super()._setupUi()
+        self.yolo = QYoloWidget(self, model_name=self._modelName)
+        self.yolo.source = self.cameraTree.source
         self.screen.addOverlay(self.yolo.overlay)
         self._controls.addWidget(self.yolo)
 

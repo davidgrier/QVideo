@@ -128,9 +128,15 @@ A demo or application is a widget class that takes the camera tree
 `launch(Class, 'Title')` (`lib/_launch.py`), which chooses the camera from
 the command line, makes the widget the center of a `QMainWindow` (as real
 applications embed it; a `message(str)` signal goes to the status bar), and
-runs it.  Demos are recipes: each extension is a short named method, and
-combining extensions is application code (see `demos/combineddemo.py`), not
-a framework feature.
+runs it.  Demos are recipes: a recipe overrides `_setupUi()`, calls
+`super()._setupUi()` first, then builds its widgets, connects them and adds
+them to the panel `self._controls` (a layout in both `Demo` and
+`QCamcorder`).  Its class docstring starts with a one-line summary and a
+`Data flow::` sketch.  Wiring that must follow the base class, such as
+`self.screen.source = rack.pipeline`, also goes in `_setupUi()`, because
+both bases connect the camera before it runs; signal connections go in
+`_connectSignals()`.  Combining extensions is application code (see
+`demos/combineddemo.py`), not a framework feature.
 
 ### DVR (`dvr/`)
 

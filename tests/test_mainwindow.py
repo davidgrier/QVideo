@@ -9,6 +9,7 @@ import importlib
 import unittest
 from qtpy import QtCore, QtWidgets
 from QVideo.cameras.Noise._tree import QNoiseTree
+from QVideo.demos.demo import Demo
 from QVideo.lib import QCameraTree
 
 
@@ -143,6 +144,57 @@ class TestCompactControls(unittest.TestCase):
                         for above, below in zip(widgets, widgets[1:]):
                             self.assertLess(above.geometry().bottom(),
                                             below.geometry().top())
+
+
+class TestFirstShow(unittest.TestCase):
+    '''The shape of the video is known before the screen has a window.'''
+
+    SHAPE = QtCore.QSize(640, 360)
+
+    @contextlib.contextmanager
+    def embedded(self, size=None):
+        '''A demo that knows its video shape, in a main window not yet
+        shown, which ends as an application does.'''
+        tree = QNoiseTree()
+        demo = Demo(tree)
+        demo.screen.updateShape(self.SHAPE)  # as a camera that opened
+        window = QtWidgets.QMainWindow()
+        window.setCentralWidget(demo)
+        if size is not None:
+            window.resize(*size)
+        try:
+            yield window, demo
+        finally:
+            window.close()
+            tree.stop()
+            app.aboutToQuit.emit()
+            window.deleteLater()
+            app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+
+    def test_the_window_is_fitted_to_the_video_when_shown(self):
+        with self.embedded() as (window, demo):
+            window.show()
+            settle()
+            screen = demo.screen
+            self.assertAlmostEqual(screen.width() / screen.height(),
+                                   self.SHAPE.width() / self.SHAPE.height(),
+                                   delta=0.03)
+
+    def test_a_window_that_was_sized_is_left_alone(self):
+        with self.embedded(size=(1000, 700)) as (window, demo):
+            window.show()
+            settle()
+            self.assertEqual((window.width(), window.height()), (1000, 700))
+
+    def test_showing_the_screen_again_does_not_resize_the_window(self):
+        with self.embedded() as (window, demo):
+            window.show()
+            settle()
+            window.resize(1100, 650)
+            demo.screen.hide()
+            demo.screen.show()
+            settle()
+            self.assertEqual((window.width(), window.height()), (1100, 650))
 
 
 if __name__ == '__main__':

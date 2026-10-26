@@ -10,28 +10,26 @@ and :class:`~QVideo.filters.threshold.QThresholdFilter` pre-loaded.
 Additional filters can be added interactively via the "Add filter…" button,
 and any filter can be removed or reordered by dragging.
 
-Three recording modes are offered:
+One :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` runs the rack's
+filters and feeds both the display and the recorder, so stateful filters
+see each frame exactly once.  The three recording modes are:
 
 **Raw**
     The unfiltered camera stream at the full camera frame rate.
 
 **Filtered**
-    The rack-processed stream from the filter pipeline, independent of the
+    The rack-processed stream from the pipeline, independent of the
     display throttle.  The pipeline works on its own thread and keeps a
     short queue of frames, so a brief slowdown does not lose frames.
 
 **Display**
     The rack-processed stream at the throttled display rate.  Only
     frames that are actually rendered to screen are recorded.
-
-One :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` runs the rack's
-filters and feeds both the display and the recorder, so stateful filters
-see each frame exactly once.
 '''
 
 from qtpy import QtCore, QtWidgets
 from QVideo.QCamcorder import QCamcorder
-from QVideo.lib import QCameraTree, QFilterRack, launch
+from QVideo.lib import QFilterRack, launch
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
 
@@ -42,40 +40,37 @@ _QUEUE_DEPTH = 8
 
 
 class FilterRackDemo(QCamcorder):
-    '''Camcorder with an interactive filter rack and three recording modes.
 
-    Extends :class:`~QVideo.QCamcorder.QCamcorder` by adding a
-    :class:`~QVideo.lib.QFilterRack.QFilterRack` pre-loaded with
-    :class:`~QVideo.filters.smoothing.QSmoothingFilter` and
-    :class:`~QVideo.filters.threshold.QThresholdFilter`, and
-    a group of radio buttons to select the DVR recording source:
+    '''A camcorder whose frames pass through an editable filter rack.
 
-    - **Raw**: unfiltered frames at the camera's full frame rate.
-    - **Filtered**: rack-processed frames from the filter pipeline.
-    - **Display**: rack-processed frames at the throttled display rate.
+    Data flow::
 
-    Parameters
-    ----------
-    cameraWidget : QCameraTree
-        Camera control tree providing the video source.
-    **kwargs :
-        Additional keyword arguments forwarded to
-        :class:`~QVideo.QCamcorder.QCamcorder`.
+        camera -> filter pipeline -> screen
+           |            |
+           |            +--> recorder, in Filtered mode
+           +---------------> recorder, in Raw mode
+                    screen -> recorder, in Display mode
+
+    Two extensions of :class:`~QVideo.QCamcorder.QCamcorder`, both in
+    :meth:`_setupUi`: a :class:`~QVideo.lib.QFilterRack.QFilterRack`
+    between the camera and the screen, and buttons that choose which stream
+    the recorder saves (**Raw**, **Filtered** or **Display**).
+
+    See :class:`~QVideo.QCamcorder.QCamcorder` for the parameters.
     '''
 
-    def __init__(self, cameraWidget: QCameraTree, **kwargs) -> None:
-        super().__init__(cameraWidget, **kwargs)
-        self.rack = QFilterRack(self, depth=_QUEUE_DEPTH)
-        self.rack.source = self.source
-        self.screen.source = self.rack.pipeline
-        self._setupModeUi()
-        self._connectModeSignals()
-        self.controls.layout().addWidget(self._modeBox)
-        self.controls.layout().addWidget(self.rack)
+    def _setupUi(self) -> None:
+        super()._setupUi()
+        self.rack = QFilterRack(self, source=self.source, depth=_QUEUE_DEPTH)
         self.rack.add(QSmoothingFilter())
         self.rack.add(QThresholdFilter())
+        self.screen.source = self.rack.pipeline
+        self._setupModes()
+        self._controls.addWidget(self._modeBox)
+        self._controls.addWidget(self.rack)
 
-    def _setupModeUi(self) -> None:
+    def _setupModes(self) -> None:
+        '''Make the buttons that choose the stream the recorder saves.'''
         self._modeBox = QtWidgets.QGroupBox('Record from')
         self._modeBox.setFlat(True)
         layout = QtWidgets.QHBoxLayout(self._modeBox)
@@ -94,7 +89,8 @@ class FilterRackDemo(QCamcorder):
                          self._modeFiltered: self.rack.pipeline,
                          self._modeDisplay: self.screen}
 
-    def _connectModeSignals(self) -> None:
+    def _connectSignals(self) -> None:
+        super()._connectSignals()
         self._modeGroup.buttonToggled.connect(self._onModeToggled)
 
     @QtCore.Slot(bool)

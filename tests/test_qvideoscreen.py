@@ -469,8 +469,9 @@ class TestFitToVideo(unittest.TestCase):
             xRange=(0, 640), yRange=(0, 480), padding=0, update=True)
         mock_win.resize.assert_not_called()
 
-    def test_fit_to_video_does_not_set_range_when_resize_pending(self):
-        # When window needs resizing, setRange is deferred to resizeEvent
+    def test_fit_to_video_sets_range_even_when_it_resizes(self):
+        # A window that cannot take the new size does not resize, so the
+        # range must not wait for resizeEvent.
         screen = make_screen()
         screen._videoShape = QtCore.QSize(1280, 1024)
         mock_win = self._make_mock_window(640, 480, sh_w=1280, sh_h=1024)
@@ -478,7 +479,7 @@ class TestFitToVideo(unittest.TestCase):
              patch.object(screen.view, 'setRange') as mock_range, \
              self._mock_screen():
             screen._fitToVideo()
-        mock_range.assert_not_called()
+        mock_range.assert_called_once()
         mock_win.resize.assert_called_once()
 
     def test_fit_to_video_sets_minimum_size_within_cap(self):

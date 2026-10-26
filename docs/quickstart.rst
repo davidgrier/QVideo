@@ -153,3 +153,5 @@ Next steps
 - :doc:`api/cameras` — available camera backends and their options.
 - :doc:`api/filters` — available image filters.
 - :doc:`api/dvr` — recording and playback.
+- :doc:`api/demos` — runnable recipes, from a minimal camera and screen to
+  filters, detection overlays and recording, to read and combine.

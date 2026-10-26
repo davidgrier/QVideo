@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''Demo combining a live video feed, camera controls, and an intensity histogram.
+'''Demo: a live intensity histogram beside the video.
 
 Run directly::
 
@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree, QHistogramWidget, launch
+from QVideo.lib import QHistogramWidget, launch
 
 
 __all__ = ['HistogramDemo']
@@ -15,24 +15,22 @@ __all__ = ['HistogramDemo']
 
 class HistogramDemo(Demo):
 
-    '''Extends :class:`~QVideo.demos.demo.Demo` with a live intensity histogram.
+    '''A live intensity histogram of the frames the screen displays.
 
-    Adds a :class:`~QVideo.lib.QHistogramWidget.QHistogramWidget` below
-    the camera control tree.  The histogram updates on every displayed
-    frame and the draggable level handles adjust the display range fed
-    back to the screen.
+    Data flow::
 
-    Parameters
-    ----------
-    cameraTree : QCameraTree
-        The camera control tree widget to display alongside the video feed.
-    **kwargs :
-        Additional keyword arguments forwarded to
-        :class:`~QVideo.demos.demo.Demo`.
+        camera -> screen -> histogram
+                     ^----------'  the level handles set the display range
+
+    The recipe is one widget that watches the screen:
+    :class:`~QVideo.lib.QHistogramWidget.QHistogramWidget`.  It updates on
+    every displayed frame, and dragging its level handles changes the range
+    that the screen displays.  See :class:`~QVideo.demos.demo.Demo` for the
+    parameters.
     '''
 
-    def __init__(self, cameraTree: QCameraTree, **kwargs) -> None:
-        super().__init__(cameraTree, **kwargs)
+    def _setupUi(self) -> None:
+        super()._setupUi()
         self.histogram = QHistogramWidget(self.screen)
         self._controls.addWidget(self.histogram)
 

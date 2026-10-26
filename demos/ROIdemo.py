@@ -67,12 +67,17 @@ class ROIFilter(pg.RectROI):
 
 
 class ROIDemo(QCamcorder):
-    '''Camcorder demo with a draggable ROI for recording cropped video.
+    '''A camcorder that records only the region inside a draggable ROI.
 
-    Subclasses :class:`~QVideo.QCamcorder.QCamcorder` and overlays a
-    resizable :class:`ROIFilter` on the video screen. While recording,
-    camera frames are routed through the ROI cropper before being saved
-    by the DVR.
+    Data flow::
+
+        camera -> screen (+ ROI rectangle)
+           '----> ROI crop -> recorder, while recording
+
+    Extends :class:`~QVideo.QCamcorder.QCamcorder` with a resizable
+    :class:`ROIFilter` drawn on the video screen.  While recording, the
+    ROI is locked and camera frames are cropped to it before the DVR saves
+    them.
 
     Parameters
     ----------
@@ -125,9 +130,6 @@ class ROIDemo(QCamcorder):
                              removable=False)
         self.screen.view.addItem(self.roi)
         self.dvr.filename = str(Path.home() / 'roidemo.avi')
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
         self.dvr.source = self.roi
 
     def _connectSignals(self) -> None:

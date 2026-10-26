@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''Demo combining a live video feed, camera controls, and illumination-uniformity plots.
+'''Demo: illumination-uniformity plots beside the video.
 
 Run directly::
 
@@ -7,7 +7,7 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree, QUniformityWidget, launch
+from QVideo.lib import QUniformityWidget, launch
 
 
 __all__ = ['UniformityDemo']
@@ -15,26 +15,22 @@ __all__ = ['UniformityDemo']
 
 class UniformityDemo(Demo):
 
-    '''Extends :class:`~QVideo.demos.demo.Demo` with illumination-uniformity plots.
+    '''Plots of the mean intensity across the frames the screen displays.
 
-    Adds a :class:`~QVideo.lib.QUniformityWidget.QUniformityWidget` below
-    the camera control tree.  The widget shows mean intensity as a function
-    of x (averaged over y) and as a function of y (averaged over x),
-    updating on every displayed frame.  Flat traces indicate uniform
-    illumination; any slope, dip, or peak localises non-uniformity
-    spatially.
+    Data flow::
 
-    Parameters
-    ----------
-    cameraTree : QCameraTree
-        The camera control tree widget to display alongside the video feed.
-    **kwargs :
-        Additional keyword arguments forwarded to
-        :class:`~QVideo.demos.demo.Demo`.
+        camera -> screen -> uniformity plots
+
+    The recipe is one widget that watches the screen:
+    :class:`~QVideo.lib.QUniformityWidget.QUniformityWidget`.  It shows the
+    mean intensity as a function of x (averaged over y) and of y (averaged
+    over x), updated on every displayed frame.  Flat traces mean uniform
+    illumination; a slope, dip or peak locates the non-uniformity.  See
+    :class:`~QVideo.demos.demo.Demo` for the parameters.
     '''
 
-    def __init__(self, cameraTree: QCameraTree, **kwargs) -> None:
-        super().__init__(cameraTree, **kwargs)
+    def _setupUi(self) -> None:
+        super()._setupUi()
         self.uniformity = QUniformityWidget(self.screen)
         self._controls.addWidget(self.uniformity)
 

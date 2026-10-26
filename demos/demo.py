@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 '''Minimal demo: live video screen alongside a camera control tree.
 
-Run directly::
+This is the starting point for every recipe in this package.
+Run it directly::
 
     python -m QVideo.demos.demo
 '''
@@ -14,8 +15,19 @@ __all__ = ['Demo']
 
 
 class Demo(QtWidgets.QWidget):
-    '''A demo widget that displays a video feed from a camera
-    alongside a camera control tree.
+    '''Live video beside the controls of the camera that makes it.
+
+    Data flow::
+
+        camera -> screen
+
+    A recipe extends this class by one idea.  It overrides :meth:`_setupUi`
+    and calls ``super()._setupUi()`` first, which makes the screen and the
+    panel of controls.  It then builds its widget, connects it to the
+    camera's source (``self.cameraTree.source``) or to :attr:`screen`, and
+    adds it to the panel, ``self._controls``.  See
+    :class:`~QVideo.demos.histogramdemo.HistogramDemo` for the smallest
+    example.
 
     Parameters
     ----------
@@ -23,19 +35,14 @@ class Demo(QtWidgets.QWidget):
         The camera control tree widget to display alongside the video feed.
     **kwargs :
         Additional keyword arguments forwarded to :class:`QWidget`.
-
-    Notes
-    -----
-    Sets up a horizontal layout containing a video screen on the left
-    and a camera control tree on the right.
     '''
 
     def __init__(self, cameraTree: QCameraTree, **kwargs) -> None:
         super().__init__(**kwargs)
         self.screen = QVideoScreen()
         self.cameraTree = cameraTree
-        self._setupUi()
         self.screen.source = self.cameraTree.source
+        self._setupUi()
 
     def _setupUi(self) -> None:
         layout = QtWidgets.QHBoxLayout(self)

@@ -49,6 +49,11 @@ class QCamcorder(QtWidgets.QWidget):
     starts playback the screen is switched to the playback stream and the
     camera controls are disabled until playback ends.
 
+    A subclass adds an idea by overriding :meth:`_setupUi`: it calls
+    ``super()._setupUi()`` first, then builds its widgets, connects them
+    and adds them to the panel of controls, ``self._controls``.  See
+    :mod:`QVideo.demos` for examples.
+
     The widget emits :attr:`message` to warn when a recording starts to fall
     behind the camera and to say why when the DVR stops one.  The host
     decides where to show it, for instance in the status bar of its main
@@ -88,19 +93,19 @@ class QCamcorder(QtWidgets.QWidget):
         self._setupUi()
         self._snapshot = QSnapshot(self)
         self._connectSignals()
-        self.screen.source = self.source
-        self.dvr.source = self.source
 
     def _setupUi(self) -> None:
         self.screen = QVideoScreen(self)
         self.dvr = QDVRWidget(self)
+        self.screen.source = self.source
+        self.dvr.source = self.source
 
         self.controls = QtWidgets.QWidget(self)
-        controlsLayout = QtWidgets.QVBoxLayout(self.controls)
-        controlsLayout.setContentsMargins(*_MARGINS)
-        controlsLayout.setSpacing(_SPACING)
-        controlsLayout.addWidget(self.dvr)
-        controlsLayout.addWidget(self.cameraWidget)
+        self._controls = QtWidgets.QVBoxLayout(self.controls)
+        self._controls.setContentsMargins(*_MARGINS)
+        self._controls.setSpacing(_SPACING)
+        self._controls.addWidget(self.dvr)
+        self._controls.addWidget(self.cameraWidget)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(*_MARGINS)

@@ -354,11 +354,24 @@ class QVideoScreen(GraphicsLayoutWidget):
                             min(shape.height() // 2, ideal_h))
         if (new_w, new_h) != (window.width(), window.height()):
             window.resize(new_w, new_h)
-            # resizeEvent will call view.setRange after the viewport shrinks
-        else:
-            self.view.setRange(xRange=(0, shape.width()),
-                               yRange=(0, shape.height()),
-                               padding=0, update=True)
+        # A window that cannot take the new size does not resize, so the
+        # range is not left to resizeEvent.
+        self.view.setRange(xRange=(0, shape.width()),
+                           yRange=(0, shape.height()),
+                           padding=0, update=True)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        '''Fit a window that nobody has sized to the video.
+
+        The shape of the video is usually known before the screen is in
+        its window (an application builds the screen, then puts it in a
+        main window), so the window that the shape fitted was not the one
+        that is shown.  A window that has been resized, by the application,
+        by the user or by an earlier fit, is left alone.
+        '''
+        super().showEvent(event)
+        if not self.window().testAttribute(QtCore.Qt.WA_Resized):
+            self._fitToVideo()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         '''Update the ViewBox range to match the video after the viewport is resized.'''

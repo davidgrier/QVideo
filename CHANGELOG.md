@@ -7,6 +7,41 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.7.0] — unreleased
+
+### Changed
+
+- **The demos read as recipes.**  Each one overrides `_setupUi()`, calls
+  `super()._setupUi()` first, and then builds its widgets, connects them
+  and adds them to `self._controls`, the layout of the panel of controls,
+  which `Demo` and `QCamcorder` now both provide.  Each class docstring
+  gives a one-line summary and a `Data flow::` sketch of where the frames
+  go, and the parameters are documented once, in the base class.
+  `tests/test_demo_recipes.py` keeps them that way.
+- **The demos page of the documentation** explains the recipe pattern, lists
+  the demos as a ladder of ideas, and shows the `_setupUi()` of each demo
+  straight from the source, so it cannot drift.  It now covers the
+  histogram, uniformity and circular-buffer demos, which it had missed.
+- `QCamcorder` and `Demo` connect the camera to the screen (and the
+  recorder) inside `_setupUi()`, so that a recipe can replace the source
+  of the screen after calling `super()._setupUi()`.  `Demo` and `QCamcorder`
+  subclasses that set the source in `__init__` keep working.
+
+### Fixed
+
+- **A video larger than two thirds of the screen opened in a window of the
+  wrong shape.**  An application builds the screen, and the camera reports
+  its shape, before the screen is in its main window, so the fit to the
+  video resized the widget itself and the main window opened at Qt's
+  default size, which is capped at two thirds of the screen.  A 1280x720
+  camera on a laptop then showed black bars above and below the image.
+  `QVideoScreen` now fits the window when it is first shown, unless the
+  application or the user has already sized it.  It also sets the view
+  range after every fit, which a window that could not take the new size
+  had left stale.
+
+---
+
 ## [4.6.0] — 2026-10-25
 
 ### Added

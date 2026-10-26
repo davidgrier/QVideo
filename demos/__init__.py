@@ -5,67 +5,57 @@ or more QVideo widgets into a standalone window.  All demos use
 :func:`~QVideo.lib.chooser.choose_camera` to present a camera-selection
 dialog at startup, so no camera-specific code is needed in the demo itself.
 
-Demos
------
+Recipes
+-------
+Each demo adds one idea to the demo before it.  A demo overrides
+``_setupUi()``, calls ``super()._setupUi()`` first, and then builds its
+widget, connects it and adds it to the panel of controls,
+``self._controls``.  Its class docstring starts with a summary and a
+``Data flow`` sketch of where the frames go.  Read them in this order:
+
 demo
-    Minimal layout: live video screen alongside a camera control tree.
-    The starting point for building a custom camera application.
-
-filterdemo
-    Extends :mod:`demo` with a fixed
-    :class:`~QVideo.lib.QFilterRack.QFilterRack` panel, so that
-    image-processing filters can be toggled and adjusted alongside the
-    live feed without slowing the interface.
-
-filterrackdemo
-    Extends :class:`~QVideo.QCamcorder.QCamcorder` with a dynamic
-    :class:`~QVideo.lib.QFilterRack.QFilterRack` and three DVR recording
-    modes: raw (full speed), filtered (full speed), and display (throttled).
-
-ROIdemo
-    Extends :class:`~QVideo.QCamcorder.QCamcorder` with a draggable
-    rectangular ROI overlay.  Only the cropped region is saved when
-    the DVR records, making it easy to capture a sub-region of interest.
-
-trackpydemo
-    Extends :mod:`demo` with a :class:`~QVideo.overlays.trackpy.QTrackpyWidget`
-    panel so that trackpy particle positions are overlaid on the live feed
-    in real time and locate results are available via a signal.
-
-yolodemo
-    Extends :mod:`demo` with a :class:`~QVideo.overlays.yolo.QYoloWidget`
-    panel so that YOLO object-detection bounding boxes are overlaid on the
-    live feed in real time and detection results are available via a signal.
+    Live video beside the controls of the camera that makes it.  The
+    starting point for building a custom camera application.
 
 histogramdemo
-    Extends :mod:`demo` with a
-    :class:`~QVideo.lib.QHistogramWidget.QHistogramWidget` panel showing
-    a live intensity histogram.  The draggable level handles adjust the
-    display range of the video screen in real time.
+    A live intensity histogram, whose draggable level handles set the
+    display range of the screen.
 
 uniformitydemo
-    Extends :mod:`demo` with a
-    :class:`~QVideo.lib.QUniformityWidget.QUniformityWidget` panel showing
-    mean intensity as a function of x and y.  Flat traces indicate uniform
-    illumination; deviations localise non-uniformity spatially.
+    Mean intensity as a function of x and y, to find non-uniform
+    illumination.
 
 circulardemo
-    Extends :mod:`demo` with a
-    :class:`~QVideo.dvr.QCircularDVRWidget.QCircularDVRWidget` below the
-    camera control tree.  The buffer accumulates continuously; clicking
-    **Save** writes the last N seconds to disk without any prior *record*
-    action.
+    A circular-buffer recorder that always holds the last few seconds and
+    writes them to disk on request.  It listens to the camera, not to the
+    screen.
+
+filterdemo
+    A fixed :class:`~QVideo.lib.QFilterRack.QFilterRack` of filters that
+    runs on a worker thread, so that a slow filter leaves the interface
+    responsive.
+
+trackpydemo
+    Particle positions found by trackpy, drawn over the live video.
+
+yolodemo
+    The same recipe with YOLO object detection.
+
+filterrackdemo
+    A :class:`~QVideo.QCamcorder.QCamcorder` whose frames pass through an
+    editable rack, with three recording modes: raw, filtered and displayed.
 
 compositedemo
-    Extends :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy overlay
-    and a "Composite" checkbox.  When checked, the DVR records the rendered
-    scene (video + overlay markers) instead of raw camera frames.
+    A :class:`~QVideo.QCamcorder.QCamcorder` with a trackpy overlay and a
+    checkbox that records the rendered scene, markers included.
 
 combineddemo
-    Extends :mod:`filterrackdemo` with a trackpy overlay that locates
-    particles in the filtered video, and a fourth recording mode that saves
-    the rendered scene.  It is a recipe for an application that combines
-    filters, an overlay and composite recording.
+    Filters, an overlay and composite recording together, as application
+    code: a recipe for combining the ideas above.
+
+ROIdemo
+    A :class:`~QVideo.QCamcorder.QCamcorder` with a draggable region of
+    interest; only the pixels inside it are recorded.
 
 Running
 -------

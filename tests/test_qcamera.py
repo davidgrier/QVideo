@@ -289,6 +289,30 @@ class TestSetattr(unittest.TestCase):
         self.assertEqual(setter_calls, [2.5])
 
 
+class TestActualFps(unittest.TestCase):
+
+    def test_it_is_the_requested_rate_by_default(self):
+        self.assertEqual(make_camera().actualFps, 30.)
+
+    def test_it_follows_the_requested_rate(self):
+        camera = make_camera()
+        camera.fps = 12.
+        self.assertEqual(camera.actualFps, 12.)
+
+    def test_it_is_read_only(self):
+        with self.assertRaises(AttributeError):
+            make_camera().actualFps = 10.
+
+    def test_a_subclass_can_report_what_the_hardware_does(self):
+        class Slow(_FakeCamera):
+            @property
+            def actualFps(self):
+                return 0.5 * self.fps
+        camera = Slow()
+        camera.fps = 20.
+        self.assertEqual((camera.fps, camera.actualFps), (20., 10.))
+
+
 class TestShape(unittest.TestCase):
 
     def test_shape_returns_qsize(self):

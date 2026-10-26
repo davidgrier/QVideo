@@ -55,6 +55,11 @@ class QOpenCVCamera(QCamera):
     - **Explicit** (*width* and *height* both given): applies the
       requested dimensions and *fps* directly.
 
+    OpenCV reports one frame rate, ``fps``, and the camera has no other, so
+    :attr:`~QVideo.lib.QCamera.QCamera.actualFps` is the rate that the
+    driver reports.  QVideo does not second-guess it: a camera that reports
+    a rate it does not deliver is not suitable for serious work.
+
     ``width`` and ``height`` are registered as writable properties.
     Changes are applied to the open device via OpenCV's V4L2 backend, which
     handles the required ``VIDIOC_STREAMOFF`` / ``VIDIOC_S_FMT`` /

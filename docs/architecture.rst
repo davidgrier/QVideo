@@ -38,6 +38,23 @@ through this dict.  Attribute access (``camera.fps``) delegates to
 registered getters via ``__getattr__``, so subclasses need no explicit
 Python properties for camera parameters.
 
+A camera has two frame rates, as GenICam does.  ``fps`` is the rate that
+was asked for, a property that can be set.
+:attr:`~QVideo.lib.QCamera.QCamera.actualFps` is the rate that the camera
+delivers, and it is read-only.  It equals ``fps`` unless the backend can
+learn better from the hardware: a GenICam camera reports it in
+``AcquisitionResultingFrameRate`` (or the node of older firmware), because
+a camera delivers less than it is asked for when its exposure is long or
+its buffers overrun.  :attr:`QVideoSource.fps
+<QVideo.lib.QVideoSource.QVideoSource.fps>` reports ``actualFps``, so the
+recorder's file header, the memory budget of the DVR, the circular buffer
+and the screen all use the rate at which frames arrive.  A video file holds
+one rate, the one at the start of the recording; the HDF5 format also
+stores a timestamp for each frame.  Backends that report no delivered rate,
+such as OpenCV, use the rate that the driver reports.  QVideo does not
+measure it, because a camera that reports a rate it does not deliver is not
+suitable for serious work.
+
 One reentrant lock serializes all access to the device.
 ``registerProperty`` and ``registerMethod`` wrap every getter, setter and
 method in it, and ``saferead`` holds it for each frame, so no property is

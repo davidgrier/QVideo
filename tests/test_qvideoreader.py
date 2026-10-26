@@ -188,6 +188,10 @@ class TestContextManager(unittest.TestCase):
 
 class TestProperties(unittest.TestCase):
 
+    def test_actual_fps_is_the_rate_of_the_file(self):
+        reader = make_reader()
+        self.assertEqual(reader.actualFps, reader.fps)
+
     def test_shape_returns_qsize(self):
         reader = make_reader()
         self.assertIsInstance(reader.shape, QtCore.QSize)

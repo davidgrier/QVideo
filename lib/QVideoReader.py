@@ -149,6 +149,11 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
         '''Frame rate of the video file [frames per second].'''
 
     @property
+    def actualFps(self) -> float:
+        '''Frame rate of the video file, as :attr:`fps`.'''
+        return self.fps
+
+    @property
     @abstractmethod
     def length(self) -> int:
         '''Total number of frames in the video file.'''

@@ -43,6 +43,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     reads (``camera.fps``) and writes (``camera.fps = 30``) are both
     routed through the registered getter and setter.
 
+    A camera has two frame rates, as GenICam does: ``fps`` is the rate that
+    was asked for, and :attr:`actualFps` is the rate that the camera
+    delivers.  Code that consumes frames, such as a recorder, reads the
+    second.
+
     Parameters
     ----------
     *args :
@@ -105,6 +110,17 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
                  exc_val: BaseException | None,
                  exc_tb: TracebackType | None) -> None:
         self.close()
+
+    @property
+    def actualFps(self) -> float:
+        '''Frame rate that the camera delivers [frames per second].
+
+        This is ``fps``, the rate that was asked for, unless a subclass can
+        learn what the hardware really does (a camera may deliver less than
+        it was asked for, for example when its exposure is long or its
+        buffers overrun).  It is read-only: set ``fps``.
+        '''
+        return self.fps
 
     def __getattr__(self, name: str) -> object:
         '''Delegate attribute lookup to registered property getters.

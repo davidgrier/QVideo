@@ -22,6 +22,7 @@ def make_mock_source(fps=30., width=640, height=480,
         frame = _FRAME.copy()
     source = MagicMock()
     source.fps = fps
+    source.actualFps = fps
     source.shape = QtCore.QSize(width, height)
     source.isOpen.return_value = True
     source.saferead.return_value = (read_ok, frame)
@@ -106,10 +107,11 @@ class TestProperties(unittest.TestCase):
         vs = make_vs(source)
         self.assertIs(vs.source, source)
 
-    def test_fps_delegates_to_source(self):
+    def test_fps_is_the_rate_the_source_delivers(self):
         source = make_mock_source(fps=60.)
+        source.actualFps = 45.
         vs = make_vs(source)
-        self.assertEqual(vs.fps, 60.)
+        self.assertEqual(vs.fps, 45.)
 
     def test_shape_delegates_to_source(self):
         source = make_mock_source(width=1280, height=720)

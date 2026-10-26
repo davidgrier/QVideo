@@ -108,8 +108,13 @@ class QVideoSource(QtCore.QThread):
 
     @property
     def fps(self) -> float:
-        '''Frame rate of the video source [frames per second].'''
-        return self.source.fps
+        '''Frame rate that the source delivers [frames per second].
+
+        This is the ``actualFps`` of the camera or reader, not the rate
+        that the camera was asked for, so a recorder or a memory budget
+        built from it matches the frames that arrive.
+        '''
+        return self.source.actualFps
 
     @property
     def shape(self) -> QtCore.QSize:

@@ -9,6 +9,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [4.7.0] — unreleased
 
+### Added
+
+- **`QCamera.actualFps`**, the frame rate that the camera delivers, beside
+  `fps`, the rate that was asked for, as in GenICam.  It is read-only and
+  equals `fps` unless a backend knows better: `QGenicamCamera` reads
+  `AcquisitionResultingFrameRate` (or `ResultingFrameRateAbs` or
+  `ResultingFrameRate` on older firmware) and falls back to `fps`.
+  `QVideoSource.fps` now reports it, so the file header of a recording, the
+  memory budget of the DVR, the circular buffer and the screen use the rate
+  at which frames arrive.  `QVideoReader` has the same property, equal to
+  its `fps`.  OpenCV cameras use the rate that the driver reports, which
+  QVideo does not second-guess.
+
 ### Changed
 
 - **The demos read as recipes.**  Each one overrides `_setupUi()`, calls

@@ -72,6 +72,12 @@ class QGenicamCamera(QCamera):
     _producerHint: str = ''
     _ALIASES = frozenset(('width', 'height', 'fps'))
 
+    #: Nodes that report the frame rate that the camera delivers, in order
+    #: of preference: the standard name, then names of older firmware.
+    _ACTUAL_FPS_NODES = ('AcquisitionResultingFrameRate',
+                         'ResultingFrameRateAbs',
+                         'ResultingFrameRate')
+
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._cameraID = cameraID
@@ -222,6 +228,25 @@ class QGenicamCamera(QCamera):
         except Exception as e:
             logger.warning(f'camera read failed: {e}')
         return frame is not None, frame
+
+    @property
+    def actualFps(self) -> float:
+        '''Frame rate that the camera reports it delivers.
+
+        The first of :attr:`_ACTUAL_FPS_NODES` that the camera has and
+        that reads as a positive number; otherwise ``fps``, the rate that
+        was asked for.
+        '''
+        for name in self._ACTUAL_FPS_NODES:
+            if name in self._properties:
+                try:
+                    value = float(self._properties[name]['getter']())
+                except Exception as ex:
+                    logger.debug(f'cannot read {name}: {ex}')
+                    continue
+                if value > 0.:
+                    return value
+        return self.fps
 
     @property
     def settings(self) -> QCamera.Settings:

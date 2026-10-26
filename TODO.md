@@ -304,6 +304,18 @@ of each running its own detector.
   retrospectively.
 - **Playback speed control** — the DVR player currently plays at
   real time; add a rate spinbox for slow-motion and fast-forward review.
+- **Delivered frame rate: to settle on hardware.**  `QCamera.actualFps`
+  (4.7.0) is the rate that a camera delivers, beside `fps`, the rate that
+  was asked for, and `QVideoSource.fps` reports it.  `QGenicamCamera` reads
+  `AcquisitionResultingFrameRate` (then the older names) and falls back to
+  `fps`.  To settle on a FLIR camera: whether the node is the delivered
+  rate or the maximum that the settings allow (then use the smaller of it
+  and the setpoint), and whether it drops when the camera's buffers
+  overrun; compare it with the rate from `FrameInfo` timestamps.  OpenCV
+  cameras use the rate that the driver reports; QVideo does not measure it
+  (decided 2026-10-26).  Separately, the file header ignores the interval
+  setting (`nskip`), so recording every Nth frame plays N times too fast;
+  decide whether that is intended.
 - **Review the layout of `QDVRWidget`** — it stacks five rows (record,
   save-as, play, play-file, duration/interval) and is 178 pixels tall,
   the largest fixed part of the control column, so it sets how tall a

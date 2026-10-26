@@ -875,5 +875,52 @@ class TestQGenicamSource(unittest.TestCase):
         self.assertIs(src.source, cam)
 
 
+class TestActualFps(unittest.TestCase):
+    '''The rate that the camera reports it delivers.'''
+
+    def make(self, **nodes):
+        '''A camera with the requested rate and the given nodes.'''
+        cam, _, _ = make_camera()
+        cam.registerProperty('fps', getter=lambda: 30., setter=None)
+        for name, value in nodes.items():
+            if isinstance(value, Exception):
+                def getter(error=value):
+                    raise error
+            else:
+                def getter(number=value):
+                    return number
+            cam.registerProperty(name, getter=getter, setter=None)
+        return cam
+
+    def test_the_resulting_rate_is_reported(self):
+        cam = self.make(AcquisitionResultingFrameRate=24.5)
+        self.assertEqual(cam.actualFps, 24.5)
+
+    def test_the_standard_name_comes_first(self):
+        cam = self.make(AcquisitionResultingFrameRate=24.,
+                        ResultingFrameRateAbs=10.)
+        self.assertEqual(cam.actualFps, 24.)
+
+    def test_older_firmware_names_are_used(self):
+        cam = self.make(ResultingFrameRateAbs=18.)
+        self.assertEqual(cam.actualFps, 18.)
+
+    def test_the_requested_rate_is_the_fallback(self):
+        self.assertEqual(self.make().actualFps, 30.)
+
+    def test_a_node_that_cannot_be_read_is_skipped(self):
+        cam = self.make(AcquisitionResultingFrameRate=RuntimeError('busy'),
+                        ResultingFrameRateAbs=18.)
+        self.assertEqual(cam.actualFps, 18.)
+
+    def test_a_node_that_is_not_positive_is_skipped(self):
+        cam = self.make(AcquisitionResultingFrameRate=0.)
+        self.assertEqual(cam.actualFps, 30.)
+
+    def test_the_requested_rate_is_unchanged(self):
+        cam = self.make(AcquisitionResultingFrameRate=24.)
+        self.assertEqual(cam.fps, 30.)
+
+
 if __name__ == '__main__':
     unittest.main()

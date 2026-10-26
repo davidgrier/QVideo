@@ -17,6 +17,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   logs the traceback at the DEBUG level, and probing no longer silences
   the log when debug logging is on.  The quickstart shows how to turn it
   on.
+- **A documented way to shut down.**  `QTrackpyWidget` and `QYoloWidget`
+  have a public `stop()` (it was a private `_cleanup`) that ends the worker
+  thread and can be called twice; they also stop their thread when they are
+  deleted.  The architecture chapter has a "Shutting down" section that
+  lists the `stop()` of each component and the order in which to stop them
+  when an application removes part of its interface.  A regression test
+  runs both ways in a subprocess.
 
 ### Fixed
 

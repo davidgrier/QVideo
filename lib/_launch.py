@@ -21,7 +21,8 @@ def launch(widget: type[QtWidgets.QWidget],
     setting.  The window has a status bar that shows the messages of a
     widget with a ``message(str)`` signal, and it closes on Ctrl+Q.  A
     widget that needs an optional package that is not installed ends the
-    program with the error message.
+    program with the error message.  Quitting stops every thread that the
+    components own (see :ref:`shutting-down`).
 
     Parameters
     ----------

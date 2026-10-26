@@ -195,6 +195,49 @@ built on the framework, following two inheritance chains:
   ``Composite`` checkbox that switches the DVR between recording raw
   frames and recording the rendered scene (video + overlay markers).
 
+.. _shutting-down:
+
+Shutting down
+-------------
+
+Several components run a thread of their own: the camera source, the filter
+pipeline, the recorder and the detection overlays.  Each has a ``stop()``
+method that ends its thread and waits for it to finish.  It is safe to call
+more than once.
+
+* :class:`~QVideo.lib.QCameraTree.QCameraTree`: ``tree.stop()`` stops the
+  camera source.
+* :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`: ``pipeline.stop()``.
+* :class:`~QVideo.lib.QFilterRack.QFilterRack`: nothing; it stops its own
+  pipeline when it is deleted.
+* :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`: ``dvr.stop()``.
+* :class:`~QVideo.overlays.trackpy.QTrackpyWidget` and
+  :class:`~QVideo.overlays.yolo.QYoloWidget`: ``widget.stop()``, which they
+  also do when they are deleted.
+
+**Quitting the application needs nothing from you.**  Every component stops
+itself when the application emits ``aboutToQuit``.
+
+An application that removes part of its interface while it keeps running,
+such as a tool window that is closed and opened again, stops what feeds the
+part first and deletes it afterward:
+
+1. Stop the camera tree and any pipeline that supplies the part you are
+   removing, so that no frame is delivered to a half-deleted interface.
+2. Stop the recorder in it.
+3. Delete the widget or window (``deleteLater()``).
+
+Qt closes a window by sending a close event to that window only, not to the
+widgets inside it, so closing a window does not stop the components that it
+contains; stop them as above.  One more rule keeps a program safe: a worker
+thread must never delete a Qt object (including a widget) that lives in
+another thread.
+
+A component that starts a thread should follow the same pattern: a public,
+repeatable ``stop()``, a connection of ``stop`` to ``aboutToQuit``, and a
+connection of the widget's ``destroyed`` signal to the thread's ``quit`` and
+``wait``.  The overlay example in :doc:`extending` shows it.
+
 Camera backends
 ---------------
 

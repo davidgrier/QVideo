@@ -199,8 +199,10 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
         self._locate.connect(self._worker.locate)
         self._worker.newData.connect(self._onNewData)
         self._thread.start()
+        thread = self._thread
+        self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
         self._setupUi()
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self._cleanup)
+        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
 
     def _setupUi(self) -> None:
         self.setCheckable(True)
@@ -302,11 +304,18 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         '''Stop the worker thread when the widget is closed.'''
-        self._cleanup()
+        self.stop()
         super().closeEvent(event)
 
     @QtCore.Slot()
-    def _cleanup(self) -> None:
+    def stop(self) -> None:
+        '''Disconnect the video source and stop the worker thread.
+
+        The widget also does this when it is deleted and when the
+        application quits.  Calling it first, as the last step before the
+        widget goes, makes the order explicit (see
+        :ref:`shutting-down`).  It is safe to call more than once.
+        '''
         self.source = None
         self._thread.quit()
         self._thread.wait()

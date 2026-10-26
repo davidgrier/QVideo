@@ -294,19 +294,36 @@ class TestQYoloWidgetConfidence(unittest.TestCase):
 
 class TestQYoloWidgetCleanup(unittest.TestCase):
 
-    def test_cleanup_disconnects_source(self):
+    def test_stop_disconnects_source(self):
         w = _make_widget()
         w.source = MockSource()
-        w._cleanup()
+        w.stop()
         self.assertIsNone(w.source)
 
-    def test_cleanup_stops_thread(self):
+    def test_stop_stops_thread(self):
         w = _make_widget()
         w._thread.quit = MagicMock()
         w._thread.wait = MagicMock()
-        w._cleanup()
+        w.stop()
         w._thread.quit.assert_called_once()
         w._thread.wait.assert_called_once()
+
+    def test_stop_twice_is_safe(self):
+        w = _make_widget()
+        w.stop()
+        w.stop()
+        self.assertFalse(w._thread.isRunning())
+
+    def test_deleting_the_widget_stops_the_thread(self):
+        w = _make_widget()
+        thread = w._thread
+        thread.quit = MagicMock()
+        thread.wait = MagicMock()
+        w.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete)
+        thread.quit.assert_called_once()
+        thread.wait.assert_called_once()
 
 
 if __name__ == '__main__':  # pragma: no cover

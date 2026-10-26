@@ -402,10 +402,15 @@ The example below marks the brightest pixel in each frame with a crosshair:
            self.toggled.connect(self._overlay.setVisible)
            self._thread.start()
            self._source = None
+           thread = self._thread
+           self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
            QtCore.QCoreApplication.instance().aboutToQuit.connect(
-               self._cleanup)
+               self.stop)
 
-       def _cleanup(self) -> None:
+       @QtCore.Slot()
+       def stop(self) -> None:
+           '''Stop the worker thread (see :ref:`shutting-down`).'''
+           self.source = None
            self._thread.quit()
            self._thread.wait()
 
@@ -438,8 +443,12 @@ Key design decisions:
   on the widget rather than connecting ``source.newFrame`` directly to the
   worker.  This lets ``_onNewFrame`` gate dispatch on ``isChecked()``, so
   the worker thread is idle when the overlay is disabled.
-- ``_cleanup`` gracefully stops the worker thread when the application exits.
-  Connect it to ``QCoreApplication.instance().aboutToQuit``.
+- ``stop`` ends the worker thread, and it is safe to call twice.  The
+  thread stops when the application quits (``aboutToQuit``) and when the
+  widget is deleted (``destroyed``).  The ``destroyed`` handler refers to
+  the thread through a local name and not through ``self``, which is
+  already being deleted when the signal is emitted.  See
+  :ref:`shutting-down`.
 - ``toggled.connect(self._overlay.setVisible)`` hides the markers when the
   group box is unchecked, giving immediate visual feedback.
 

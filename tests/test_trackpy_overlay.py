@@ -424,19 +424,36 @@ class TestQTrackpyWidgetInvert(unittest.TestCase):
 
 class TestQTrackpyWidgetCleanup(unittest.TestCase):
 
-    def test_cleanup_disconnects_source(self):
+    def test_stop_disconnects_source(self):
         w = _make_widget()
         src = MockSource()
         w.source = src
-        w._cleanup()
+        w.stop()
         self.assertIsNone(w.source)
 
-    def test_cleanup_stops_thread(self):
+    def test_stop_stops_thread(self):
         w = _make_widget()
         thread = w._thread
         thread.quit = MagicMock()
         thread.wait = MagicMock()
-        w._cleanup()
+        w.stop()
+        thread.quit.assert_called_once()
+        thread.wait.assert_called_once()
+
+    def test_stop_twice_is_safe(self):
+        w = _make_widget()
+        w.stop()
+        w.stop()
+        self.assertFalse(w._thread.isRunning())
+
+    def test_deleting_the_widget_stops_the_thread(self):
+        w = _make_widget()
+        thread = w._thread
+        thread.quit = MagicMock()
+        thread.wait = MagicMock()
+        w.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete)
         thread.quit.assert_called_once()
         thread.wait.assert_called_once()
 

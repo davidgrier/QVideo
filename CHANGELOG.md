@@ -7,6 +7,43 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.5.0] — 2026-10-25
+
+These changes are made as if they had been part of 4.0.0, which was released
+days ago: there are no deprecated aliases.
+
+### Added
+
+- **`QFilterRack` now owns the pipeline that runs its filters.**
+  `QFilterRack(source=camera)` creates a `QFilterPipeline` that follows the
+  rack on a worker thread, so a slow filter cannot stall the interface or the
+  camera and a rack that falls behind keeps the newest frame.  Connect
+  consumers to `rack.pipeline`; `rack.source` forwards to the pipeline's
+  source.  A single call replaces the rack-plus-pipeline wiring that
+  `FilterDemo` and `FilterRackDemo` repeated, and the demos no longer need
+  their own pipeline attribute.
+- **`QFilterRackWidget`** is the thread-free panel that `QFilterRack` used to
+  be.  Calling it applies the filters in the caller's thread, which suits
+  recorded frames and designing or exporting a pipeline without a camera.
+
+### Changed
+
+- **`QFilterStack` is now `QFilterPipeline`** (module `lib/QFilterPipeline.py`),
+  because it applies a pipeline of filters; "stack" was ambiguous.  The class
+  is otherwise unchanged and accepts a `QFilterRackWidget` or a
+  `QFilterRack` through `rack=`.  Code that constructs its own pipeline for a
+  rack still works; the rack's own pipeline then sits idle.
+- `FilterDemo`, `FilterRackDemo` and `CombinedDemo` reach their pipeline as
+  `demo.rack.pipeline`.
+
+### Removed
+
+- **`QFPSMeter`.**  Nothing used it, and the frame rate it estimated is
+  already available from the timestamps in `FrameInfo` (see
+  `QCircularBuffer`).
+
+---
+
 ## [4.4.0] — 2026-10-25
 
 ### Added

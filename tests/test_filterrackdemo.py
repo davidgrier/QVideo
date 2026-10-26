@@ -7,7 +7,7 @@ from qtpy.QtTest import QSignalSpy
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.filterrackdemo import FilterRackDemo
-from QVideo.lib import QFilterRack, QFilterStack
+from QVideo.lib import QFilterRack, QFilterPipeline
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
 
@@ -42,21 +42,21 @@ class TestFilterRackDemoInit(unittest.TestCase):
         self.assertTrue(
             any(isinstance(f, QThresholdFilter) for f in widget.rack.filters))
 
-    def test_stack_is_a_filter_stack(self):
+    def test_pipeline_is_a_filter_pipeline(self):
         widget = make_demo()
-        self.assertIsInstance(widget.stack, QFilterStack)
+        self.assertIsInstance(widget.rack.pipeline, QFilterPipeline)
 
-    def test_stack_runs_the_rack(self):
+    def test_pipeline_runs_the_rack(self):
         widget = make_demo()
-        self.assertIs(widget.stack.rack, widget.rack)
+        self.assertIs(widget.rack.pipeline.rack, widget.rack)
 
-    def test_stack_reads_the_camera_source(self):
+    def test_pipeline_reads_the_camera_source(self):
         widget = make_demo()
-        self.assertIs(widget.stack.source, widget.source)
+        self.assertIs(widget.rack.pipeline.source, widget.source)
 
-    def test_screen_displays_the_stack(self):
+    def test_screen_displays_the_pipeline(self):
         widget = make_demo()
-        self.assertIs(widget.screen.source, widget.stack)
+        self.assertIs(widget.screen.source, widget.rack.pipeline)
 
     def test_rack_is_not_also_applied_by_the_screen(self):
         '''One filtered stream feeds display and recording; the screen's
@@ -98,24 +98,24 @@ class TestFilterRackDemoInit(unittest.TestCase):
 
 
 class TestFilterRackDemoDvrPlayback(unittest.TestCase):
-    '''During playback the stack filters the DVR player instead of the
+    '''During playback the pipeline filters the DVR player instead of the
     camera, so playback frames are filtered exactly once.'''
 
     def setUp(self):
         self.widget = make_demo()
 
-    def test_playback_points_the_stack_at_the_player(self):
+    def test_playback_points_the_pipeline_at_the_player(self):
         self.widget.dvrPlayback(True)
-        self.assertIs(self.widget.stack.source, self.widget.dvr.player)
+        self.assertIs(self.widget.rack.pipeline.source, self.widget.dvr.player)
 
-    def test_playback_keeps_the_screen_on_the_stack(self):
+    def test_playback_keeps_the_screen_on_the_pipeline(self):
         self.widget.dvrPlayback(True)
-        self.assertIs(self.widget.screen.source, self.widget.stack)
+        self.assertIs(self.widget.screen.source, self.widget.rack.pipeline)
 
     def test_end_of_playback_restores_the_camera(self):
         self.widget.dvrPlayback(True)
         self.widget.dvrPlayback(False)
-        self.assertIs(self.widget.stack.source, self.widget.source)
+        self.assertIs(self.widget.rack.source, self.widget.source)
 
     def test_camera_controls_follow_playback(self):
         self.widget.dvrPlayback(True)
@@ -133,9 +133,9 @@ class TestFilterRackDemoModes(unittest.TestCase):
         self.widget._onModeToggled(self.widget._modeRaw, True)
         self.assertIs(self.widget.dvr.source, self.widget.source)
 
-    def test_filtered_mode_sets_dvr_source_to_stack(self):
+    def test_filtered_mode_sets_dvr_source_to_pipeline(self):
         self.widget._onModeToggled(self.widget._modeFiltered, True)
-        self.assertIs(self.widget.dvr.source, self.widget.stack)
+        self.assertIs(self.widget.dvr.source, self.widget.rack.pipeline)
 
     def test_display_mode_sets_dvr_source_to_screen(self):
         self.widget._onModeToggled(self.widget._modeDisplay, True)
@@ -144,7 +144,7 @@ class TestFilterRackDemoModes(unittest.TestCase):
     def test_deselect_does_not_change_source(self):
         self.widget._onModeToggled(self.widget._modeFiltered, True)
         self.widget._onModeToggled(self.widget._modeFiltered, False)
-        self.assertIs(self.widget.dvr.source, self.widget.stack)
+        self.assertIs(self.widget.dvr.source, self.widget.rack.pipeline)
 
 
 if __name__ == '__main__':  # pragma: no cover

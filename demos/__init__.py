@@ -13,8 +13,7 @@ demo
 
 filterdemo
     Extends :mod:`demo` with a fixed
-    :class:`~QVideo.lib.QFilterRack.QFilterRack` panel and a
-    :class:`~QVideo.lib.QFilterStack.QFilterStack`, so that
+    :class:`~QVideo.lib.QFilterRack.QFilterRack` panel, so that
     image-processing filters can be toggled and adjusted alongside the
     live feed without slowing the interface.
 

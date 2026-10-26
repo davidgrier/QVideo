@@ -6,7 +6,7 @@ import QVideo.overlays.trackpy as _trackpy_mod
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.combineddemo import CombinedDemo
 from QVideo.demos.filterrackdemo import FilterRackDemo
-from QVideo.lib import QFilterStack
+from QVideo.lib import QFilterPipeline
 from QVideo.overlays.trackpy import QTrackpyWidget, _TrackpyWorker
 
 
@@ -31,12 +31,12 @@ class TestStructure(unittest.TestCase):
 
     def test_particles_are_located_in_the_filtered_stream(self):
         demo = make_demo()
-        self.assertIsInstance(demo.stack, QFilterStack)
-        self.assertIs(demo.trackpy.source, demo.stack)
+        self.assertIsInstance(demo.rack.pipeline, QFilterPipeline)
+        self.assertIs(demo.trackpy.source, demo.rack.pipeline)
 
     def test_the_screen_shows_the_filtered_stream(self):
         demo = make_demo()
-        self.assertIs(demo.screen.source, demo.stack)
+        self.assertIs(demo.screen.source, demo.rack.pipeline)
 
     def test_the_overlay_is_drawn_on_the_screen(self):
         demo = make_demo()
@@ -68,11 +68,11 @@ class TestModes(unittest.TestCase):
         self.assertIs(demo.dvr.source, demo.screen)
         self.assertTrue(demo.screen.composite)
 
-    def test_filtered_records_the_stack_without_the_overlay(self):
+    def test_filtered_records_the_pipeline_without_the_overlay(self):
         demo = make_demo()
         demo._modeComposite.setChecked(True)
         demo._modeFiltered.setChecked(True)
-        self.assertIs(demo.dvr.source, demo.stack)
+        self.assertIs(demo.dvr.source, demo.rack.pipeline)
         self.assertFalse(demo.screen.composite)
 
     def test_display_records_the_screen_without_the_overlay(self):

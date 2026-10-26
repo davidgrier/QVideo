@@ -1,9 +1,9 @@
-'''Unit tests for FilterCode, VideoFilter.to_code, and QFilterRack.exportPipeline.'''
+'''Unit tests for FilterCode, VideoFilter.to_code, and QFilterRackWidget.exportPipeline.'''
 import unittest
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import FilterCode, VideoFilter, QVideoFilter
-from QVideo.lib.QFilterRack import QFilterRack
+from QVideo.lib.QFilterRackWidget import QFilterRackWidget
 from QVideo.filters.smoothing import SmoothingFilter
 from QVideo.filters.threshold import ThresholdFilter
 from QVideo.filters.edge import EdgeFilter
@@ -16,8 +16,8 @@ from QVideo.filters.rgb import RGBFilter
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-def make_rack() -> QFilterRack:
-    return QFilterRack(parent=None)
+def make_rack() -> QFilterRackWidget:
+    return QFilterRackWidget(parent=None)
 
 
 class TestFilterCode(unittest.TestCase):

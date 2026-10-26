@@ -13,9 +13,9 @@ step is a short method of its own:
 1. :class:`~QVideo.QCamcorder.QCamcorder` supplies the screen, the camera
    controls and the recorder.
 2. :class:`~QVideo.demos.filterrackdemo.FilterRackDemo` adds a filter
-   stack: ``camera -> stack -> screen``.
+   pipeline: ``camera -> pipeline -> screen``.
 3. :meth:`CombinedDemo._setupOverlay` adds the trackpy overlay.  It
-   detects particles in the frames of the stack, so it sees what the
+   detects particles in the frames of the pipeline, so it sees what the
    screen shows.
 4. :meth:`CombinedDemo._setupCompositeMode` adds a recording mode that
    saves the rendered scene: the filtered video with the particle
@@ -23,14 +23,14 @@ step is a short method of its own:
 
 Data flow::
 
-    camera -> filter stack -> screen (+ trackpy markers)
+    camera -> filter pipeline -> screen (+ trackpy markers)
                   |             |
                   |             +--> recorder, in Display or Composite mode
                   +--> trackpy detection
                   +--> recorder, in Filtered mode
 
 Extensions that depend on each other, as the overlay depends on the
-stack here, are combined by application code like this and not by the
+pipeline here, are combined by application code like this and not by the
 framework, because only the application knows which stream each one needs.
 '''
 
@@ -71,7 +71,7 @@ class CombinedDemo(FilterRackDemo):
         '''Detect particles in the filtered stream and mark them on the
         screen.'''
         self.trackpy = QTrackpyWidget(self)
-        self.trackpy.source = self.stack
+        self.trackpy.source = self.rack.pipeline
         self.screen.addOverlay(self.trackpy.overlay)
         self.controls.layout().addWidget(self.trackpy)
 

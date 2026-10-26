@@ -34,7 +34,7 @@ class CircleTransformFilter(VideoFilter):
 
     The transform integrates evidence from all ring radii simultaneously,
     so no radius parameter is required.  The computation is heavy, so run
-    the filter in a :class:`~QVideo.lib.QFilterStack.QFilterStack`, which
+    the filter in a :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`, which
     keeps it off the GUI thread.
 
     Parameters

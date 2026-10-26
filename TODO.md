@@ -209,7 +209,7 @@ mostly already exist; what's missing is a thin factory layer over
 them:
 
 - **`Filter()` factory, analogous to `Camera()`/`Screen()`** — this is
-  now `QFilterStack` (`lib/QFilterStack.py`): it wraps a source (and
+  now `QFilterPipeline` (`lib/QFilterPipeline.py`): it wraps a source (and
   optionally a `QFilterRack`), filters on a worker thread, and
   re-emits `newFrame(ndarray, FrameInfo)` with `.fps` and `.shape`, so
   it feeds a `Screen()` or a DVR in turn.  A public
@@ -244,13 +244,13 @@ them:
 
 Today `QYoloWidget`/`QTrackpyWidget` connect to `source.newFrame`
 directly and run their own detection, independent of whatever
-`QFilterStack` is doing. That's a latent
+`QFilterPipeline` is doing. That's a latent
 correctness gap: if a display filter crops or geometrically
 transforms the frame, the overlay's boxes are computed in raw-source
 coordinates but drawn on top of a transformed frame. It also
 duplicates work — `overlays/yolo.py`'s `_YoloWorker` is a hand-rolled
 `QThread` + drop-frame implementation of the latest-wins handoff that
-`QFilterStack` now provides.
+`QFilterPipeline` now provides.
 
 Proposed fix: move detection into a filter stage — e.g.
 `YOLOFilter(VideoFilter)` sitting in the rack, pass-through on
@@ -286,8 +286,8 @@ of each running its own detector.
   than show stale boxes.
 - **Migration cost:** a real refactor of two shipped widgets
   (`QYoloWidget`, `QTrackpyWidget`) plus their tests.  A slow detector
-  would run on the stack's single worker thread and set the pace of
-  every later filter, so a detector probably wants its own stack.
+  would run on the pipeline's single worker thread and set the pace of
+  every later filter, so a detector probably wants its own pipeline.
 - **Natural pairing with the YOLO `cv2.dnn` test case** above — worth
   designing the filter/signal split and the torch-free backend
   together rather than migrating YOLO twice.
@@ -358,7 +358,7 @@ page gives a user enough context to use the module without reading source.
   OpenCV video), the `.newFrame` / `.fps` duck-typing contract, and a short
   wiring example.
 - **Filters** — add prose to any filter section that is still directive-only;
-  include a pipeline composition example using `QFilterStack`.
+  include a pipeline composition example using `QFilterPipeline`.
 - **Overlays** — verify Trackpy and YOLO prose is current; add a paragraph
   covering `QVideoScreen.composite` and composite-frame recording.
 - **Architecture** — add a section on the task framework (`lib/tasks/`) and

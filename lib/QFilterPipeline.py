@@ -1,4 +1,4 @@
-'''Worker thread that runs a stack of video filters.'''
+'''Worker thread that runs a pipeline of video filters.'''
 from collections import deque
 import logging
 import numpy as np
@@ -9,14 +9,14 @@ from QVideo.lib.videotypes import Image, FrameInfo
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['QFilterStack']
+__all__ = ['QFilterPipeline']
 
 
-class QFilterStack(QtCore.QThread):
+class QFilterPipeline(QtCore.QThread):
 
-    '''Apply a stack of filters to a video source on a worker thread.
+    '''Apply a pipeline of filters to a video source on a worker thread.
 
-    The stack sits between a source and its consumers (a screen, a
+    The pipeline sits between a source and its consumers (a screen, a
     recorder, an overlay).  It receives ``newFrame`` from the source,
     runs the filters in order on its own thread, and emits ``newFrame``
     with the result.  The GUI thread is never involved in the
@@ -26,25 +26,25 @@ class QFilterStack(QtCore.QThread):
     frame is passed through unchanged, so a processed frame keeps the
     capture time and index of the frame it came from.
 
-    The stack can stand in for a
+    The pipeline can stand in for a
     :class:`~QVideo.lib.QVideoSource.QVideoSource`: it has ``newFrame``,
     ``shapeChanged``, ``fps`` and ``shape``.
 
     **Frames that arrive while the worker is busy.**  The worker holds up
     to *depth* waiting frames.  With the default ``depth=1`` only the
-    newest frame waits, so the stack always processes the latest frame
+    newest frame waits, so the pipeline always processes the latest frame
     and an interactive display never lags.  A larger *depth* gives a
     bounded queue for recording.  When the queue is full the oldest
     waiting frame is dropped; drops are counted and reported through
     :attr:`framesDropped`.
 
     **Failures.**  A filter that raises is logged, removed from the
-    stack, and reported through :attr:`filterFailed`; the frame continues
+    pipeline, and reported through :attr:`filterFailed`; the frame continues
     through the remaining filters unchanged by the failed one.
 
     **Following a rack.**  With a
-    :class:`~QVideo.lib.QFilterRack.QFilterRack` the stack runs the
-    rack's switched-on filters, follows the rack as filters are added,
+    :class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget` the pipeline
+    runs the rack's switched-on filters, follows the rack as filters are added,
     removed, reordered or toggled, and switches off the rack widget of a
     filter that fails.  The worker thread only ever sees
     :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, never widgets.
@@ -61,15 +61,15 @@ class QFilterStack(QtCore.QThread):
         Filters to apply, in order.
     depth : int
         Number of frames that may wait for the worker.  Default: ``1``.
-    rack : QFilterRack or None
-        Rack whose switched-on filters the stack runs, in place of
+    rack : QFilterRackWidget or None
+        Rack whose switched-on filters the pipeline runs, in place of
         *filters*.
 
     Notes
     -----
-    The stack owns a running thread, so it takes no Qt parent: a parent
+    The pipeline owns a running thread, so it takes no Qt parent: a parent
     would let Qt delete the thread while it runs.  Keep a reference to
-    the stack for as long as it is needed.  The thread stops on
+    the pipeline for as long as it is needed.  The thread stops on
     :meth:`stop`, when the application quits, and when the last
     reference is dropped.
 
@@ -129,7 +129,7 @@ class QFilterStack(QtCore.QThread):
 
     @property
     def rack(self):
-        '''The rack whose filters the stack runs, or ``None``.'''
+        '''The rack whose filters the pipeline runs, or ``None``.'''
         return self._rack
 
     @rack.setter
@@ -202,7 +202,7 @@ class QFilterStack(QtCore.QThread):
                 result = video_filter(frame)
             except Exception as error:
                 logger.exception(f'{type(video_filter).__name__} failed '
-                                 'and was removed from the filter stack')
+                                 'and was removed from the filter pipeline')
                 self.filters = [f for f in self._filters
                                 if f is not video_filter]
                 self.filterFailed.emit(video_filter, error)

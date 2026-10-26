@@ -23,16 +23,16 @@ QFrameRelay
     Latest-frame handoff from a capture thread to a GUI-thread consumer.
 QVideoFilter
     Qt widget wrapper around a :class:`VideoFilter`.
-QFilterRack
+QFilterRackWidget
     Dynamic, user-reorderable pipeline of :class:`QVideoFilter` widgets.
-QFilterStack
-    Worker thread that applies a stack of filters (or a rack) to a source.
+QFilterPipeline
+    Worker thread that applies a pipeline of filters (or a rack) to a source.
+QFilterRack
+    A filter rack that owns a :class:`QFilterPipeline` for a live source.
 QVideoReader
     Abstract base class for video file readers.
 QVideoWriter
     Abstract base class for video file writers.
-QFPSMeter
-    Frame-rate measurement utility.
 QSnapshot
     Hotkey-triggered still-frame capture from any ``newFrame`` signal.
 QListCameras
@@ -45,8 +45,9 @@ from .errors import QCameraError, QDriverError, QDeviceError
 from .QVideoSource import QVideoSource
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
+from .QFilterRackWidget import QFilterRackWidget
+from .QFilterPipeline import QFilterPipeline
 from .QFilterRack import QFilterRack
-from .QFilterStack import QFilterStack
 from .QFrameRelay import QFrameRelay
 from .QVideoFilter import VideoFilter, QVideoFilter
 from .QVideoReader import QVideoReader
@@ -55,7 +56,6 @@ from ._camera import Camera
 from .chooser import choose_camera
 from ._launch import launch
 from .QListCameras import QListCameras
-from .QFPSMeter import QFPSMeter
 from .QHistogramWidget import QHistogramWidget
 from .QUniformityWidget import QUniformityWidget
 from .QSnapshot import QSnapshot
@@ -64,6 +64,7 @@ __all__ = '''Image
            FrameInfo
 clickable Camera choose_camera launch QListCameras
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
-QFilterRack QFilterStack QFrameRelay
+QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
-QFPSMeter QHistogramWidget QUniformityWidget QSnapshot VideoFilter QVideoFilter'''.split()
+QHistogramWidget QUniformityWidget QSnapshot
+VideoFilter QVideoFilter'''.split()

@@ -65,7 +65,7 @@ that interprets the tensor list for the specific model loaded.  The slot
 runs in the Qt main thread, so processing should be lightweight.  For
 heavy post-processing, offload to a ``QThread`` or follow the same
 latest-frame-wins strategy used by
-:class:`~QVideo.lib.QFilterStack.QFilterStack`.
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`.
 
 The example below reads scores and bounding boxes from a NanoDet-Plus
 model:

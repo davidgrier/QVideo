@@ -55,17 +55,17 @@ Stateless filters can also implement
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code`, which returns a
 :class:`~QVideo.lib.QVideoFilter.FilterCode` fragment describing the OpenCV
 and NumPy calls the filter makes.
-:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline` collects these
+:meth:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.exportPipeline` collects these
 fragments to produce a standalone ``filter.py`` file.  See
 :ref:`extending-export` for how to add export support to a custom filter.
 
 .. automodule:: QVideo.lib.QVideoFilter
    :members:
 
-QFilterStack
-------------
+QFilterPipeline
+---------------
 
-:class:`~QVideo.lib.QFilterStack.QFilterStack` runs filters on a worker
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` runs filters on a worker
 thread between a source and its consumers.  It receives ``newFrame`` from
 the source, applies the filters in order, and emits ``newFrame`` with the
 result and the unchanged
@@ -80,23 +80,29 @@ the oldest when more arrive.  The default ``depth=1`` always processes the
 newest frame; a larger depth gives a bounded queue for recording.  Drops
 are counted and reported through ``framesDropped``.
 
-A filter that raises is logged, removed from the stack, and reported
+A filter that raises is logged, removed from the pipeline, and reported
 through ``filterFailed``.  Given a
-:class:`~QVideo.lib.QFilterRack.QFilterRack`, the stack follows the
-rack's switched-on filters and switches off the widget of a filter that
-fails.
+:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`, the pipeline
+follows the rack's switched-on filters and switches off the widget of a
+filter that fails.  :class:`~QVideo.lib.QFilterRack.QFilterRack` builds
+this pairing for you.
 
-.. automodule:: QVideo.lib.QFilterStack
+.. automodule:: QVideo.lib.QFilterPipeline
    :members:
 
-QFilterRack
------------
+QFilterRackWidget
+-----------------
 
-:class:`~QVideo.lib.QFilterRack.QFilterRack` is a dynamic, user-editable
-list of filters with controls.  It wraps each
-filter in a slot that carries a ⋮ drag handle for reordering and a × button
-for removal.  Set :attr:`~QVideo.lib.QFilterRack.QFilterRack.editable` to
+:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget` is a dynamic,
+user-editable list of filters with controls.  It wraps each filter in a
+slot that carries a ⋮ drag handle for reordering and a × button for
+removal.  Set
+:attr:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.editable` to
 ``False`` to hide all editing controls while keeping the pipeline callable.
+
+The widget runs no thread.  Calling it applies the filters in the caller's
+thread, so use it for recorded frames and for designing a pipeline.  For
+a live source use :class:`~QVideo.lib.QFilterRack.QFilterRack`.
 
 The toolbar provides two buttons:
 
@@ -141,6 +147,23 @@ A typical exported file looks like this:
 
        return image
 
+.. automodule:: QVideo.lib.QFilterRackWidget
+   :members:
+
+QFilterRack
+-----------
+
+:class:`~QVideo.lib.QFilterRack.QFilterRack` is a
+:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget` that owns a
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` following its filters.
+It is the class to use with a live source: the filters run on a worker
+thread, a slow filter cannot stall the interface or the camera, and the
+pipeline keeps the newest frame when it falls behind.  Connect consumers to
+its ``pipeline`` attribute::
+
+   rack = QFilterRack(source=camera)
+   screen.source = rack.pipeline
+
 .. automodule:: QVideo.lib.QFilterRack
    :members:
 
@@ -168,12 +191,6 @@ QVideoWriter
 ------------
 
 .. automodule:: QVideo.lib.QVideoWriter
-   :members:
-
-QFPSMeter
----------
-
-.. automodule:: QVideo.lib.QFPSMeter
    :members:
 
 QSnapshot

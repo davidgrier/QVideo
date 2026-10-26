@@ -98,7 +98,7 @@ for a snapshot (`QGenicamCamera.state`), which is read under the lock. `__getatt
 
 **`QCameraTree`** is a `pyqtgraph.parametertree` widget. It reads `camera._properties` to auto-build a control tree — no manual UI code needed per camera. It requires `_properties` to be a proper dict (populated via `registerProperty`).
 
-**`VideoFilter`** objects run in a **`QFilterStack`** (a worker thread), optionally driven by a **`QFilterRack`** of filter widgets, between a source and its consumers.
+**`VideoFilter`** objects run in a **`QFilterPipeline`** (a worker thread), optionally driven by a **`QFilterRack`** of filter widgets (its `QFilterRackWidget` base is the thread-free panel), between a source and its consumers.
 
 ### Camera backends (`cameras/`)
 
@@ -144,17 +144,23 @@ Filters share `QVideo.lib.imageops.grayscale` for color-to-gray conversion
 and lookup tables (`cv2.LUT`, as in `GammaFilter` and `ExposureFilter`) to
 NumPy expressions on whole float images; numba is not used.
 
-Filters are applied by `QFilterStack` (`lib/QFilterStack.py`), a worker thread
-between a source and its consumers (screen, DVR, overlays).  It takes
-`VideoFilter` objects or a `QFilterRack` (`rack=`), passes the `FrameInfo` of
-each frame through unchanged, keeps up to `depth` waiting frames (the default
-`depth=1` always processes the newest), removes and reports a filter that
-raises, and never touches a widget from the worker thread: the rack hands it
-plain `VideoFilter` objects.  Connect consumers to the stack
-(`screen.source = stack`), not to the raw source, so they share one filtered
-stream.  The screen applies no filters.  A filter overrides `process(frame)`
-if it is stateless, or `add`/`get` if it keeps state; none of them owns a
-thread.
+Filters are applied by `QFilterPipeline` (`lib/QFilterPipeline.py`), a
+worker thread between a source and its consumers (screen, DVR, overlays).
+It takes `VideoFilter` objects or a rack widget (`rack=`), passes the
+`FrameInfo` of each frame through unchanged, keeps up to `depth` waiting
+frames (the default `depth=1` always processes the newest), removes and
+reports a filter that raises, and never touches a widget from the worker
+thread: the rack hands it plain `VideoFilter` objects.
+
+The rack comes in two classes.  `QFilterRackWidget` is a pure widget with
+no thread: calling it applies the filters in the caller's thread (recorded
+frames, pipeline design).  `QFilterRack` subclasses it and owns a
+`QFilterPipeline` (`rack.pipeline`) that follows the rack, so a live
+source is filtered off the GUI thread by default.  Connect consumers to
+the pipeline (`screen.source = rack.pipeline`), not to the raw source, so
+they share one filtered stream.  The screen applies no filters.  A filter
+overrides `process(frame)` if it is stateless, or `add`/`get` if it keeps
+state; none of them owns a thread.
 
 ## Test conventions
 

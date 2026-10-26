@@ -8,7 +8,7 @@ Run directly::
 
 from qtpy import QtGui
 from QVideo.demos.demo import Demo
-from QVideo.lib import QCameraTree, QFilterRack, QFilterStack, launch
+from QVideo.lib import QCameraTree, QFilterRack, launch
 
 
 __all__ = ['FilterDemo']
@@ -17,12 +17,12 @@ __all__ = ['FilterDemo']
 class FilterDemo(Demo):
     '''Extends :class:`~QVideo.demos.demo.Demo` with image filters.
 
-    A :class:`~QVideo.lib.QFilterStack.QFilterStack` runs the filters on a
-    worker thread between the camera and the screen, so even a slow filter
-    leaves the interface responsive.  The filters appear in a fixed
+    The filters appear in a fixed
     :class:`~QVideo.lib.QFilterRack.QFilterRack` below the camera control
     tree, where each one can be switched on and off and adjusted alongside
-    the live feed.  See :mod:`~QVideo.demos.filterrackdemo` for a rack
+    the live feed.  The rack runs them on a worker thread between the
+    camera and the screen, so even a slow filter leaves the interface
+    responsive.  See :mod:`~QVideo.demos.filterrackdemo` for a rack
     that can be edited while the program runs.
 
     Parameters
@@ -43,15 +43,15 @@ class FilterDemo(Demo):
                  **kwargs) -> None:
         super().__init__(cameraTree, **kwargs)
         self.rack = QFilterRack(self, editable=False)
+        self.rack.source = self.cameraTree.source
+        self.screen.source = self.rack.pipeline
+        self._controls.addWidget(self.rack)
         for name in filters:
             self.rack.addByName(name)
-        self.stack = QFilterStack(self.cameraTree.source, rack=self.rack)
-        self.screen.source = self.stack
-        self._controls.addWidget(self.rack)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the filter stack before the widget closes.'''
-        self.stack.stop()
+        '''Stop the filter pipeline before the widget closes.'''
+        self.rack.pipeline.stop()
         super().closeEvent(event)
 
 

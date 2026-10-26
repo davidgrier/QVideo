@@ -1,7 +1,7 @@
 '''Unit tests for demos.filterdemo.'''
 import unittest
 from qtpy import QtWidgets
-from QVideo.lib import QFilterRack, QFilterStack, QVideoScreen
+from QVideo.lib import QFilterRack, QFilterPipeline, QVideoScreen
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.demo import Demo
 from QVideo.demos.filterdemo import FilterDemo
@@ -18,7 +18,7 @@ class TestFilterDemo(unittest.TestCase):
     def _make_demo(self, filters=None, tree=None):
         widget = FilterDemo(tree or QNoiseTree(),
                             FILTERS if filters is None else filters)
-        self.addCleanup(widget.stack.stop)
+        self.addCleanup(widget.rack.pipeline.stop)
         return widget
 
     def test_creates_successfully(self):
@@ -34,21 +34,21 @@ class TestFilterDemo(unittest.TestCase):
         tree = QNoiseTree()
         self.assertIs(self._make_demo(tree=tree).cameraTree, tree)
 
-    def test_stack_is_a_filter_stack(self):
-        self.assertIsInstance(self._make_demo().stack, QFilterStack)
+    def test_pipeline_is_a_filter_pipeline(self):
+        self.assertIsInstance(self._make_demo().rack.pipeline, QFilterPipeline)
 
-    def test_stack_reads_the_camera_source(self):
+    def test_pipeline_reads_the_camera_source(self):
         tree = QNoiseTree()
         widget = self._make_demo(tree=tree)
-        self.assertIs(widget.stack.source, tree.source)
+        self.assertIs(widget.rack.pipeline.source, tree.source)
 
-    def test_screen_displays_the_stack(self):
+    def test_screen_displays_the_pipeline(self):
         widget = self._make_demo()
-        self.assertIs(widget.screen.source, widget.stack)
+        self.assertIs(widget.screen.source, widget.rack.pipeline)
 
-    def test_stack_runs_the_rack(self):
+    def test_pipeline_runs_the_rack(self):
         widget = self._make_demo()
-        self.assertIs(widget.stack.rack, widget.rack)
+        self.assertIs(widget.rack.pipeline.rack, widget.rack)
 
     def test_layout_contains_screen(self):
         widget = self._make_demo()
@@ -77,10 +77,10 @@ class TestFilterDemo(unittest.TestCase):
         with self.assertRaises(ValueError):
             FilterDemo(QNoiseTree(), ['No Such Filter'])
 
-    def test_closing_stops_the_stack(self):
+    def test_closing_stops_the_pipeline(self):
         widget = self._make_demo()
         widget.close()
-        self.assertFalse(widget.stack.isRunning())
+        self.assertFalse(widget.rack.pipeline.isRunning())
 
 
 if __name__ == '__main__':  # pragma: no cover

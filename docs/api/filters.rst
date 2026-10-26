@@ -8,7 +8,8 @@ callable: ``filtered = f(frame)``.  The ``Q``-prefixed variants add a
 
 Stateless filters also implement
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` and participate in
-:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline`, which generates
+:meth:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.exportPipeline`,
+which generates
 a standalone ``filter.py`` from the rack's current settings.  Stateful
 filters that accumulate information across frames cannot be expressed as a
 single-frame function and are omitted from the export with a comment.
@@ -372,7 +373,7 @@ normalised per-frame to ``[0, 255]`` and returned as ``uint8``; bright peaks
 indicate ring centres.
 
 The computation is heavy, so run the filter in a
-:class:`~QVideo.lib.QFilterStack.QFilterStack` to keep it off the GUI
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` to keep it off the GUI
 thread.  The companion
 :class:`~QVideo.filters.circletransform.QCircleTransformFilter`
 widget exposes a *window* spinbox.

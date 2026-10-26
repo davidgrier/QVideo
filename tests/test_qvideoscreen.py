@@ -57,7 +57,7 @@ class TestInit(unittest.TestCase):
         self.assertIsInstance(screen._timer, QtCore.QTimer)
 
     def test_screen_applies_no_filters(self):
-        """Filtering is done by a QFilterStack in front of the screen."""
+        """Filtering is done by a QFilterPipeline in front of the screen."""
         self.assertFalse(hasattr(make_screen(), 'filter'))
 
 

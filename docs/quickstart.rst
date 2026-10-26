@@ -108,36 +108,41 @@ camera and provides the source to display:
 Apply image filters
 -------------------
 
-Put a :class:`~QVideo.lib.QFilterStack.QFilterStack` between the source
+Put a :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` between the source
 and the screen.  It runs the filters, in order, on a worker thread of its
 own, so even a slow filter never makes the interface unresponsive:
 
 .. code-block:: python
 
-   from QVideo.lib import QFilterStack
+   from QVideo.lib import QFilterPipeline
    from QVideo.filters import SmoothingFilter, EdgeFilter
 
-   stack = QFilterStack(source, [SmoothingFilter(), EdgeFilter()])
-   screen.source = stack
+   pipeline = QFilterPipeline(source, [SmoothingFilter(), EdgeFilter()])
+   screen.source = pipeline
 
-The stack looks like a source, so a recorder can use it too
-(``dvr.source = stack``) and record exactly what the screen shows.  If
-the filters cannot keep up with the camera, the stack processes the
+The pipeline looks like a source, so a recorder can use it too
+(``dvr.source = pipeline``) and record exactly what the screen shows.  If
+the filters cannot keep up with the camera, the pipeline processes the
 newest frame and counts the frames it skipped (``framesDropped``).  Pass
 ``depth=8`` to queue up to eight frames instead.  A filter that raises
-an exception is logged and removed from the stack; the rest keep
+an exception is logged and removed from the pipeline; the rest keep
 working.
 
 For filters you can add, remove, reorder and switch on or off while the
-program runs, give the stack a :class:`~QVideo.lib.QFilterRack.QFilterRack`:
+program runs, use a :class:`~QVideo.lib.QFilterRack.QFilterRack`.  It is a
+widget that owns the pipeline:
 
 .. code-block:: python
 
    from QVideo.lib import QFilterRack
 
-   rack = QFilterRack()
-   stack = QFilterStack(source, rack=rack)
+   rack = QFilterRack(source=source)
+   screen.source = rack.pipeline
    layout.addWidget(rack)
+
+To apply the same filters to recorded frames, or to design a pipeline
+without a camera, use the thread-free
+:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`.
 
 Next steps
 ----------

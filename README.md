@@ -26,7 +26,7 @@ abstraction and require no camera-specific code.
 - **Threaded video source** — `QVideoSource` wraps any camera in a `QThread`
   and emits `newFrame(ndarray, FrameInfo)` at acquisition rate.
 - **Composable filter pipeline** — `VideoFilter` objects run in a
-  `QFilterStack` on a worker thread between source and consumers (display,
+  `QFilterPipeline` on a worker thread between source and consumers (display,
   recorder); filters include blur, edge detection, RGB channel selection,
   sample-and-hold, binary threshold, and blob coloring.
 - **Graphical overlays** — `QTrackpyWidget` for live particle tracking and

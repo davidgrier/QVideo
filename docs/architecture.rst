@@ -97,8 +97,8 @@ Stopping a recording never discards captured frames: the widget stops
 sending new ones, and the writer finishes those already waiting before it
 closes the file and ends its thread.
 
-:class:`~QVideo.lib.QFilterStack.QFilterStack` and
-:class:`~QVideo.lib.QVideoScreen.QVideoScreen` are latest-wins.  The stack
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` and
+:class:`~QVideo.lib.QVideoScreen.QVideoScreen` are latest-wins.  The pipeline
 keeps ``depth`` waiting frames (one by default) and reports its drops with
 ``framesDropped``; the screen shows at most one frame per throttle
 interval.
@@ -137,13 +137,16 @@ source for composite recording.  Setting
 false-color LUT to grayscale frames at display time without affecting
 the underlying frame data.
 
-:class:`~QVideo.lib.QFilterStack.QFilterStack` runs
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` runs
 :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects on a worker thread
 between a source and its consumers (a screen, a recorder, an overlay), so
 every consumer sees the same filtered stream and a slow filter never makes
 the interface unresponsive.  A
 :class:`~QVideo.lib.QFilterRack.QFilterRack` lets the user add, remove,
-reorder, and adjust the filters while the program runs.
+reorder, and adjust the filters while the program runs, and owns the
+pipeline that applies them.  Its thread-free base class,
+:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`, applies the
+same filters to recorded frames.
 
 Application layer
 -----------------
@@ -158,8 +161,8 @@ built on the framework, following two inheritance chains:
 
 * :class:`~QVideo.demos.demo.Demo` — minimal layout: screen + camera tree.
   :class:`~QVideo.demos.filterdemo.FilterDemo` extends it with a
-  :class:`~QVideo.lib.QFilterRack.QFilterRack` panel and a
-  :class:`~QVideo.lib.QFilterStack.QFilterStack`.
+  :class:`~QVideo.lib.QFilterRack.QFilterRack` panel, which runs its
+  filters on a :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`.
   :class:`~QVideo.demos.trackpydemo.TrackpyDemo` extends it with a
   :class:`~QVideo.overlays.trackpy.QTrackpyWidget` panel and live particle
   markers.

@@ -1,4 +1,4 @@
-'''Unit tests for QFilterStack.'''
+'''Unit tests for QFilterPipeline.'''
 import inspect
 import subprocess
 import sys
@@ -8,8 +8,8 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 from qtpy import QtCore, QtTest, QtWidgets
-from QVideo.lib.QFilterStack import QFilterStack
-from QVideo.lib.QFilterRack import QFilterRack
+from QVideo.lib.QFilterPipeline import QFilterPipeline
+from QVideo.lib.QFilterRackWidget import QFilterRackWidget
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.lib.videotypes import FrameInfo
 
@@ -74,22 +74,22 @@ def wait_until(condition, timeout=3.):
     return condition()
 
 
-class StackTestCase(unittest.TestCase):
+class PipelineTestCase(unittest.TestCase):
 
     def make(self, filters=(), **kwargs):
         self.source = _Source()
-        self.stack = QFilterStack(self.source, filters, **kwargs)
+        self.pipeline = QFilterPipeline(self.source, filters, **kwargs)
         self.out = []
-        self.stack.newFrame.connect(
+        self.pipeline.newFrame.connect(
             lambda frame, info: self.out.append((int(frame[0, 0]), info)))
-        self.addCleanup(self.stack.stop)
-        return self.stack
+        self.addCleanup(self.pipeline.stop)
+        return self.pipeline
 
     def values(self):
         return [value for value, _ in self.out]
 
 
-class TestPassThrough(StackTestCase):
+class TestPassThrough(PipelineTestCase):
 
     def test_frames_pass_through_with_no_filters(self):
         self.make()
@@ -111,7 +111,7 @@ class TestPassThrough(StackTestCase):
         self.assertEqual(self.values(), [0, 1, 2])
 
 
-class TestFilters(StackTestCase):
+class TestFilters(PipelineTestCase):
 
     def test_filters_apply_in_order(self):
         class Double(VideoFilter):
@@ -134,7 +134,7 @@ class TestFilters(StackTestCase):
         self.make([_Add(1)])
         self.source.send(1)
         self.assertTrue(wait_until(lambda: len(self.out) == 1))
-        self.stack.filters = [_Add(10)]
+        self.pipeline.filters = [_Add(10)]
         self.source.send(1)
         self.assertTrue(wait_until(lambda: len(self.out) == 2))
         self.assertEqual(self.values(), [2, 11])
@@ -142,7 +142,7 @@ class TestFilters(StackTestCase):
     def test_filters_property_returns_the_active_filters(self):
         add = _Add(1)
         self.make([add])
-        self.assertEqual(self.stack.filters, (add,))
+        self.assertEqual(self.pipeline.filters, (add,))
 
     def test_a_filter_returning_none_emits_nothing(self):
         self.make([_Nothing()])
@@ -151,14 +151,14 @@ class TestFilters(StackTestCase):
         self.assertEqual(self.out, [])
 
 
-class TestBusyWorker(StackTestCase):
+class TestBusyWorker(PipelineTestCase):
     '''What happens to frames that arrive while the worker is busy.'''
 
     def _busy(self, depth):
         gate = _Gate()
         self.make([gate], depth=depth)
         self.dropped = []
-        self.stack.framesDropped.connect(self.dropped.append)
+        self.pipeline.framesDropped.connect(self.dropped.append)
         self.source.send(0)
         self.assertTrue(gate.started.wait(2.))
         return gate
@@ -190,20 +190,20 @@ class TestBusyWorker(StackTestCase):
     def test_no_drops_when_the_worker_keeps_up(self):
         self.make()
         self.dropped = []
-        self.stack.framesDropped.connect(self.dropped.append)
+        self.pipeline.framesDropped.connect(self.dropped.append)
         for i in range(5):
             self.source.send(i)
             self.assertTrue(wait_until(lambda i=i: len(self.out) == i + 1))
         self.assertEqual(self.dropped, [])
 
 
-class TestFailure(StackTestCase):
+class TestFailure(PipelineTestCase):
 
     def test_failed_filter_is_reported(self):
         boom = _Boom()
         self.make([boom])
         failures = []
-        self.stack.filterFailed.connect(
+        self.pipeline.filterFailed.connect(
             lambda f, error: failures.append((f, error)))
         self.source.send(1)
         self.assertTrue(wait_until(lambda: failures))
@@ -212,7 +212,7 @@ class TestFailure(StackTestCase):
 
     def test_frame_passes_through_the_failed_filter(self):
         self.make([_Add(1), _Boom(), _Add(10)])
-        self.stack.filterFailed.connect(lambda f, e: None)
+        self.pipeline.filterFailed.connect(lambda f, e: None)
         self.source.send(1)
         self.assertTrue(wait_until(lambda: self.out))
         self.assertEqual(self.values(), [12])        # 1 + 1 (skip) + 10
@@ -221,43 +221,44 @@ class TestFailure(StackTestCase):
         boom = _Boom()
         self.make([boom])
         failures = []
-        self.stack.filterFailed.connect(lambda f, e: failures.append(f))
+        self.pipeline.filterFailed.connect(lambda f, e: failures.append(f))
         for i in range(3):
             self.source.send(i)
             self.assertTrue(wait_until(lambda i=i: len(self.out) == i + 1))
         self.assertEqual(len(failures), 1)
-        self.assertNotIn(boom, self.stack.filters)
+        self.assertNotIn(boom, self.pipeline.filters)
 
     def test_failure_is_logged_with_the_filter_name(self):
         self.make([_Boom()])
-        with self.assertLogs('QVideo.lib.QFilterStack', level='ERROR') as cm:
+        with self.assertLogs('QVideo.lib.QFilterPipeline',
+                             level='ERROR') as cm:
             self.source.send(1)
             self.assertTrue(wait_until(lambda: self.out))
         self.assertIn('_Boom', cm.output[0])
 
 
-class TestSourceInterface(StackTestCase):
-    '''The stack can stand in for a QVideoSource.'''
+class TestSourceInterface(PipelineTestCase):
+    '''The pipeline can stand in for a QVideoSource.'''
 
     def test_fps_comes_from_the_source(self):
         self.make()
-        self.assertEqual(self.stack.fps, 30.)
+        self.assertEqual(self.pipeline.fps, 30.)
 
     def test_shape_comes_from_the_source(self):
         self.make()
-        self.assertEqual(self.stack.shape, QtCore.QSize(4, 4))
+        self.assertEqual(self.pipeline.shape, QtCore.QSize(4, 4))
 
     def test_shape_changes_are_forwarded(self):
         self.make()
         seen = []
-        self.stack.shapeChanged.connect(seen.append)
+        self.pipeline.shapeChanged.connect(seen.append)
         self.source.shapeChanged.emit(QtCore.QSize(8, 6))
         self.assertEqual(seen, [QtCore.QSize(8, 6)])
 
     def test_changing_the_source_reroutes_frames(self):
         self.make()
         other = _Source()
-        self.stack.source = other
+        self.pipeline.source = other
         self.source.send(1)
         other.send(2)
         self.assertTrue(wait_until(lambda: self.out))
@@ -265,11 +266,11 @@ class TestSourceInterface(StackTestCase):
         self.assertEqual(self.values(), [2])
 
 
-class TestRack(StackTestCase):
-    '''A stack follows the enabled filters of a QFilterRack.'''
+class TestRack(PipelineTestCase):
+    '''A pipeline follows the enabled filters of a QFilterRackWidget.'''
 
     def setUp(self):
-        self.rack = QFilterRack()
+        self.rack = QFilterRackWidget()
         self.widgets = []
         for n in (1, 10):
             widget = QVideoFilter(None, f'+{n}', _Add(n))
@@ -277,29 +278,29 @@ class TestRack(StackTestCase):
             self.rack.add(widget)
             self.widgets.append(widget)
 
-    def stack_with_rack(self, **kwargs):
-        stack = self.make(rack=self.rack, **kwargs)
-        return stack
+    def pipeline_with_rack(self, **kwargs):
+        pipeline = self.make(rack=self.rack, **kwargs)
+        return pipeline
 
     def test_starts_with_the_checked_filters(self):
-        stack = self.stack_with_rack()
-        self.assertEqual(stack.filters,
+        pipeline = self.pipeline_with_rack()
+        self.assertEqual(pipeline.filters,
                          tuple(w.filter for w in self.widgets))
 
-    def test_toggling_a_filter_updates_the_stack(self):
-        stack = self.stack_with_rack()
+    def test_toggling_a_filter_updates_the_pipeline(self):
+        pipeline = self.pipeline_with_rack()
         self.widgets[0].setChecked(False)
-        self.assertEqual(stack.filters, (self.widgets[1].filter,))
+        self.assertEqual(pipeline.filters, (self.widgets[1].filter,))
 
-    def test_adding_a_filter_updates_the_stack(self):
-        stack = self.stack_with_rack()
+    def test_adding_a_filter_updates_the_pipeline(self):
+        pipeline = self.pipeline_with_rack()
         extra = QVideoFilter(None, 'extra', _Add(100))
         extra.setChecked(True)
         self.rack.add(extra)
-        self.assertEqual(stack.filters[-1], extra.filter)
+        self.assertEqual(pipeline.filters[-1], extra.filter)
 
     def test_frames_are_filtered_by_the_rack_filters(self):
-        self.stack_with_rack()
+        self.pipeline_with_rack()
         self.source.send(1)
         self.assertTrue(wait_until(lambda: self.out))
         self.assertEqual(self.values(), [12])             # 1 + 1 + 10
@@ -308,51 +309,51 @@ class TestRack(StackTestCase):
         boom = QVideoFilter(None, 'boom', _Boom())
         boom.setChecked(True)
         self.rack.add(boom)
-        stack = self.stack_with_rack()
+        pipeline = self.pipeline_with_rack()
         self.source.send(1)
         self.assertTrue(wait_until(lambda: not boom.isChecked()))
         self.assertIn('boom', boom.toolTip())
-        self.assertNotIn(boom.filter, stack.filters)
+        self.assertNotIn(boom.filter, pipeline.filters)
 
     def test_rechecking_a_failed_filter_puts_it_back(self):
         boom = QVideoFilter(None, 'boom', _Boom())
         boom.setChecked(True)
         self.rack.add(boom)
-        stack = self.stack_with_rack()
+        pipeline = self.pipeline_with_rack()
         self.source.send(1)
         self.assertTrue(wait_until(lambda: not boom.isChecked()))
         boom.setChecked(True)
-        self.assertIn(boom.filter, stack.filters)
+        self.assertIn(boom.filter, pipeline.filters)
 
     def test_detaching_the_rack_stops_following_it(self):
-        stack = self.stack_with_rack()
-        stack.rack = None
-        before = stack.filters
+        pipeline = self.pipeline_with_rack()
+        pipeline.rack = None
+        before = pipeline.filters
         self.widgets[0].setChecked(False)
-        self.assertEqual(stack.filters, before)
+        self.assertEqual(pipeline.filters, before)
 
 
-class TestNoSource(StackTestCase):
+class TestNoSource(PipelineTestCase):
 
     def test_source_can_be_cleared(self):
         self.make()
-        self.stack.source = None
+        self.pipeline.source = None
         self.source.send(1)
         QtTest.QTest.qWait(50)
         self.assertEqual(self.out, [])
-        self.assertIsNone(self.stack.source)
+        self.assertIsNone(self.pipeline.source)
 
     def test_source_can_be_set_again_after_clearing(self):
         self.make()
-        self.stack.source = None
-        self.stack.source = self.source
+        self.pipeline.source = None
+        self.pipeline.source = self.source
         self.source.send(3)
         self.assertTrue(wait_until(lambda: self.out))
         self.assertEqual(self.values(), [3])
 
 
 class TestDroppingAStack(unittest.TestCase):
-    """Dropping the last reference to a running stack must not abort Qt
+    """Dropping the last reference to a running pipeline must not abort Qt
     ("QThread: Destroyed while thread is still running")."""
 
     CODE = """
@@ -361,7 +362,7 @@ os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 import numpy as np
 from qtpy import QtCore, QtWidgets
 app = QtWidgets.QApplication([])
-from QVideo.lib import QFilterStack
+from QVideo.lib import QFilterPipeline
 
 
 class Source(QtCore.QObject):
@@ -370,8 +371,8 @@ class Source(QtCore.QObject):
 
 
 def build():
-    stack = QFilterStack(Source())
-    assert stack.isRunning()
+    pipeline = QFilterPipeline(Source())
+    assert pipeline.isRunning()
 
 
 build()
@@ -379,24 +380,25 @@ gc.collect()
 print('survived')
 """
 
-    def test_dropping_a_running_stack_is_safe(self):
+    def test_dropping_a_running_pipeline_is_safe(self):
         result = subprocess.run([sys.executable, '-c', self.CODE],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr[-400:])
         self.assertIn('survived', result.stdout)
         self.assertNotIn('Destroyed while thread', result.stderr)
 
-    def test_a_stack_takes_no_parent(self):
+    def test_a_pipeline_takes_no_parent(self):
         """A parent would let Qt delete the running thread."""
-        self.assertNotIn('parent', inspect.signature(QFilterStack).parameters)
+        parameters = inspect.signature(QFilterPipeline).parameters
+        self.assertNotIn('parent', parameters)
 
     def test_a_failed_construction_is_quiet(self):
         code = ("import os\n"
                 "os.environ['QT_QPA_PLATFORM'] = 'offscreen'\n"
                 "from qtpy import QtWidgets\n"
                 "app = QtWidgets.QApplication([])\n"
-                "from QVideo.lib import QFilterStack\n"
-                "try:\n    QFilterStack()\n"
+                "from QVideo.lib import QFilterPipeline\n"
+                "try:\n    QFilterPipeline()\n"
                 "except TypeError:\n    pass\n"
                 "import gc; gc.collect(); print('done')\n")
         result = subprocess.run([sys.executable, '-c', code],
@@ -405,33 +407,33 @@ print('survived')
         self.assertNotIn('Exception ignored', result.stderr)
 
 
-class TestLifecycle(StackTestCase):
+class TestLifecycle(PipelineTestCase):
 
     def test_finalizer_ignores_a_deleted_thread(self):
-        stack = self.make()
-        with patch.object(QFilterStack, 'isRunning',
+        pipeline = self.make()
+        with patch.object(QFilterPipeline, 'isRunning',
                           side_effect=RuntimeError):
-            stack.__del__()
-        self.assertTrue(stack.isRunning())
+            pipeline.__del__()
+        self.assertTrue(pipeline.isRunning())
 
     def test_thread_is_running_after_creation(self):
         self.make()
-        self.assertTrue(self.stack.isRunning())
+        self.assertTrue(self.pipeline.isRunning())
 
     def test_stop_ends_the_thread(self):
         self.make()
-        self.stack.stop()
-        self.assertFalse(self.stack.isRunning())
+        self.pipeline.stop()
+        self.assertFalse(self.pipeline.isRunning())
 
     def test_stop_is_idempotent(self):
         self.make()
-        self.stack.stop()
-        self.stack.stop()
-        self.assertFalse(self.stack.isRunning())
+        self.pipeline.stop()
+        self.pipeline.stop()
+        self.assertFalse(self.pipeline.isRunning())
 
     def test_frames_after_stop_are_ignored(self):
         self.make()
-        self.stack.stop()
+        self.pipeline.stop()
         self.source.send(1)
         QtTest.QTest.qWait(50)
         self.assertEqual(self.out, [])
@@ -442,8 +444,8 @@ class TestLifecycle(StackTestCase):
         self.source.send(1)
         self.assertTrue(gate.started.wait(2.))
         gate.release.set()
-        self.stack.stop()
-        self.assertFalse(self.stack.isRunning())
+        self.pipeline.stop()
+        self.assertFalse(self.pipeline.isRunning())
 
 
 if __name__ == '__main__':  # pragma: no cover

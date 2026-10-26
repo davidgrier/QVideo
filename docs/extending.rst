@@ -46,15 +46,20 @@ logic stays separate from UI concerns.
    ``super()._setupUi()`` first, then add controls to ``self._layout``
    (a horizontal :class:`~pyqtgraph.Qt.QtWidgets.QHBoxLayout`).
 
-:class:`~QVideo.lib.QFilterStack.QFilterStack`
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`
    Runs :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, in order, on
    a worker thread between a source and its consumers.  A screen or a
-   recorder uses the stack as its source.
+   recorder uses the pipeline as its source.
+
+:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`
+   A user-editable list of :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
+   widgets.  It runs no thread; calling it applies the switched-on filters
+   in the caller's thread.
 
 :class:`~QVideo.lib.QFilterRack.QFilterRack`
-   A user-editable list of :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
-   widgets.  Give it to a stack with ``rack=`` and the stack runs the
-   filters that are switched on.
+   A rack widget that owns a pipeline.  The pipeline runs the filters that
+   are switched on, on a worker thread, and follows the rack as the user
+   edits it.
 
 
 Writing a stateless filter
@@ -204,7 +209,8 @@ then clips back to 8-bit.
 Supporting pipeline export
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline` generates a
+:meth:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.exportPipeline`
+generates a
 standalone Python file from the rack's current settings.  It calls
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` on each enabled filter
 and assembles the results.  The default implementation returns ``None``, which
@@ -287,28 +293,28 @@ expressed as a single-frame pure function.  Leave ``to_code`` returning ``None``
 Using filters in a pipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Via a filter stack** (the filters run on a worker thread, and the screen
+**Via a filter pipeline** (the filters run on a worker thread, and the screen
 and a recorder share one filtered stream):
 
 .. code-block:: python
 
-   from QVideo.lib import QFilterStack
+   from QVideo.lib import QFilterPipeline
    from QVideo.filters import SmoothingFilter, EdgeFilter
 
-   stack = QFilterStack(source, [SmoothingFilter(), EdgeFilter()])
-   screen.source = stack
-   dvr.source = stack
+   pipeline = QFilterPipeline(source, [SmoothingFilter(), EdgeFilter()])
+   screen.source = pipeline
+   dvr.source = pipeline
 
-A stack takes :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, or
-a :class:`~QVideo.lib.QFilterRack.QFilterRack` through ``rack=``.
+A pipeline takes :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, or
+a rack widget through ``rack=``.
 
 **By name, with a rack** (when the filter class is not imported directly):
 
 .. code-block:: python
 
-   rack = QFilterRack()
+   rack = QFilterRack(source=source)
    rack.addByName('Smoothing')
-   stack = QFilterStack(source, rack=rack)
+   screen.source = rack.pipeline
 
 ----
 

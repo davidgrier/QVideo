@@ -22,7 +22,7 @@ class QVideoScreen(GraphicsLayoutWidget):
     Displays frames from a :class:`~QVideo.lib.QVideoSource` in real time,
     with optional frame-rate throttling.  The screen applies no filters;
     to display filtered frames, make a
-    :class:`~QVideo.lib.QFilterStack.QFilterStack` its source.
+    :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` its source.
 
     Inherits from :class:`pyqtgraph.GraphicsLayoutWidget`.
 

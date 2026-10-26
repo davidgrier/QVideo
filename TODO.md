@@ -294,6 +294,40 @@ of each running its own detector.
 
 ---
 
+## Remote display and control: an iPad as the instrument panel
+
+Idea (2026-10-26): watch and steer an experiment from an iPad over Wi-Fi.
+A native iOS port is not practical: PySide6 runs on iOS only since Qt 6.12
+and is early, and there are no iOS builds of OpenCV, `psutil` or `h5py`.
+iOS also cannot load a GenTL `.cti` producer or reach USB3 Vision and GigE
+cameras, so only UVC webcams would work.  Keep the camera and the
+acquisition on the host and make the iPad a client in its browser.
+
+- **Expected display rate**, estimated from JPEG sizes measured on a Mac
+  (8-bit gray, OpenCV quality 95; not yet measured over Wi-Fi): 640x480 is
+  88 KB per frame, 21 Mbit/s at 30 fps; 1280x720 is 217 KB, 51 Mbit/s;
+  1920x1080 is 498 KB, 117 Mbit/s.  Quality 80 needs a half to a third of
+  that.  A good Wi-Fi 5 or 6 link sustains 100-400 Mbit/s, so expect a
+  steady 20-30 fps up to 1080p, and a delay of about 60-150 ms from sensor
+  to screen.  That suits watching and steering, not a feedback loop, which
+  stays on the host.  Faster than 30-60 fps needs a video codec (H.264 or
+  HEVC over WebRTC), not JPEG.
+- **`Camera.live_view` is not built for a network.**  It sets an
+  `ipywidgets.Image` every 1/30 s and sends each frame through the Jupyter
+  connection as base64, without asking whether the client kept up, so on a
+  slow link the picture falls behind in time instead of dropping frames.
+- **A streaming component**: the camera keeps its full hardware rate and
+  only the display is limited; send the newest frame only (the idea of
+  `QFrameRelay`) and wait for the client to acknowledge before sending the
+  next; binary frames over a WebSocket, or MJPEG over HTTP, with the size
+  and quality chosen to fit the link; overlays (particle markers, an ROI)
+  sent as data and drawn by the client; controls through the existing
+  property interface.
+- **To do first**: prototype the stream and measure it on David's network
+  with an iPad, comparing 720p and 1080p and qualities 80 and 95.
+
+---
+
 ## DVR Enhancements
 
 - **Metadata sidecar** — write a JSON file alongside each recording

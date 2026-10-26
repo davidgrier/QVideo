@@ -40,6 +40,9 @@ Tested platforms
    * -
      - Windows
      - Not tested
+   * - :class:`~QVideo.cameras.Picamera.QPicamera`
+     - Raspberry Pi OS (Raspberry Pi 5)
+     - Tested
 
 On macOS 26.7.1 (Tahoe), the OpenCV backend was tested with OpenCV
 5.0.0_11 and the FLIR backend with Spinnaker SDK 4.4.0.246.

@@ -123,6 +123,7 @@ Verified on real hardware (the unit tests mock all hardware):
 |---------|-------|--------|-----------------|---------|
 | OpenCV | 14 – 26 | 24.04 | tested | not tested |
 | FLIR (GenICam) | 14 – 26 | 24.04 | — | not tested |
+| Raspberry Pi camera | — | — | tested (Pi 5) | — |
 
 On macOS 26.7.1 (Tahoe), the OpenCV backend was tested with OpenCV
 5.0.0_11 and the FLIR backend with Spinnaker SDK 4.4.0.246.  Other combinations are expected to work but have not been

@@ -144,6 +144,21 @@ To apply the same filters to recorded frames, or to design a pipeline
 without a camera, use the thread-free
 :class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`.
 
+If a camera will not open
+-------------------------
+
+The camera factory reports why a camera could not be opened in one line,
+for example ``Flir: Feature not present``, and falls back to the simulated
+camera.  To see where in QVideo or in the camera library it failed, turn on
+debug logging, which also prints the traceback::
+
+    python -c "import logging
+    logging.basicConfig(level=logging.DEBUG)
+    from QVideo.QCamcorder import main
+    main()" -f
+
+Replace ``-f`` by the flag of your camera (see :doc:`api/demos`).
+
 Next steps
 ----------
 

@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.7.2] — unreleased
+
+### Added
+
+- **A camera that fails to open logs where it failed.**  The camera factory
+  reported only the message of the exception, so a failure inside a camera
+  library (as with FLIR and `genicam` 1.6) could not be located.  It now
+  logs the traceback at the DEBUG level, and probing no longer silences
+  the log when debug logging is on.  The quickstart shows how to turn it
+  on.
+
+---
+
 ## [4.7.1] — 2026-10-26
 
 ### Fixed

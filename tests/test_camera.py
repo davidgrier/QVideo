@@ -1,5 +1,6 @@
 '''Unit tests for lib/_camera.py.'''
 import asyncio
+import logging
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
@@ -164,6 +165,31 @@ class TestOpenErrors(unittest.TestCase):
         with patch('importlib.import_module', side_effect=boom):
             self.assertIsNone(camera_module._open('flir', 0, errors))
         self.assertEqual(errors, [('Flir', boom)])
+
+    def test_open_logs_where_the_failure_was(self):
+        boom = RuntimeError('Feature not present')
+        with patch('importlib.import_module', side_effect=boom):
+            with self.assertLogs('QVideo.lib._camera', 'DEBUG') as logs:
+                camera_module._open('flir', 0, [])
+        record = [r for r in logs.records if r.levelname == 'DEBUG'][0]
+        self.assertIn('Flir', record.getMessage())
+        self.assertIs(record.exc_info[1], boom)
+
+    def test_probing_is_quiet_unless_debug_logging_is_on(self):
+        logger = logging.getLogger('QVideo')
+        for level, shown in ((logging.WARNING, False), (logging.DEBUG, True)):
+            with self.subTest(level=level):
+                saved = logger.level
+                logger.setLevel(level)
+                try:
+                    with camera_module._quiet():
+                        self.assertEqual(
+                            logger.isEnabledFor(logging.DEBUG), shown)
+                        self.assertEqual(logger.level, level if shown
+                                         else logging.ERROR)
+                    self.assertEqual(logger.level, level)
+                finally:
+                    logger.setLevel(saved)
 
     def test_ensure_open_error_lists_reason_per_backend(self):
         proxy = _CameraProxy([('flir', 0), ('basler', 0)])

@@ -71,6 +71,7 @@ def _open(key: str, camera_id: int = 0, errors: list | None = None):
         return cls(cameraID=camera_id)
     except Exception as ex:
         logger.warning(f'Could not open {entry.label}: {ex}')
+        logger.debug(f'Where {entry.label} failed to open:', exc_info=True)
         if errors is not None:
             errors.append((entry.label, ex))
         return None
@@ -91,10 +92,15 @@ def _discover(model: str | None, camera_id: int = 0) -> list[tuple[str, int]]:
 
 @contextlib.contextmanager
 def _quiet():
-    '''Suppress sub-ERROR log messages from QVideo loggers during probing.'''
+    '''Suppress sub-ERROR log messages from QVideo loggers during probing.
+
+    Nothing is suppressed when debug logging is on, so that the tracebacks
+    of failures to open a camera can be seen.
+    '''
     root = logging.getLogger('QVideo')
     saved = root.level
-    root.setLevel(logging.ERROR)
+    if root.getEffectiveLevel() > logging.DEBUG:
+        root.setLevel(logging.ERROR)
     try:
         yield
     finally:

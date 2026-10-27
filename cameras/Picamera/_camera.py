@@ -154,14 +154,7 @@ class QPicamera(QCamera):
             return False
         if self._device is None:
             return False
-        try:
-            info = self._device.global_camera_info()
-            if isinstance(info, list) and self._cameraID < len(info):
-                sensor = info[self._cameraID].get('Model')
-                if sensor is not None:
-                    self._modelName = _CAMERA_MODELS.get(sensor, sensor)
-        except Exception as ex:
-            logger.debug(f'cannot read the camera model: {ex}')
+        self._readModelName()
         # Save controls set before this restart (e.g. fps changed while
         # the device was closed).  _probeControls will overwrite
         # _controlValues from fresh metadata, so we save them here and
@@ -178,17 +171,7 @@ class QPicamera(QCamera):
             with suppress(Exception):
                 self._deinitialize()
             return False
-        register = self.registerProperty
-        register('width', getter=self._getWidth,
-                 setter=self._setWidth, ptype=int)
-        register('height', getter=self._getHeight,
-                 setter=self._setHeight, ptype=int)
-        register('color', getter=self._getColor,
-                 setter=self._setColor, ptype=bool)
-        register('hflip', getter=self._getHflip,
-                 setter=self._setHflip, ptype=bool)
-        register('vflip', getter=self._getVflip,
-                 setter=self._setVflip, ptype=bool)
+        self._registerGeometry()
         metadata = self._device.capture_metadata()
         self._probeControls(metadata)
         self._registerFrameRate(metadata)
@@ -202,6 +185,31 @@ class QPicamera(QCamera):
             self._device.set_controls(pending)
             self._controlValues.update(pending)
         return True
+
+    def _readModelName(self) -> None:
+        '''Name the camera after the sensor that the device reports.'''
+        try:
+            info = self._device.global_camera_info()
+            if isinstance(info, list) and self._cameraID < len(info):
+                sensor = info[self._cameraID].get('Model')
+                if sensor is not None:
+                    self._modelName = _CAMERA_MODELS.get(sensor, sensor)
+        except Exception as ex:
+            logger.debug(f'cannot read the camera model: {ex}')
+
+    def _registerGeometry(self) -> None:
+        '''Register the size, color and orientation of the frames.'''
+        register = self.registerProperty
+        register('width', getter=self._getWidth,
+                 setter=self._setWidth, ptype=int)
+        register('height', getter=self._getHeight,
+                 setter=self._setHeight, ptype=int)
+        register('color', getter=self._getColor,
+                 setter=self._setColor, ptype=bool)
+        register('hflip', getter=self._getHflip,
+                 setter=self._setHflip, ptype=bool)
+        register('vflip', getter=self._getVflip,
+                 setter=self._setVflip, ptype=bool)
 
     @staticmethod
     def _limits(lo: float | None, hi: float | None) -> dict[str, float]:

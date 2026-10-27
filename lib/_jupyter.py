@@ -30,6 +30,52 @@ def _finite(v) -> bool:
         return False
 
 
+def _initial(value, ptype: type):
+    '''Return *value*, or the default of *ptype* if the camera has none.'''
+    if value is None or (isinstance(value, float) and not _finite(value)):
+        try:
+            return ptype()
+        except (TypeError, ValueError):
+            return 0
+    return value
+
+
+def _control(ptype: type, value, spec: dict,
+             disabled: bool) -> widgets.Widget:
+    '''Return the widget that edits a property of type *ptype*.
+
+    A bool is a checkbox, a str with limits a dropdown and any other str a
+    text box.  A number with finite limits is a slider and any other number
+    a text box.
+    '''
+    minimum, maximum = spec.get('minimum'), spec.get('maximum')
+    step, limits = spec.get('step'), spec.get('limits')
+    layout = widgets.Layout(flex='1 1 auto')
+    common = dict(disabled=disabled, layout=layout)
+    slider = dict(common, continuous_update=False,
+                  style={'description_width': '0px'})
+    ranged = _finite(minimum) and _finite(maximum)
+    if ptype is bool:
+        return widgets.Checkbox(value=bool(value), indent=False, **common)
+    if ptype is str:
+        if limits:
+            return widgets.Dropdown(options=limits, value=str(value),
+                                    **common)
+        return widgets.Text(value=str(value), **common)
+    if ptype is int:
+        if ranged:
+            step = (int(step) if step is not None
+                    else max(1, round((maximum - minimum) / 100)))
+            return widgets.IntSlider(value=int(value), min=int(minimum),
+                                     max=int(maximum), step=step, **slider)
+        return widgets.IntText(value=int(value), **common)
+    if ranged:
+        step = float(step) if step is not None else (maximum - minimum) / 100.
+        return widgets.FloatSlider(value=float(value), min=float(minimum),
+                                   max=float(maximum), step=step, **slider)
+    return widgets.FloatText(value=float(value), **common)
+
+
 class LiveView:
     '''Handle for a running live video feed.
 
@@ -170,71 +216,18 @@ class CameraControls:
         widgets.Widget
             A configured, observable widget bound to the property.
         '''
-        ptype    = spec.get('ptype', float)
-        value    = spec['getter']()
-        setter   = spec['setter']
-        disabled = setter is None
-        minimum  = spec.get('minimum')
-        maximum  = spec.get('maximum')
-        step     = spec.get('step')
-        limits   = spec.get('limits')
-
-        if value is None or (isinstance(value, float) and not _finite(value)):
-            try:
-                value = ptype()
-            except (TypeError, ValueError):
-                value = 0
-
-        has_range = (_finite(minimum) and _finite(maximum))
-
-        layout = widgets.Layout(flex='1 1 auto')
-
-        if ptype is bool:
-            w = widgets.Checkbox(
-                value=bool(value), disabled=disabled,
-                indent=False, layout=layout)
-
-        elif ptype is str and limits:
-            w = widgets.Dropdown(
-                options=limits, value=str(value),
-                disabled=disabled, layout=layout)
-
-        elif ptype is str:
-            w = widgets.Text(
-                value=str(value), disabled=disabled, layout=layout)
-
-        elif ptype is int and has_range:
-            s = (int(step) if step is not None
-                 else max(1, round((maximum - minimum) / 100)))
-            w = widgets.IntSlider(
-                value=int(value), min=int(minimum), max=int(maximum),
-                step=s, disabled=disabled, continuous_update=False,
-                style={'description_width': '0px'}, layout=layout)
-
-        elif ptype is int:
-            w = widgets.IntText(
-                value=int(value), disabled=disabled, layout=layout)
-
-        elif has_range:
-            s = float(step) if step is not None else (maximum - minimum) / 100.
-            w = widgets.FloatSlider(
-                value=float(value), min=float(minimum), max=float(maximum),
-                step=s, disabled=disabled, continuous_update=False,
-                style={'description_width': '0px'}, layout=layout)
-
-        else:
-            w = widgets.FloatText(
-                value=float(value), disabled=disabled, layout=layout)
-
-        if not disabled:
-            def _on_change(change, _setter=setter, _ptype=ptype, _name=name):
+        ptype = spec.get('ptype', float)
+        setter = spec['setter']
+        value = _initial(spec['getter'](), ptype)
+        w = _control(ptype, value, spec, disabled=setter is None)
+        if setter is not None:
+            def _on_change(change):
                 if not self._updating:
                     try:
-                        _setter(_ptype(change['new']))
+                        setter(ptype(change['new']))
                     except Exception as ex:
-                        logger.warning(f'cannot set {_name}: {ex}')
+                        logger.warning(f'cannot set {name}: {ex}')
             w.observe(_on_change, names='value')
-
         return w
 
     def _build(self) -> widgets.VBox:

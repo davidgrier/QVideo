@@ -10,6 +10,31 @@ _HAS_IPYWIDGETS = importlib.util.find_spec('ipywidgets') is not None
 
 
 @unittest.skipUnless(_HAS_IPYWIDGETS, 'ipywidgets not installed')
+class TestInitialValue(unittest.TestCase):
+    '''A camera that has no value for a property gets the type default.'''
+
+    def initial(self, value, ptype):
+        from QVideo.lib._jupyter import _initial
+        return _initial(value, ptype)
+
+    def test_a_value_is_kept(self):
+        self.assertEqual(self.initial(3.5, float), 3.5)
+
+    def test_none_becomes_the_default_of_the_type(self):
+        self.assertEqual(self.initial(None, int), 0)
+        self.assertEqual(self.initial(None, str), '')
+
+    def test_a_value_that_is_not_finite_becomes_the_default(self):
+        self.assertEqual(self.initial(float('nan'), float), 0.)
+        self.assertEqual(self.initial(float('inf'), float), 0.)
+
+    def test_a_type_without_a_default_gives_zero(self):
+        def needs_an_argument(x):
+            return x
+        self.assertEqual(self.initial(None, needs_an_argument), 0)
+
+
+@unittest.skipUnless(_HAS_IPYWIDGETS, 'ipywidgets not installed')
 class TestCameraControls(unittest.TestCase):
 
     def setUp(self):

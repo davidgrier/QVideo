@@ -24,6 +24,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   lists the `stop()` of each component and the order in which to stop them
   when an application removes part of its interface.  A regression test
   runs both ways in a subprocess.
+- **`QVideoSource.seek(framenumber)`.**  Reads the given frame next, even
+  while the source is paused.  The capture loop does the seeking between
+  two reads, so the reader is never touched while it is reading.
 
 ### Changed
 

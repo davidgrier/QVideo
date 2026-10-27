@@ -56,6 +56,8 @@ class QVideoSource(QtCore.QThread):
         Pause video readout.
     resume() -> None
         Resume video readout after pause().
+    seek(framenumber) -> None
+        Read the given frame next, even while paused (video files only).
     isPaused() -> bool
         Check if video readout is paused.
     example(*args) -> None
@@ -90,6 +92,7 @@ class QVideoSource(QtCore.QThread):
         self.waitcondition = QtCore.QWaitCondition()
         self._paused = False
         self._running = True
+        self._seek: int | None = None
         self._frames = 0
 
     @property
@@ -137,10 +140,13 @@ class QVideoSource(QtCore.QThread):
         with self.source:
             while True:
                 with QtCore.QMutexLocker(self.mutex):
-                    while self._paused:
+                    while self._paused and self._seek is None:
                         self.waitcondition.wait(self.mutex)
                     if not self._running:
                         break
+                    target, self._seek = self._seek, None
+                if target is not None:
+                    self.source.seek(target)
                 ok, frame = self.source.saferead()
                 if ok:
                     info = FrameInfo(self._frames, perf_counter())
@@ -212,6 +218,24 @@ class QVideoSource(QtCore.QThread):
         '''Resume frame readout after :meth:`pause`.'''
         with QtCore.QMutexLocker(self.mutex):
             self._paused = False
+        self.waitcondition.wakeAll()
+
+    @QtCore.Slot(int)
+    def seek(self, framenumber: int) -> None:
+        '''Read frame *framenumber* next, even while paused.
+
+        The capture loop does the seeking, between two reads, so the
+        reader is never touched while it is reading.  A paused source
+        delivers that one frame and then stays paused; a running one
+        continues from there.  Only readers of video files can seek.
+
+        Parameters
+        ----------
+        framenumber : int
+            Index of the frame to read next (zero-based).
+        '''
+        with QtCore.QMutexLocker(self.mutex):
+            self._seek = framenumber
         self.waitcondition.wakeAll()
 
     def isPaused(self) -> bool:

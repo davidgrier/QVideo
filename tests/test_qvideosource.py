@@ -212,6 +212,49 @@ class TestPauseResume(unittest.TestCase):
         self.assertGreaterEqual(len(calls), 5)
 
 
+class TestSeek(unittest.TestCase):
+
+    def test_seek_records_the_target_and_wakes_the_loop(self):
+        vs = make_vs()
+        with patch.object(vs.waitcondition, 'wakeAll') as mock_wake:
+            vs.seek(7)
+        self.assertEqual(vs._seek, 7)
+        mock_wake.assert_called_once()
+
+    def test_paused_source_delivers_one_frame_then_waits(self):
+        source = make_mock_source()
+        calls = []
+        source.seek.side_effect = lambda n: calls.append(('seek', n))
+        source.saferead.side_effect = (
+            lambda: (calls.append(('read',)), (True, _FRAME.copy()))[1])
+        vs = make_vs(source)
+        vs.start()
+        vs.pause()
+        QtTest.QTest.qWait(100)
+        calls.clear()
+        QtTest.QTest.qWait(50)
+        self.assertEqual(calls, [])
+        vs.seek(4)
+        deadline = time.monotonic() + 1.
+        while len(calls) < 2 and time.monotonic() < deadline:
+            QtTest.QTest.qWait(10)
+        QtTest.QTest.qWait(50)
+        self.assertEqual(calls, [('seek', 4), ('read',)])
+        self.assertTrue(vs.isPaused())
+        vs.stop()
+        self.assertTrue(vs.wait(2000))
+
+    def test_seek_is_consumed_once(self):
+        source = make_mock_source()
+        vs = make_vs(source)
+        vs.seek(3)
+        source.saferead.side_effect = (
+            lambda: (setattr(vs, '_running', False), (True, _FRAME.copy()))[1])
+        vs.run()
+        source.seek.assert_called_once_with(3)
+        self.assertIsNone(vs._seek)
+
+
 class TestRun(unittest.TestCase):
     '''Tests for run() called directly so coverage can trace the body.
 

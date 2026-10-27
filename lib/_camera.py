@@ -5,6 +5,10 @@ returns the first available camera backend.  The result is usable
 immediately (``camera.read()``, property access) and is also awaitable —
 ``await Camera()`` in Jupyter probes all backends, prints which cameras
 were found, and opens the first working one.
+
+This module needs neither Jupyter nor ``ipywidgets``.  The notebook
+features (the chooser, ``live_view`` and ``controls``) are in
+:mod:`QVideo.lib._jupyter`, which is imported only when one of them is used.
 '''
 import contextlib
 import importlib
@@ -142,7 +146,7 @@ def _working_candidates(
     return working
 
 
-def _jupyter_report(working: list[tuple[str, int]]) -> None:
+def _report(working: list[tuple[str, int]]) -> None:
     '''Print available cameras and which one was selected.'''
     labels = [_BACKENDS[k].label for k, _ in working]
     if len(labels) == 1:
@@ -153,56 +157,39 @@ def _jupyter_report(working: list[tuple[str, int]]) -> None:
         print(f'Using {labels[0]}. To select a different one: {opts}')
 
 
-async def _jupyter_chooser(working: list[tuple[str, int]]) -> tuple[str, int]:
-    '''Show an ipywidgets Dropdown chooser; return selected (key, camera_id).
+async def _choose(working: list[tuple[str, int]]) -> tuple[str, int]:
+    '''Return the camera to use among those that work.
 
-    Falls back to :func:`_jupyter_report` for a single camera.
-    Raises ImportError if ipywidgets is not installed.
+    A notebook with ``ipywidgets`` shows a drop-down when there is more
+    than one; otherwise the cameras are reported and the first is used.
     '''
-    if len(working) == 1:
-        _jupyter_report(working)
-        return working[0]
-
-    import asyncio
-    import ipywidgets as widgets
-    from IPython.display import display
-
-    loop = asyncio.get_running_loop()
-    future: asyncio.Future = loop.create_future()
-
-    options = [(_BACKENDS[k].label, (k, cid)) for k, cid in working]
-    dropdown = widgets.Dropdown(
-        options=options,
-        description='Camera:',
-        layout=widgets.Layout(width='auto'),
-    )
-    button = widgets.Button(description='Open', button_style='primary')
-
-    def _on_click(_):
-        if not future.done():
-            dropdown.disabled = True
-            button.disabled = True
-            button.button_style = ''
-            loop.call_soon_threadsafe(future.set_result, dropdown.value)
-
-    button.on_click(_on_click)
-    display(widgets.HBox([dropdown, button]))
-    return await future
+    if len(working) > 1:
+        try:
+            options = [(_BACKENDS[k].label, (k, cid)) for k, cid in working]
+            return await _notebook('the camera chooser').choose(options)
+        except ImportError:
+            pass
+    _report(working)
+    return working[0]
 
 
-class _LiveView:
-    '''Handle for a running :meth:`_CameraProxy.live_view` feed.
+def _in_ipython() -> bool:
+    '''Return True when running under IPython (a notebook or its shell).'''
+    try:
+        from IPython import get_ipython
+    except ImportError:
+        return False
+    return get_ipython() is not None
 
-    Returned by :meth:`_CameraProxy.live_view`.  Call :meth:`stop` to
-    end the update loop.
-    '''
 
-    def __init__(self, task) -> None:
-        self._task = task
-
-    def stop(self) -> None:
-        '''Cancel the background update loop.'''
-        self._task.cancel()
+def _notebook(feature: str):
+    '''Return the Jupyter front end, which needs ipywidgets.'''
+    try:
+        return importlib.import_module('QVideo.lib._jupyter')
+    except ImportError as ex:
+        raise ImportError(
+            f'ipywidgets is required for {feature}. '
+            'Install it with: pip install ipywidgets') from ex
 
 
 class _CameraProxy:
@@ -267,7 +254,7 @@ class _CameraProxy:
         label = _BACKENDS[key].label if key else 'uninitialized'
         return f'<Camera: {label}>'
 
-    def live_view(self, fps: float = 30.0) -> '_LiveView':
+    def live_view(self, fps: float = 30.0) -> 'LiveView':
         '''Display a live video feed in a Jupyter cell.
 
         Encodes each frame as JPEG and streams it into an
@@ -281,8 +268,8 @@ class _CameraProxy:
 
         Returns
         -------
-        _LiveView
-            Handle for the running feed.  Call :meth:`_LiveView.stop`
+        LiveView
+            Handle for the running feed.  Call :meth:`LiveView.stop`
             to end it.
 
         Raises
@@ -300,7 +287,7 @@ class _CameraProxy:
             camera.stop_live_view()
 
         Alternatively, keep the returned handle and call its
-        :meth:`_LiveView.stop` method directly::
+        :meth:`LiveView.stop` method directly::
 
             live = camera.live_view()
             live.stop()
@@ -314,46 +301,9 @@ class _CameraProxy:
             # ...
             camera.stop_live_view()
         '''
-        try:
-            import ipywidgets as widgets
-            from IPython.display import display
-        except ImportError as ex:
-            raise ImportError(
-                'ipywidgets is required for live_view(). '
-                'Install it with: pip install ipywidgets'
-            ) from ex
-
-        import asyncio
-        import cv2
-
+        jupyter = _notebook('live_view()')
         self._ensure_open()
-        frame = self.read()
-
-        def _encode(f):
-            if f.ndim == 3 and f.shape[2] == 3:
-                f = cv2.cvtColor(f, cv2.COLOR_RGB2BGR)
-            _, buf = cv2.imencode('.jpg', f)
-            return bytes(buf)
-
-        widget = widgets.Image(
-            value=_encode(frame),
-            format='jpeg',
-            width=frame.shape[1],
-            height=frame.shape[0],
-        )
-        display(widget)
-
-        async def _loop():
-            interval = 1.0 / fps
-            while True:
-                try:
-                    widget.value = _encode(self.read())
-                except Exception as ex:
-                    logger.warning(f'live view stopped: {ex}')
-                    break
-                await asyncio.sleep(interval)
-
-        lv = _LiveView(asyncio.ensure_future(_loop()))
+        lv = jupyter.live_view(self.read, fps)
         object.__setattr__(self, '_live_view', lv)
         return lv
 
@@ -405,38 +355,19 @@ class _CameraProxy:
             camera.controls()
         '''
         self._ensure_open()
-        try:
-            from QVideo.lib._jupyter import CameraControls
-        except ImportError as ex:
-            raise ImportError(
-                'ipywidgets is required for camera.controls(). '
-                'Install it with: pip install ipywidgets'
-            ) from ex
-        return CameraControls(object.__getattribute__(self, '_camera'))
+        controls = _notebook('camera.controls()').CameraControls
+        return controls(object.__getattribute__(self, '_camera'))
 
     def __await__(self):
         return self._select().__await__()
 
     async def _select(self) -> '_CameraProxy':
         candidates = object.__getattribute__(self, '_candidates')
-        if len(candidates) > 1:
-            try:
-                from IPython import get_ipython
-                if get_ipython() is not None:
-                    working = _working_candidates(candidates)
-                    if working:
-                        if len(working) > 1:
-                            try:
-                                chosen = await _jupyter_chooser(working)
-                            except ImportError:
-                                _jupyter_report(working)
-                                chosen = working[0]
-                        else:
-                            _jupyter_report(working)
-                            chosen = working[0]
-                        object.__setattr__(self, '_candidates', [chosen])
-            except ImportError:
-                pass
+        if len(candidates) > 1 and _in_ipython():
+            working = _working_candidates(candidates)
+            if working:
+                chosen = await _choose(working)
+                object.__setattr__(self, '_candidates', [chosen])
         self._ensure_open()
         return self
 

@@ -11,6 +11,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The Jupyter code is in one module.**  `live_view`, the camera chooser
+  that `await Camera()` shows, and `controls` are implemented in
+  `lib/_jupyter.py`, the only module that needs `ipywidgets`.
+  `lib/_camera.py` is now the plain headless factory and imports the
+  notebook module only when a notebook feature is used, so `Camera()` works
+  without `ipywidgets`.  Behavior is unchanged.  The live-view handle is
+  `QVideo.lib._jupyter.LiveView` (it was the private `_LiveView`).
+
 - **`QGenicamCamera.has_node` and `is_readwrite` are now `hasNode` and
   `isReadWrite`**, like the other methods of the Qt classes.  The old names
   are gone.  (The `has_node` of genicam's own node map is unchanged.)

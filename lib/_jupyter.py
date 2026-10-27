@@ -1,11 +1,25 @@
-'''Jupyter widget for interactive camera property control.'''
+'''Jupyter front end: camera property controls, live view and chooser.
+
+Everything in this module needs ``ipywidgets``.  The rest of the package
+never imports it unless a notebook feature is used, so ``Camera()`` works
+without ``ipywidgets`` installed (see :mod:`QVideo.lib._camera`).
+'''
+import asyncio
 import logging
 import math
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+import cv2
 import ipywidgets as widgets
 from IPython.display import display as _display
 
+if TYPE_CHECKING:
+    from QVideo.lib.videotypes import Image
+
 
 logger = logging.getLogger(__name__)
+
+__all__ = ['CameraControls', 'LiveView', 'choose', 'live_view']
 
 
 def _finite(v) -> bool:
@@ -15,7 +29,98 @@ def _finite(v) -> bool:
     except (TypeError, ValueError):
         return False
 
-__all__ = ['CameraControls']
+
+class LiveView:
+    '''Handle for a running live video feed.
+
+    Returned by :func:`live_view`.  Call :meth:`stop` to end the update
+    loop.
+    '''
+
+    def __init__(self, task) -> None:
+        self._task = task
+
+    def stop(self) -> None:
+        '''Cancel the background update loop.'''
+        self._task.cancel()
+
+
+def live_view(read: Callable[[], 'Image'], fps: float = 30.0) -> LiveView:
+    '''Stream the frames that *read* returns into an image widget.
+
+    Encodes each frame as JPEG and updates an :mod:`ipywidgets` ``Image``
+    from an ``asyncio`` background loop.  No matplotlib backend switching
+    is required.  The feed ends, with a warning, when *read* raises.
+
+    Parameters
+    ----------
+    read : callable
+        Returns one frame as an array each time it is called.
+    fps : float
+        Target display update rate in frames per second.
+
+    Returns
+    -------
+    LiveView
+        Handle for the running feed.
+    '''
+    frame = read()
+
+    def _encode(f):
+        if f.ndim == 3 and f.shape[2] == 3:
+            f = cv2.cvtColor(f, cv2.COLOR_RGB2BGR)
+        _, buf = cv2.imencode('.jpg', f)
+        return bytes(buf)
+
+    widget = widgets.Image(
+        value=_encode(frame),
+        format='jpeg',
+        width=frame.shape[1],
+        height=frame.shape[0],
+    )
+    _display(widget)
+
+    async def _loop():
+        interval = 1.0 / fps
+        while True:
+            try:
+                widget.value = _encode(read())
+            except Exception as ex:
+                logger.warning(f'live view stopped: {ex}')
+                break
+            await asyncio.sleep(interval)
+
+    return LiveView(asyncio.ensure_future(_loop()))
+
+
+async def choose(options: list[tuple[str, object]]) -> object:
+    '''Show a drop-down of *options* and return the value that is chosen.
+
+    Parameters
+    ----------
+    options : list of (str, object)
+        A label to show and the value to return for each camera.
+    '''
+    loop = asyncio.get_running_loop()
+    future: asyncio.Future = loop.create_future()
+
+    dropdown = widgets.Dropdown(
+        options=options,
+        description='Camera:',
+        layout=widgets.Layout(width='auto'),
+    )
+    button = widgets.Button(description='Open', button_style='primary')
+
+    def _on_click(_):
+        if not future.done():
+            dropdown.disabled = True
+            button.disabled = True
+            button.button_style = ''
+            loop.call_soon_threadsafe(future.set_result, dropdown.value)
+
+    button.on_click(_on_click)
+    _display(widgets.HBox([dropdown, button]))
+    return await future
 
 
 class CameraControls:

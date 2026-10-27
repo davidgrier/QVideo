@@ -115,6 +115,14 @@ snapshot (`QGenicamCamera.state`), which is read under the lock. `__getattr__`
 delegates attribute access (`camera.fps`) to registered getters, so subclasses
 do not need explicit Python properties for every camera parameter.
 
+**`Camera()`** (`lib/_camera.py`) is the headless front door: it discovers a
+backend, creates a `QApplication` if there is none, and returns a proxy that
+reads frames without any window.  The notebook features (the chooser that
+`await Camera()` shows, `live_view` and `controls`) are in `lib/_jupyter.py`,
+the only module that imports `ipywidgets`; `_camera.py` reaches it through
+`_notebook()`, which imports it on first use, so `Camera()` needs no
+`ipywidgets`.
+
 **`QVideoSource`** wraps a camera in a `QThread`, calling `camera.saferead()`
 in a loop and emitting `newFrame(ndarray)`. It is the standard way to drive a
 camera from the GUI thread.

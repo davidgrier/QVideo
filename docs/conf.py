@@ -47,7 +47,6 @@ autodoc_default_options = {
 autodoc_mock_imports = [
     'harvesters',
     'genicam',
-    'PySpin',
     'picamera2',
 ]
 

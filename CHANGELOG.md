@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **An `opencv` extra** installs `cv2-enumerate-cameras`, which gives the
+  USB cameras their names.  QVideo has used it when it is installed, but
+  did not declare it; without it the cameras are listed as "Camera 0" and
+  so on.  The `trackpy` extra keeps `numba`: QVideo does not import it, but
+  trackpy finds features about five times faster with it.
 - **PyAV reader and writer** (`QPyAVWriter`, `QPyAVReader`, `QPyAVSource`),
   installed with the `av` extra.  `QDVRWidget` uses them for `.avi`,
   `.mkv` and `.mp4` files if PyAV is installed, and OpenCV if not.  FFV1

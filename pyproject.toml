@@ -47,9 +47,12 @@ pyqt5    = ["PyQt5", "PyQt5-sip"]
 pyqt6    = ["PyQt6"]
 pyside6  = ["PySide6>=6.7"]
 jupyter  = ["ipywidgets"]
+opencv   = ["cv2-enumerate-cameras"]
 dvr      = ["h5py", "hdf5plugin"]
 av       = ["av"]
 circletransform = ["scipy"]
+# numba is not imported by QVideo: trackpy uses it, and finds features
+# about five times faster with it
 trackpy  = ["trackpy", "pandas", "numba"]
 yolo     = ["ultralytics"]
 overlays = ["QVideo[trackpy,yolo]"]

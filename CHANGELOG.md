@@ -63,6 +63,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `Player` table of sources is gone: playback uses the reader's class and
   a plain `QVideoSource`.
 
+- **HDF5 files hold one dataset of frames, and survive a crash.**
+  `QHDF5Writer` now writes `frames`, `timestamp`, `index` and
+  `hardware_timestamp` arrays, instead of one dataset for each frame, in
+  the single-writer, multiple-reader mode of HDF5, and flushes about once
+  a second.  A file of the old layout could not be opened after the
+  program was killed, and a long recording was lost whole; now the frames
+  up to the last flush are kept, and another process can read the file
+  while it is written.  The new layout also keeps the index and the
+  hardware time of each frame, costs 16 bytes for a frame instead of 333,
+  and opens a file of a million frames in milliseconds instead of seconds.
+  The file says `format_version` 2.  `QHDF5Reader` reads both layouts, so
+  old recordings stay readable, and has a `timestamps` property.  A frame
+  of another size or type than the first ends the recording, as it does in
+  the PyAV writer.
+
 ### Fixed
 
 - **The first recording of a session no longer stops itself.**  `av` was

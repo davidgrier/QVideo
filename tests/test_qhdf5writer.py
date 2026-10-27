@@ -1,152 +1,191 @@
 '''Unit tests for QHDF5Writer.'''
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+import h5py
 import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from qtpy import QtWidgets
-from QVideo.dvr.QHDF5Writer import QHDF5Writer
+from QVideo.dvr.QHDF5Writer import QHDF5Writer, FORMAT_VERSION
 from QVideo.dvr.QHDF5Reader import QHDF5Reader
 from QVideo.lib.videotypes import FrameInfo
+from QVideo.tests.signals import record
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 writer_module = sys.modules['QVideo.dvr.QHDF5Writer']  # not the class
 
-_FRAME = np.zeros((480, 640), dtype=np.uint8)
+_FRAME = np.zeros((48, 64), dtype=np.uint8)
 
 
-def make_mock_h5file():
-    '''Return (mock_file, mock_images_group) with h5py-like behavior.'''
-    mock_group = MagicMock()
-    is_open = [True]
-    mock_file = MagicMock()
-    mock_file.__bool__ = MagicMock(side_effect=lambda: is_open[0])
-    mock_file.create_group.return_value = mock_group
+class WriterCase(unittest.TestCase):
 
-    def _close():
-        is_open[0] = False
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.path = str(Path(folder.name) / 'test.h5')
 
-    mock_file.close.side_effect = _close
-    return mock_file, mock_group
+    def make(self, **kwargs) -> QHDF5Writer:
+        writer = QHDF5Writer(self.path, fps=30, **kwargs)
+        self.addCleanup(writer.close)
+        return writer
+
+    def write(self, frames, infos=None, **kwargs) -> None:
+        '''Write *frames*, then close the file.'''
+        writer = self.make(**kwargs)
+        for i, frame in enumerate(frames):
+            info = infos[i] if infos else FrameInfo(i, 100. + i / 30.)
+            writer.write(frame, info)
+        writer.close()
 
 
-def make_writer(**kwargs):
-    return QHDF5Writer('test.h5', fps=30, **kwargs)
-
-
-class TestQHDF5WriterInit(unittest.TestCase):
+class TestInit(WriterCase):
 
     def test_not_open_before_first_frame(self):
-        writer = make_writer()
-        self.assertFalse(writer.isOpen())
+        self.assertFalse(self.make().isOpen())
 
     def test_file_is_none_initially(self):
-        writer = make_writer()
-        self.assertIsNone(writer._file)
+        self.assertIsNone(self.make()._file)
+
+    def test_zstandard_is_the_default(self):
+        with patch.object(writer_module, '_filter') as chosen:
+            self.make()
+        chosen.assert_called_once_with('zstd')
 
 
-class TestQHDF5WriterOpen(unittest.TestCase):
+class TestOpen(WriterCase):
 
-    def test_open_returns_true(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            result = writer.open(_FRAME)
-        self.assertTrue(result)
-
-    def test_open_returns_false_on_oserror(self):
-        writer = make_writer()
-        with patch('h5py.File', side_effect=OSError):
-            with self.assertLogs('QVideo.dvr.QHDF5Writer', level='WARNING'):
-                result = writer.open(_FRAME)
-        self.assertFalse(result)
-
-    def test_open_creates_images_group(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        mock_file.create_group.assert_called_once_with('images')
-
-    def test_open_does_not_yet_set_timestamp_attribute(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        mock_file.attrs.__setitem__.assert_not_called()
-
-    def test_isopen_true_after_open(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
+    def test_open_returns_true_and_creates_the_file(self):
+        writer = self.make()
+        self.assertTrue(writer.open(_FRAME))
         self.assertTrue(writer.isOpen())
+        self.assertTrue(Path(self.path).exists())
 
-    def test_isopen_false_after_failed_open(self):
-        writer = make_writer()
-        with patch('h5py.File', side_effect=OSError):
-            with self.assertLogs('QVideo.dvr.QHDF5Writer', level='WARNING'):
-                writer.open(_FRAME)
+    def test_open_returns_false_if_the_file_cannot_be_made(self):
+        writer = QHDF5Writer(str(Path(self.path).parent / 'no' / 'x.h5'))
+        with self.assertLogs('QVideo.dvr.QHDF5Writer', 'WARNING'):
+            self.assertFalse(writer.open(_FRAME))
         self.assertFalse(writer.isOpen())
 
+    def test_the_datasets_wait_for_the_first_frame(self):
+        writer = self.make()
+        writer.open(_FRAME)
+        self.assertIsNone(writer._frames)
+        self.assertEqual(list(writer._file), [])
 
-class TestQHDF5WriterInternalWrite(unittest.TestCase):
 
-    def _open_writer(self):
-        writer = make_writer()
-        mock_file, mock_group = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        return writer, mock_group
+class TestLayout(WriterCase):
 
-    def test_write_creates_dataset(self):
-        writer, mock_group = self._open_writer()
+    def read(self, name):
+        with h5py.File(self.path, 'r') as f:
+            return f[name][()]
+
+    def test_the_file_holds_the_frames_and_one_array_for_each_metadatum(self):
+        self.write([_FRAME] * 3)
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(sorted(f), ['frames', 'hardware_timestamp',
+                                         'index', 'timestamp'])
+            self.assertEqual(f['frames'].shape, (3,) + _FRAME.shape)
+            for name in ('timestamp', 'index', 'hardware_timestamp'):
+                self.assertEqual(f[name].shape, (3,))
+
+    def test_the_file_says_which_layout_it_has(self):
+        self.write([_FRAME])
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f.attrs['format_version'], FORMAT_VERSION)
+
+    def test_the_file_records_the_frame_rate_it_was_told(self):
+        writer = QHDF5Writer(self.path, fps=30, nskip=3)
+        self.addCleanup(writer.close)
+        writer.write(_FRAME, FrameInfo(0, 1.))
+        writer.close()
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f.attrs['fps'], 10.)
+
+    def test_every_frame_is_a_chunk_of_its_own(self):
+        self.write([_FRAME] * 2)
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['frames'].chunks, (1,) + _FRAME.shape)
+
+    def test_frames_are_stored_as_they_are(self):
+        for dtype, shape in ((np.uint8, (6, 8)), (np.uint16, (6, 8)),
+                             (np.uint8, (6, 8, 3))):
+            with self.subTest(dtype=dtype.__name__, shape=shape):
+                frames = [np.full(shape, i + 1, dtype) for i in range(3)]
+                self.write(frames)
+                with h5py.File(self.path, 'r') as f:
+                    self.assertEqual(f['frames'].dtype, dtype)
+                    np.testing.assert_array_equal(f['frames'][()], frames)
+
+    def test_a_frame_without_capture_info_is_stamped_on_the_spot(self):
+        writer = self.make()
+        writer.open(_FRAME)
         writer._write(_FRAME)
-        mock_group.create_dataset.assert_called_once()
+        writer.close()
+        self.assertEqual(len(self.read('timestamp')), 1)
 
-    def test_write_stores_frame_data(self):
-        writer, mock_group = self._open_writer()
-        writer._write(_FRAME)
-        _, kwargs = mock_group.create_dataset.call_args
-        np.testing.assert_array_equal(kwargs['data'], _FRAME)
-
-    def test_write_dataset_key_is_elapsed_time(self):
-        writer, mock_group = self._open_writer()
-        writer._write(_FRAME)
-        key = mock_group.create_dataset.call_args[0][0]
-        self.assertIsInstance(float(key), float)
-
-    def test_write_dataset_key_has_nanosecond_precision(self):
-        writer, mock_group = self._open_writer()
-        writer._write(_FRAME)
-        key = mock_group.create_dataset.call_args[0][0]
-        # Key must be fixed-point with exactly 9 decimal places
-        self.assertRegex(key, r'^\d+\.\d{9}$')
-
-    def test_successive_writes_use_different_keys(self):
-        writer, mock_group = self._open_writer()
-        writer._write(_FRAME)
-        writer._write(_FRAME)
-        keys = [call[0][0] for call in mock_group.create_dataset.call_args_list]
-        self.assertEqual(len(set(keys)), 2)
+    def test_writing_without_capture_info_stamps_the_frames(self):
+        writer = self.make()
+        for _ in range(2):
+            writer.write(_FRAME)
+        writer.close()
+        t = self.read('timestamp')
+        self.assertEqual(len(t), 2)
+        self.assertGreaterEqual(t[1], t[0])
 
 
-class TestQHDF5WriterCompression(unittest.TestCase):
+class TestMetadata(WriterCase):
+
+    def test_times_run_from_the_capture_of_the_first_frame(self):
+        self.write([_FRAME] * 3, [FrameInfo(0, 10.), FrameInfo(1, 10.5),
+                                  FrameInfo(2, 12.)])
+        with h5py.File(self.path, 'r') as f:
+            np.testing.assert_allclose(f['timestamp'][()], [0., .5, 2.])
+
+    def test_the_start_attribute_is_the_wall_clock_of_the_first_frame(self):
+        first = FrameInfo(0, 10.)
+        self.write([_FRAME] * 2, [first, FrameInfo(1, 11.)])
+        with h5py.File(self.path, 'r') as f:
+            self.assertAlmostEqual(f.attrs['Timestamp'], first.wallclock,
+                                   delta=0.1)
+
+    def test_the_index_of_each_frame_is_kept(self):
+        self.write([_FRAME] * 3, [FrameInfo(4, 1.), FrameInfo(6, 2.),
+                                  FrameInfo(9, 3.)])
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(list(f['index'][()]), [4, 6, 9])
+
+    def test_the_hardware_time_is_kept_or_not_a_number(self):
+        self.write([_FRAME] * 2, [FrameInfo(0, 1., 7.5), FrameInfo(1, 2.)])
+        with h5py.File(self.path, 'r') as f:
+            first, second = f['hardware_timestamp'][()]
+        self.assertEqual(first, 7.5)
+        self.assertTrue(np.isnan(second))
+
+    def test_closing_starts_a_new_file_for_the_next_recording(self):
+        writer = self.make()
+        writer.write(_FRAME, FrameInfo(0, 10.))
+        writer.write(_FRAME, FrameInfo(1, 11.))
+        writer.close()
+        writer.write(_FRAME, FrameInfo(2, 50.))
+        writer.close()
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['frames'].shape[0], 1)
+            self.assertEqual(f['timestamp'][0], 0.)
+
+
+class TestCompression(WriterCase):
 
     def roundtrip(self, frames, **kwargs):
-        with tempfile.TemporaryDirectory() as folder:
-            path = str(Path(folder) / 'test.h5')
-            writer = QHDF5Writer(path, fps=30, **kwargs)
-            for i, frame in enumerate(frames):
-                writer.write(frame, FrameInfo(i, i / 30.))
-            writer.close()
-            reader = QHDF5Reader(path)
-            back = [reader.read()[1] for _ in frames]
-            reader.close()  # Windows cannot delete a file that is open
-            return back, Path(path).stat().st_size
+        self.write(frames, **kwargs)
+        reader = QHDF5Reader(self.path)
+        back = [reader.read()[1] for _ in frames]
+        reader.close()  # Windows cannot delete a file that is open
+        return back, Path(self.path).stat().st_size
 
     def frames(self, dtype):
         rng = np.random.default_rng(0)
@@ -173,13 +212,17 @@ class TestQHDF5WriterCompression(unittest.TestCase):
         _, packed = self.roundtrip(frames, compression='lzf')
         self.assertLess(packed, raw)
 
-    def test_zstandard_is_the_default(self):
-        with patch.object(writer_module, '_filter') as chosen:
-            make_writer()
-        chosen.assert_called_once_with('zstd')
+    def test_the_filter_is_applied_to_the_frames_only(self):
+        self.write([_FRAME] * 2, compression='lzf')
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['frames'].compression, 'lzf')
+            self.assertIsNone(f['timestamp'].compression)
 
     def test_no_compression_gives_no_filter(self):
         self.assertEqual(writer_module._filter(None), {})
+        self.write([_FRAME], compression=None)
+        with h5py.File(self.path, 'r') as f:
+            self.assertIsNone(f['frames'].compression)
 
     def test_builtin_filters_need_no_plugin(self):
         with patch.object(writer_module, 'hdf5plugin', None):
@@ -193,94 +236,106 @@ class TestQHDF5WriterCompression(unittest.TestCase):
             with self.assertLogs('QVideo.dvr.QHDF5Writer', 'INFO'):
                 self.assertEqual(writer_module._filter('zstd'), {})
 
-    def test_a_compressed_dataset_is_one_chunk(self):
-        writer = make_writer(compression='lzf')
-        mock_file, mock_group = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        writer._write(_FRAME)
-        kwargs = mock_group.create_dataset.call_args.kwargs
-        self.assertEqual(kwargs['chunks'], _FRAME.shape)
-        self.assertEqual(kwargs['compression'], 'lzf')
 
-    def test_an_uncompressed_dataset_is_contiguous(self):
-        writer = make_writer(compression=None)
-        mock_file, mock_group = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        writer._write(_FRAME)
-        self.assertIsNone(mock_group.create_dataset.call_args.kwargs['chunks'])
+class TestFramesThatDoNotMatch(WriterCase):
 
-
-class TestQHDF5WriterCaptureTimes(unittest.TestCase):
-    '''Datasets are keyed by capture time, not by write time.'''
-
-    def _open_writer(self):
-        writer = make_writer()
-        mock_file, mock_group = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        return writer, mock_file, mock_group
-
-    def test_keys_follow_capture_timestamps(self):
-        writer, _, group = self._open_writer()
-        writer._write(_FRAME, FrameInfo(0, 10.00))
-        writer._write(_FRAME, FrameInfo(1, 10.25))
-        keys = [c[0][0] for c in group.create_dataset.call_args_list]
-        self.assertEqual(keys, ['0.000000000', '0.250000000'])
-
-    def test_timestamp_attribute_is_first_frame_wallclock(self):
-        writer, mock_file, _ = self._open_writer()
-        info = FrameInfo(0, 10.0)
-        writer._write(_FRAME, info)
-        key, value = mock_file.attrs.__setitem__.call_args[0]
-        self.assertEqual(key, 'Timestamp')
-        self.assertAlmostEqual(value, info.wallclock, delta=0.05)
-
-    def test_timestamp_attribute_set_only_once(self):
-        writer, mock_file, _ = self._open_writer()
-        writer._write(_FRAME, FrameInfo(0, 10.0))
-        writer._write(_FRAME, FrameInfo(1, 10.1))
-        mock_file.attrs.__setitem__.assert_called_once()
-
-    def test_close_resets_start_for_next_recording(self):
-        writer, _, _ = self._open_writer()
-        writer._write(_FRAME, FrameInfo(0, 10.0))
+    def check(self, other):
+        writer = self.make()
+        writer.write(_FRAME, FrameInfo(0, 1.))
+        finished = record(writer.finished)
+        with self.assertLogs('QVideo.dvr.QHDF5Writer', 'WARNING'):
+            writer.write(other, FrameInfo(1, 2.))
         writer.close()
-        self.assertIsNone(writer._t0)
+        self.assertEqual(len(finished), 1)
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['frames'].shape[0], 1)
+            self.assertEqual(f['timestamp'].shape[0], 1)
+
+    def test_a_frame_of_another_size_ends_the_recording(self):
+        self.check(np.zeros((10, 10), np.uint8))
+
+    def test_a_frame_of_another_type_ends_the_recording(self):
+        self.check(np.zeros(_FRAME.shape, np.float32))
 
 
-class TestQHDF5WriterClose(unittest.TestCase):
+class TestFlush(WriterCase):
 
-    def test_close_closes_file(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        writer.close()
-        mock_file.close.assert_called_once()
+    def test_a_flush_comes_when_the_interval_has_passed(self):
+        writer = self.make()
+        with patch.object(writer_module, '_FLUSH_INTERVAL', 0.), \
+             patch.object(writer, '_flush') as flush:
+            writer.write(_FRAME, FrameInfo(0, 1.))
+            writer.write(_FRAME, FrameInfo(1, 2.))
+        self.assertEqual(flush.call_count, 2)
 
-    def test_close_sets_file_to_none(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
-        writer.close()
-        self.assertIsNone(writer._file)
+    def test_no_flush_comes_before_the_interval_has_passed(self):
+        writer = self.make()
+        with patch.object(writer, '_flush') as flush:
+            for i in range(5):
+                writer.write(_FRAME, FrameInfo(i, i / 30.))
+        flush.assert_not_called()
 
-    def test_isopen_false_after_close(self):
-        writer = make_writer()
-        mock_file, _ = make_mock_h5file()
-        with patch('h5py.File', return_value=mock_file):
-            writer.open(_FRAME)
+    def test_a_flush_covers_every_dataset(self):
+        writer = self.make()
+        writer.write(_FRAME, FrameInfo(0, 1.))
+        with patch.object(h5py.Dataset, 'flush') as flush:
+            writer._flush()
+        self.assertEqual(flush.call_count, 4)
+
+
+CRASH = '''
+import os, signal, sys
+import numpy as np
+from qtpy import QtWidgets
+from QVideo.dvr import QHDF5Writer
+from QVideo.lib.videotypes import FrameInfo
+sys.modules['QVideo.dvr.QHDF5Writer']._FLUSH_INTERVAL = 0.
+app = QtWidgets.QApplication([])
+writer = QHDF5Writer(sys.argv[1], fps=30)
+for i in range(40):
+    writer.write(np.full((16, 16), i, np.uint8), FrameInfo(i, i / 30.))
+os.kill(os.getpid(), signal.SIGKILL)
+'''
+
+
+@unittest.skipIf(sys.platform == 'win32', 'no SIGKILL on Windows')
+class TestACrashSpares(WriterCase):
+    '''The frames that were flushed survive the death of the program.'''
+
+    def test_a_recording_that_was_killed_can_be_read(self):
+        env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
+        subprocess.run([sys.executable, '-c', CRASH, self.path], env=env,
+                       capture_output=True, timeout=60)
+        reader = QHDF5Reader(self.path)
+        self.addCleanup(reader.close)
+        self.assertTrue(reader.isOpen())
+        self.assertEqual(reader.length, 40)
+        self.assertEqual(reader.read()[1][0, 0], 0)
+
+
+class TestClose(WriterCase):
+
+    def test_close_closes_the_file(self):
+        writer = self.make()
+        writer.write(_FRAME, FrameInfo(0, 1.))
         writer.close()
         self.assertFalse(writer.isOpen())
-
-    def test_close_when_not_open_is_safe(self):
-        writer = make_writer()
-        writer.close()
         self.assertIsNone(writer._file)
 
+    def test_a_closed_file_opens_without_any_special_mode(self):
+        self.write([_FRAME] * 2)
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['frames'].shape[0], 2)
 
-if __name__ == '__main__':
+    def test_close_when_not_open_is_safe(self):
+        self.make().close()
+
+    def test_close_twice_is_safe(self):
+        writer = self.make()
+        writer.write(_FRAME, FrameInfo(0, 1.))
+        writer.close()
+        writer.close()
+
+
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

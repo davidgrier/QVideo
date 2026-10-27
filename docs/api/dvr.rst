@@ -98,6 +98,29 @@ QPyAVReader
 .. automodule:: QVideo.dvr.QPyAVReader
    :members:
 
+HDF5 files
+----------
+
+A recording to HDF5 is one dataset of frames and one array of metadata for
+each frame, written in the single-writer, multiple-reader mode of HDF5 and
+flushed about once a second.  If the program stops without closing the
+file, the frames up to the last flush are in it, and another program can
+read the file while it is written.  Any HDF5 tool reads it; with ``h5py``::
+
+   import h5py
+
+   with h5py.File('run.h5', 'r', swmr=True) as f:
+       frames = f['frames']            # (N, height, width) or (N, h, w, 3)
+       seconds = f['timestamp'][()]    # capture time of each frame [s]
+       image = frames[100]
+
+The file also holds ``index``, the number that the source gave each frame,
+and ``hardware_timestamp``, the camera's own time for each frame, which is
+``nan`` if the camera has none.  The attributes are ``format_version``,
+``Timestamp`` (the UNIX time of the first frame) and ``fps``.
+:class:`~QVideo.dvr.QHDF5Reader.QHDF5Reader` also reads the files of
+version 1, which had a dataset for each frame in a group named ``images``.
+
 QHDF5Writer
 -----------
 

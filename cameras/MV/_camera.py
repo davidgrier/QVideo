@@ -1,3 +1,4 @@
+'''MATRIX VISION camera and threaded video source (mvGenTLProducer).'''
 from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 
 

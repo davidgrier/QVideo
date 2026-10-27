@@ -72,7 +72,7 @@ additions:
   is an open-source C library for GigE Vision and USB3 Vision cameras.
   Version 0.9.0 (May 2025) introduced an experimental GenTL producer
   `.cti`; the stable 0.8.x series does not yet include it.  Once the
-  0.9.x GenTL producer stabilises, add a `cameras/Aravis` backend (or
+  0.9.x GenTL producer stabilizes, add a `cameras/Aravis` backend (or
   extend `_findProducer` to locate the Aravis `.cti`) to give users a
   fully open-source, zero-cost path to GigE and USB3 cameras without
   a vendor SDK.  The Aravis simulated camera is also a candidate for
@@ -133,7 +133,7 @@ is physically removed.
   so GenICam cameras benefit from the same hot-plug handling as OpenCV
   cameras.
 - **UI feedback** — the `QCameraTree` (and `QCameraChooser` above) should
-  reflect device state visually: greyed-out controls when disconnected,
+  reflect device state visually: grayed-out controls when disconnected,
   a status indicator, and an optional toast/notification when a camera
   comes back online.
 

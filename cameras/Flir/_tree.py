@@ -1,3 +1,4 @@
+'''Camera property tree for FLIR cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.Flir import QFlirCamera
 from QVideo.lib.QCameraTree import Source

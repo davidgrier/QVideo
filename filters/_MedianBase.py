@@ -1,3 +1,4 @@
+'''Shared base of the streaming median (remedian) estimators.'''
 from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.videotypes import Image
 import numpy as np
@@ -17,7 +18,7 @@ class _MedianBase(VideoFilter):
         ``None`` (default) means use ``type(self)``, which is correct
         for pure estimator chains (``Median`` → ``Median``,
         ``MoMedian`` → ``MoMedian``).  Override in subclasses whose
-        ``add()`` behaviour must not propagate into sub-estimators
+        ``add()`` behavior must not propagate into sub-estimators
         (e.g. :class:`~QVideo.filters.samplehold.SampleHold` uses
         ``Median`` so the sub-estimator never enters hold mode).
 

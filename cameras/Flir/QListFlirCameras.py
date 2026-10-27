@@ -1,3 +1,4 @@
+'''Combo box that lists the FLIR cameras that are connected.'''
 import logging
 from QVideo.lib import QListCameras, QCameraError
 from harvesters.core import Harvester

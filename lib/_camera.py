@@ -465,7 +465,7 @@ def Camera(model: str | None = None, cameraID: int = 0) -> _CameraProxy:
     RuntimeError
         If no matching camera backend is available.
     ValueError
-        If *model* is not a recognised backend name.
+        If *model* is not a recognized backend name.
 
     Examples
     --------

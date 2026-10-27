@@ -20,10 +20,10 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
     and as a function of y (averaged over x), updating on every frame
     emitted by the connected
     :class:`~QVideo.lib.QVideoScreen.QVideoScreen`.  Flat traces
-    indicate uniform illumination; any slope, dip, or peak localises
+    indicate uniform illumination; any slope, dip, or peak localizes
     non-uniformity spatially.
 
-    For colour images the mean is taken across channels before
+    For color images the mean is taken across channels before
     projecting, giving a single luminance profile per axis.
 
     Parameters

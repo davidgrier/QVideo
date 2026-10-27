@@ -29,8 +29,8 @@ class CircleTransformFilter(VideoFilter):
     Detects circularly symmetric ring-like features by computing the
     orientation alignment transform of Krishnatreya & Grier (2014).
     Each pixel's gradient orientation is compared against the expected
-    orientation for a ring centred at every candidate position; the
-    result is a detection map whose peaks locate ring centres.
+    orientation for a ring centered at every candidate position; the
+    result is a detection map whose peaks locate ring centers.
 
     The transform integrates evidence from all ring radii simultaneously,
     so no radius parameter is required.  The computation is heavy, so run
@@ -42,7 +42,7 @@ class CircleTransformFilter(VideoFilter):
     window : int
         Savitzky-Golay derivative window size [pixels].  Must be odd and
         greater than *polyorder*.  Larger values smooth noise but reduce
-        spatial resolution of detected ring centres.  Default: ``13``.
+        spatial resolution of detected ring centers.  Default: ``13``.
     polyorder : int
         Savitzky-Golay polynomial order.  Must be less than *window*.
         Default: ``3``.
@@ -52,8 +52,8 @@ class CircleTransformFilter(VideoFilter):
     The OAT kernel :math:`K(\\mathbf{k}) = e^{-2i\\theta_k}/|\\mathbf{k}|`
     is cached by frame shape and recomputed only when the shape changes.
 
-    The output is normalised per-frame to ``[0, 255]`` and returned as
-    ``uint8``.  Peak brightness indicates likely ring centres.
+    The output is normalized per-frame to ``[0, 255]`` and returned as
+    ``uint8``.  Peak brightness indicates likely ring centers.
 
     References
     ----------
@@ -104,20 +104,20 @@ class CircleTransformFilter(VideoFilter):
     def process(self, image: Image) -> Image:
         '''Compute the OAT of *image* and return a uint8 heat map.
 
-        Converts colour input to float grayscale, computes orientational
+        Converts color input to float grayscale, computes orientational
         order gradients via Savitzky-Golay differentiation, then
         convolves with the OAT kernel in Fourier space.
 
         Parameters
         ----------
         image : Image
-            Input frame (grayscale or colour uint8).
+            Input frame (grayscale or color uint8).
 
         Returns
         -------
         Image
             OAT heat map, same spatial shape as *image*, dtype ``uint8``.
-            Bright peaks indicate ring centres.
+            Bright peaks indicate ring centers.
         '''
         gray = grayscale(image).astype(float)
         psi = np.empty(gray.shape, dtype=complex)

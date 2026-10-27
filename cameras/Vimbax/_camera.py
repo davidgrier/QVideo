@@ -1,3 +1,4 @@
+'''Allied Vision camera and threaded video source (VimbaX producer).'''
 from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 import logging
 

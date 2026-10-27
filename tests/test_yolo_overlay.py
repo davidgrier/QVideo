@@ -60,7 +60,7 @@ class MockSource(QtCore.QObject):
 
 
 def _make_widget(**kwargs):
-    '''Create a QYoloWidget with the background thread neutralised.'''
+    '''Create a QYoloWidget with the background thread neutralized.'''
     with patch.object(_YoloWorker, 'moveToThread'), \
          patch.object(QtCore.QThread, 'start'):
         w = QYoloWidget(**kwargs)

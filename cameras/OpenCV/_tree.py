@@ -1,3 +1,4 @@
+'''Camera control tree for OpenCV cameras.'''
 from QVideo.lib import QCameraTree
 from QVideo.cameras.OpenCV import QOpenCVCamera
 

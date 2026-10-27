@@ -13,7 +13,7 @@ class UnsharpFilter(VideoFilter):
     '''Unsharp mask sharpening.
 
     Computes a Gaussian-blurred copy of the frame and blends it with the
-    original to emphasise high-frequency detail:
+    original to emphasize high-frequency detail:
 
     .. math::
 

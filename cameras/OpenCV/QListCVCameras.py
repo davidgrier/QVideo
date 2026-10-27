@@ -1,3 +1,4 @@
+'''Combo box that lists the cameras that OpenCV can open.'''
 import warnings
 import cv2
 from QVideo.lib import QListCameras

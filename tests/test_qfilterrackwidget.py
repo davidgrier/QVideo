@@ -424,14 +424,14 @@ class TestFilterPicker(unittest.TestCase):
         self.assertFalse(selectable)
 
     def test_picker_empty_category_falls_back_to_other(self):
-        class _Uncategorised(QVideoFilter):
-            display_name = 'Uncategorised'
+        class _Uncategorized(QVideoFilter):
+            display_name = 'Uncategorized'
             display_category = ''
 
             def __init__(self, parent=None):
-                super().__init__(parent, 'Uncategorised', VideoFilter())
+                super().__init__(parent, 'Uncategorized', VideoFilter())
 
-        registry = {'Uncategorised': _Uncategorised}
+        registry = {'Uncategorized': _Uncategorized}
         picker = _FilterPicker(registry)
         cat_item = picker._tree.topLevelItem(0)
         self.assertEqual(cat_item.text(0), 'Other')

@@ -1,3 +1,4 @@
+'''Camera property tree for Basler cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.Basler import QBaslerCamera
 from QVideo.lib.QCameraTree import Source

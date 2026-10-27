@@ -12,7 +12,7 @@ app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 # 32x32 grayscale — power-of-2 size gives phaseCorrelate reliable results
 _SHAPE = (32, 32)
 _REF = np.zeros(_SHAPE, dtype=np.uint8)
-_REF[12:20, 12:20] = 255           # white square, centred
+_REF[12:20, 12:20] = 255           # white square, centered
 
 _SHIFTED = np.zeros(_SHAPE, dtype=np.uint8)
 _SHIFTED[12:20, 15:23] = 255       # same square shifted right by 3 px

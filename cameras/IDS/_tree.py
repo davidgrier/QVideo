@@ -1,3 +1,4 @@
+'''Camera property tree for IDS Imaging cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.IDS import QIDSCamera
 from QVideo.lib.QCameraTree import Source

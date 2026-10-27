@@ -1,3 +1,4 @@
+'''Camera property tree for MATRIX VISION (mvGenTLProducer) cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.MV import QMVCamera
 from QVideo.lib.QCameraTree import Source

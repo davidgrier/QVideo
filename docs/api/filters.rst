@@ -18,7 +18,7 @@ Calibration
 -----------
 
 These filters correct systematic sensor non-uniformities so that
-pixel values reflect the true signal rather than hardware artefacts.
+pixel values reflect the true signal rather than hardware artifacts.
 Apply them early in the pipeline — typically as the first two filters
 — before any feature-detection or enhancement steps.
 
@@ -81,7 +81,7 @@ The companion :class:`~QVideo.filters.momean.QMoMean` widget exposes an
 .. automodule:: QVideo.filters.momean
    :members:
 
-Normalisation
+Normalization
 -------------
 
 These filters divide each incoming frame by a median background estimate,
@@ -100,7 +100,7 @@ Sample-and-hold background
 :class:`~QVideo.filters.samplehold.SampleHold` extends
 :class:`~QVideo.filters.normalize.Normalize` with a *hold* mechanism: it
 accumulates frames until the background estimate converges, then freezes it
-and switches to normalising foreground frames against the held estimate.
+and switches to normalizing foreground frames against the held estimate.
 Clicking *Reset* in the companion widget triggers a fresh accumulation pass,
 which is useful after scene changes.
 
@@ -115,7 +115,7 @@ transform *output* = (*input* / 255)^γ × 255 to every pixel using a
 256-entry look-up table built once when :attr:`~QVideo.filters.gamma.GammaFilter.gamma`
 changes.  *γ* < 1 lifts shadows; *γ* > 1 deepens them; *γ* = 1 is the identity.
 Because the LUT is applied by ``cv2.LUT``, per-frame cost is independent of image
-size.  The same table is applied to every channel, preserving colour balance.
+size.  The same table is applied to every channel, preserving color balance.
 Supports pipeline export.
 
 .. automodule:: QVideo.filters.gamma
@@ -141,13 +141,13 @@ tone-mapping methods selectable at runtime.
 **Log** compresses dynamic range via a logarithmic curve — *log(1 + p) / log(256)*
 — lifting shadow detail without clipping highlights.  No parameters.
 
-**Sigmoid** applies a smooth S-curve centred at *cutoff* with steepness *gain*.
+**Sigmoid** applies a smooth S-curve centered at *cutoff* with steepness *gain*.
 Low *gain* gives a gentle contrast boost; high *gain* approaches hard clipping.
 
-**CLAHE** (Contrast-Limited Adaptive Histogram Equalization) equalises local
+**CLAHE** (Contrast-Limited Adaptive Histogram Equalization) equalizes local
 contrast within *tile_size* × *tile_size* tiles, capping amplification at
-*clip_limit* to suppress noise amplification.  On colour input, CLAHE is applied
-to the L channel in LAB colour space so hue and saturation are preserved.
+*clip_limit* to suppress noise amplification.  On color input, CLAHE is applied
+to the L channel in LAB color space so hue and saturation are preserved.
 All three methods support pipeline export.
 
 .. automodule:: QVideo.filters.exposure
@@ -164,7 +164,7 @@ high-frequency noise.  The result is displayed as the absolute value scaled to
 
 DoG is a standard preprocessing step for particle tracking and fluorescence
 microscopy: it isolates features at the scale set by *low_sigma* while
-removing background and pixel noise.  Colour input is converted to grayscale
+removing background and pixel noise.  Color input is converted to grayscale
 before filtering.  Supports pipeline export.
 
 .. automodule:: QVideo.filters.dog
@@ -178,7 +178,7 @@ subtracting a Gaussian-blurred copy (*radius*) scaled by *amount* from the
 original, implemented as ``cv2.addWeighted`` so the result is clipped to
 ``[0, 255]`` without overflow.  *amount* = 0 is a no-op; *amount* = 1 gives
 a standard unsharp mask; higher values over-sharpen.  Accepts both grayscale
-and colour input.  Supports pipeline export.
+and color input.  Supports pipeline export.
 
 .. automodule:: QVideo.filters.unsharp
    :members:
@@ -194,7 +194,7 @@ smoothing with an adjustable odd-pixel kernel.  Three methods are available:
 - ``'gaussian'`` (``cv2.GaussianBlur``) — weighted average with a Gaussian
   kernel; effective against additive Gaussian noise.
 - ``'median'`` (``cv2.medianBlur``) — replaces each pixel with the
-  neighbourhood median; excels at removing salt-and-pepper noise while
+  neighborhood median; excels at removing salt-and-pepper noise while
   preserving edges.
 
 The :class:`~QVideo.filters.smoothing.QSmoothingFilter` widget exposes a
@@ -289,12 +289,12 @@ grayscale and applies a binary threshold, producing a black-and-white mask.
 Four methods are available:
 
 - **Global** — pixels above a fixed *level* are set to 255; all others to 0.
-- **Otsu** — the threshold is chosen automatically to minimise intra-class
+- **Otsu** — the threshold is chosen automatically to minimize intra-class
   intensity variance [O79]_; the *level* parameter is ignored.
 - **Adaptive Mean** — the threshold at each pixel is the mean intensity of a
-  *block* × *block* neighbourhood minus a constant *C*.
+  *block* × *block* neighborhood minus a constant *C*.
 - **Adaptive Gaussian** — like Adaptive Mean, but using a Gaussian-weighted
-  neighbourhood mean.
+  neighborhood mean.
 
 The companion :class:`~QVideo.filters.threshold.QThresholdFilter` widget
 exposes a method selector combobox; parameter spinboxes appear and disappear
@@ -356,17 +356,17 @@ Circle transform
 computes the orientation alignment transform (OAT) of Krishnatreya & Grier
 [KG14]_, which detects circularly symmetric ring-like features.  At each
 pixel the gradient orientation is compared against the orientation expected
-for a ring centred at every candidate position; summing this evidence over
+for a ring centered at every candidate position; summing this evidence over
 all ring radii simultaneously produces a detection map whose peaks locate
-ring centres.  Because the transform integrates over all radii, no radius
+ring centers.  Because the transform integrates over all radii, no radius
 parameter is required.
 
 The gradient field is estimated by Savitzky-Golay differentiation
 [SG64]_, controlled by *window* (filter width in pixels, must be odd and
 ≥ 3) and *polyorder* (polynomial order, must be ≥ 1 and less than *window*).
 A larger *window* reduces noise but broadens detected peaks.  The output is
-normalised per-frame to ``[0, 255]`` and returned as ``uint8``; bright peaks
-indicate ring centres.
+normalized per-frame to ``[0, 255]`` and returned as ``uint8``; bright peaks
+indicate ring centers.
 
 The computation is heavy, so run the filter in a
 :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` to keep it off the GUI
@@ -411,7 +411,7 @@ applies ``cv2.pencilSketch``, which combines an edge-aware smoothing pass
 with a hand-drawn shading model to simulate a pencil drawing.  Three
 parameters control the appearance:
 
-- *σ_s* (spatial sigma, 1–200) — controls how large a neighbourhood is
+- *σ_s* (spatial sigma, 1–200) — controls how large a neighborhood is
   smoothed together; larger values give bolder strokes.
 - *σ_r* (range sigma, 0–1) — controls how much tonal variation is absorbed
   into a single smooth region; smaller values preserve more texture.

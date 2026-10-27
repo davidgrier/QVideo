@@ -1,3 +1,4 @@
+'''Raspberry Pi AI Camera (IMX500) and threaded video source.'''
 from typing import TYPE_CHECKING
 from qtpy import QtCore
 from QVideo.lib import QVideoSource

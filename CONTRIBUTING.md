@@ -106,7 +106,7 @@ See `filters/QBlurFilter.py` for a minimal example.  Filters live in
 Bug reports and feature requests are welcome via
 [GitHub Issues](https://github.com/davidgrier/QVideo/issues).
 
-## Licence
+## License
 
 By contributing you agree that your changes will be released under the
-[GPL v3](LICENSE.md) licence that covers this project.
+[GPL v3](LICENSE.md) license that covers this project.

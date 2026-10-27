@@ -1,3 +1,4 @@
+'''Camera property tree for GenICam cameras.'''
 from typing import Any
 import math
 from qtpy import QtCore

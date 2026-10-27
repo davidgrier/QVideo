@@ -49,7 +49,7 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
     shapeChanged = QtCore.Signal(QtCore.QSize)
 
     def __init__(self, filename: str) -> None:
-        '''Initialise and open the video reader.
+        '''Initialize and open the video reader.
 
         Parameters
         ----------

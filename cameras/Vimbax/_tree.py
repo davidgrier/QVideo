@@ -1,3 +1,4 @@
+'''Camera property tree for Allied Vision VimbaX cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.Vimbax import QVimbaXCamera
 from QVideo.lib.QCameraTree import Source

@@ -44,7 +44,7 @@ class _TrackpyWorker(QtCore.QObject):
     ----------
     _opts : dict
         Keyword arguments forwarded to :func:`trackpy.locate` on every call.
-        Initialised with ``minmass``, ``characterize=False``, and
+        Initialized with ``minmass``, ``characterize=False``, and
         ``invert=False``.
 
     Signals

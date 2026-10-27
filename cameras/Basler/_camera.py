@@ -1,3 +1,4 @@
+'''Basler camera and threaded video source (pylon GenTL producer).'''
 from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 
 

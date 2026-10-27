@@ -1,3 +1,4 @@
+'''FLIR camera and threaded video source (Spinnaker GenTL producer).'''
 from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 
 

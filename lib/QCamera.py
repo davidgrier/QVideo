@@ -277,7 +277,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         Returns
         -------
         bool
-            ``True`` if initialisation succeeded.
+            ``True`` if initialization succeeded.
         '''
 
     @abstractmethod

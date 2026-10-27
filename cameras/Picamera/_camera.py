@@ -1,3 +1,4 @@
+'''Raspberry Pi camera and threaded video source (picamera2).'''
 from contextlib import suppress
 from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
@@ -111,7 +112,7 @@ class QPicamera(QCamera):
     def _createDevice(self) -> 'Picamera2 | None':
         '''Return a new :class:`~picamera2.Picamera2` instance.
 
-        Subclasses can override this to return a specialised device
+        Subclasses can override this to return a specialized device
         (e.g. :class:`~picamera2.devices.imx500.IMX500`) while inheriting
         the rest of :meth:`_initialize`.
 
@@ -220,7 +221,7 @@ class QPicamera(QCamera):
         ----------
         metadata : dict
             Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
-            used to initialise cached control values.
+            used to initialize cached control values.
         '''
         for name, ptype in _CONTROL_TYPES.items():
             if name not in self._device.camera_controls:
@@ -277,7 +278,7 @@ class QPicamera(QCamera):
         ----------
         metadata : dict
             Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
-            used to initialise the cached ``AfState`` value.
+            used to initialize the cached ``AfState`` value.
         '''
         if 'AfTrigger' not in self._device.camera_controls:
             return
@@ -303,7 +304,7 @@ class QPicamera(QCamera):
         ----------
         metadata : dict
             Frame metadata from :meth:`~picamera2.Picamera2.capture_metadata`,
-            used to initialise cached gain values.
+            used to initialize cached gain values.
         '''
         if 'ColourGains' not in self._device.camera_controls:
             return

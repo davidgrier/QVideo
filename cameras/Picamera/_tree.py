@@ -1,3 +1,4 @@
+'''Camera control tree for Raspberry Pi cameras.'''
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Picamera import QPicamera
 

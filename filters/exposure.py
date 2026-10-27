@@ -19,14 +19,14 @@ class ExposureFilter(VideoFilter):
     **Log** compresses the dynamic range via a logarithmic curve, lifting
     shadows without clipping highlights.  No parameters.
 
-    **Sigmoid** applies a smooth S-curve centred at *cutoff* with steepness
+    **Sigmoid** applies a smooth S-curve centered at *cutoff* with steepness
     *gain*.  Low *gain* gives a gentle contrast boost; high *gain* approaches
     hard clipping.
 
-    **CLAHE** (Contrast-Limited Adaptive Histogram Equalization) equalises
+    **CLAHE** (Contrast-Limited Adaptive Histogram Equalization) equalizes
     local contrast within *tile_size* × *tile_size* tiles, capping
-    amplification at *clip_limit* to suppress noise.  On colour input, CLAHE
-    is applied to the L channel in LAB colour space so hue and saturation are
+    amplification at *clip_limit* to suppress noise.  On color input, CLAHE
+    is applied to the L channel in LAB color space so hue and saturation are
     preserved.
 
     Log and Sigmoid are applied as a lookup table; CLAHE depends on

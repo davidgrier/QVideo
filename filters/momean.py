@@ -61,7 +61,7 @@ class MoMean(VideoFilter):
         ----------
         data : Image
             Input frame.  If the shape differs from the previous frame
-            the accumulator is re-initialised.
+            the accumulator is re-initialized.
         '''
         n = len(data.shape)
         if self._acc is None or data.shape != self._acc.shape[:n]:

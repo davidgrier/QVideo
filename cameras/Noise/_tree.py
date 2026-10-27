@@ -1,3 +1,4 @@
+'''Camera tree for the synthetic noise camera.'''
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Noise import QNoiseCamera, QNoiseSource
 

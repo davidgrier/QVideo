@@ -76,7 +76,7 @@ class QVideoSource(QtCore.QThread):
     newFrame = QtCore.Signal(np.ndarray, object)
 
     def __init__(self, source: VideoSourceType) -> None:
-        '''Initialise the video source thread.
+        '''Initialize the video source thread.
 
         Parameters
         ----------

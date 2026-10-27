@@ -1,3 +1,4 @@
+'''OpenCV camera and threaded video source (USB and built-in).'''
 from QVideo.lib import QCamera, QVideoSource
 from QVideo.cameras.OpenCV._devices import (
     capture_backend, configure, probe_formats)
@@ -63,7 +64,7 @@ class QOpenCVCamera(QCamera):
     ``width`` and ``height`` are registered as writable properties.
     Changes are applied to the open device via OpenCV's V4L2 backend, which
     handles the required ``VIDIOC_STREAMOFF`` / ``VIDIOC_S_FMT`` /
-    ``VIDIOC_STREAMON`` cycle internally.  The camera mutex serialises these
+    ``VIDIOC_STREAMON`` cycle internally.  The camera mutex serializes these
     writes against concurrent reads, so no source stop/restart is needed.
     :class:`~QVideo.cameras.OpenCV.QOpenCVTree.QOpenCVTree` exposes them as
     read-only display fields; the ``resolution`` enum in that tree changes

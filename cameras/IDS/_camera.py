@@ -1,3 +1,4 @@
+'''IDS Imaging camera and threaded video source (IDS peak producer).'''
 from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
 
 

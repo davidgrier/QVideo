@@ -31,6 +31,17 @@ OpenCV
 .. automodule:: QVideo.cameras.OpenCV
    :members:
 
+OpenCV camera list
+~~~~~~~~~~~~~~~~~~
+
+A combo box of the cameras that OpenCV can open.  If the
+``cv2-enumerate-cameras`` package is installed (the ``opencv`` extra), the
+entries carry the names of the cameras; without it they read "Camera 0" and
+so on.
+
+.. automodule:: QVideo.cameras.OpenCV.QListCVCameras
+   :members:
+
 OpenCV device utilities
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -48,6 +59,12 @@ FLIR
 ----
 
 .. automodule:: QVideo.cameras.Flir
+   :members:
+
+FLIR camera list
+~~~~~~~~~~~~~~~~
+
+.. automodule:: QVideo.cameras.Flir.QListFlirCameras
    :members:
 
 Allied Vision VimbaX

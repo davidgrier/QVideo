@@ -162,7 +162,7 @@ class TestQTrackpyOverlay(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 def _make_widget(**kwargs):
-    '''Create a QTrackpyWidget with the background thread neutralised.
+    '''Create a QTrackpyWidget with the background thread neutralized.
 
     Patches moveToThread (so the worker stays on the main thread) and
     QThread.start (so no OS thread is actually spawned).

@@ -17,14 +17,14 @@ class ThresholdFilter(VideoFilter):
     Converts each frame to a binary image using one of four methods:
 
     - **Global**: pixels above *threshold* become 255, others become 0.
-    - **Otsu**: threshold level chosen automatically to minimise intra-class
+    - **Otsu**: threshold level chosen automatically to minimize intra-class
       variance (Otsu 1979).  The *threshold* parameter is ignored.
     - **Adaptive Mean**: threshold at each pixel is the mean of the
-      *block_size* × *block_size* neighbourhood minus *C*.
+      *block_size* × *block_size* neighborhood minus *C*.
     - **Adaptive Gaussian**: threshold at each pixel is the
-      Gaussian-weighted mean of the neighbourhood minus *C*.
+      Gaussian-weighted mean of the neighborhood minus *C*.
 
-    Colour input is converted to grayscale before thresholding.
+    Color input is converted to grayscale before thresholding.
 
     Parameters
     ----------
@@ -34,7 +34,7 @@ class ThresholdFilter(VideoFilter):
         One of ``'Global'``, ``'Otsu'``, ``'Adaptive Mean'``,
         ``'Adaptive Gaussian'``.  Default: ``'Global'``.
     block_size : int
-        Neighbourhood size for adaptive methods [pixels].  Must be odd
+        Neighborhood size for adaptive methods [pixels].  Must be odd
         and ≥ 3.  Default: ``11``.
     C : int
         Constant subtracted from the adaptive mean.  Default: ``2``.
@@ -75,7 +75,7 @@ class ThresholdFilter(VideoFilter):
 
     @property
     def block_size(self) -> int:
-        '''Adaptive neighbourhood size [pixels], always odd and ≥ 3.'''
+        '''Adaptive neighborhood size [pixels], always odd and ≥ 3.'''
         return self._block_size
 
     @block_size.setter
@@ -85,7 +85,7 @@ class ThresholdFilter(VideoFilter):
 
     @property
     def C(self) -> int:
-        '''Constant subtracted from the adaptive neighbourhood mean.'''
+        '''Constant subtracted from the adaptive neighborhood mean.'''
         return self._C
 
     @C.setter
@@ -175,7 +175,7 @@ class QThresholdFilter(QVideoFilter):
 
     - **Global**: a *level* spinbox [0, 255].
     - **Otsu**: no extra controls (threshold is computed automatically).
-    - **Adaptive Mean / Adaptive Gaussian**: *block* (neighbourhood size)
+    - **Adaptive Mean / Adaptive Gaussian**: *block* (neighborhood size)
       and *C* (subtracted constant) spinboxes.
 
     Parameters

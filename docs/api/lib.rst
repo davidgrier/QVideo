@@ -42,6 +42,29 @@ QVideoScreen
 .. automodule:: QVideo.lib.QVideoScreen
    :members:
 
+QHistogramWidget
+----------------
+
+:class:`~QVideo.lib.QHistogramWidget.QHistogramWidget` shows the live
+histogram of the pixel intensities on a screen.  Its draggable handles set
+the range of intensities that the screen displays.  It watches the screen
+and needs no connection to the camera; see
+:class:`~QVideo.demos.histogramdemo.HistogramDemo`.
+
+.. automodule:: QVideo.lib.QHistogramWidget
+   :members:
+
+QUniformityWidget
+-----------------
+
+:class:`~QVideo.lib.QUniformityWidget.QUniformityWidget` plots the mean
+intensity along x and along y for every frame that the screen displays.
+Flat traces mean that the illumination is uniform.  See
+:class:`~QVideo.demos.uniformitydemo.UniformityDemo`.
+
+.. automodule:: QVideo.lib.QUniformityWidget
+   :members:
+
 VideoFilter
 -----------
 
@@ -216,6 +239,16 @@ QListCameras
 ------------
 
 .. automodule:: QVideo.lib.QListCameras
+   :members:
+
+clickable
+---------
+
+:func:`~QVideo.lib.clickable.clickable` adds a ``clicked()`` signal to any
+widget, such as the read-only file name of the DVR panel, which opens a file
+dialog when it is clicked.
+
+.. automodule:: QVideo.lib.clickable
    :members:
 
 Camera errors

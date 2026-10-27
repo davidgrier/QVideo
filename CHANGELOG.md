@@ -916,7 +916,7 @@ migrate:
 ### Fixed
 - `QGenicamCamera._initialize`: removed `try/finally` anti-pattern that
   silently swallowed the `self.name` `AttributeError` and left `protected`,
-  `_properties`, and `_methods` uninitialised.
+  `_properties`, and `_methods` uninitialized.
 - `QGenicamCamera`: `IProperty` union type now defined inside the
   `try` block, preventing `NameError` when `genicam` is not installed.
 - `QGenicamSource.__init__`: no longer forwards `*args` to

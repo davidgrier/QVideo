@@ -1,3 +1,4 @@
+'''Synthetic noise camera and threaded video source (no hardware).'''
 from QVideo.lib import QCamera, QVideoSource
 import numpy as np
 import time

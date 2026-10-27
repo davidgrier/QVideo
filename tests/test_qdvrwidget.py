@@ -1,15 +1,36 @@
 '''Unit tests for QDVRWidget.'''
+import shutil
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 from unittest.mock import patch, MagicMock
 from QVideo.tests.signals import record
 from QVideo.lib.videotypes import FrameInfo
 from qtpy import QtCore, QtGui, QtWidgets
-from QVideo.dvr.QDVRWidget import QDVRWidget, _h5py_available
+from QVideo.dvr.QDVRWidget import QDVRWidget, _clock, _h5py_available
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+_dialogs = []
+
+
+def setUpModule():
+    '''A dialog that a test did not expect fails it instead of hanging.'''
+    for name in ('warning', 'question'):
+        patcher = patch.object(
+            QtWidgets.QMessageBox, name,
+            side_effect=AssertionError(f'unexpected {name} dialog'))
+        patcher.start()
+        _dialogs.append(patcher)
+
+
+def tearDownModule():
+    for patcher in _dialogs:
+        patcher.stop()
 
 
 class MockSource(QtCore.QObject):
@@ -32,6 +53,8 @@ class MockWriter(QtCore.QObject):
         super().__init__()
         self.received = None
         self.shutdowns = 0
+        self.target = kwargs.get('nframes', 10)
+        self.nskip = kwargs.get('nskip', 1)
 
     def write(self, frame):
         pass
@@ -68,7 +91,11 @@ class MockPlayer(QtCore.QThread):
         super().__init__()
         self._open = True
         self._paused = False
-        self.source = MagicMock()
+        self.seeks = []
+        self.source = MagicMock(length=100, fps=30., framenumber=0)
+
+    def seek(self, framenumber):
+        self.seeks.append(framenumber)
 
     def isOpen(self):
         return self._open
@@ -110,15 +137,31 @@ def setup_recording(widget, source):
     widget._shutdown.connect(writer.shutdown)
     widget._writer = writer
     widget._thread = thread
+    widget._fps = source.fps
     return writer, thread
 
 
 def setup_playing(widget):
     '''Manually wire playback state as play() would.'''
     player = MockPlayer()
-    player.newFrame.connect(widget.stepFrameNumber)
+    player.newFrame.connect(widget._follow)
     widget._player = player
+    widget._length, widget._fps = 100, 30.
     return player
+
+
+class FileCase(unittest.TestCase):
+    '''A test case with a scratch directory holding ``self.path``.'''
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.path = self.dir / 'test.avi'
+
+    def widget(self, create=True, **kwargs):
+        if create:
+            self.path.touch()
+        return make_widget(filename=str(self.path), **kwargs)
 
 
 class TestQDVRWidgetInit(unittest.TestCase):
@@ -159,22 +202,11 @@ class TestQDVRWidgetProperties(unittest.TestCase):
         widget.filename = 'output.avi'
         self.assertEqual(widget.filename, 'output.avi')
 
-    def test_playname_setter_getter(self):
-        widget = make_widget()
-        widget.playname = 'input.avi'
-        self.assertEqual(widget.playname, 'input.avi')
-
     def test_filename_not_updated_while_recording(self):
         widget, source = make_widget_with_source()
         setup_recording(widget, source)
         widget.filename = 'new.avi'
         self.assertNotEqual(widget.filename, 'new.avi')
-
-    def test_playname_not_updated_while_playing(self):
-        widget = make_widget()
-        setup_playing(widget)
-        widget.playname = 'new.avi'
-        self.assertNotEqual(widget.playname, 'new.avi')
 
     def test_source_setter_stores_source(self):
         widget, source = make_widget_with_source()
@@ -190,21 +222,12 @@ class TestQDVRWidgetProperties(unittest.TestCase):
         widget.filename = None
         self.assertEqual(widget.filename, 'original.avi')
 
-    def test_framenumber_setter(self):
-        widget = make_widget()
-        widget.framenumber = 42
-        self.assertEqual(widget.framenumber, 42)
-
-    def test_setFrameNumber(self):
-        widget = make_widget()
+    def test_setFrameNumber_shows_the_recorded_frames(self):
+        widget, source = make_widget_with_source()
+        setup_recording(widget, source)
         widget.setFrameNumber(7)
         self.assertEqual(widget.framenumber, 7)
-
-    def test_stepFrameNumber(self):
-        widget = make_widget()
-        widget.framenumber = 5
-        widget.stepFrameNumber()
-        self.assertEqual(widget.framenumber, 6)
+        self.assertIn('7', widget.positionLabel.text())
 
 
 class TestQDVRWidgetRecord(unittest.TestCase):
@@ -435,7 +458,11 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         mock_stop.assert_called_once()
 
 
-class TestQDVRWidgetPlay(unittest.TestCase):
+class TestQDVRWidgetPlay(FileCase):
+
+    def play(self, widget, cls=MockPlayer):
+        with patch.dict(QDVRWidget.Player, {'.avi': cls}):
+            widget.play()
 
     def test_play_does_nothing_while_recording(self):
         widget, source = make_widget_with_source()
@@ -444,58 +471,157 @@ class TestQDVRWidgetPlay(unittest.TestCase):
         self.assertFalse(widget.isPlaying())
 
     def test_play_rejects_unsupported_extension(self):
-        widget = make_widget()
-        widget.playname = 'test.xyz'
+        self.path = self.dir / 'test.xyz'
+        widget = self.widget()
         with self.assertLogs('QVideo.dvr.QDVRWidget', level='ERROR'):
             widget.play()
         self.assertFalse(widget.isPlaying())
 
+    def test_play_warns_when_the_file_does_not_exist(self):
+        widget = self.widget(create=False)
+        with patch.object(QtWidgets.QMessageBox, 'warning') as warning:
+            self.play(widget)
+        warning.assert_called_once()
+        self.assertIn('test.avi', warning.call_args.args[2])
+        self.assertFalse(widget.isPlaying())
+
     def test_play_starts_playback(self):
-        widget = make_widget()
-        widget.playname = 'test.avi'
-        with patch.dict(QDVRWidget.Player, {'.avi': MockPlayer}):
-            widget.play()
+        widget = self.widget()
+        self.play(widget)
         self.assertTrue(widget.isPlaying())
 
+    def test_play_shows_the_length_of_the_video(self):
+        widget = self.widget()
+        self.play(widget)
+        self.assertEqual(widget.slider.maximum(), 100)
+        self.assertEqual(widget.positionLabel.text(), 'frame 0 / 100')
+
     def test_play_emits_playing_true(self):
-        widget = make_widget()
-        widget.playname = 'test.avi'
+        widget = self.widget()
         spy = record(widget.playing)
-        with patch.dict(QDVRWidget.Player, {'.avi': MockPlayer}):
-            widget.play()
+        self.play(widget)
         self.assertEqual(len(spy), 1)
         self.assertTrue(spy[0][0])
 
     def test_play_resumes_if_paused(self):
-        widget = make_widget()
-        widget.playname = 'test.avi'
-        with patch.dict(QDVRWidget.Player, {'.avi': MockPlayer}):
-            widget.play()
+        widget = self.widget()
+        self.play(widget)
         widget._player.pause()
         self.assertTrue(widget.isPaused())
         widget.play()
         self.assertFalse(widget.isPaused())
 
+    def test_play_restarts_a_video_that_has_ended(self):
+        widget = self.widget()
+        self.play(widget)
+        widget._display(100, 100, 30.)
+        widget._player.pause()
+        widget.play()
+        self.assertEqual(widget._player.seeks, [0])
+        self.assertFalse(widget.isPaused())
+
     def test_play_does_nothing_if_already_playing(self):
-        widget = make_widget()
-        widget.playname = 'test.avi'
-        with patch.dict(QDVRWidget.Player, {'.avi': MockPlayer}):
-            widget.play()
+        widget = self.widget()
+        self.play(widget)
         first_player = widget._player
         widget.play()
         self.assertIs(widget._player, first_player)
 
     def test_play_does_not_start_if_player_not_open(self):
-        widget = make_widget()
-        widget.playname = 'test.avi'
+        widget = self.widget()
 
         class ClosedPlayer(MockPlayer):
             def isOpen(self):
                 return False
 
-        with patch.dict(QDVRWidget.Player, {'.avi': ClosedPlayer}):
-            widget.play()
+        self.play(widget, ClosedPlayer)
         self.assertFalse(widget.isPlaying())
+
+
+class TestQDVRWidgetRecordingLoad(unittest.TestCase):
+    '''Recording must not ask the camera for anything with every frame.'''
+
+    def test_the_frame_rate_is_read_once_per_recording(self):
+        source = MockSource()
+        reads = []
+        type(source).fps = property(lambda self: reads.append(1) or 30.)
+        self.addCleanup(delattr, type(source), 'fps')
+        widget = make_widget(source=source)
+        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
+                patch.object(QtCore, 'QThread', return_value=MockThread()):
+            widget.record()
+        reads.clear()
+        for n in range(1, 20):
+            source.newFrame.emit(_FRAME)
+            widget.setFrameNumber(n)
+            widget._watch(_FRAME, FrameInfo(n, 10. + n / 30.))
+        self.assertEqual(reads, [])
+
+    def test_a_frame_count_after_the_recording_is_ignored(self):
+        widget, source = make_widget_with_source()
+        setup_recording(widget, source)
+        widget.stop()
+        widget.setFrameNumber(5)  # queued before stop, delivered after
+        self.assertEqual(widget.framenumber, 0)
+
+
+class TestQDVRWidgetRecordChecks(FileCase):
+
+    def record(self, widget):
+        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
+                patch.object(QtCore, 'QThread', return_value=MockThread()):
+            widget.record()
+
+    def widget(self, create=True):
+        widget = super().widget(create)
+        widget.source = MockSource()
+        return widget
+
+    def test_a_new_file_is_recorded_without_asking(self):
+        widget = self.widget(create=False)
+        self.record(widget)
+        self.assertTrue(widget.isRecording())
+
+    def test_an_existing_file_is_replaced_if_the_user_agrees(self):
+        widget = self.widget()
+        Yes = QtWidgets.QMessageBox.StandardButton.Yes
+        with patch.object(QtWidgets.QMessageBox, 'question',
+                          return_value=Yes) as question:
+            self.record(widget)
+        question.assert_called_once()
+        self.assertTrue(widget.isRecording())
+
+    def test_an_existing_file_is_kept_if_the_user_declines(self):
+        widget = self.widget()
+        No = QtWidgets.QMessageBox.StandardButton.No
+        with patch.object(QtWidgets.QMessageBox, 'question',
+                          return_value=No):
+            self.record(widget)
+        self.assertFalse(widget.isRecording())
+
+    def test_the_default_answer_is_to_keep_the_file(self):
+        widget = self.widget()
+        No = QtWidgets.QMessageBox.StandardButton.No
+        with patch.object(QtWidgets.QMessageBox, 'question',
+                          return_value=No) as question:
+            self.record(widget)
+        self.assertEqual(question.call_args.args[-1], No)
+
+    def test_a_read_only_file_is_not_recorded_over(self):
+        widget = self.widget()
+        with patch('os.access', return_value=False), \
+                patch.object(QtWidgets.QMessageBox, 'warning') as warning:
+            self.record(widget)
+        self.assertIn('read-only', warning.call_args.args[2])
+        self.assertFalse(widget.isRecording())
+
+    def test_a_folder_that_cannot_be_written_is_reported(self):
+        widget = self.widget(create=False)
+        with patch('os.access', return_value=False), \
+                patch.object(QtWidgets.QMessageBox, 'warning') as warning:
+            self.record(widget)
+        self.assertIn(str(self.dir), warning.call_args.args[2])
+        self.assertFalse(widget.isRecording())
 
 
 class TestQDVRWidgetStop(unittest.TestCase):
@@ -506,7 +632,7 @@ class TestQDVRWidgetStop(unittest.TestCase):
 
     def test_stop_resets_framenumber(self):
         widget = make_widget()
-        widget.framenumber = 100
+        widget._display(100, 200, 30.)
         widget.stop()
         self.assertEqual(widget.framenumber, 0)
 
@@ -562,6 +688,13 @@ class TestQDVRWidgetStop(unittest.TestCase):
         source.newFrame.disconnect(writer.write)  # pre-disconnect
         widget.stop()  # must not raise
 
+    def test_stop_waits_until_the_file_is_closed(self):
+        widget = make_widget()
+        player = setup_playing(widget)
+        with patch.object(player, 'wait') as wait:
+            widget.stop()
+        wait.assert_called_once()
+
     def test_stop_clears_player(self):
         widget = make_widget()
         setup_playing(widget)
@@ -591,18 +724,11 @@ class TestQDVRWidgetPause(unittest.TestCase):
 
 class TestQDVRWidgetRewind(unittest.TestCase):
 
-    def test_rewind_calls_source_rewind(self):
+    def test_rewind_seeks_to_the_first_frame(self):
         widget = make_widget()
-        setup_playing(widget)
+        player = setup_playing(widget)
         widget.rewind()
-        widget._player.source.rewind.assert_called_once()
-
-    def test_rewind_resets_framenumber(self):
-        widget = make_widget()
-        setup_playing(widget)
-        widget.framenumber = 5
-        widget.rewind()
-        self.assertEqual(widget.framenumber, 0)
+        self.assertEqual(player.seeks, [0])
 
     def test_rewind_pauses_playback(self):
         widget = make_widget()
@@ -615,85 +741,269 @@ class TestQDVRWidgetRewind(unittest.TestCase):
         widget.rewind()  # must not raise
 
 
+class TestQDVRWidgetSeek(unittest.TestCase):
+
+    def playing(self, at=10):
+        widget = make_widget()
+        player = setup_playing(widget)
+        widget._display(at, 100, 30.)
+        return widget, player
+
+    def test_step_forward_shows_the_next_frame(self):
+        widget, player = self.playing(at=10)  # showing frame index 9
+        widget.step(1)
+        self.assertEqual(player.seeks, [10])
+
+    def test_step_back_shows_the_previous_frame(self):
+        widget, player = self.playing(at=10)
+        widget.step(-1)
+        self.assertEqual(player.seeks, [8])
+
+    def test_stepping_pauses(self):
+        widget, player = self.playing()
+        widget.step(1)
+        self.assertTrue(widget.isPaused())
+
+    def test_seek_stays_within_the_video(self):
+        widget, player = self.playing()
+        widget.seek(-5)
+        widget.seek(500)
+        self.assertEqual(player.seeks, [0, 99])
+
+    def test_seek_does_not_pause(self):
+        widget, player = self.playing()
+        widget.seek(20)
+        self.assertFalse(widget.isPaused())
+
+    def test_seek_when_not_playing_is_ignored(self):
+        make_widget().seek(3)  # must not raise
+
+    def test_moving_the_slider_seeks(self):
+        widget, player = self.playing()
+        widget.slider.setValue(40)
+        self.assertEqual(player.seeks, [39])
+
+    def test_showing_a_frame_does_not_seek(self):
+        widget, player = self.playing()
+        widget._display(50, 100, 30.)
+        self.assertEqual(player.seeks, [])
+
+
+class TestQDVRWidgetFollow(unittest.TestCase):
+
+    def playing(self, length=100):
+        widget = make_widget()
+        player = setup_playing(widget)
+        widget._length = length
+        return widget, player
+
+    def test_the_display_follows_the_reader(self):
+        widget, player = self.playing()
+        player.source.framenumber = 25
+        widget._follow()
+        self.assertEqual(widget.framenumber, 25)
+        self.assertEqual(widget.positionLabel.text(), 'frame 25 / 100')
+        self.assertEqual(widget.timeLabel.text(), '0:00.8 / 0:03.3')
+
+    def test_playback_pauses_at_the_end_of_the_video(self):
+        widget, player = self.playing()
+        player.source.framenumber = 100
+        widget._follow()
+        self.assertTrue(widget.isPaused())
+
+    def test_playback_continues_before_the_end(self):
+        widget, player = self.playing()
+        player.source.framenumber = 99
+        widget._follow()
+        self.assertFalse(widget.isPaused())
+
+    def test_a_video_of_unknown_length_never_pauses(self):
+        widget, player = self.playing(length=0)
+        player.source.framenumber = 5
+        widget._follow()
+        self.assertFalse(widget.isPaused())
+        self.assertEqual(widget.slider.maximum(), 5)
+
+    def test_a_late_frame_after_stopping_is_harmless(self):
+        widget = make_widget()
+        widget._follow()  # queued before stop, delivered after
+
+
+class TestQDVRWidgetControls(unittest.TestCase):
+
+    def test_idle_without_a_source_only_play_is_available(self):
+        widget = make_widget()
+        for button in (widget.recordButton, widget.stopButton,
+                       widget.rewindButton, widget.backButton,
+                       widget.forwardButton):
+            self.assertFalse(button.isEnabled())
+        self.assertTrue(widget.playButton.isEnabled())
+
+    def test_the_slider_is_drawn_but_inert_when_idle(self):
+        slider = make_widget().slider
+        Attribute = QtCore.Qt.WidgetAttribute
+        self.assertTrue(slider.isEnabled())
+        self.assertGreater(slider.maximum(), slider.minimum())
+        self.assertTrue(slider.testAttribute(
+            Attribute.WA_TransparentForMouseEvents))
+        self.assertEqual(slider.focusPolicy(), QtCore.Qt.FocusPolicy.NoFocus)
+
+    def test_the_slider_responds_while_playing(self):
+        widget = make_widget()
+        setup_playing(widget)
+        widget._updateUi()
+        self.assertFalse(widget.slider.testAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents))
+
+    def test_the_slider_keeps_a_range_after_stopping(self):
+        widget = make_widget()
+        setup_playing(widget)
+        widget.stop()
+        self.assertGreater(widget.slider.maximum(), 0)
+
+    def test_recording_allows_only_stop(self):
+        widget, source = make_widget_with_source()
+        setup_recording(widget, source)
+        widget._updateUi()
+        self.assertTrue(widget.stopButton.isEnabled())
+        self.assertFalse(widget.playButton.isEnabled())
+
+    def test_playing_enables_the_transport_controls(self):
+        widget, source = make_widget_with_source()
+        setup_playing(widget)
+        widget._updateUi()
+        for control in (widget.rewindButton, widget.backButton,
+                        widget.forwardButton, widget.slider,
+                        widget.stopButton):
+            self.assertTrue(control.isEnabled())
+        self.assertFalse(widget.recordButton.isEnabled())
+
+    def test_the_play_button_shows_pause_while_playing(self):
+        widget = make_widget()
+        player = setup_playing(widget)
+        widget._updateUi()
+        self.assertEqual(widget.playButton.toolTip(), 'Pause')
+        player.pause()
+        widget._updateUi()
+        self.assertEqual(widget.playButton.toolTip(), 'Play')
+
+    def test_the_play_button_pauses_then_resumes(self):
+        widget = make_widget()
+        setup_playing(widget)
+        widget.playButton.click()
+        self.assertTrue(widget.isPaused())
+        widget.playButton.click()
+        self.assertFalse(widget.isPaused())
+
+    def test_stopping_restores_the_play_button(self):
+        widget = make_widget()
+        setup_playing(widget)
+        widget._updateUi()
+        widget.stop()
+        self.assertEqual(widget.playButton.toolTip(), 'Play')
+
+    def test_the_clock(self):
+        self.assertEqual(_clock(0), '0:00.0')
+        self.assertEqual(_clock(65.4), '1:05.4')
+
+
+class TestQDVRWidgetIcons(unittest.TestCase):
+
+    def test_the_icons_have_the_color_of_the_button_text(self):
+        widget = make_widget()
+        text = widget.palette().buttonText().color()
+        image = widget.stopButton.icon().pixmap(24, 24).toImage()
+        colors = {QtGui.QColor(image.pixel(x, y)).rgb()
+                  for x in range(image.width()) for y in range(image.height())
+                  if QtGui.QColor.fromRgba(image.pixel(x, y)).alpha() == 255}
+        self.assertEqual(colors, {text.rgb()})
+
+    def test_the_icons_follow_a_dark_palette(self):
+        widget = make_widget()
+        palette = widget.palette()
+        palette.setColor(QtGui.QPalette.ColorRole.ButtonText,
+                         QtGui.QColor(230, 230, 230))
+        widget.setPalette(palette)
+        icon = widget._icon(QtWidgets.QStyle.StandardPixmap.SP_MediaStop)
+        image = icon.pixmap(24, 24).toImage()
+        opaque = [QtGui.QColor.fromRgba(image.pixel(x, y))
+                  for x in range(image.width()) for y in range(image.height())
+                  if QtGui.QColor.fromRgba(image.pixel(x, y)).alpha() == 255]
+        self.assertTrue(opaque)
+        self.assertTrue(all(c.red() == 230 for c in opaque))
+
+    def test_the_record_button_has_an_icon(self):
+        self.assertEqual(make_widget().recordButton.text(), '')
+
+    def test_the_record_button_falls_back_to_text_without_svg_support(self):
+        module = sys.modules['QVideo.dvr.QDVRWidget']
+        with patch.object(module, '_record', return_value=QtGui.QIcon()):
+            widget = make_widget()
+        self.assertEqual(widget.recordButton.text(), 'Record')
+
+
 class TestQDVRWidgetGetFileName(unittest.TestCase):
 
     def test_returns_empty_when_playing(self):
         widget = make_widget()
         setup_playing(widget)
-        self.assertEqual(widget.getFileName(save=False), '')
+        self.assertEqual(widget.getFileName(), '')
 
     def test_returns_empty_when_recording(self):
         widget, source = make_widget_with_source()
         setup_recording(widget, source)
-        self.assertEqual(widget.getFileName(save=True), '')
+        self.assertEqual(widget.getFileName(), '')
 
-    def test_calls_open_dialog_when_not_saving(self):
+    def choose(self, widget, *names):
+        '''Run getFileName with a dialog that selects *names*.'''
+        dialogs = []
+
+        def exec_(dialog):
+            dialogs.append(dialog)
+            return bool(names)
+
+        with patch.object(QtWidgets.QFileDialog, 'exec', exec_), \
+                patch.object(QtWidgets.QFileDialog, 'selectedFiles',
+                             return_value=list(names)):
+            return widget.getFileName(), dialogs[0]
+
+    def test_the_dialog_selects_and_does_not_save(self):
+        _, dialog = self.choose(make_widget(), 'a.avi')
+        Dialog = QtWidgets.QFileDialog
+        self.assertEqual(dialog.labelText(Dialog.DialogLabel.Accept),
+                         'Select')
+        self.assertEqual(dialog.acceptMode(), Dialog.AcceptMode.AcceptSave)
+
+    def test_does_not_ask_before_replacing_a_file(self):
+        _, dialog = self.choose(make_widget(), 'a.avi')
+        Option = QtWidgets.QFileDialog.Option
+        self.assertTrue(dialog.testOption(Option.DontConfirmOverwrite))
+
+    def test_sets_the_filename(self):
         widget = make_widget()
-        mock_dialog = MagicMock(return_value=('', ''))
-        with patch.object(QtWidgets.QFileDialog,
-                          'getOpenFileName', mock_dialog):
-            widget.getFileName(save=False)
-        mock_dialog.assert_called_once()
+        result, _ = self.choose(widget, 'chosen.avi')
+        self.assertEqual(result, 'chosen.avi')
+        self.assertEqual(widget.filename, 'chosen.avi')
 
-    def test_calls_save_dialog_when_saving(self):
-        widget = make_widget()
-        mock_dialog = MagicMock(return_value=('', ''))
-        with patch.object(QtWidgets.QFileDialog,
-                          'getSaveFileName', mock_dialog):
-            widget.getFileName(save=True)
-        mock_dialog.assert_called_once()
-
-    def test_updates_playname_when_filename_returned(self):
-        widget = make_widget()
-        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName',
-                          return_value=('chosen.avi', '')):
-            widget.getFileName(save=False)
-        self.assertEqual(widget.playname, 'chosen.avi')
-
-    def test_updates_filename_when_saving(self):
-        widget = make_widget()
-        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
-                          return_value=('output.avi', '')):
-            widget.getFileName(save=True)
-        self.assertEqual(widget.filename, 'output.avi')
-
-    def test_does_not_update_filename_when_opening(self):
+    def test_keeps_the_filename_when_cancelled(self):
         widget = make_widget(filename='original.avi')
-        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName',
-                          return_value=('other.avi', '')):
-            widget.getFileName(save=False)
+        result, _ = self.choose(widget)
+        self.assertEqual(result, '')
         self.assertEqual(widget.filename, 'original.avi')
 
-    def test_save_dialog_updates_playname(self):
-        widget = make_widget()
-        with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
-                          return_value=('save.avi', '')):
-            widget.getFileName(save=True)
-        self.assertEqual(widget.playname, 'save.avi')
 
-    def test_returns_empty_when_dialog_cancelled(self):
-        widget = make_widget()
-        with patch.object(QtWidgets.QFileDialog, 'getOpenFileName',
-                          return_value=('', '')):
-            result = widget.getFileName(save=False)
-        self.assertEqual(result, '')
-
-
-class TestQDVRWidgetRecordNoFilename(unittest.TestCase):
+class TestQDVRWidgetNoFilename(unittest.TestCase):
 
     def test_record_does_nothing_without_filename(self):
         widget, source = make_widget_with_source()
-        widget.saveEdit.setText('')
+        widget.fileEdit.setText('')
         with patch.object(widget, 'getFileName', return_value=''):
             widget.record()
         self.assertFalse(widget.isRecording())
 
-
-class TestQDVRWidgetPlayNoFilename(unittest.TestCase):
-
-    def test_play_does_nothing_without_playname(self):
+    def test_play_does_nothing_without_filename(self):
         widget = make_widget()
-        widget.playEdit.setText('')
+        widget.fileEdit.setText('')
         with patch.object(widget, 'getFileName', return_value=''):
             widget.play()
         self.assertFalse(widget.isPlaying())

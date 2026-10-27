@@ -30,6 +30,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The DVR panel is a deck.**  One row of icon buttons (record, stop,
+  first frame, one frame back, play/pause, one frame forward), a position
+  slider, the frame and time read-outs, the file and the duration and
+  interval of a recording.  The play button turns into a pause button
+  while a video plays.  The slider follows the video and seeks when moved;
+  while recording it shows how far the recording has come.  Playback
+  pauses at the end of the video, and play then starts over.
+  `QDVRWidget` has one file name for recording and playback: `playname`,
+  `saveEdit`, `playEdit`, `pauseButton` and the `save` argument of
+  `getFileName` are gone (`fileEdit` and `getFileName()` replace them), the
+  frame counter is the slider (`framenumber` is read-only), and `seek()`
+  and `step()` are new.  The panel warns before it plays a file that does
+  not exist, and before it records over a file that cannot be written; it
+  asks before it replaces a file that exists.
+- **The DVR buttons use the icons of the Qt style**, drawn in the color of
+  the button text so that they show on a dark theme, and the record button
+  the Tango icon in `dvr/icons/record.svg` (Qt has no record icon; it is
+  part of the package data, and the button shows the word "Record" if Qt
+  has no SVG support).  The compiled resource `icons_rc.py` is gone.
 - **Opening a GenICam camera is quiet.**  Loading the node map by hand,
   which `genicam` 1.6 with some producers always needs (as with the FLIR
   camera), is logged at the DEBUG level and no longer as a warning.  A
@@ -41,11 +60,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **Recording no longer asks the camera for the frame rate with every
+  frame.**  The backlog watch of `QDVRWidget` read `source.fps` for each
+  captured frame.  The read takes the camera lock, which a camera holds
+  while it waits for its next frame, so the GUI thread spent a large part
+  of its time waiting for the camera, and a recording could fall behind.
+  The rate is now read once, when the recording starts.
 - **`QVideoScreen` ignores a shape of -1.**  A driver can report -1 for
   the frame size before the stream runs (macOS with OpenCV); the screen
   then asked Qt for a negative minimum size and Qt warned
   "Negative sizes (-1,-1) are not possible".  It treats any shape that is
   not positive as unknown, as it already did for zero.
+- **Stopping playback waits for the thread that plays.**  The video file
+  is closed when `QDVRWidget.stop()` returns, so the file can be recorded
+  over at once, and Qt no longer prints "Thread tried to wait on itself".
 - **Recording through `ROIDemo`'s ROI keeps the capture information.**  The
   demo's crop dropped the `FrameInfo` of each frame, so the recorder lost
   the capture times and the backlog watch of `QDVRWidget` for ROI

@@ -82,7 +82,7 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-'QVideo.dvr' = ['*.ui']
+'QVideo.dvr' = ['icons/*.svg']
 
 [tool.setuptools.package-dir]
 "QVideo"                    = "."
@@ -112,7 +112,6 @@ omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/docs/*",
-    "*/dvr/icons_rc.py",
 ]
 
 [tool.coverage.report]

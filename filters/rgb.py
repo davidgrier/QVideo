@@ -42,7 +42,8 @@ class RGBFilter(VideoFilter):
         return FilterCode(
             imports=frozenset(),
             lines=[
-                f'image = image[:, :, {ch}] if image.ndim == 3 else image  # {names[ch]}',
+                f'image = image[:, :, {ch}] if image.ndim == 3 '
+                f'else image  # {names[ch]}',
             ],
             comment=f'{names[ch]} channel',
         )

@@ -22,7 +22,8 @@ _CAMERAS: dict[str, _CameraEntry] = {
     'basler':   _CameraEntry('-b', 'Basler pylon camera'),
     'flir':     _CameraEntry('-f', 'Flir camera'),
     'ids':      _CameraEntry('-i', 'IDS Imaging camera'),
-    'mv':       _CameraEntry('-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
+    'mv':       _CameraEntry(
+        '-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
     'vimbax':   _CameraEntry('-v', 'Allied Vision VimbaX camera'),
     'picamera': _CameraEntry('-p', 'Raspberry Pi camera module'),
 }

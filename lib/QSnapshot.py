@@ -52,9 +52,9 @@ class QSnapshot(QtCore.QObject):
     newFrame(Image)
         Cache the most recent frame.
     snap()
-        Save the cached frame to a timestamped PNG in the user's home directory.
+        Save the cached frame to a timestamped PNG in the home directory.
     snapAs()
-        Prompt for a filename pre-filled with the auto-generated name, then save.
+        Prompt for a filename (pre-filled with the generated one), then save.
     '''
 
     def __init__(self, parent: QtWidgets.QWidget,
@@ -89,7 +89,7 @@ class QSnapshot(QtCore.QObject):
 
     @QtCore.Slot()
     def snapAs(self) -> None:
-        '''Prompt for a filename pre-filled with the auto-generated name, then save.'''
+        '''Prompt for a filename, pre-filled, then save.'''
         if self._frame is None:
             logger.warning('snapAs: no frame available')
             return

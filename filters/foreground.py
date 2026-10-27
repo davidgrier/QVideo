@@ -117,7 +117,7 @@ class ForegroundEstimator(VideoFilter):
 
 class QForegroundEstimator(QVideoFilter):
 
-    '''Widget for :class:`ForegroundEstimator` with history and threshold spinboxes.
+    '''Widget for :class:`ForegroundEstimator`: history and threshold.
 
     Parameters
     ----------

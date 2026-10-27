@@ -97,7 +97,7 @@ class SmoothingFilter(VideoFilter):
 
 class QSmoothingFilter(QVideoFilter):
 
-    '''Widget for :class:`SmoothingFilter` with method selector and width spinbox.
+    '''Widget for :class:`SmoothingFilter`: method selector and width.
 
     Parameters
     ----------

@@ -217,7 +217,7 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @property
     def composite(self) -> bool:
-        '''Emit the rendered scene via :attr:`newFrame` instead of the raw frame.'''
+        '''Emit the rendered scene via :attr:`newFrame`, not the raw frame.'''
         return self._composite
 
     @composite.setter
@@ -331,7 +331,7 @@ class QVideoScreen(GraphicsLayoutWidget):
 
         Caps at the full available area of whichever screen the window is on,
         so the result is the same whether the window has been shown or not.
-        Both width and height are adjusted while preserving the video aspect ratio.
+        Width and height are adjusted to preserve the video aspect ratio.
         '''
         if not self.hasHeightForWidth():
             return
@@ -375,7 +375,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             self._fitToVideo()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        '''Update the ViewBox range to match the video after the viewport is resized.'''
+        '''Update the ViewBox range to match the video after a resize.'''
         super().resizeEvent(event)
         shape = getattr(self, '_videoShape', None)
         if shape is not None:

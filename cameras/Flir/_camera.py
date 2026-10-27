@@ -34,7 +34,8 @@ class QFlirCamera(QGenicamCamera):
     _producer_filenames = ('Spinnaker_GenTL.cti',)
     _producerHint = ('Install the Spinnaker SDK and set GENICAM_GENTL64_PATH '
                      'to the directory containing Spinnaker_GenTL.cti '
-                     '(on Linux, typically /opt/spinnaker/lib/spinnaker-gentl).')
+                     '(on Linux, typically '
+                     '/opt/spinnaker/lib/spinnaker-gentl).')
 
 
 class QFlirSource(QGenicamSource):

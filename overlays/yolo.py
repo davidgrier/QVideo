@@ -201,7 +201,8 @@ class QYoloWidget(QtWidgets.QGroupBox):
         self._source = None
         self._ready = True
         self._overlay = QYoloOverlay()
-        self._worker = _YoloWorker(model_name=model_name, confidence=confidence)
+        self._worker = _YoloWorker(model_name=model_name,
+                                   confidence=confidence)
         self._thread = QtCore.QThread(self)
         self._worker.moveToThread(self._thread)
         self._detect.connect(self._worker.detect)
@@ -231,7 +232,7 @@ class QYoloWidget(QtWidgets.QGroupBox):
 
     @property
     def source(self):
-        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being analyzed.'''
+        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` analyzed.'''
         return self._source
 
     @source.setter

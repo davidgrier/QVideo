@@ -77,7 +77,7 @@ def setup(app):
 
     def _dedup(self, name, objtype, node_id, aliased=False, location=None):
         if not aliased and name in _seen:
-            # Second occurrence: register as alias to suppress duplicate warning
+            # Second occurrence: register as alias to suppress the warning
             return _orig(self, name, objtype, node_id, aliased=True,
                          location=location)
         if not aliased:

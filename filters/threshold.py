@@ -102,7 +102,8 @@ class ThresholdFilter(VideoFilter):
             return FilterCode(
                 imports=imports,
                 lines=_GRAY + [
-                    f'_, image = cv2.threshold(image, {self._threshold}, 255, cv2.THRESH_BINARY)',
+                    f'_, image = cv2.threshold(image, {self._threshold}, '
+                    '255, cv2.THRESH_BINARY)',
                 ],
                 comment=f'global threshold, level={self._threshold}',
             )
@@ -110,7 +111,8 @@ class ThresholdFilter(VideoFilter):
             return FilterCode(
                 imports=imports,
                 lines=_GRAY + [
-                    'image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]',
+                    'image = cv2.threshold(image, 0, 255, '
+                    'cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]',
                 ],
                 comment='Otsu threshold',
             )
@@ -118,18 +120,22 @@ class ThresholdFilter(VideoFilter):
             return FilterCode(
                 imports=imports,
                 lines=_GRAY + [
-                    f'image = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, '
+                    'image = cv2.adaptiveThreshold(image, 255, '
+                    'cv2.ADAPTIVE_THRESH_MEAN_C, '
                     f'cv2.THRESH_BINARY, {self._block_size}, {self._C})',
                 ],
-                comment=f'adaptive mean threshold, block={self._block_size}, C={self._C}',
+                comment=('adaptive mean threshold, '
+                         f'block={self._block_size}, C={self._C}'),
             )
         return FilterCode(
             imports=imports,
             lines=_GRAY + [
-                f'image = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, '
+                'image = cv2.adaptiveThreshold(image, 255, '
+                'cv2.ADAPTIVE_THRESH_GAUSSIAN_C, '
                 f'cv2.THRESH_BINARY, {self._block_size}, {self._C})',
             ],
-            comment=f'adaptive Gaussian threshold, block={self._block_size}, C={self._C}',
+            comment=('adaptive Gaussian threshold, '
+                     f'block={self._block_size}, C={self._C}'),
         )
 
     def get(self) -> Image | None:

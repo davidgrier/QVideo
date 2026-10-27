@@ -27,14 +27,22 @@ class _BackendEntry(NamedTuple):
 
 
 _BACKENDS: dict[str, _BackendEntry] = {
-    'basler':   _BackendEntry('QVideo.cameras.Basler',   'QBaslerCamera',   'QBaslerTree',   'Basler'),
-    'flir':     _BackendEntry('QVideo.cameras.Flir',     'QFlirCamera',     'QFlirTree',     'Flir'),
-    'ids':      _BackendEntry('QVideo.cameras.IDS',      'QIDSCamera',      'QIDSTree',      'IDS'),
-    'mv':       _BackendEntry('QVideo.cameras.MV',       'QMVCamera',       'QMVTree',       'MV'),
-    'vimbax':   _BackendEntry('QVideo.cameras.Vimbax',   'QVimbaXCamera',   'QVimbaXTree',   'VimbaX'),
-    'picamera': _BackendEntry('QVideo.cameras.Picamera', 'QPicamera',       'QPicameraTree', 'Picamera'),
-    'opencv':   _BackendEntry('QVideo.cameras.OpenCV',   'QOpenCVCamera',   'QOpenCVTree',   'OpenCV'),
-    'noise':    _BackendEntry('QVideo.cameras.Noise',    'QNoiseCamera',    'QNoiseTree',    'Noise'),
+    'basler': _BackendEntry(
+        'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler'),
+    'flir': _BackendEntry(
+        'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir'),
+    'ids': _BackendEntry(
+        'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS'),
+    'mv': _BackendEntry(
+        'QVideo.cameras.MV', 'QMVCamera', 'QMVTree', 'MV'),
+    'vimbax': _BackendEntry(
+        'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX'),
+    'picamera': _BackendEntry(
+        'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera'),
+    'opencv': _BackendEntry(
+        'QVideo.cameras.OpenCV', 'QOpenCVCamera', 'QOpenCVTree', 'OpenCV'),
+    'noise': _BackendEntry(
+        'QVideo.cameras.Noise', 'QNoiseCamera', 'QNoiseTree', 'Noise'),
 }
 
 _DISCOVERY_ORDER = [

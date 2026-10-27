@@ -40,7 +40,8 @@ class Median(_MedianBase):
     P.J. Rousseeuw and G.W. Bassett Jr., "The remedian: a robust
     averaging method for large data sets", *Journal of the American
     Statistical Association*, 85(409):97–104, 1990.
-    `doi:10.1080/01621459.1990.10475311 <https://doi.org/10.1080/01621459.1990.10475311>`_
+    `doi:10.1080/01621459.1990.10475311
+    <https://doi.org/10.1080/01621459.1990.10475311>`_
     '''
 
     def add(self, data: Image) -> None:
@@ -76,7 +77,7 @@ class Median(_MedianBase):
         self._index += 1
 
     def ready(self) -> bool:
-        '''Return ``True`` if the most recent :meth:`add` produced a new estimate.
+        '''Return ``True`` if the latest :meth:`add` produced a new estimate.
 
         The flag is reset at the start of each :meth:`add` call and set
         again only if that call completes a new median computation.

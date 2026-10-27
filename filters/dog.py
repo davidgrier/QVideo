@@ -107,7 +107,8 @@ class DoGFilter(VideoFilter):
                 f'_hi = cv2.GaussianBlur(image, (0, 0), {self._high_sigma})',
                 'image = cv2.convertScaleAbs(_lo - _hi)',
             ],
-            comment=f'DoG bandpass, σ_low={self._low_sigma}, σ_high={self._high_sigma}',
+            comment=(f'DoG bandpass, σ_low={self._low_sigma}, '
+                     f'σ_high={self._high_sigma}'),
         )
 
 

@@ -8,7 +8,7 @@ __all__ = ['clickable']
 
 
 def clickable(widget: QtWidgets.QWidget) -> QtCore.SignalInstance:
-    '''Add a ``clicked()`` signal to a widget that does not ordinarily emit one.
+    '''Add a ``clicked()`` signal to a widget that does not emit one.
 
     Installs an event filter on *widget* that intercepts
     ``MouseButtonRelease`` events and emits a ``clicked()`` signal.

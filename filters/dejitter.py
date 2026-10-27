@@ -72,7 +72,7 @@ class DejitterFilter(VideoFilter):
 
     @property
     def alpha(self) -> float:
-        '''EMA weight on incoming frame for rolling reference, in ``(0, 1]``.'''
+        '''EMA weight of the incoming frame, in ``(0, 1]``.'''
         return self._alpha
 
     @alpha.setter

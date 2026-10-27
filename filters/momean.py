@@ -63,7 +63,8 @@ class MoMean(VideoFilter):
             Input frame.  If the shape differs from the previous frame
             the accumulator is re-initialised.
         '''
-        if self._acc is None or data.shape != self._acc.shape[:len(data.shape)]:
+        n = len(data.shape)
+        if self._acc is None or data.shape != self._acc.shape[:n]:
             self._acc = data.astype(np.float32)
         else:
             cv2.accumulateWeighted(data, self._acc, self._alpha)

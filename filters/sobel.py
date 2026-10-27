@@ -72,7 +72,8 @@ class SobelFilter(VideoFilter):
             return FilterCode(
                 imports=imports,
                 lines=_GRAY + [
-                    f'image = cv2.convertScaleAbs(cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize={k}))',
+                    'image = cv2.convertScaleAbs(cv2.Sobel('
+                    f'image, cv2.CV_32F, 1, 0, ksize={k}))',
                 ],
                 comment=f'Sobel horizontal, k={k}',
             )
@@ -80,7 +81,8 @@ class SobelFilter(VideoFilter):
             return FilterCode(
                 imports=imports,
                 lines=_GRAY + [
-                    f'image = cv2.convertScaleAbs(cv2.Sobel(image, cv2.CV_32F, 0, 1, ksize={k}))',
+                    'image = cv2.convertScaleAbs(cv2.Sobel('
+                    f'image, cv2.CV_32F, 0, 1, ksize={k}))',
                 ],
                 comment=f'Sobel vertical, k={k}',
             )

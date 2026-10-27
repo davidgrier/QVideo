@@ -31,4 +31,5 @@ from ._imx500 import QIMXCamera, QIMXSource
 from ._tree import QPicameraTree
 
 
-__all__ = 'QPicamera QPicameraSource QIMXCamera QIMXSource QPicameraTree'.split()
+__all__ = ('QPicamera QPicameraSource QIMXCamera QIMXSource '
+           'QPicameraTree').split()

@@ -1,4 +1,4 @@
-'''Exposure correction filters (Log, Sigmoid, CLAHE) and companion Qt widget.'''
+'''Exposure correction filters (Log, Sigmoid, CLAHE) and Qt widget.'''
 import logging
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
@@ -168,7 +168,8 @@ class ExposureFilter(VideoFilter):
                 lines=[
                     '_f = image.astype(np.float32)',
                     'image = np.clip('
-                    'np.log1p(_f) / np.log1p(255) * 255, 0, 255).astype(np.uint8)',
+                    'np.log1p(_f) / np.log1p(255) * 255, 0, 255)'
+                    '.astype(np.uint8)',
                 ],
                 comment='log exposure correction',
             )
@@ -179,7 +180,8 @@ class ExposureFilter(VideoFilter):
                 lines=[
                     '_f = image.astype(np.float32)',
                     f'image = np.clip('
-                    f'255 / (1 + np.exp(-{self._gain} * (_f / 255 - {c:.6f}))), '
+                    f'255 / (1 + np.exp(-{self._gain} * '
+                    f'(_f / 255 - {c:.6f}))), '
                     f'0, 255).astype(np.uint8)',
                 ],
                 comment=(f'sigmoid exposure, cutoff={self._cutoff}, '

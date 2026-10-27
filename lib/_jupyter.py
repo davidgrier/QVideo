@@ -95,7 +95,8 @@ class CameraControls:
                 value=str(value), disabled=disabled, layout=layout)
 
         elif ptype is int and has_range:
-            s = int(step) if step is not None else max(1, round((maximum - minimum) / 100))
+            s = (int(step) if step is not None
+                 else max(1, round((maximum - minimum) / 100)))
             w = widgets.IntSlider(
                 value=int(value), min=int(minimum), max=int(maximum),
                 step=s, disabled=disabled, continuous_update=False,

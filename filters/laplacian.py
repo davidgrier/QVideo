@@ -65,9 +65,11 @@ class LaplacianFilter(VideoFilter):
         ]
         imports = frozenset({'import cv2', 'import numpy as np'})
         if self._sigma > 0:
-            lines.append(f'image = cv2.GaussianBlur(image, (0, 0), {self._sigma})')
+            lines.append(
+                f'image = cv2.GaussianBlur(image, (0, 0), {self._sigma})')
         lines.append(
-            f'image = cv2.convertScaleAbs(cv2.Laplacian(image, cv2.CV_32F, ksize={self._ksize}))'
+            'image = cv2.convertScaleAbs(cv2.Laplacian('
+            f'image, cv2.CV_32F, ksize={self._ksize}))'
         )
         suffix = f', σ={self._sigma}' if self._sigma > 0 else ''
         return FilterCode(
@@ -95,7 +97,7 @@ class LaplacianFilter(VideoFilter):
 
 class QLaplacianFilter(QVideoFilter):
 
-    '''Widget for :class:`LaplacianFilter` with kernel size and sigma spinboxes.
+    '''Widget for :class:`LaplacianFilter`: kernel size and sigma.
 
     Parameters
     ----------

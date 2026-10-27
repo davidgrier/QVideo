@@ -11,7 +11,9 @@ __all__ = ['PencilSketchFilter', 'QPencilSketchFilter',
 
 
 def _ensure_bgr(image: Image) -> Image:
-    return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image
+    if image.ndim == 2:
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    return image
 
 
 class PencilSketchFilter(VideoFilter):

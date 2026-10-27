@@ -144,9 +144,9 @@ class TestQHDF5WriterCompression(unittest.TestCase):
                 writer.write(frame, FrameInfo(i, i / 30.))
             writer.close()
             reader = QHDF5Reader(path)
-            self.addCleanup(reader.close)
-            size = Path(path).stat().st_size
-            return [reader.read()[1] for _ in frames], size
+            back = [reader.read()[1] for _ in frames]
+            reader.close()  # Windows cannot delete a file that is open
+            return back, Path(path).stat().st_size
 
     def frames(self, dtype):
         rng = np.random.default_rng(0)

@@ -239,8 +239,9 @@ class TestQOpenCVWriterLossless(unittest.TestCase):
             if not opened:
                 self.skipTest('no lossless codec in this OpenCV build')
             reader = QOpenCVReader(path)
-            self.addCleanup(reader.close)
-            return [reader.read()[1] for _ in frames]
+            back = [reader.read()[1] for _ in frames]
+            reader.close()  # Windows cannot delete a file that is open
+            return back
 
     def frames(self, shape):
         rng = np.random.default_rng(0)

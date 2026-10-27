@@ -907,6 +907,42 @@ class TestQDVRWidgetControls(unittest.TestCase):
         self.assertEqual(_clock(65.4), '1:05.4')
 
 
+class TestQDVRWidgetFormats(unittest.TestCase):
+    '''PyAV records and plays video files if it is installed, else OpenCV.'''
+
+    def names(self, hide_av):
+        import os
+        import subprocess
+        code = (
+            'import importlib.util as u\n'
+            'real = u.find_spec\n'
+            f'hide = {hide_av!r}\n'
+            'u.find_spec = lambda n, *a: None if hide and n == "av" '
+            'else real(n, *a)\n'
+            'from QVideo.dvr.QDVRWidget import QDVRWidget as W\n'
+            'print(W.Writer[".mkv"].__name__, W.Player[".avi"].__name__, '
+            'W.Writer[".mp4"].__name__)\n')
+        result = subprocess.run(
+            [sys.executable, '-c', code], capture_output=True, text=True,
+            env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.split()
+
+    def test_pyav_is_preferred_when_it_is_installed(self):
+        import importlib.util
+        if importlib.util.find_spec('av') is None:
+            self.skipTest('PyAV is not installed')
+        self.assertEqual(self.names(hide_av=False),
+                         ['QPyAVWriter', 'QPyAVSource', 'QPyAVWriter'])
+
+    def test_opencv_is_the_fallback(self):
+        self.assertEqual(self.names(hide_av=True),
+                         ['QOpenCVWriter', 'QOpenCVSource', 'QOpenCVWriter'])
+
+    def test_hdf5_does_not_depend_on_pyav(self):
+        self.assertIn('.h5', QDVRWidget.Writer)
+
+
 class TestQDVRWidgetIcons(unittest.TestCase):
 
     def test_the_icons_have_the_color_of_the_button_text(self):

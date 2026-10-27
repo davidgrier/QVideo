@@ -11,6 +11,8 @@ from QVideo.lib import clickable, QVideoSource
 from QVideo.lib.videotypes import Image, FrameInfo
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVSource
+from .QPyAVWriter import QPyAVWriter
+from .QPyAVReader import QPyAVSource
 
 from .QHDF5Writer import QHDF5Writer
 from .QHDF5Reader import QHDF5Source
@@ -24,6 +26,7 @@ __all__ = ['QDVRWidget']
 _BACKLOG_STEPS = 20
 
 _h5py_available = importlib.util.find_spec('h5py') is not None
+_pyav_available = importlib.util.find_spec('av') is not None
 
 
 logger = logging.getLogger(__name__)
@@ -52,8 +55,11 @@ class QDVRWidget(QtWidgets.QFrame):
     capture incoming frames to a file, and can play back previously
     recorded files.  Supported formats are determined by the
     :attr:`Writer` and :attr:`Player` class attributes; by default
-    AVI (``.avi``), MKV (``.mkv``), and MP4 (``.mp4``) are supported;
+    AVI (``.avi``), MKV (``.mkv``), and MP4 (``.mp4``) are supported, by
+    PyAV if it is installed and by OpenCV if not;
     HDF5 (``.h5``) is also supported when ``h5py`` is installed.
+    To use OpenCV although PyAV is installed, set the entries of
+    :attr:`Writer` and :attr:`Player` to the OpenCV classes.
     Requesting an unsupported extension is logged
     as an error and silently ignored.
 
@@ -140,6 +146,10 @@ class QDVRWidget(QtWidgets.QFrame):
     FileGroups: dict[str, set[str]] = {
         'Lossless Video': {'.avi', '.mkv'},
         'Video': {'.mp4'}}
+
+    if _pyav_available:
+        Writer.update(dict.fromkeys(('.avi', '.mkv', '.mp4'), QPyAVWriter))
+        Player.update(dict.fromkeys(('.avi', '.mkv', '.mp4'), QPyAVSource))
 
     if _h5py_available:
         Writer['.h5'] = QHDF5Writer

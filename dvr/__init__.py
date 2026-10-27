@@ -6,7 +6,9 @@ playing back video streams captured from a
 
 Supported formats:
 
-- **AVI, MKV, MP4** — via :class:`QOpenCVWriter` / :class:`QOpenCVReader`
+- **AVI, MKV, MP4** — via :class:`QPyAVWriter` / :class:`QPyAVReader` if
+  PyAV is installed, otherwise via :class:`QOpenCVWriter` /
+  :class:`QOpenCVReader`
 - **HDF5** (``.h5``) — via :class:`QHDF5Writer` / :class:`QHDF5Reader`
   (requires ``h5py``)
 
@@ -24,6 +26,12 @@ QOpenCVReader
     OpenCV-backed reader for common video file formats.
 QOpenCVSource
     Threaded playback source backed by :class:`QOpenCVReader`.
+QPyAVWriter
+    PyAV-backed writer for AVI, MKV, and MP4 files (requires ``av``).
+QPyAVReader
+    PyAV-backed reader for common video file formats (requires ``av``).
+QPyAVSource
+    Threaded playback source backed by :class:`QPyAVReader`.
 QHDF5Writer
     HDF5-backed writer with per-frame timestamps (requires ``h5py``).
 QHDF5Reader
@@ -36,6 +44,8 @@ from .QCircularBuffer import QCircularBuffer
 from .QCircularDVRWidget import QCircularDVRWidget
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVReader, QOpenCVSource
+from .QPyAVWriter import QPyAVWriter
+from .QPyAVReader import QPyAVReader, QPyAVSource
 from .QHDF5Writer import QHDF5Writer
 from .QHDF5Reader import QHDF5Reader, QHDF5Source
 
@@ -45,6 +55,7 @@ __all__ = [
     'QCircularDVRWidget',
     'QOpenCVWriter',
     'QOpenCVReader', 'QOpenCVSource',
+    'QPyAVWriter', 'QPyAVReader', 'QPyAVSource',
 ]
 
 try:

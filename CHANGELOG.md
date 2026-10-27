@@ -11,6 +11,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **PyAV reader and writer** (`QPyAVWriter`, `QPyAVReader`, `QPyAVSource`),
+  installed with the `av` extra.  `QDVRWidget` uses them for `.avi`,
+  `.mkv` and `.mp4` files if PyAV is installed, and OpenCV if not.  FFV1
+  in PyAV is several times faster than in OpenCV, so a 5-megapixel mono
+  camera at 30 frames/s, which OpenCV could not record, keeps up; color
+  files are half the size of those of HuffYUV.  The frames are compressed
+  without loss and 16-bit gray frames are written too, which OpenCV cannot
+  do.  Seeking is exact in lossless files and lands on the right frame in
+  `.mp4` files.  `av` is imported when the first file is opened.  On macOS,
+  PyAV and OpenCV each carry a copy of the FFmpeg library, which makes the
+  system print a one-time warning that both define a class; QVideo does not
+  use the part of FFmpeg that clashes.  To use OpenCV although PyAV is
+  installed, set the `.avi`, `.mkv` and `.mp4` entries of
+  `QDVRWidget.Writer` and `QDVRWidget.Player` to the OpenCV classes.
 - **A camera that fails to open logs where it failed.**  The camera factory
   reported only the message of the exception, so a failure inside a camera
   library (as with FLIR and `genicam` 1.6) could not be located.  It now
@@ -51,8 +65,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and `step()` are new.  The panel warns before it plays a file that does
   not exist, and before it records over a file that cannot be written; it
   asks before it replaces a file that exists.
-- **Color recordings to `.avi` and `.mkv` use HuffYUV, gray ones FFV1.**
-  Both are lossless, and HuffYUV encodes color frames several times faster,
+- **With OpenCV, color recordings to `.avi` and `.mkv` use HuffYUV, gray
+  ones FFV1.**  Both are lossless, and HuffYUV encodes color frames several times faster,
   so a recording of a full-resolution color camera keeps up.  HuffYUV is
   not used for gray frames: through OpenCV it changes their values (by up
   to 2 gray levels), and it was the fallback for them when FFV1 was

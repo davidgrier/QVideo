@@ -16,11 +16,19 @@ PySide6 (``QVideo[pyside6]``) is experimental: the whole test suite
 passes under it in continuous integration, but the interpreter occasionally
 crashes while pyqtgraph builds a plot, so it is not yet recommended.
 
-To record video to HDF5 files, add the ``dvr`` extra:
+To record video to HDF5 files, add the ``dvr`` extra.  The recorder then
+compresses the frames without loss.  The ``av`` extra adds PyAV, which
+compresses AVI and MKV video without loss several times faster than OpenCV
+does, and also records 16-bit gray frames:
 
 .. code-block:: bash
 
-   pip install QVideo[pyqt6,dvr]
+   pip install QVideo[pyqt6,dvr,av]
+
+QVideo uses PyAV for ``.avi``, ``.mkv`` and ``.mp4`` files if it is
+installed, and OpenCV if not.  On macOS, importing PyAV and OpenCV into the
+same program prints a one-time warning that both packages contain
+the FFmpeg library; QVideo does not use the part of it that clashes.
 
 Run the full camcorder application
 -----------------------------------

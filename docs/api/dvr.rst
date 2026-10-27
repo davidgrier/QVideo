@@ -19,6 +19,18 @@ QOpenCVReader
 .. automodule:: QVideo.dvr.QOpenCVReader
    :members:
 
+QPyAVWriter
+-----------
+
+.. automodule:: QVideo.dvr.QPyAVWriter
+   :members:
+
+QPyAVReader
+-----------
+
+.. automodule:: QVideo.dvr.QPyAVReader
+   :members:
+
 QHDF5Writer
 -----------
 

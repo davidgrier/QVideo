@@ -11,6 +11,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QCircularDVRWidget` saves on a thread of its own.**  A large buffer
+  used to hold up the interface, and so the camera's display, while it was
+  written.  Now the **Save** button is disabled while the file is written,
+  `saved` is emitted when it is done, and the frames that are written are
+  those that the buffer held when **Save** was clicked.  Quitting the
+  application, or deleting the widget, waits for a save in progress.
+
 - **`QDVRWidget.pause()` only pauses, and `play()` resumes.**  `pause()`
   used to toggle between pausing and resuming; the play button, which does
   that, is a toggle of its own.  The slot `setFrameNumber` is private

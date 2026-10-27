@@ -1,4 +1,5 @@
 '''Widget for saving the last N seconds of video to disk on demand.'''
+from collections.abc import Callable
 from pathlib import Path
 from qtpy import QtCore, QtWidgets
 import logging
@@ -12,6 +13,22 @@ __all__ = ['QCircularDVRWidget']
 
 
 logger = logging.getLogger(__name__)
+
+
+class _Saver(QtCore.QThread):
+
+    '''Runs the function ``job``, which writes a file, on a thread of its own.
+
+    The result of the job is in :attr:`ok` when :attr:`finished` is emitted.
+    '''
+
+    def __init__(self, parent: QtCore.QObject) -> None:
+        super().__init__(parent)
+        self.job: Callable[[], bool] = lambda: False
+        self.ok = False
+
+    def run(self) -> None:
+        self.ok = self.job()
 
 
 class QCircularDVRWidget(QtWidgets.QWidget):
@@ -34,8 +51,12 @@ class QCircularDVRWidget(QtWidgets.QWidget):
     duration, let the buffer fill, and click **Save** whenever something
     interesting happens.
 
-    The save operation runs on the main thread; for very large buffers
-    (high resolution or long duration) there will be a brief pause.
+    The file is written on a thread of its own, so a large buffer (high
+    resolution or long duration) does not hold up the interface or the
+    camera.  The **Save** button is disabled until the file is written, and
+    the buffer goes on filling meanwhile; the frames that are saved are
+    those that it held when **Save** was clicked.  Quitting the application
+    waits for a save that is running.
 
     Parameters
     ----------
@@ -48,7 +69,8 @@ class QCircularDVRWidget(QtWidgets.QWidget):
     Signals
     -------
     saved(str)
-        Emitted with the output filename after a successful save.
+        Emitted with the output filename after a successful save, when the
+        file has been written.
     '''
 
     #: Emitted with the output filename after a successful save.
@@ -62,11 +84,18 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._buffer = QCircularBuffer()
         self._source: QVideoSource | None = None
+        self._saver = _Saver(self)
+        self._saving = ''
         self._setupUi()
         self._connectSignals()
         self.source = source
+        saver = self._saver
+        # Qt deletes children after it emits destroyed, so wait for a
+        # save in progress here: a running thread must not be deleted
+        self.destroyed.connect(lambda: saver.wait())
         app = QtCore.QCoreApplication.instance()
         if app is not None:
+            app.aboutToQuit.connect(saver.wait)
             app.aboutToQuit.connect(self._buffer.clear)
 
     def _setupUi(self) -> None:
@@ -99,6 +128,7 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         self._durationBox.valueChanged.connect(self._setDuration)
         self._browseButton.clicked.connect(self._browse)
         self._saveButton.clicked.connect(self._save)
+        self._saver.finished.connect(self._saved)
 
     @QtCore.Slot(int)
     def _setDuration(self, value: int) -> None:
@@ -122,22 +152,30 @@ class QCircularDVRWidget(QtWidgets.QWidget):
             filename = self._fileEdit.text().strip()
         if not filename:
             return
+        if self._saver.isRunning():
+            return
         self._saveButton.setEnabled(False)
-        success = self._write(filename)
-        self._saveButton.setEnabled(True)
-        if success:
-            self.saved.emit(filename)
+        self._saving = filename
+        frames, fps = self._buffer.frames(), self._buffer.actualFps
+        self._saver.job = lambda: self._write(filename, frames, fps)
+        self._saver.start()
+
+    @QtCore.Slot()
+    def _saved(self) -> None:
+        '''Report the result when the thread has written the file.'''
+        self._saveButton.setEnabled(self._source is not None)
+        if self._saver.ok:
+            self.saved.emit(self._saving)
         else:
-            logger.warning(f'Circular buffer save failed: {filename!r}')
+            logger.warning(f'Circular buffer save failed: {self._saving!r}')
 
-    def _write(self, filename: str) -> bool:
-        '''Write the buffered frames with the writer for the extension.
+    def _write(self, filename: str, frames: list, fps: float) -> bool:
+        '''Write *frames* with the writer for the extension.
 
-        Returns ``False`` if the buffer is empty, the extension is not
-        supported, or the writer gives up (the file cannot be created, or
-        the frame size changed within the buffer).
+        This runs on the saving thread.  It returns ``False`` if there are
+        no frames, the extension is not supported, or the writer gives up
+        (the file cannot be created, or the frame size changed).
         '''
-        frames = self._buffer.frames()
         suffix = Path(filename).suffix
         if not frames:
             return False
@@ -145,7 +183,7 @@ class QCircularDVRWidget(QtWidgets.QWidget):
             logger.error(f'Unsupported file format: {suffix!r}')
             return False
         writer = QDVRWidget.Writer[suffix](
-            filename, fps=self._buffer.actualFps, nframes=len(frames))
+            filename, fps=fps, nframes=len(frames))
         failed = []
         writer.finished.connect(lambda: failed.append(True))
         for frame, info in frames:

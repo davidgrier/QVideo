@@ -663,12 +663,11 @@ class QDVRWidget(QtWidgets.QFrame):
     @property
     def source(self) -> QVideoSource | None:
         '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being
-        recorded.'''
+        recorded.  Without one (``None``) the record button is disabled.'''
         return self._source
 
     @source.setter
     def source(self, source: QVideoSource | None) -> None:
-        '''Set the video source.  Disables the record button when ``None``.'''
         logger.debug(f'Setting source {type(source)}')
         self._source = source
         self._updateUi()
@@ -678,7 +677,7 @@ class QDVRWidget(QtWidgets.QFrame):
         '''The active playback source, or ``None`` when not playing.'''
         return self._player
 
-    @QtCore.Property(str)
+    @property
     def filename(self) -> str:
         '''Name of the file to record to and to play.'''
         return str(self.fileEdit.text())

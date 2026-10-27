@@ -24,6 +24,11 @@ class QBacklogMonitor(QtCore.QObject):
     it is measured even while the writer is stuck inside a single write,
     and for sources that capture slowly.
 
+    The monitor does not need a recorder: any object with a ``received``
+    attribute, which holds the ``FrameInfo`` of the newest frame that it has
+    taken up (``None`` until it has taken one), can be watched, provided that
+    it is meant to take every frame.
+
     The allowance is the smaller of *lagLimit* seconds and the time that the
     camera takes to fill *maxMemory* bytes, so one limit serves both.  The
     monitor only measures: what to do about a recording that falls behind is
@@ -64,10 +69,10 @@ class QBacklogMonitor(QtCore.QObject):
 
         Parameters
         ----------
-        writer : QVideoWriter
-            The writer; its ``received`` attribute is the
-            :class:`~QVideo.lib.videotypes.FrameInfo` of the newest frame
-            that it has taken up.
+        writer : QVideoWriter or object
+            The consumer, usually a writer; its ``received`` attribute is
+            the :class:`~QVideo.lib.videotypes.FrameInfo` of the newest
+            frame that it has taken up.
         fps : float
             Frame rate of the camera [frames per second].
         lagLimit : float

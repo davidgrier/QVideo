@@ -27,7 +27,9 @@ recent seconds of video in memory and writes them to a file when you click
 **Save**.  There is no record cycle: the buffer is always filling, so an
 event that has just happened can still be saved.  The widget listens to the
 camera, not to the screen, so it holds every frame at the camera's full
-rate.  :class:`~QVideo.demos.circulardemo.CircularDemo` is the recipe.
+rate.  The file is written on a thread of its own, so saving does not hold
+up the interface.  :class:`~QVideo.demos.circulardemo.CircularDemo` is the
+recipe.
 
 .. automodule:: QVideo.dvr.QCircularDVRWidget
    :members:

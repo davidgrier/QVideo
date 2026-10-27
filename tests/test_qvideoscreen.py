@@ -522,6 +522,18 @@ class TestUpdateShape(unittest.TestCase):
         screen.updateShape(QtCore.QSize(0, 0))
         self.assertIsNone(screen._videoShape)
 
+    def test_negative_shape_is_ignored(self):
+        '''A driver can report -1 for the size before the stream runs.'''
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(-1, -1))
+        self.assertIsNone(screen._videoShape)
+
+    def test_negative_shape_leaves_a_known_shape_alone(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(640, 480))
+        screen.updateShape(QtCore.QSize(-1, -1))
+        self.assertEqual(screen._videoShape, QtCore.QSize(640, 480))
+
 
 class TestOverlays(unittest.TestCase):
 

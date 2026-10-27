@@ -38,6 +38,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`QVideoScreen` ignores a shape of -1.**  A driver can report -1 for
+  the frame size before the stream runs (macOS with OpenCV); the screen
+  then asked Qt for a negative minimum size and Qt warned
+  "Negative sizes (-1,-1) are not possible".  It treats any shape that is
+  not positive as unknown, as it already did for zero.
 - **Recording through `ROIDemo`'s ROI keeps the capture information.**  The
   demo's crop dropped the `FrameInfo` of each frame, so the recorder lost
   the capture times and the backlog watch of `QDVRWidget` for ROI

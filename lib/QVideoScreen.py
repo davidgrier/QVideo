@@ -306,16 +306,17 @@ class QVideoScreen(GraphicsLayoutWidget):
     def updateShape(self, shape: QtCore.QSize) -> None:
         '''Resize the display to match the video frame dimensions.
 
-        Ignores shapes with zero width or height, which :class:`QCamera`
+        Ignores shapes that are not positive: zero, which :class:`QCamera`
         emits as a sentinel before ``width`` / ``height`` are registered
-        as camera properties.
+        as camera properties, and ``-1``, which a driver can report before
+        the stream runs.
 
         Parameters
         ----------
         shape : QtCore.QSize
             New frame dimensions.
         '''
-        if shape.width() == 0 or shape.height() == 0:
+        if shape.width() <= 0 or shape.height() <= 0:
             return
         logger.debug(f'Resizing to {shape}')
         self._videoShape = shape

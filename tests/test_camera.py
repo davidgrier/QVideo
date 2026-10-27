@@ -1,6 +1,8 @@
 '''Unit tests for lib/_camera.py.'''
 import asyncio
+import contextlib
 import importlib
+import io
 import logging
 import unittest
 from unittest.mock import MagicMock, patch
@@ -411,6 +413,15 @@ class TestLiveView(unittest.TestCase):
                                         r'camera\.controls\(\)'):
                 proxy.controls()
 
+    def test_controls_are_made_for_the_camera(self):
+        proxy, cam = self._make_proxy()
+        notebook = MagicMock()
+        with patch.object(camera_module, '_notebook', return_value=notebook), \
+             patch.object(camera_module, '_open', return_value=cam):
+            controls = proxy.controls()
+        notebook.CameraControls.assert_called_once_with(cam)
+        self.assertIs(controls, notebook.CameraControls.return_value)
+
     def test_live_view_encodes_rgb_as_bgr(self):
         import cv2
         proxy, cam = self._make_proxy()
@@ -612,6 +623,69 @@ class TestJupyterChooser(unittest.TestCase):
             result = self._run(camera_module._choose(self._WORKING_TWO))
         mock_report.assert_called_once_with(self._WORKING_TWO)
         self.assertEqual(result, ('opencv', 0))
+
+
+class TestHelpers(unittest.TestCase):
+    '''The small functions that the factory is built from.'''
+
+    def test_a_qapplication_is_made_if_there_is_none(self):
+        fake = MagicMock()
+        fake.instance.return_value = None
+        with patch('qtpy.QtWidgets.QApplication', fake):
+            camera_module._ensure_qapp()
+        fake.assert_called_once_with([])
+
+    def test_an_existing_qapplication_is_kept(self):
+        fake = MagicMock()
+        with patch('qtpy.QtWidgets.QApplication', fake):
+            camera_module._ensure_qapp()
+        fake.assert_not_called()
+
+    def test_an_importable_backend_has_no_reason(self):
+        self.assertEqual(camera_module._unavailable('noise'), '')
+
+    def test_an_unimportable_backend_gives_the_reason(self):
+        with patch.dict('sys.modules', {'QVideo.cameras.Basler': None}):
+            reason = camera_module._unavailable('basler')
+        self.assertTrue(reason.startswith(':\n'))
+
+    def test_only_cameras_that_open_are_working(self):
+        good, bad = make_mock_noise_camera(), make_mock_noise_camera(False)
+        cameras = {'noise': good, 'opencv': bad, 'flir': None}
+        with patch.object(camera_module, '_open',
+                          side_effect=lambda key, i: cameras[key]):
+            working = camera_module._working_candidates(
+                [('noise', 0), ('opencv', 0), ('flir', 0)])
+        self.assertEqual(working, [('noise', 0)])
+        good.close.assert_called_once_with()
+        bad.close.assert_not_called()
+
+    def test_one_camera_is_reported_by_name(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            camera_module._report([('noise', 0)])
+        self.assertEqual(out.getvalue(),
+                         f"Camera: {_BACKENDS['noise'].label}\n")
+
+    def test_several_cameras_say_how_to_pick_another(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            camera_module._report([('opencv', 0), ('noise', 0)])
+        text = out.getvalue()
+        self.assertIn(f"Using {_BACKENDS['opencv'].label}", text)
+        self.assertIn(f"Camera('{_BACKENDS['noise'].label}')", text)
+
+    def test_awaiting_the_proxy_selects_a_camera(self):
+        proxy = _CameraProxy([('noise', 0)])
+
+        async def select():
+            return proxy
+
+        async def wait():
+            return await proxy
+
+        with patch.object(_CameraProxy, '_select', lambda self: select()):
+            self.assertIs(asyncio.run(wait()), proxy)
 
 
 class TestAwait(unittest.TestCase):

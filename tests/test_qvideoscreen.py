@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.tests.signals import record
 from QVideo.lib.QVideoScreen import QVideoScreen
 from QVideo.lib.videotypes import FrameInfo
@@ -345,6 +345,66 @@ class TestResizeEvent(unittest.TestCase):
         mock_range.assert_not_called()
 
 
+class TestShowEvent(unittest.TestCase):
+    '''A window that nobody has sized is fitted to the video when shown.'''
+
+    def show(self, resized):
+        screen = make_screen()
+        screen.setAttribute(QtCore.Qt.WidgetAttribute.WA_Resized, resized)
+        with patch.object(screen, '_fitToVideo') as fit:
+            screen.showEvent(QtGui.QShowEvent())
+        return fit
+
+    def test_an_unsized_window_is_fitted(self):
+        self.show(False).assert_called_once_with()
+
+    def test_a_sized_window_is_left_alone(self):
+        self.show(True).assert_not_called()
+
+
+class TestParentsFollowTheShape(unittest.TestCase):
+
+    def test_every_parent_is_asked_for_its_geometry(self):
+        outer = QtWidgets.QWidget()
+        inner = QtWidgets.QWidget(outer)
+        screen = make_screen()
+        screen.setParent(inner)
+        with patch.object(outer, 'updateGeometry') as o, \
+             patch.object(inner, 'updateGeometry') as i, \
+             patch.object(screen, '_fitToVideo'):
+            screen.updateShape(QtCore.QSize(64, 48))
+        o.assert_called_once_with()
+        i.assert_called_once_with()
+
+
+class TestRenderComposite(unittest.TestCase):
+    '''The composite frame is a grab of the widget as RGBA bytes.'''
+
+    def test_the_grab_becomes_an_rgba_array_of_its_size(self):
+        screen = make_screen()
+        screen.resize(64, 48)
+        picture = screen._renderComposite()
+        self.assertEqual(picture.dtype, np.uint8)
+        self.assertEqual(picture.ndim, 3)
+        self.assertEqual(picture.shape[2], 4)
+        grabbed = screen.grab()
+        self.assertEqual(picture.shape[:2],
+                         (grabbed.height(), grabbed.width()))
+
+    def test_the_array_does_not_share_the_memory_of_the_image(self):
+        screen = make_screen()
+        screen.resize(32, 32)
+        first = screen._renderComposite()
+        first[...] = 7
+        self.assertFalse(np.all(screen._renderComposite() == 7))
+
+    def test_a_widget_without_size_gives_an_empty_array(self):
+        screen = make_screen()
+        with patch.object(screen, 'grab', return_value=QtGui.QPixmap()):
+            picture = screen._renderComposite()
+        self.assertEqual(picture.shape, (0, 0, 4))
+
+
 class TestFitToVideo(unittest.TestCase):
 
     def _make_mock_window(self, win_w, win_h, sh_w=None, sh_h=None):
@@ -382,6 +442,15 @@ class TestFitToVideo(unittest.TestCase):
              self._mock_screen():
             screen._fitToVideo()
         mock_win.resize.assert_called_once_with(1280, 1024)
+
+    def test_a_short_screen_limits_the_height_and_keeps_the_aspect(self):
+        screen = make_screen()
+        screen._videoShape = QtCore.QSize(1000, 800)
+        mock_win = self._make_mock_window(100, 100, sh_w=1000, sh_h=800)
+        with patch.object(screen, 'window', return_value=mock_win), \
+             self._mock_screen(screen_w=2000, screen_h=400):
+            screen._fitToVideo()
+        mock_win.resize.assert_called_once_with(500, 400)
 
     def test_resizes_width_not_just_height(self):
         screen = make_screen()

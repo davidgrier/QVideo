@@ -210,7 +210,6 @@ class TestFallingBehind(RecorderCase):
             self.capture(recorder, 12.)
         reason = reasons[0][0]
         self.assertIn('2.0 s behind', reason)
-        self.assertIn('record to .h5', reason)
         self.assertIn('lower the frame size or rate', reason)
         self.assertIn(reason, logs.output[0])
 
@@ -262,18 +261,11 @@ class TestRemedy(RecorderCase):
         with patch.object(formats, 'pyav_available', True):
             self.assertNotIn('QVideo[av]', self.recorder._remedy())
 
-    def test_without_h5py_it_says_how_to_record_to_hdf5(self):
-        without = {k: v for k, v in formats.Writer.items() if k != '.h5'}
-        with patch.object(formats, 'Writer', without):
-            remedy = self.recorder._remedy()
-        self.assertIn('install QVideo[dvr] to record to .h5', remedy)
-
     def test_an_hdf5_recording_suggests_a_faster_disk(self):
         self.recorder._writer = QHDF5Writer('test.h5', fps=30)
         remedy = self.recorder._remedy()
         self.recorder._writer = None
         self.assertIn('faster disk', remedy)
-        self.assertNotIn('record to .h5', remedy)
 
 
 if __name__ == '__main__':

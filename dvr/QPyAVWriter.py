@@ -60,7 +60,11 @@ class QPyAVWriter(QVideoWriter):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._av = None
+        # Import here, in the thread that makes the writer, not on the
+        # first frame: the import takes a second or more when the files
+        # are not cached, and the camera does not wait for it.
+        import av
+        self._av = av
         self._container = None
         self._stream = None
         self._format = None
@@ -85,7 +89,7 @@ class QPyAVWriter(QVideoWriter):
             ``True`` if the file was opened; ``False`` if the frames or
             the extension are not supported or the encoder cannot start.
         '''
-        import av
+        av = self._av
         suffix = Path(self.filename).suffix
         self._format = _FORMATS.get((frame.ndim, frame.dtype.type))
         if self._format is None or suffix not in self.CODEC_MAP:
@@ -105,7 +109,7 @@ class QPyAVWriter(QVideoWriter):
         except (av.error.FFmpegError, OSError, ValueError) as ex:
             logger.warning(f'Could not open {self.filename!r}: {ex}')
             return False
-        self._av, self._container, self._stream = av, container, stream
+        self._container, self._stream = container, stream
         self._shape, self._index = frame.shape, 0
         return True
 

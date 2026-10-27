@@ -57,6 +57,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `Player` table of sources is gone: playback uses the reader's class and
   a plain `QVideoSource`.
 
+### Fixed
+
+- **The first recording of a session no longer stops itself.**  `av` was
+  imported when the first frame arrived, which held up the writer for a
+  second or more on a cold start, so a camera at full rate piled up
+  enough backlog for the recorder to give up after a few frames.  The
+  writer now imports PyAV when it is made, before any frame is sent.
+
+- **The reason that a recording stops no longer advises HDF5.**  On a
+  FLIR camera at 1280 by 1024, HDF5 fell further behind than FFV1 or
+  H.264; the message now suggests PyAV, if it is missing, and a lower
+  frame size or rate.
+
 ---
 
 ## [4.9.0] — 2026-10-27

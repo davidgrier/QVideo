@@ -162,6 +162,19 @@ class TestQPyAVImport(unittest.TestCase):
                  'QT_QPA_PLATFORM': 'offscreen'})
         self.assertEqual(result.returncode, 0, result.stderr.decode())
 
+    @needs_av
+    def test_av_is_imported_when_the_writer_is_made(self):
+        # not on the first frame, when the camera does not wait for it
+        import os
+        import subprocess
+        import sys
+        code = ('import sys; from QVideo.dvr import QPyAVWriter; '
+                'QPyAVWriter("x.mkv"); sys.exit(int("av" not in sys.modules))')
+        result = subprocess.run(
+            [sys.executable, '-c', code], capture_output=True,
+            env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'})
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+
 
 if __name__ == '__main__':
     unittest.main()

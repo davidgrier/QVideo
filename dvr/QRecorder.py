@@ -241,9 +241,6 @@ class QRecorder(QtCore.QObject):
         '''Suggest what to try when the writer cannot keep up.'''
         if isinstance(self._writer, QHDF5Writer):
             return 'use a faster disk, or lower the frame size or rate'
-        tips = ['record to .h5' if '.h5' in formats.Writer
-                else 'install QVideo[dvr] to record to .h5']
-        if not formats.pyav_available:
-            tips.append('install QVideo[av]')
-        tips.append('lower the frame size or rate')
-        return ', or '.join(tips)
+        if formats.pyav_available:
+            return 'lower the frame size or rate'
+        return 'install QVideo[av], or lower the frame size or rate'

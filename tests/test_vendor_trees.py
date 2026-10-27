@@ -32,6 +32,7 @@ class _IBoolean(_IValue):     pass
 class _IInteger(_IValue):     pass
 class _IFloat(_IValue):       pass
 class _IString(_IValue):      pass
+class _IRegister(_IValue):    pass
 
 
 class _EAccessMode:
@@ -55,6 +56,7 @@ _mock_genapi.IBoolean     = _IBoolean
 _mock_genapi.IInteger     = _IInteger
 _mock_genapi.IFloat       = _IFloat
 _mock_genapi.IString      = _IString
+_mock_genapi.IRegister    = _IRegister
 _mock_genapi.EAccessMode  = _EAccessMode
 _mock_genapi.IProperty    = (_IEnumeration, _IBoolean, _IInteger, _IFloat, _IString)
 

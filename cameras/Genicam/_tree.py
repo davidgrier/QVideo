@@ -6,7 +6,9 @@ from QVideo.lib import QCameraTree
 from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import (IValue, EAccessMode, EVisibility,
                             ICategory, ICommand, IEnumeration,
-                            IBoolean, IInteger, IFloat, IString)
+                            IBoolean, IInteger, IFloat, IString,
+                            IRegister)
+from QVideo.cameras.Genicam._camera import registerText
 import logging
 
 
@@ -123,9 +125,13 @@ class QGenicamTree(QCameraTree):
         elif isinstance(feature, IString):
             this['type'] = 'str'
             this['value'] = this['default'] = feature.value
+        elif isinstance(feature, IRegister):
+            # A register is a raw block of the camera's memory: show its
+            # bytes as read-only text.
+            this['type'] = 'str'
+            this['value'] = this['default'] = registerText(feature)
+            this['readonly'] = True
         else:
-            # Register nodes (IRegister) give raw access to bytes of the
-            # camera's memory; there is nothing to show in a control tree.
             logger.debug(
                 f'Unsupported node type: {feature.node.name}: {type(feature)}')
         return this
@@ -295,6 +301,8 @@ class QGenicamTree(QCameraTree):
             state = self.camera.state(name)
             if state['access'] != EAccessMode.RO:
                 continue
+            if state['kind'] == 'register':
+                continue
             value = self._scaledValue(name, state)
             if value is None:
                 continue
@@ -339,6 +347,8 @@ class QGenicamTree(QCameraTree):
                 state = self.camera.state(name)
                 if state['access'] not in (EAccessMode.RO, EAccessMode.RW):
                     continue
+                if state['kind'] == 'register':
+                    continue  # raw memory: read once, when the tree is built
                 value = self._scaledValue(name, state)
                 if value is None:
                     continue

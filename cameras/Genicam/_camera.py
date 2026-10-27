@@ -18,9 +18,10 @@ try:
     from harvesters.core import Harvester
     from genicam.genapi import (IValue, EAccessMode, ICategory, ICommand,
                                 IEnumeration, IBoolean, IInteger, IFloat,
-                                IString)
+                                IString, IRegister)
     from genicam.gentl import TimeoutException
     IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
+    IReadable = (*IProperty, IRegister)
 except (ImportError, ModuleNotFoundError) as exc:
     raise ImportError(
         f"QGenicamCamera could not import 'genicam': {exc}\n"
@@ -34,6 +35,22 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = ['QGenicamCamera', 'QGenicamSource']
+
+#: Registers longer than this many bytes are reported by size, not content.
+MAX_REGISTER_BYTES = 256
+
+
+def registerText(feature: IRegister) -> str:
+    '''Return the bytes of a register node as hexadecimal text.
+
+    A register is a raw block of the camera's memory.  Short registers
+    read as ``'0a 1b ...'``; long ones (lookup tables, firmware) as
+    ``'<4096 bytes>'``, which avoids reading them.
+    '''
+    length = feature.length
+    if length > MAX_REGISTER_BYTES:
+        return f'<{length} bytes>'
+    return bytes(feature.get(length)).hex(' ')
 
 
 class QGenicamCamera(QCamera):
@@ -385,11 +402,14 @@ class QGenicamCamera(QCamera):
         starts).
         '''
         is_enum = isinstance(feature, IEnumeration)
+        is_register = isinstance(feature, IRegister)
 
         def getter():
             mode = feature.node.get_access_mode()
             if mode not in (EAccessMode.RO, EAccessMode.RW):
                 return None
+            if is_register:
+                return registerText(feature)
             return feature.to_string() if is_enum else feature.value
         return getter
 
@@ -467,15 +487,17 @@ class QGenicamCamera(QCamera):
                 self._register_features(f)
         elif isinstance(feature, ICommand):
             self.registerMethod(feature.node.name, feature.execute)
-        elif isinstance(feature, IProperty):
+        elif isinstance(feature, IReadable):
             mode = feature.node.get_access_mode()
             if mode not in (EAccessMode.RO, EAccessMode.RW):
                 return
             name = feature.node.name
             ptype, meta = self._feature_spec(feature)
+            setter = (None if isinstance(feature, IRegister)
+                      else self._make_setter(feature, name))
             self.registerProperty(name,
                                   getter=self._make_getter(feature),
-                                  setter=self._make_setter(feature, name),
+                                  setter=setter,
                                   ptype=ptype,
                                   **meta)
 
@@ -556,10 +578,12 @@ class QGenicamCamera(QCamera):
         -------
         dict
             ``access`` (:class:`EAccessMode`) and ``kind`` (``'int'``,
-            ``'float'``, ``'enum'`` or ``'other'``) always; ``min``,
-            ``max`` and ``inc`` for numbers (``inc`` is ``None`` when the
-            node has no increment); ``entries`` (symbolic names) for an
-            enumeration; and ``value`` when the node is readable.
+            ``'float'``, ``'enum'``, ``'register'`` or ``'other'``)
+            always; ``min``, ``max`` and ``inc`` for numbers (``inc`` is
+            ``None`` when the node has no increment); ``entries``
+            (symbolic names) for an enumeration; ``length`` and
+            ``address`` for a register; and ``value`` when the node is
+            readable.
         '''
         node = self.node(name)
         with self._mutex:
@@ -570,7 +594,10 @@ class QGenicamCamera(QCamera):
             elif ptype in (int, float):
                 state.update(kind=ptype.__name__, min=meta['minimum'],
                              max=meta['maximum'], inc=meta.get('step'))
-            if isinstance(node, IProperty):
+            if isinstance(node, IRegister):
+                state.update(kind='register', length=node.length,
+                             address=node.address)
+            if isinstance(node, IReadable):
                 value = self._make_getter(node)()
                 if value is not None:
                     state['value'] = value

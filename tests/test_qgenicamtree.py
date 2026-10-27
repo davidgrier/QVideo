@@ -38,6 +38,7 @@ class _IBoolean(_IValue):     pass
 class _IInteger(_IValue):     pass
 class _IFloat(_IValue):       pass
 class _IString(_IValue):      pass
+class _IRegister(_IValue):    pass
 
 
 class _EAccessMode:
@@ -71,6 +72,7 @@ def _install_genapi_stubs() -> None:
         mock_genapi.IInteger     = _IInteger
         mock_genapi.IFloat       = _IFloat
         mock_genapi.IString      = _IString
+        mock_genapi.IRegister    = _IRegister
         mock_genapi.EAccessMode  = _EAccessMode
         mock_genapi.IProperty    = (
             _IEnumeration | _IBoolean | _IInteger | _IFloat | _IString)
@@ -110,6 +112,7 @@ _IBoolean     = _tree_module.IBoolean
 _IInteger     = _tree_module.IInteger
 _IFloat       = _tree_module.IFloat
 _IString      = _tree_module.IString
+_IRegister    = _tree_module.IRegister
 _EAccessMode  = _tree_module.EAccessMode
 _EVisibility  = _tree_module.EVisibility
 
@@ -321,6 +324,14 @@ class TestDescribe(unittest.TestCase):
         d = self.tree.describe(f)
         self.assertEqual(d['type'], 'str')
         self.assertEqual(d['value'], 'cam0')
+
+    def test_describe_register_is_read_only_text(self):
+        f = _make_feature(_IRegister, 'UserData', length=2, address=0)
+        f.get.return_value = b'\x01\x02'
+        d = self.tree.describe(f)
+        self.assertEqual(d['type'], 'str')
+        self.assertEqual(d['value'], '01 02')
+        self.assertTrue(d['readonly'])
 
     def test_describe_command(self):
         f = _cmd_feature('AcquisitionStop')

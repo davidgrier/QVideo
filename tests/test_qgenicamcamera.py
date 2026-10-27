@@ -26,6 +26,7 @@ class _IBoolean(_IValue):     pass
 class _IInteger(_IValue):     pass
 class _IFloat(_IValue):       pass
 class _IString(_IValue):      pass
+class _IRegister(_IValue):    pass
 
 
 class _EAccessMode:
@@ -48,6 +49,7 @@ _mock_genapi.IBoolean     = _IBoolean
 _mock_genapi.IInteger     = _IInteger
 _mock_genapi.IFloat       = _IFloat
 _mock_genapi.IString      = _IString
+_mock_genapi.IRegister    = _IRegister
 _mock_genapi.EAccessMode  = _EAccessMode
 
 
@@ -104,6 +106,7 @@ _IBoolean     = _cam_module.IBoolean
 _IInteger     = _cam_module.IInteger
 _IFloat       = _cam_module.IFloat
 _IString      = _cam_module.IString
+_IRegister    = _cam_module.IRegister
 _EAccessMode  = _cam_module.EAccessMode
 
 
@@ -811,6 +814,47 @@ class TestExecute(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # TestIsReadwrite
 # ---------------------------------------------------------------------------
+
+class TestRegisters(unittest.TestCase):
+    '''Register nodes are raw bytes of camera memory, read-only here.'''
+
+    def register(self, data=b'\x0a\x1b\xff', length=None, **kw):
+        feature = _make_feature(_IRegister, name='UserData', length=(
+            len(data) if length is None else length), address=0x400, **kw)
+        feature.get.return_value = data
+        return feature
+
+    def test_a_register_reads_as_hexadecimal_text(self):
+        cam, _, _ = make_camera_with_node(self.register())
+        self.assertEqual(cam.get('UserData'), '0a 1b ff')
+
+    def test_a_register_cannot_be_written(self):
+        feature = self.register()
+        cam, _, _ = make_camera_with_node(feature)
+        with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
+            cam.set('UserData', '00')
+        feature.set.assert_not_called()
+
+    def test_a_long_register_is_reported_by_size_and_not_read(self):
+        feature = self.register(length=4096)
+        cam, _, _ = make_camera_with_node(feature)
+        self.assertEqual(cam.get('UserData'), '<4096 bytes>')
+        feature.get.assert_not_called()
+
+    def test_a_register_that_cannot_be_read_is_not_registered(self):
+        feature = self.register(mode=_EAccessMode.WO)
+        cam, _, _ = make_camera_with_node(feature)
+        self.assertNotIn('UserData', cam.properties)
+
+    def test_the_state_of_a_register(self):
+        feature = self.register()
+        device = _make_device()
+        cam, _, device = make_camera(device=device)
+        device.remote_device.node_map.get_node.return_value = feature
+        self.assertEqual(cam.state('UserData'), dict(
+            access=_EAccessMode.RW, kind='register', length=3,
+            address=0x400, value='0a 1b ff'))
+
 
 class TestState(unittest.TestCase):
     '''A snapshot of a node, read under the device lock.'''

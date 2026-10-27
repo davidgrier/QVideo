@@ -11,6 +11,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **GenICam register nodes.**  The raw blocks of camera memory that a
+  GenICam node map calls registers (lookup tables, user data, vendor
+  structures) appear as read-only properties holding their bytes in
+  hexadecimal, and as read-only text in `QGenicamTree`; a register longer
+  than 256 bytes is reported by size and not read.  With these, every
+  GenICam node type is covered.
+
 - **`QRecorder` and `QPlayer`: recording and playback without a window.**
   A `QRecorder` writes the frames of a source to a file on a thread of its
   own, watches the backlog and stops when the writer falls behind

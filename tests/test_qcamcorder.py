@@ -4,6 +4,7 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
+from QVideo.lib import QScrollPanel
 from QVideo.lib.QSnapshot import QSnapshot
 
 
@@ -46,6 +47,12 @@ class TestQCamcorderInit(unittest.TestCase):
         layout = widget.controls.layout()
         items = [layout.itemAt(i).widget() for i in range(layout.count())]
         self.assertIn(tree, items)
+
+    def test_the_controls_scroll_when_the_window_is_short(self):
+        widget = QCamcorder(QNoiseTree())
+        scroll = widget.controls.parentWidget().parentWidget()
+        self.assertIsInstance(scroll, QScrollPanel)
+        self.assertIs(scroll.widget(), widget.controls)
 
     def test_source_property_returns_camera_widget_source(self):
         tree = QNoiseTree()

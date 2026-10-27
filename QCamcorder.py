@@ -25,7 +25,7 @@ If no flag is given, a noise camera is used as a fallback.
 
 from qtpy import QtCore, QtWidgets, QtGui
 from QVideo.lib import (QCameraTree, QVideoSource, QVideoScreen, QSnapshot,
-                        launch)
+                        QScrollPanel, launch)
 from QVideo.dvr import QDVRWidget
 
 
@@ -111,7 +111,7 @@ class QCamcorder(QtWidgets.QWidget):
         layout.setContentsMargins(*_MARGINS)
         layout.setSpacing(_SPACING)
         layout.addWidget(self.screen)
-        layout.addWidget(self.controls)
+        layout.addWidget(QScrollPanel(self.controls))
         layout.setStretch(0, 1)
         layout.setStretch(1, 0)
 

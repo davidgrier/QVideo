@@ -216,6 +216,18 @@ QVideoWriter
 .. automodule:: QVideo.lib.QVideoWriter
    :members:
 
+QScrollPanel
+------------
+
+:class:`~QVideo.lib.QScrollPanel.QScrollPanel` shows a panel of controls at
+its natural size and adds a vertical scroll bar when the window is too short
+for it.  :class:`~QVideo.QCamcorder.QCamcorder` puts its controls in one, so
+that applications built on it, such as the filter rack and combined demos,
+work on a small screen.
+
+.. automodule:: QVideo.lib.QScrollPanel
+   :members:
+
 QSnapshot
 ---------
 

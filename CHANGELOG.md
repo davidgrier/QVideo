@@ -23,6 +23,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   exists (`FileExistsError`) unless called with `overwrite=True`; the DVR
   widget asks the user first.
 
+- **`QScrollPanel`: controls that scroll.**  `QCamcorder` puts its panel of
+  controls in one, so an application with many controls, such as
+  `CombinedDemo`, no longer needs a window taller than the screen: the
+  panel keeps its natural width and gets a vertical scroll bar only when
+  the window is too short for it.
+
 ### Removed
 
 - **`QOpenCVSource`, `QPyAVSource` and `QHDF5Source` of `QVideo.dvr`.**

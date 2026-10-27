@@ -479,11 +479,11 @@ class QGenicamCamera(QCamera):
                                   ptype=ptype,
                                   **meta)
 
-    def has_node(self, name: str) -> bool:
+    def hasNode(self, name: str) -> bool:
         '''Return ``True`` if the named node exists in the node map.
 
         Unlike :meth:`node`, this never logs a warning for missing names.
-        Use it to guard calls to :meth:`node` or :meth:`is_readwrite` in
+        Use it to guard calls to :meth:`node` or :meth:`isReadWrite` in
         reactive code paths (e.g. UI update loops) where absent names are
         expected and not an error.
 
@@ -519,7 +519,7 @@ class QGenicamCamera(QCamera):
         logger.warning(f'node {name} is unknown')
         return None
 
-    def is_readwrite(self, feature: str) -> bool:
+    def isReadWrite(self, feature: str) -> bool:
         '''Return ``True`` if the named feature is currently writable.
 
         Parameters
@@ -550,7 +550,7 @@ class QGenicamCamera(QCamera):
         Parameters
         ----------
         name : str
-            GenICam node name.  It must exist (see :meth:`has_node`).
+            GenICam node name.  It must exist (see :meth:`hasNode`).
 
         Returns
         -------

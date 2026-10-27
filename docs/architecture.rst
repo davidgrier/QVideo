@@ -108,7 +108,9 @@ the widget emits
 ``behind(lag)`` once, and again after the writer has caught up and fallen
 behind anew.  By default it then stops the recording
 (``stopWhenBehind=True``) after logging the reason and emitting
-``stopped(reason)``, so a slow disk cannot fill memory.  An application
+``stopped(reason)``, so a slow disk cannot fill memory.  The reason says
+what to try: record to HDF5, install PyAV, or lower the frame size or rate
+(for a recording to HDF5, a faster disk).  An application
 that prefers to record through the backlog sets ``stopWhenBehind=False``,
 raises ``lagLimit``, or both.
 

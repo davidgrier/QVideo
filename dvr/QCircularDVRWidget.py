@@ -104,15 +104,11 @@ class QCircularDVRWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def _browse(self) -> None:
-        try:
-            options = QtWidgets.QFileDialog.Option.DontUseNativeDialog
-        except AttributeError:
-            options = QtWidgets.QFileDialog.DontUseNativeDialog
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Circular Buffer',
             self._fileEdit.text(),
             QDVRWidget._buildFilter(True),
-            options=options)
+            options=QtWidgets.QFileDialog.Option.DontUseNativeDialog)
         if filename:
             self._fileEdit.setText(filename)
 

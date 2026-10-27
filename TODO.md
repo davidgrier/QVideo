@@ -34,12 +34,15 @@ scientific cameras that support a large range of sensor modes.
 
 ---
 
-## Restore Spinnaker PySpin Backend  **Blocked until June 2026**
+## Restore Spinnaker PySpin Backend  **Undecided**
 
 The `devel/Spinnaker` and `devel/Spinnaker2` backends use the FLIR PySpin SDK
 directly.  They are excluded from the release package pending a fix from FLIR.
-Restore and re-integrate once the next FLIR software release (expected June 2026)
-resolves the current compatibility issues.
+Restore and re-integrate once the next FLIR software release (expected June
+2026) resolves the current compatibility issues.  That date has passed; either
+retest against the current SDK or retire this item.  Nothing in the library
+imports PySpin (the GenICam backend reaches FLIR cameras through the
+Spinnaker GenTL producer).
 
 ---
 
@@ -333,9 +336,6 @@ acquisition on the host and make the iPad a client in its browser.
 - **Metadata sidecar** — write a JSON file alongside each recording
   containing camera settings, frame rate, and timestamps so recordings
   are self-describing without opening the HDF5 file.
-- **Circular buffer mode** — keep only the last N seconds in memory
-  and flush to disk on a trigger; useful for capturing events
-  retrospectively.
 - **Playback speed control** — the DVR player currently plays at
   real time; add a rate spinbox for slow-motion and fast-forward review.
 - **Delivered frame rate: settled on a FLIR camera (2026-10-27).**
@@ -354,13 +354,6 @@ acquisition on the host and make the iPad a client in its browser.
   does not measure it (decided 2026-10-26).  The file header ignores the
   interval setting (`nskip`) on purpose: recording every Nth frame plays N
   times faster, a time-lapse (decided 2026-10-27); transcode to change it.
-- **Review the layout of `QDVRWidget`** — it stacks five rows (record,
-  save-as, play, play-file, duration/interval) and is 178 pixels tall,
-  the largest fixed part of the control column, so it sets how tall a
-  window must be before the video fits without black bars.  The transport
-  buttons and the two file rows could share rows.  Review the layout in
-  detail, as an interface and not only by size, before changing it.
-
 ---
 
 ## PyQt6 Support  **Done** (v3.4.x)
@@ -402,29 +395,19 @@ acquisition on the host and make the iPad a client in its browser.
 
 ## Documentation Gaps
 
-Many sections of the ReadTheDocs site are stub pages with only
-automodule directives and no explanatory prose.  Fill the gaps so each
-page gives a user enough context to use the module without reading source.
+Some pages of the ReadTheDocs site are API listings with little prose.
+Fill the gaps so that a page gives a user enough context to use the module
+without reading the source.
 
-- **Camera backends** (`basler.rst`, `flir.rst`, `ids.rst`, `mv.rst`,
-  `vimbax.rst`, `genicam.rst`, `opencv.rst`, `picamera.rst`, `noise.rst`) —
-  introductory paragraph per page covering target hardware, SDK prerequisites,
+- **Camera backends** (`docs/api/cameras.rst`) — an introductory paragraph
+  per backend covering the target hardware, the SDK prerequisites, the
   install command, and a minimal usage snippet.
-- **DVR** — describe the two recording formats (HDF5 with timestamps,
-  OpenCV video), the `.newFrame` / `.fps` duck-typing contract, and a short
-  wiring example.
-- **Filters** — add prose to any filter section that is still directive-only;
-  include a pipeline composition example using `QFilterPipeline`.
-- **Overlays** — verify Trackpy and YOLO prose is current; add a paragraph
-  covering `QVideoScreen.composite` and composite-frame recording.
-- **Architecture** — add a section on the task framework (`lib/tasks/`) and
-  a signal-flow sketch from hardware through source, filter bank, screen,
-  and DVR.
-- **Quickstart page** — a top-level walkthrough from `pip install` to a live
-  camera window in fewer than ten lines.  Currently missing entirely.
-- **API completeness** — audit every public class and function against the
-  existing `automodule` directives; add missing entries to the appropriate
-  `.rst` file.
+- **DVR** (`docs/api/dvr.rst`) — describe the recording formats (HDF5 with
+  timestamps and lossless compression; video files written by PyAV or
+  OpenCV, and the codec each one uses), the `.newFrame` / `.fps`
+  duck-typing contract, and a short wiring example.
+- **Overlays** (`docs/api/overlays.rst`) — add a paragraph covering
+  `QVideoScreen.composite` and composite-frame recording.
 
 ---
 

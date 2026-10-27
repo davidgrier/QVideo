@@ -306,6 +306,39 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         self.assertEqual(len(reasons), 1)
         self.assertIn('2.0 s behind', reasons[0])
 
+    def test_the_reason_says_what_to_try(self):
+        widget, _ = self.watching()
+        reasons = []
+        widget.stopped.connect(reasons.append)
+        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR') as logs:
+            self.capture(widget, 12.)
+        self.assertIn('record to .h5', reasons[0])
+        self.assertIn('lower the frame size or rate', reasons[0])
+        self.assertIn(reasons[0], logs.output[0])
+
+    def test_a_video_writer_without_pyav_suggests_installing_it(self):
+        widget, _ = self.watching()
+        module = sys.modules['QVideo.dvr.QDVRWidget']
+        with patch.object(module, '_pyav_available', False):
+            self.assertIn('install QVideo[av]', widget._remedy())
+        with patch.object(module, '_pyav_available', True):
+            self.assertNotIn('QVideo[av]', widget._remedy())
+
+    def test_without_h5py_it_says_how_to_record_to_hdf5(self):
+        widget, _ = self.watching()
+        without = {k: v for k, v in QDVRWidget.Writer.items() if k != '.h5'}
+        with patch.object(QDVRWidget, 'Writer', without):
+            remedy = widget._remedy()
+        self.assertIn('install QVideo[dvr] to record to .h5', remedy)
+
+    def test_an_hdf5_recording_suggests_a_faster_disk(self):
+        from QVideo.dvr.QHDF5Writer import QHDF5Writer
+        widget, _ = self.watching()
+        widget._writer = QHDF5Writer('test.h5', fps=30)
+        remedy = widget._remedy()
+        self.assertIn('faster disk', remedy)
+        self.assertNotIn('record to .h5', remedy)
+
     def test_behind_is_emitted_before_the_recording_stops(self):
         widget, _ = self.watching()
         states = []

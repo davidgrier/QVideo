@@ -119,35 +119,40 @@ class QGenicamTree(QCameraTree):
             this['step'] = feature.inc
         elif isinstance(feature, IFloat):
             this['type'] = 'float'
-            unit = feature.unit
-            if unit in _MICROSECOND_UNITS:
-                scale = 1e-6
-                self._scaleFactors[feature.node.name] = scale
-                this['siPrefix'] = True
-                unit = 's'
-            else:
-                scale = 1.0
-            this['value'] = this['default'] = feature.value * scale
-            lo = feature.min * scale
-            hi = feature.max * scale
-            this['min'] = lo
-            this['max'] = hi
-            this['units'] = unit
-            if feature.has_inc():
-                this['step'] = feature.inc * scale
-            if lo > 0 and hi / lo > 100:
-                self._decParams.add(feature.node.name)
-                v = feature.value * scale
-                if v > 0:
-                    this['step'] = 10 ** (math.floor(math.log10(v)) - 1)
+            self._describeFloat(feature, this)
         elif isinstance(feature, IString):
             this['type'] = 'str'
             this['value'] = this['default'] = feature.value
         else:
-            # FIXME: Support for IRegister nodes
+            # Register nodes (IRegister) give raw access to bytes of the
+            # camera's memory; there is nothing to show in a control tree.
             logger.debug(
                 f'Unsupported node type: {feature.node.name}: {type(feature)}')
         return this
+
+    def _describeFloat(self, feature: IFloat, this: dict[str, Any]) -> None:
+        '''Add the value, limits, units and step of a float *feature*.'''
+        unit = feature.unit
+        if unit in _MICROSECOND_UNITS:
+            scale = 1e-6
+            self._scaleFactors[feature.node.name] = scale
+            this['siPrefix'] = True
+            unit = 's'
+        else:
+            scale = 1.0
+        this['value'] = this['default'] = feature.value * scale
+        lo = feature.min * scale
+        hi = feature.max * scale
+        this['min'] = lo
+        this['max'] = hi
+        this['units'] = unit
+        if feature.has_inc():
+            this['step'] = feature.inc * scale
+        if lo > 0 and hi / lo > 100:
+            self._decParams.add(feature.node.name)
+            v = feature.value * scale
+            if v > 0:
+                this['step'] = 10 ** (math.floor(math.log10(v)) - 1)
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
@@ -227,8 +232,8 @@ class QGenicamTree(QCameraTree):
             p = item.param
             if p.opts.get('visible', False):
                 name = p.opts['name']
-                if self.camera.has_node(name):
-                    p.setOpts(enabled=self.camera.is_readwrite(name))
+                if self.camera.hasNode(name):
+                    p.setOpts(enabled=self.camera.isReadWrite(name))
 
     def _updateLimits(self) -> None:
         '''Refresh Parameter constraints from the live GenICam node values.
@@ -242,7 +247,7 @@ class QGenicamTree(QCameraTree):
             if not p.opts.get('visible', False):
                 continue
             name = p.opts.get('name')
-            if not self.camera.has_node(name):
+            if not self.camera.hasNode(name):
                 continue
             state = self.camera.state(name)
             kind, inc = state['kind'], state.get('inc')
@@ -285,7 +290,7 @@ class QGenicamTree(QCameraTree):
             if not p.opts.get('visible', False):
                 continue
             name = p.opts.get('name')
-            if not self.camera.has_node(name):
+            if not self.camera.hasNode(name):
                 continue
             state = self.camera.state(name)
             if state['access'] != EAccessMode.RO:
@@ -329,7 +334,7 @@ class QGenicamTree(QCameraTree):
                 if not p.opts.get('visible', False):
                     continue
                 name = p.opts.get('name')
-                if not self.camera.has_node(name):
+                if not self.camera.hasNode(name):
                     continue
                 state = self.camera.state(name)
                 if state['access'] not in (EAccessMode.RO, EAccessMode.RW):

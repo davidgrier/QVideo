@@ -146,5 +146,42 @@ class TestBufferProperty(unittest.TestCase):
         self.assertIs(widget.buffer, widget._buffer)
 
 
+class TestFileSelection(unittest.TestCase):
+
+    def dialog(self, filename):
+        return patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                            return_value=(filename, ''))
+
+    def test_browsing_sets_the_file_name(self):
+        widget = QCircularDVRWidget()
+        with self.dialog('/data/run.mkv'):
+            widget._browse()
+        self.assertEqual(widget._fileEdit.text(), '/data/run.mkv')
+
+    def test_cancelling_keeps_the_file_name(self):
+        widget = QCircularDVRWidget()
+        widget._fileEdit.setText('/data/old.mkv')
+        with self.dialog(''):
+            widget._browse()
+        self.assertEqual(widget._fileEdit.text(), '/data/old.mkv')
+
+    def test_saving_without_a_name_asks_for_one(self):
+        widget = QCircularDVRWidget()
+        widget._fileEdit.setText('')
+        with self.dialog('/data/run.mkv'), \
+                patch.object(widget._buffer, 'save',
+                             return_value=True) as save:
+            widget._save()
+        save.assert_called_once_with('/data/run.mkv')
+
+    def test_saving_does_nothing_if_no_name_is_given(self):
+        widget = QCircularDVRWidget()
+        widget._fileEdit.setText('')
+        with self.dialog(''), \
+                patch.object(widget._buffer, 'save') as save:
+            widget._save()
+        save.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -643,10 +643,22 @@ class QDVRWidget(QtWidgets.QFrame):
         if level > _BACKLOG_STEPS >= was:
             self.behind.emit(lag)
             if self.stopWhenBehind:
-                reason = f'recording fell {lag:.1f} s behind the camera'
+                reason = (f'recording fell {lag:.1f} s behind the camera; '
+                          + self._remedy())
                 logger.error(reason)
                 self.stopped.emit(reason)
                 self.stop()
+
+    def _remedy(self) -> str:
+        '''Suggest what to try when the writer cannot keep up.'''
+        if isinstance(self._writer, QHDF5Writer):
+            return 'use a faster disk, or lower the frame size or rate'
+        tips = ['record to .h5' if '.h5' in self.Writer
+                else 'install QVideo[dvr] to record to .h5']
+        if not _pyav_available:
+            tips.append('install QVideo[av]')
+        tips.append('lower the frame size or rate')
+        return ', or '.join(tips)
 
     @QtCore.Slot(int)
     def setFrameNumber(self, framenumber: int) -> None:

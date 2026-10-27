@@ -571,16 +571,16 @@ class TestHasNode(unittest.TestCase):
     def test_returns_true_when_node_exists(self):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = True
-        self.assertTrue(cam.has_node('Width'))
+        self.assertTrue(cam.hasNode('Width'))
 
     def test_returns_false_when_node_not_found(self):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = False
-        self.assertFalse(cam.has_node('Nonexistent'))
+        self.assertFalse(cam.hasNode('Nonexistent'))
 
     def test_returns_false_when_node_map_is_none(self):
         cam = make_closed_camera()
-        self.assertFalse(cam.has_node('Width'))
+        self.assertFalse(cam.hasNode('Width'))
 
     def test_does_not_log_warning_for_unknown_node(self):
         cam, _, device = make_camera()
@@ -588,7 +588,7 @@ class TestHasNode(unittest.TestCase):
         import logging
         with self.assertNoLogs('QVideo.cameras.Genicam._camera',
                                level=logging.WARNING):
-            cam.has_node('Nonexistent')
+            cam.hasNode('Nonexistent')
 
 
 # ---------------------------------------------------------------------------
@@ -886,7 +886,7 @@ class TestIsReadwrite(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width',
                                 mode=_EAccessMode.RW)
         device.remote_device.node_map.get_node.return_value = feature
-        self.assertTrue(cam.is_readwrite('Width'))
+        self.assertTrue(cam.isReadWrite('Width'))
 
     def test_ro_mode_returns_false(self):
         cam, _, device = make_camera()
@@ -894,7 +894,7 @@ class TestIsReadwrite(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width',
                                 mode=_EAccessMode.RO)
         device.remote_device.node_map.get_node.return_value = feature
-        self.assertFalse(cam.is_readwrite('Width'))
+        self.assertFalse(cam.isReadWrite('Width'))
 
     def test_protected_feature_returns_true(self):
         cam, _, device = make_camera()
@@ -902,14 +902,14 @@ class TestIsReadwrite(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width',
                                 mode=_EAccessMode.RO)
         device.remote_device.node_map.get_node.return_value = feature
-        self.assertTrue(cam.is_readwrite('Width'))
+        self.assertTrue(cam.isReadWrite('Width'))
 
     def test_unknown_node_returns_false(self):
         cam, _, device = make_camera()
         device.remote_device.node_map.has_node.return_value = False
         with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
-            result = cam.is_readwrite('Nonexistent')
+            result = cam.isReadWrite('Nonexistent')
         self.assertFalse(result)
 
 

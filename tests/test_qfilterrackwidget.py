@@ -1,10 +1,14 @@
 '''Unit tests for QFilterRackWidget.'''
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 import numpy as np
-from unittest.mock import patch
-from qtpy import QtCore, QtWidgets
+from unittest.mock import MagicMock, patch
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.QFilterRackWidget import (QFilterRackWidget, _FilterSlot,
-                                          _FilterPicker)
+                                          _FilterPicker, _DragHandle)
+from QVideo.tests.signals import record
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.filters import QSmoothingFilter, QEdgeFilter
 
@@ -12,6 +16,8 @@ from QVideo.filters import QSmoothingFilter, QEdgeFilter
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 _FRAME = np.zeros((4, 4), dtype=np.uint8)
+
+_module = sys.modules['QVideo.lib.QFilterRackWidget']  # not the class
 
 
 def make_rack(**kwargs) -> QFilterRackWidget:
@@ -299,6 +305,160 @@ class TestSlotUnder(unittest.TestCase):
                                 (QtCore.QPoint(50, 50), None)):
             with patch.object(rack, 'mapFromGlobal', return_value=point):
                 self.assertIs(rack._slotUnder(QtCore.QPoint(0, 0)), expected)
+
+
+class TestDragHandle(unittest.TestCase):
+
+    def event(self, kind, button, buttons):
+        return QtGui.QMouseEvent(
+            kind, QtCore.QPointF(2, 2), button, buttons,
+            QtCore.Qt.KeyboardModifier.NoModifier)
+
+    def send(self, handle, kind, button, buttons=None):
+        QtWidgets.QApplication.sendEvent(
+            handle, self.event(kind, button, buttons or button))
+
+    def setUp(self):
+        self.handle = _DragHandle()
+        self.dragged = record(self.handle.dragging)
+        self.dropped = record(self.handle.dropped)
+        cursor = patch.object(QtGui.QCursor, 'pos',
+                              return_value=QtCore.QPoint(7, 9))
+        cursor.start()
+        self.addCleanup(cursor.stop)
+
+    def test_pressing_closes_the_hand(self):
+        Left = QtCore.Qt.MouseButton.LeftButton
+        self.send(self.handle, QtCore.QEvent.Type.MouseButtonPress, Left)
+        self.assertEqual(self.handle.cursor().shape(),
+                         QtCore.Qt.CursorShape.ClosedHandCursor)
+
+    def test_dragging_reports_where_the_cursor_is(self):
+        Left = QtCore.Qt.MouseButton.LeftButton
+        self.send(self.handle, QtCore.QEvent.Type.MouseMove,
+                  QtCore.Qt.MouseButton.NoButton, Left)
+        self.assertEqual(self.dragged, [(QtCore.QPoint(7, 9),)])
+
+    def test_moving_without_a_button_reports_nothing(self):
+        No = QtCore.Qt.MouseButton.NoButton
+        self.send(self.handle, QtCore.QEvent.Type.MouseMove, No, No)
+        self.assertEqual(self.dragged, [])
+
+    def test_releasing_drops_and_opens_the_hand(self):
+        Left = QtCore.Qt.MouseButton.LeftButton
+        self.send(self.handle, QtCore.QEvent.Type.MouseButtonPress, Left)
+        self.send(self.handle, QtCore.QEvent.Type.MouseButtonRelease, Left,
+                  QtCore.Qt.MouseButton.NoButton)
+        self.assertEqual(self.dropped, [(QtCore.QPoint(7, 9),)])
+        self.assertEqual(self.handle.cursor().shape(),
+                         QtCore.Qt.CursorShape.OpenHandCursor)
+
+    def test_releasing_another_button_does_not_drop(self):
+        Right = QtCore.Qt.MouseButton.RightButton
+        self.send(self.handle, QtCore.QEvent.Type.MouseButtonRelease, Right,
+                  QtCore.Qt.MouseButton.NoButton)
+        self.assertEqual(self.dropped, [])
+
+
+class TestQFilterRackWidgetEditable(unittest.TestCase):
+
+    def test_locking_the_rack_hides_the_controls_of_each_filter(self):
+        rack = make_rack()
+        rack.add(make_filter('A'))
+        rack.add(make_filter('B'))
+        rack.editable = False
+        for slot in rack._iterSlots():
+            self.assertTrue(slot._handle.isHidden())
+            self.assertTrue(slot._closeButton.isHidden())
+        rack.editable = True
+        for slot in rack._iterSlots():
+            self.assertFalse(slot._handle.isHidden())
+
+
+class TestQFilterRackWidgetHover(unittest.TestCase):
+
+    def test_the_slot_under_a_dragged_one_is_highlighted(self):
+        rack = make_rack()
+        rack.add(make_filter('A'))
+        rack.add(make_filter('B'))
+        first, second = list(rack._iterSlots())
+        with patch.object(rack, '_slotUnder', return_value=second):
+            rack._hoverSlot(first, QtCore.QPoint(0, 0))
+        self.assertTrue(first._dropIndicator.isHidden())
+        self.assertFalse(second._dropIndicator.isHidden())
+
+    def test_the_dragged_slot_is_never_highlighted(self):
+        rack = make_rack()
+        rack.add(make_filter('A'))
+        first = next(iter(rack._iterSlots()))
+        with patch.object(rack, '_slotUnder', return_value=first):
+            rack._hoverSlot(first, QtCore.QPoint(0, 0))
+        self.assertTrue(first._dropIndicator.isHidden())
+
+
+class TestQFilterRackWidgetDialogs(unittest.TestCase):
+
+    def test_export_writes_the_pipeline_to_the_chosen_file(self):
+        rack = make_rack()
+        rack.add(QEdgeFilter())
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / 'filter.py')
+            with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                              return_value=(path, '')):
+                rack._exportDialog()
+            self.assertEqual(Path(path).read_text(encoding='utf-8'),
+                             rack.exportPipeline())
+
+    def test_cancelling_the_export_writes_nothing(self):
+        rack = make_rack()
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(QtWidgets.QFileDialog, 'getSaveFileName',
+                              return_value=('', '')):
+                rack._exportDialog()
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
+    def picker(self, result, name='Edge'):
+        picker = MagicMock()
+        picker.exec.return_value = result
+        picker.selected.return_value = name
+        return picker
+
+    def test_the_chosen_filter_is_added(self):
+        rack = make_rack()
+        Accepted = QtWidgets.QDialog.DialogCode.Accepted
+        with patch.object(rack, '_registry', return_value={'Edge': object}), \
+                patch.object(_module, '_FilterPicker',
+                             return_value=self.picker(Accepted)), \
+                patch.object(rack, 'addByName') as add:
+            rack._addFilterDialog()
+        add.assert_called_once_with('Edge')
+
+    def test_a_cancelled_dialog_adds_nothing(self):
+        rack = make_rack()
+        Rejected = QtWidgets.QDialog.DialogCode.Rejected
+        with patch.object(rack, '_registry', return_value={'Edge': object}), \
+                patch.object(_module, '_FilterPicker',
+                             return_value=self.picker(Rejected)), \
+                patch.object(rack, 'addByName') as add:
+            rack._addFilterDialog()
+        add.assert_not_called()
+
+    def test_nothing_is_added_when_nothing_is_selected(self):
+        rack = make_rack()
+        Accepted = QtWidgets.QDialog.DialogCode.Accepted
+        with patch.object(rack, '_registry', return_value={'Edge': object}), \
+                patch.object(_module, '_FilterPicker',
+                             return_value=self.picker(Accepted, name=None)), \
+                patch.object(rack, 'addByName') as add:
+            rack._addFilterDialog()
+        add.assert_not_called()
+
+    def test_there_is_no_dialog_without_filters_to_offer(self):
+        rack = make_rack()
+        with patch.object(rack, '_registry', return_value={}), \
+                patch.object(_module, '_FilterPicker') as picker:
+            rack._addFilterDialog()
+        picker.assert_not_called()
 
 
 class TestQFilterRackWidgetFiltersChanged(unittest.TestCase):

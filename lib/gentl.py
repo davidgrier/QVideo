@@ -12,6 +12,7 @@ Without arguments, it reports every ``.cti`` file found on
 import importlib
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -70,6 +71,16 @@ def check(*filenames: str) -> list[tuple[bool, str]]:
         results.append((ok, message))
         return ok
 
+    packages = _checkPackages(report)
+    directories = _checkPath(report)
+    producers = _findProducers(report, directories, filenames)
+    if packages and producers:
+        _checkProducers(report, producers)
+    return results
+
+
+def _checkPackages(report: Callable[[bool, str], bool]) -> bool:
+    '''Report whether the Python packages that GenICam needs import.'''
     packages = True
     for module in ('genicam.genapi', 'harvesters.core'):
         try:
@@ -81,56 +92,68 @@ def check(*filenames: str) -> list[tuple[bool, str]]:
                 f'      Install with: {_INSTALL}\n'
                 '      If this is a numpy ABI error: pip install "numpy<2"'
             ) and packages
+    return packages
 
+
+def _checkPath(report: Callable[[bool, str], bool]) -> list[str]:
+    '''Report on the producer search path and return its directories.'''
     directories = gentlPaths()
     if not directories:
         report(False, f'{ENV} is not set; point it at the directory '
                       'containing the GenTL producer (.cti file)')
-    else:
-        for directory in directories:
-            report(Path(directory).is_dir(),
-                   f'{ENV} entry {directory}'
-                   + ('' if Path(directory).is_dir() else ' does not exist'))
+    for directory in directories:
+        exists = Path(directory).is_dir()
+        report(exists, f'{ENV} entry {directory}'
+                       + ('' if exists else ' does not exist'))
+    return directories
 
-    producers = []
-    if filenames:
-        for name in filenames:
-            path = findProducer(name)
-            if path is None:
-                report(False, f'{name} not found on {ENV}')
-            else:
-                report(True, f'found {path}')
-                producers.append(path)
-    else:
+
+def _findProducers(report: Callable[[bool, str], bool],
+                   directories: list[str],
+                   filenames: tuple[str, ...]) -> list[str]:
+    '''Report the producers that were asked for, or all on the path.'''
+    producers: list[str] = []
+    if not filenames:
         for directory in directories:
             found = sorted(Path(directory).glob('*.cti'))
             producers += [str(p) for p in found]
         report(bool(producers),
                f'{len(producers)} GenTL producer(s) found'
                + ''.join(f'\n      {p}' for p in producers))
+        return producers
+    for name in filenames:
+        path = findProducer(name)
+        if path is None:
+            report(False, f'{name} not found on {ENV}')
+        else:
+            report(True, f'found {path}')
+            producers.append(path)
+    return producers
 
-    if packages and producers:
-        from harvesters.core import Harvester
-        for path in producers:
-            h = Harvester()
-            try:
-                h.add_file(path)
-                h.update()
-                devices = h.device_info_list
-                report(True, f'{Path(path).name} loads; '
-                             f'{len(devices)} camera(s) found')
-                for n, info in enumerate(devices):
-                    p = info.property_dict
-                    report(True, f'  [{n}] {p.get("model")} '
-                                 f'(SN {p.get("serial_number")})')
-                if not devices:
-                    report(False, 'no cameras detected: check the cable, '
-                                  'power and USB/network permissions')
-            except Exception as ex:
-                report(False, f'cannot load {path}: {ex}')
-            finally:
-                h.reset()
-    return results
+
+def _checkProducers(report: Callable[[bool, str], bool],
+                    producers: list[str]) -> None:
+    '''Report whether each producer loads and which cameras it sees.'''
+    from harvesters.core import Harvester
+    for path in producers:
+        h = Harvester()
+        try:
+            h.add_file(path)
+            h.update()
+            devices = h.device_info_list
+            report(True, f'{Path(path).name} loads; '
+                         f'{len(devices)} camera(s) found')
+            for n, info in enumerate(devices):
+                p = info.property_dict
+                report(True, f'  [{n}] {p.get("model")} '
+                             f'(SN {p.get("serial_number")})')
+            if not devices:
+                report(False, 'no cameras detected: check the cable, '
+                              'power and USB/network permissions')
+        except Exception as ex:
+            report(False, f'cannot load {path}: {ex}')
+        finally:
+            h.reset()
 
 
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover

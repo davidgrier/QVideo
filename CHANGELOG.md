@@ -7,7 +7,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [4.8.1] — unreleased
+## [4.9.0] — unreleased
+
+### Changed
+
+- **`QGenicamCamera.has_node` and `is_readwrite` are now `hasNode` and
+  `isReadWrite`**, like the other methods of the Qt classes.  The old names
+  are gone.  (The `has_node` of genicam's own node map is unchanged.)
+
+- **The reason for stopping a slow recording says what to try.**  The
+  message was "recording fell 1.0 s behind the camera".  It now goes on:
+  record to HDF5, install PyAV (`QVideo[av]`) when it is missing, or lower
+  the frame size or rate; for a recording to HDF5, use a faster disk.  The
+  message goes to the log and to `stopped(reason)`, which `QCamcorder` shows
+  in its status bar.
 
 ### Fixed
 

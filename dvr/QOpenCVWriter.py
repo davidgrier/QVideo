@@ -20,10 +20,13 @@ class QOpenCVWriter(QVideoWriter):
     is opened lazily on the first frame so that frame dimensions and
     color mode can be determined automatically.
 
-    Codecs are selected based on the file extension using
-    :attr:`CODEC_MAP`.  When no codec is specified, the preference-ordered
-    list for the extension is probed and the first one OpenCV accepts is
-    used.  Specifying *codec* explicitly bypasses probing.
+    Codecs are selected based on the file extension and on whether the
+    frames are color, using :attr:`CODEC_MAP` and :attr:`COLOR_CODEC_MAP`.
+    When no codec is specified, the preference-ordered list is probed and
+    the first one OpenCV accepts is used.  Specifying *codec* explicitly
+    bypasses probing.  The lossless codecs reproduce every pixel; HuffYUV
+    is used only for color frames, because it changes the values of gray
+    frames and is several times faster than FFV1 only for color.
 
     If the shape of a subsequent frame differs from the first, recording
     stops immediately and :attr:`~QVideo.lib.QVideoWriter.finished` is
@@ -46,23 +49,28 @@ class QOpenCVWriter(QVideoWriter):
     ----------
     CODEC_MAP : dict[str, tuple[str, ...]]
         Maps file extensions to preference-ordered codec codes.
+    COLOR_CODEC_MAP : dict[str, tuple[str, ...]]
+        The same for color frames, where an extension is missing.
     '''
 
     CODEC_MAP: dict[str, tuple[str, ...]] = {
-        '.avi': ('FFV1', 'HFYU'),
-        '.mkv': ('FFV1', 'HFYU'),
+        '.avi': ('FFV1',),
+        '.mkv': ('FFV1',),
         '.mp4': ('avc1', 'mp4v'),
+    }
+    COLOR_CODEC_MAP: dict[str, tuple[str, ...]] = {
+        '.avi': ('HFYU', 'FFV1'),
+        '.mkv': ('HFYU', 'FFV1'),
     }
 
     def __init__(self, *args,
                  codec: str | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        if codec is not None:
-            self._codecs = (codec,)
-        else:
-            suffix = Path(self.filename).suffix
-            self._codecs = self.CODEC_MAP.get(suffix, ())
+        suffix = Path(self.filename).suffix
+        self._codecs = (codec,) if codec else self.CODEC_MAP.get(suffix, ())
+        self._colorCodecs = (self._codecs if codec else
+                             self.COLOR_CODEC_MAP.get(suffix, self._codecs))
         self._writer = None
         self._shape = None
 
@@ -110,7 +118,7 @@ class QOpenCVWriter(QVideoWriter):
             An open ``cv2.VideoWriter``, or ``None`` if no codec succeeded.
         '''
         h, w = shape[:2]
-        for codec in self._codecs:
+        for codec in (self._colorCodecs if color else self._codecs):
             fourcc = cv2.VideoWriter_fourcc(*codec)
             writer = cv2.VideoWriter(
                 self.filename, fourcc, self.fps, (w, h), color)

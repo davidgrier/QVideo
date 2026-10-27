@@ -1,10 +1,13 @@
 '''Unit tests for QOpenCVWriter.'''
+import tempfile
 import unittest
+from pathlib import Path
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
 import cv2
 from QVideo.dvr.QOpenCVWriter import QOpenCVWriter
+from QVideo.dvr.QOpenCVReader import QOpenCVReader
 from QVideo.lib import QVideoWriter
 
 
@@ -41,14 +44,21 @@ class TestQOpenCVWriterClass(unittest.TestCase):
     def test_avi_prefers_ffv1(self):
         self.assertEqual(QOpenCVWriter.CODEC_MAP['.avi'][0], 'FFV1')
 
-    def test_avi_fallback_is_hfyu(self):
-        self.assertIn('HFYU', QOpenCVWriter.CODEC_MAP['.avi'])
+    def test_gray_frames_never_use_hfyu(self):
+        '''HuffYUV changes the values of gray frames.'''
+        for codecs in QOpenCVWriter.CODEC_MAP.values():
+            self.assertNotIn('HFYU', codecs)
+
+    def test_color_avi_prefers_hfyu_then_ffv1(self):
+        self.assertEqual(QOpenCVWriter.COLOR_CODEC_MAP['.avi'],
+                         ('HFYU', 'FFV1'))
 
     def test_mkv_prefers_ffv1(self):
         self.assertEqual(QOpenCVWriter.CODEC_MAP['.mkv'][0], 'FFV1')
 
-    def test_mkv_fallback_is_hfyu(self):
-        self.assertIn('HFYU', QOpenCVWriter.CODEC_MAP['.mkv'])
+    def test_color_mkv_prefers_hfyu_then_ffv1(self):
+        self.assertEqual(QOpenCVWriter.COLOR_CODEC_MAP['.mkv'],
+                         ('HFYU', 'FFV1'))
 
     def test_mp4_prefers_avc1(self):
         self.assertEqual(QOpenCVWriter.CODEC_MAP['.mp4'][0], 'avc1')
@@ -90,6 +100,16 @@ class TestQOpenCVWriterInit(unittest.TestCase):
     def test_custom_codec_overrides_map(self):
         writer = make_writer(codec='XVID')
         self.assertEqual(writer._codecs, ('XVID',))
+        self.assertEqual(writer._colorCodecs, ('XVID',))
+
+    def test_color_codecs_from_color_map(self):
+        writer = make_writer('test.mkv')
+        self.assertEqual(writer._colorCodecs,
+                         QOpenCVWriter.COLOR_CODEC_MAP['.mkv'])
+
+    def test_color_codecs_default_to_the_general_ones(self):
+        writer = make_writer('test.mp4')
+        self.assertEqual(writer._colorCodecs, writer._codecs)
 
 
 class TestQOpenCVWriterOpen(unittest.TestCase):
@@ -120,19 +140,36 @@ class TestQOpenCVWriterOpen(unittest.TestCase):
                 writer.open(_FRAME_COLOR)
         self.assertIsNone(writer._shape)
 
-    def test_open_tries_ffv1_first_for_avi(self):
+    def test_open_tries_ffv1_first_for_gray_avi(self):
+        writer = make_writer('test.avi')
+        with patch('cv2.VideoWriter', return_value=make_mock_vw(True)) as mock_cls:
+            writer.open(_FRAME_GRAY)
+        first_fourcc = mock_cls.call_args_list[0][0][1]
+        self.assertEqual(first_fourcc, cv2.VideoWriter_fourcc(*'FFV1'))
+
+    def test_open_tries_hfyu_first_for_color_avi(self):
         writer = make_writer('test.avi')
         with patch('cv2.VideoWriter', return_value=make_mock_vw(True)) as mock_cls:
             writer.open(_FRAME_COLOR)
         first_fourcc = mock_cls.call_args_list[0][0][1]
-        self.assertEqual(first_fourcc, cv2.VideoWriter_fourcc(*'FFV1'))
+        self.assertEqual(first_fourcc, cv2.VideoWriter_fourcc(*'HFYU'))
 
-    def test_open_falls_back_to_hfyu_for_avi(self):
+    def test_open_falls_back_to_ffv1_for_color_avi(self):
         writer = make_writer('test.avi')
-        with patch('cv2.VideoWriter',
-                   side_effect=[make_mock_vw(False), make_mock_vw(True)]):
+        with patch('cv2.VideoWriter', side_effect=[
+                make_mock_vw(False), make_mock_vw(True)]) as mock_cls:
             result = writer.open(_FRAME_COLOR)
         self.assertTrue(result)
+        second = mock_cls.call_args_list[1][0][1]
+        self.assertEqual(second, cv2.VideoWriter_fourcc(*'FFV1'))
+
+    def test_gray_avi_does_not_fall_back_to_hfyu(self):
+        writer = make_writer('test.avi')
+        with patch('cv2.VideoWriter', return_value=make_mock_vw(False)) as cls:
+            with self.assertLogs('QVideo.dvr.QOpenCVWriter', 'WARNING'):
+                result = writer.open(_FRAME_GRAY)
+        self.assertFalse(result)
+        self.assertEqual(cls.call_count, 1)
 
     def test_open_tries_avc1_first_for_mp4(self):
         writer = make_writer('test.mp4')
@@ -186,6 +223,41 @@ class TestQOpenCVWriterOpen(unittest.TestCase):
         self.assertEqual(mock_cls.call_count, 1)
         used_fourcc = mock_cls.call_args[0][1]
         self.assertEqual(used_fourcc, cv2.VideoWriter_fourcc(*'XVID'))
+
+
+class TestQOpenCVWriterLossless(unittest.TestCase):
+    '''Whatever codec is chosen, the frames must come back unchanged.'''
+
+    def roundtrip(self, frames, suffix):
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / f'test{suffix}')
+            writer = QOpenCVWriter(path, fps=30)
+            for frame in frames:
+                writer.write(frame)
+            opened = writer.isOpen()
+            writer.close()
+            if not opened:
+                self.skipTest('no lossless codec in this OpenCV build')
+            reader = QOpenCVReader(path)
+            self.addCleanup(reader.close)
+            return [reader.read()[1] for _ in frames]
+
+    def frames(self, shape):
+        rng = np.random.default_rng(0)
+        return [rng.integers(0, 256, shape, dtype=np.uint8)
+                for _ in range(4)]
+
+    def test_color_frames_come_back_unchanged(self):
+        for suffix in ('.avi', '.mkv'):
+            frames = self.frames((48, 64, 3))
+            for sent, back in zip(frames, self.roundtrip(frames, suffix)):
+                np.testing.assert_array_equal(sent, back)
+
+    def test_gray_frames_come_back_unchanged(self):
+        for suffix in ('.avi', '.mkv'):
+            frames = self.frames((48, 64))
+            for sent, back in zip(frames, self.roundtrip(frames, suffix)):
+                np.testing.assert_array_equal(sent, back[..., 0])
 
 
 class TestQOpenCVWriterInternalWrite(unittest.TestCase):

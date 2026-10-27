@@ -44,6 +44,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and `step()` are new.  The panel warns before it plays a file that does
   not exist, and before it records over a file that cannot be written; it
   asks before it replaces a file that exists.
+- **Color recordings to `.avi` and `.mkv` use HuffYUV, gray ones FFV1.**
+  Both are lossless, and HuffYUV encodes color frames several times faster,
+  so a recording of a full-resolution color camera keeps up.  HuffYUV is
+  not used for gray frames: through OpenCV it changes their values (by up
+  to 2 gray levels), and it was the fallback for them when FFV1 was
+  missing.  A gray recording on a build without FFV1 now fails with a
+  warning and does not use it.  Tests write and read frames back and
+  compare every pixel.
 - **The DVR buttons use the icons of the Qt style**, drawn in the color of
   the button text so that they show on a dark theme, and the record button
   the Tango icon in `dvr/icons/record.svg` (Qt has no record icon; it is

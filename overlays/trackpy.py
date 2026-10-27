@@ -24,10 +24,12 @@ logger = logging.getLogger(__name__)
 __all__ = ['QTrackpyOverlay', 'QTrackpyWidget']
 
 
+_importError = None
 try:
     import trackpy as tp
-except Exception:
+except Exception as ex:  # a broken installation raises more than ImportError
     tp = None
+    _importError = ex
 
 
 class _TrackpyWorker(QtCore.QObject):
@@ -61,7 +63,7 @@ class _TrackpyWorker(QtCore.QObject):
         if tp is None:
             raise ImportError(
                 'trackpy is required for QTrackpyWidget.'
-                '\n\tInstall it with: pip install trackpy')
+                '\n\tInstall it with: pip install trackpy') from _importError
         self.diameter = diameter
         self._opts = {'minmass': minmass, 'separation': None,
                       'noise_size': 1, 'characterize': False, 'invert': False}
@@ -185,7 +187,7 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
         if tp is None:
             raise ImportError(
                 'trackpy is required for QTrackpyWidget.'
-                '\n\tInstall it with: pip install trackpy')
+                '\n\tInstall it with: pip install trackpy') from _importError
         super().__init__('Trackpy', parent)
         self._source = None
         self._ready = True

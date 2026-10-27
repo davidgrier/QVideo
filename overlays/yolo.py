@@ -28,10 +28,12 @@ logger = logging.getLogger(__name__)
 __all__ = ['QYoloOverlay', 'QYoloWidget']
 
 
+_importError = None
 try:
     from ultralytics import YOLO
-except Exception:
+except Exception as ex:  # a broken installation raises more than ImportError
     YOLO = None
+    _importError = ex
 
 
 class _YoloWorker(QtCore.QObject):
@@ -69,7 +71,8 @@ class _YoloWorker(QtCore.QObject):
             raise ImportError(
                 'ultralytics is required for QYoloWidget.'
                 '\n\tInstall it with: pip install ultralytics'
-                '\n\tSee https://docs.ultralytics.com/ for more information.')
+                '\n\tSee https://docs.ultralytics.com/ for more information.'
+            ) from _importError
         try:
             self.model = YOLO(model_name)
         except FileNotFoundError:
@@ -196,7 +199,8 @@ class QYoloWidget(QtWidgets.QGroupBox):
             raise ImportError(
                 'ultralytics is required for QYoloWidget.'
                 '\n\tInstall it with: pip install ultralytics'
-                '\n\tSee https://docs.ultralytics.com/ for more information.')
+                '\n\tSee https://docs.ultralytics.com/ for more information.'
+            ) from _importError
         super().__init__('YOLO', parent)
         self._source = None
         self._ready = True

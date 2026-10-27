@@ -94,6 +94,14 @@ class TestYoloWorkerInit(unittest.TestCase):
             with self.assertRaises(ImportError):
                 _YoloWorker()
 
+    def test_the_error_names_why_the_import_failed(self):
+        broken = OSError('libtorch could not be loaded')
+        with patch.object(_mod, 'YOLO', None), \
+                patch.object(_mod, '_importError', broken):
+            with self.assertRaises(ImportError) as caught:
+                _YoloWorker()
+        self.assertIs(caught.exception.__cause__, broken)
+
     def test_raises_on_missing_model_file(self):
         mock_YOLO_cls.side_effect = FileNotFoundError
         with self.assertRaises(FileNotFoundError):

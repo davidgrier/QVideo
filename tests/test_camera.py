@@ -298,6 +298,25 @@ class TestLiveView(unittest.TestCase):
                         lv = proxy.live_view()
         self.assertIsInstance(lv, _LiveView)
 
+    def test_live_view_says_why_it_stopped(self):
+        import asyncio
+        proxy, cam = self._make_proxy()
+        loops = []
+
+        def _keep(coro):
+            loops.append(coro)
+            return MagicMock()
+
+        with patch('QVideo.lib._camera._open', return_value=cam):
+            with patch('ipywidgets.Image'):
+                with patch('IPython.display.display'):
+                    with patch('asyncio.ensure_future', side_effect=_keep):
+                        proxy.live_view()
+        cam.saferead.return_value = (False, None)  # the camera went away
+        with self.assertLogs('QVideo.lib._camera', 'WARNING') as logs:
+            asyncio.run(asyncio.wait_for(loops[0], timeout=5))
+        self.assertIn('Camera read failed', logs.output[0])
+
     def test_live_view_stop_cancels_task(self):
         from QVideo.lib._camera import _LiveView
         mock_task = MagicMock()

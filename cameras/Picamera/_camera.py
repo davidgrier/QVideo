@@ -160,8 +160,8 @@ class QPicamera(QCamera):
                 sensor = info[self._cameraID].get('Model')
                 if sensor is not None:
                     self._modelName = _CAMERA_MODELS.get(sensor, sensor)
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.debug(f'cannot read the camera model: {ex}')
         # Save controls set before this restart (e.g. fps changed while
         # the device was closed).  _probeControls will overwrite
         # _controlValues from fresh metadata, so we save them here and

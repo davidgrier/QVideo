@@ -348,7 +348,8 @@ class _CameraProxy:
             while True:
                 try:
                     widget.value = _encode(self.read())
-                except Exception:
+                except Exception as ex:
+                    logger.warning(f'live view stopped: {ex}')
                     break
                 await asyncio.sleep(interval)
 

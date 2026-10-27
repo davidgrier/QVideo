@@ -1,7 +1,11 @@
 '''Jupyter widget for interactive camera property control.'''
+import logging
 import math
 import ipywidgets as widgets
 from IPython.display import display as _display
+
+
+logger = logging.getLogger(__name__)
 
 
 def _finite(v) -> bool:
@@ -73,7 +77,7 @@ class CameraControls:
         if value is None or (isinstance(value, float) and not _finite(value)):
             try:
                 value = ptype()
-            except Exception:
+            except (TypeError, ValueError):
                 value = 0
 
         has_range = (_finite(minimum) and _finite(maximum))
@@ -118,12 +122,12 @@ class CameraControls:
                 value=float(value), disabled=disabled, layout=layout)
 
         if not disabled:
-            def _on_change(change, _setter=setter, _ptype=ptype):
+            def _on_change(change, _setter=setter, _ptype=ptype, _name=name):
                 if not self._updating:
                     try:
                         _setter(_ptype(change['new']))
-                    except Exception:
-                        pass
+                    except Exception as ex:
+                        logger.warning(f'cannot set {_name}: {ex}')
             w.observe(_on_change, names='value')
 
         return w
@@ -182,8 +186,8 @@ class CameraControls:
                     continue
                 try:
                     w.value = type(w.value)(value)
-                except Exception:
-                    pass
+                except Exception as ex:
+                    logger.debug(f'cannot show {name}: {ex}')
         finally:
             self._updating = False
 

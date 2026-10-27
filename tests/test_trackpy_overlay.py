@@ -53,6 +53,14 @@ class TestTrackpyWorkerInit(unittest.TestCase):
             with self.assertRaises(ImportError):
                 _TrackpyWorker()
 
+    def test_the_error_names_why_the_import_failed(self):
+        broken = RuntimeError('numba is broken')
+        with patch.object(_mod, 'tp', None), \
+                patch.object(_mod, '_importError', broken):
+            with self.assertRaises(ImportError) as caught:
+                _TrackpyWorker()
+        self.assertIs(caught.exception.__cause__, broken)
+
 
 class TestTrackpyWorkerDiameter(unittest.TestCase):
 

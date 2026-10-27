@@ -181,6 +181,14 @@ class TestCameraControls(unittest.TestCase):
         ctrl._widgets['frames'].value = 50
         self.int_setter.assert_called_with(50)
 
+    def test_a_setter_that_fails_is_reported_and_does_not_raise(self):
+        ctrl = self._make()
+        self.float_setter.side_effect = ValueError('out of range')
+        with self.assertLogs('QVideo.lib._jupyter', 'WARNING') as logs:
+            ctrl._widgets['fps'].value = 60.0
+        self.assertIn('fps', logs.output[0])
+        self.assertIn('out of range', logs.output[0])
+
     def test_changing_readonly_widget_does_not_call_setter(self):
         setter = MagicMock()
         ctrl = self._make()
@@ -203,6 +211,13 @@ class TestCameraControls(unittest.TestCase):
         self.camera._properties['fps']['getter'] = lambda: 90.0
         ctrl.refresh()
         self.float_setter.assert_not_called()
+
+    def test_refresh_logs_a_value_that_cannot_be_shown(self):
+        ctrl = self._make()
+        self.camera._properties['frames']['getter'] = lambda: 'not a number'
+        with self.assertLogs('QVideo.lib._jupyter', 'DEBUG') as logs:
+            ctrl.refresh()
+        self.assertIn('frames', logs.output[0])
 
     def test_refresh_handles_none_getter(self):
         ctrl = self._make()

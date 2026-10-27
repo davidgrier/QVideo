@@ -7,6 +7,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.8.1] — unreleased
+
+### Fixed
+
+- **A library that is installed but fails to import is no longer reported
+  as missing.**  `QTrackpyWidget` and `QYoloWidget` said "trackpy is
+  required ... Install it with pip" when the package was installed and
+  something it needs (numba, torch) failed to load.  The error now carries
+  the real one as its cause, so the traceback shows what to fix.
+- **The Jupyter camera controls say when a setting fails.**  Changing a
+  widget whose setter raised, such as a value that the camera refuses, was
+  swallowed and the widget kept showing the value that was never applied.
+  It is now logged as a warning that names the property.  A value that
+  cannot be shown when the controls refresh is logged at the DEBUG level.
+- **`Camera.live_view()` says why the feed stopped.**  A failed read ended
+  the feed without a word; it is logged as a warning.
+- **A Raspberry Pi camera whose model name cannot be read says why** at
+  the DEBUG level.
+
+---
+
 ## [4.8.0] — 2026-10-26
 
 ### Added

@@ -228,6 +228,16 @@ class TestInit(unittest.TestCase):
         self.assertIsNone(cam.model_name)
         cam.close()
 
+    def test_the_reason_is_logged_when_the_model_cannot_be_read(self):
+        device = make_mock_device()
+        device.global_camera_info.side_effect = RuntimeError('no info')
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            with self.assertLogs(_MODULE.__name__, 'DEBUG') as logs:
+                cam = QPicamera()
+        self.assertTrue(any('no info' in line for line in logs.output))
+        cam.close()
+
 
 class TestInitializationFailure(unittest.TestCase):
 

@@ -7,6 +7,18 @@ QDVRWidget
 .. automodule:: QVideo.dvr.QDVRWidget
    :members:
 
+QBacklogMonitor
+---------------
+
+:class:`~QVideo.dvr.QBacklogMonitor.QBacklogMonitor` measures how far the
+writer of a recording has fallen behind the camera, and reports it in the
+signals ``backlog`` and ``behind``.  The DVR widget uses one, and forwards
+the signals; deciding what to do about a recording that falls behind is for
+the application.
+
+.. automodule:: QVideo.dvr.QBacklogMonitor
+   :members:
+
 QCircularDVRWidget
 ------------------
 

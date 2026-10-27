@@ -1,14 +1,12 @@
 '''Composite DVR widget for recording and playing back video streams.'''
 import functools
 import importlib.util
-import math
 import os
 from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
 import numpy as np
-import psutil
 from QVideo.lib import clickable, QVideoSource
-from QVideo.lib.videotypes import Image, FrameInfo
+from .QBacklogMonitor import QBacklogMonitor
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVSource
 from .QPyAVWriter import QPyAVWriter
@@ -21,9 +19,6 @@ import logging
 
 
 __all__ = ['QDVRWidget']
-
-#: Steps in which the backlog is reported.
-_BACKLOG_STEPS = 20
 
 _h5py_available = importlib.util.find_spec('h5py') is not None
 _pyav_available = importlib.util.find_spec('av') is not None
@@ -114,6 +109,10 @@ class QDVRWidget(QtWidgets.QFrame):
 
     Notes
     -----
+    A :class:`~QVideo.dvr.QBacklogMonitor.QBacklogMonitor` measures the
+    backlog; the widget forwards its signals and decides whether to stop.
+    The limits are read when a recording starts.
+
     Stopping waits for the writer to finish the frames already captured,
     so no recorded frame is lost.  With *stopWhenBehind* the wait is
     bounded by the smaller of *lagLimit* seconds and *maxMemory* bytes of
@@ -200,14 +199,13 @@ class QDVRWidget(QtWidgets.QFrame):
         self.stopWhenBehind = stopWhenBehind
         self.lagLimit = lagLimit
         self.maxMemory = maxMemory
-        self._budget = float('inf')
+        self._monitor = QBacklogMonitor(self)
         self._source: QVideoSource | None = None
         self._writer: object | None = None
         self._player: QVideoSource | None = None
         self._thread: QtCore.QThread | None = None
-        self._level = 0
         self._length = 0
-        self._fps = 1.
+        self._fps = 1.  # of the video that plays
         self._setupUi()
         self._connectSignals()
         self.source = source
@@ -343,6 +341,9 @@ class QDVRWidget(QtWidgets.QFrame):
         self.playButton.clicked.connect(self._togglePlay)
         self.forwardButton.clicked.connect(lambda: self.step(1))
         self.slider.valueChanged.connect(lambda n: self.seek(n - 1))
+        self._monitor.backlog.connect(self.backlog)
+        self._monitor.behind.connect(self.behind)
+        self._monitor.behind.connect(self._fellBehind)
         QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
 
     def _updateUi(self) -> None:
@@ -454,18 +455,26 @@ class QDVRWidget(QtWidgets.QFrame):
         if self.isRecording():
             self.stop()
             return
-        if not (self.filename or self.getFileName()):
-            return
-        suffix = Path(self.filename).suffix
-        if suffix not in self.Writer:
-            logger.error(f'Unsupported file format: {suffix!r}')
-            return
-        if not self._mayRecord():
+        writer_class = self._handler(self.Writer)
+        if writer_class is None or not self._mayRecord():
             return
         logger.debug(f'Recording: {self.filename}')
-        self._startWriter(self.Writer[suffix])
+        self._startWriter(writer_class)
         self.recording.emit(True)
         self._updateUi()
+
+    def _handler(self, table: dict[str, type]) -> type | None:
+        '''Return the class of *table* for the file name, or ``None``.
+
+        Asks for a file name if there is none, and logs an extension that
+        the table does not have.
+        '''
+        if not (self.filename or self.getFileName()):
+            return None
+        suffix = Path(self.filename).suffix
+        if suffix not in table:
+            logger.error(f'Unsupported file format: {suffix!r}')
+        return table.get(suffix)
 
     def _startWriter(self, writer_class: type) -> None:
         '''Create the writer, run it on its own thread and feed it frames.
@@ -474,23 +483,20 @@ class QDVRWidget(QtWidgets.QFrame):
         takes the camera lock, which a camera that waits for its next frame
         holds, so asking for it with every frame would stall the GUI.
         '''
-        self._fps = self.source.fps
-        self._writer = writer_class(self.filename,
-                                    fps=self._fps,
+        fps = self.source.fps
+        self._writer = writer_class(self.filename, fps=fps,
                                     nframes=self.nframes.value(),
                                     nskip=self.nskip.value())
-        self._level = 0
-        self._budget = (self.maxMemory
-                        or 0.8 * psutil.virtual_memory().available)
-        self._writer.frameNumber.connect(self.setFrameNumber)
+        self._monitor.start(self._writer, fps, self.lagLimit, self.maxMemory)
+        self._writer.frameNumber.connect(self._setFrameNumber)
         self._writer.finished.connect(self.stop)
         self._thread = QtCore.QThread()
         self._writer.moveToThread(self._thread)
         self._shutdown.connect(self._writer.shutdown)
         self._thread.start()
         self.source.newFrame.connect(self._writer.write)
-        self.source.newFrame.connect(self._watch)
-        self._display(0, self._writer.target, self._fps)
+        self.source.newFrame.connect(self._monitor.check)
+        self._display(0, self._writer.target, fps)
 
     @QtCore.Slot()
     def play(self) -> None:
@@ -508,34 +514,36 @@ class QDVRWidget(QtWidgets.QFrame):
             return
         if self.isRecording() or self.isPlaying():
             return
-        if not (self.filename or self.getFileName()):
+        player_class = self._handler(self.Player)
+        if player_class is None:
             return
-        path = Path(self.filename)
-        if not path.is_file():
-            self._warn(f'There is no file {path.name} to play.')
+        if not Path(self.filename).is_file():
+            self._warn(f'There is no file {Path(self.filename).name} '
+                       'to play.')
             return
-        if path.suffix not in self.Player:
-            logger.error(f'Unsupported file format: {path.suffix!r}')
-            return
+        self._startPlayer(player_class)
+
+    def _startPlayer(self, player_class: type) -> None:
+        '''Open the file, play it on its own thread and follow it.'''
         logger.debug(f'Starting Playback: {self.filename}')
-        self._player = self.Player[path.suffix](self.filename)
-        if not self._player.isOpen():
-            self._player = None
+        player = player_class(self.filename)
+        if not player.isOpen():
             return
-        reader = self._player.source
+        self._player = player
+        reader = player.source
         self._length, self._fps = reader.length, reader.fps
         self._display(0, self._length, self._fps)
-        self._player.newFrame.connect(self._follow)
-        self._player.newFrame.connect(self.newFrame)
+        player.newFrame.connect(self._follow)
+        player.newFrame.connect(self.newFrame)
         self.playing.emit(True)
-        self._player.start()
+        player.start()
         self._updateUi()
 
     @QtCore.Slot()
     def pause(self) -> None:
-        '''Pause or resume playback.'''
+        '''Pause playback.  :meth:`play` resumes it.'''
         if self.isPlaying():
-            self._player.resume() if self.isPaused() else self._player.pause()
+            self._player.pause()
             self._updateUi()
 
     def _togglePlay(self) -> None:
@@ -557,10 +565,8 @@ class QDVRWidget(QtWidgets.QFrame):
             self._player.seek(framenumber)
 
     def _pauseAt(self, framenumber: int) -> None:
-        if self.isPlaying():
-            self._player.pause()
-            self.seek(framenumber)
-            self._updateUi()
+        self.pause()
+        self.seek(framenumber)
 
     @QtCore.Slot()
     def rewind(self) -> None:
@@ -585,11 +591,12 @@ class QDVRWidget(QtWidgets.QFrame):
         logger.debug('Stopping Recording')
         try:
             self.source.newFrame.disconnect(self._writer.write)
-            self.source.newFrame.disconnect(self._watch)
-            self._writer.frameNumber.disconnect(self.setFrameNumber)
+            self.source.newFrame.disconnect(self._monitor.check)
+            self._writer.frameNumber.disconnect(self._setFrameNumber)
             self._writer.finished.disconnect(self.stop)
         except (RuntimeError, TypeError):
             logger.debug('Some recording signals were already disconnected')
+        self._monitor.stop()
         self._shutdown.emit()
         self._thread.wait()
         self._thread = None
@@ -615,39 +622,14 @@ class QDVRWidget(QtWidgets.QFrame):
         self.stop()
         super().closeEvent(event)
 
-    @QtCore.Slot(np.ndarray)
-    @QtCore.Slot(np.ndarray, object)
-    def _watch(self, frame: Image, info: FrameInfo | None = None) -> None:
-        '''Compare each captured frame with the newest one the writer has
-        taken up, report the backlog, and report once each time the writer
-        falls behind.
-
-        The comparison uses the capture times, so it measures the backlog
-        even while the writer is stuck inside a single write, and it
-        ignores sources that capture slowly.  The memory budget is
-        converted to the time it takes the camera to fill it, so one
-        limit serves both.  The backlog is reported in steps, not for
-        every frame.
-        '''
-        taken = self._writer and self._writer.received
-        if info is None or not taken:
-            return
-        lag = max(info.timestamp - taken.timestamp, 0.)
-        fill = self._budget / (self._fps * frame.nbytes)
-        fraction = lag / min(self.lagLimit, fill)
-        level = math.ceil(fraction * _BACKLOG_STEPS)
-        if level == self._level:
-            return
-        was, self._level = self._level, level
-        self.backlog.emit(fraction)
-        if level > _BACKLOG_STEPS >= was:
-            self.behind.emit(lag)
-            if self.stopWhenBehind:
-                reason = (f'recording fell {lag:.1f} s behind the camera; '
-                          + self._remedy())
-                logger.error(reason)
-                self.stopped.emit(reason)
-                self.stop()
+    def _fellBehind(self, lag: float) -> None:
+        '''Stop the recording, if that is the policy, as it falls behind.'''
+        if self.stopWhenBehind:
+            reason = (f'recording fell {lag:.1f} s behind the camera; '
+                      + self._remedy())
+            logger.error(reason)
+            self.stopped.emit(reason)
+            self.stop()
 
     def _remedy(self) -> str:
         '''Suggest what to try when the writer cannot keep up.'''
@@ -661,12 +643,12 @@ class QDVRWidget(QtWidgets.QFrame):
         return ', or '.join(tips)
 
     @QtCore.Slot(int)
-    def setFrameNumber(self, framenumber: int) -> None:
+    def _setFrameNumber(self, framenumber: int) -> None:
         '''Show that *framenumber* frames have been recorded.'''
         if self.isRecording():  # one may arrive after the recording stops
             writer = self._writer
             self._display(framenumber, writer.target,
-                          self._fps / writer.nskip)
+                          writer.fps / writer.nskip)
 
     def _follow(self) -> None:
         '''Show where playback is; pause at the end of the video.'''

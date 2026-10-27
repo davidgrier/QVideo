@@ -11,6 +11,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QDVRWidget.pause()` only pauses, and `play()` resumes.**  `pause()`
+  used to toggle between pausing and resuming; the play button, which does
+  that, is a toggle of its own.  The slot `setFrameNumber` is private
+  (`_setFrameNumber`), like the other slots of the Qt classes.
+
+- **The recording watchdog is a class of its own.**  `QBacklogMonitor`
+  measures how far the writer of a recording has fallen behind the camera
+  and emits `backlog` and `behind`; `QDVRWidget` forwards both signals and
+  decides whether to stop (`stopWhenBehind`).  The widget's signals and its
+  `stopWhenBehind`, `lagLimit` and `maxMemory` are as before, except that
+  the limits are read when a recording starts, not with every frame.
+
 - **`QCircularBuffer` only buffers; `QCircularDVRWidget` saves.**  The
   buffer had its own HDF5 writer, a copy of `QHDF5Writer` without its
   compression, and wrote video through OpenCV alone.  It now stores each

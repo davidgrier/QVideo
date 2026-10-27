@@ -53,6 +53,7 @@ class MockWriter(QtCore.QObject):
         super().__init__()
         self.received = None
         self.shutdowns = 0
+        self.fps = kwargs.get('fps', 30.)
         self.target = kwargs.get('nframes', 10)
         self.nskip = kwargs.get('nskip', 1)
 
@@ -131,13 +132,15 @@ def setup_recording(widget, source):
     writer = MockWriter()
     thread = MockThread()
     source.newFrame.connect(writer.write)
-    writer.frameNumber.connect(widget.setFrameNumber)
+    writer.frameNumber.connect(widget._setFrameNumber)
     writer.finished.connect(widget.stop)
-    source.newFrame.connect(widget._watch)
+    source.newFrame.connect(widget._monitor.check)
+    widget._monitor.start(writer, source.fps, widget.lagLimit,
+                          widget.maxMemory)
     widget._shutdown.connect(writer.shutdown)
     widget._writer = writer
     widget._thread = thread
-    widget._fps = source.fps
+    writer.fps = source.fps
     return writer, thread
 
 
@@ -222,10 +225,17 @@ class TestQDVRWidgetProperties(unittest.TestCase):
         widget.filename = None
         self.assertEqual(widget.filename, 'original.avi')
 
-    def test_setFrameNumber_shows_the_recorded_frames(self):
+    def test_the_time_recorded_follows_the_rate_of_the_writer(self):
+        widget, source = make_widget_with_source()
+        writer, _ = setup_recording(widget, source)
+        writer.fps, writer.nskip = 30., 2
+        widget._setFrameNumber(15)  # 15 frames at 15 frames/s
+        self.assertTrue(widget.timeLabel.text().startswith('0:01.0'))
+
+    def test_the_recorded_frames_are_shown(self):
         widget, source = make_widget_with_source()
         setup_recording(widget, source)
-        widget.setFrameNumber(7)
+        widget._setFrameNumber(7)
         self.assertEqual(widget.framenumber, 7)
         self.assertIn('7', widget.positionLabel.text())
 
@@ -278,7 +288,7 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         return widget, writer
 
     def capture(self, widget, t):
-        widget._watch(_FRAME, FrameInfo(1, t))
+        widget._monitor.check(_FRAME, FrameInfo(1, t))
 
     def test_defaults(self):
         widget = make_widget()
@@ -355,128 +365,27 @@ class TestQDVRWidgetRecord(unittest.TestCase):
         self.assertTrue(widget.isRecording())
         self.assertEqual(stops, [])
 
-    def test_staying_behind_is_reported_once(self):
+    def test_the_backlog_and_the_report_of_falling_behind_are_forwarded(self):
         widget, _ = self.watching(stopWhenBehind=False)
-        lags = []
-        widget.behind.connect(lags.append)
-        for t in (12., 12.1, 12.2):
-            self.capture(widget, t)
-        self.assertEqual(lags, [2.])
-
-    def test_catching_up_rearms_the_report(self):
-        widget, writer = self.watching(stopWhenBehind=False)
-        lags = []
-        widget.behind.connect(lags.append)
+        fractions, lags = record(widget.backlog), record(widget.behind)
         self.capture(widget, 12.)
-        writer.received = FrameInfo(1, 12.)
-        self.capture(widget, 12.1)
-        self.capture(widget, 14.)
-        self.assertEqual(len(lags), 2)
-
-    def test_the_backlog_is_a_fraction_of_the_allowance(self):
-        widget, _ = self.watching()
-        fractions = []
-        widget.backlog.connect(fractions.append)
-        self.capture(widget, 10.5)
-        self.assertEqual(fractions, [0.5])
-
-    def test_the_backlog_is_reported_in_steps(self):
-        widget, _ = self.watching()
-        fractions = []
-        widget.backlog.connect(fractions.append)
-        for t in (10.46, 10.48, 10.5):  # all within one 5% step
-            self.capture(widget, t)
+        self.assertEqual(lags, [(2.,)])
         self.assertEqual(len(fractions), 1)
-        self.capture(widget, 10.6)
-        self.assertEqual(len(fractions), 2)
+        self.assertGreater(fractions[0][0], 1.)
 
-    def test_a_writer_keeping_up_reports_nothing(self):
-        widget, _ = self.watching()
-        fractions = []
-        widget.backlog.connect(fractions.append)
-        self.capture(widget, 10.)
-        self.assertEqual(fractions, [])
-
-    def test_a_writer_ahead_of_the_capture_reports_nothing(self):
-        widget, _ = self.watching()
-        fractions = []
-        widget.backlog.connect(fractions.append)
-        self.capture(widget, 9.)
-        self.assertEqual(fractions, [])
-
-    def test_catching_up_is_reported(self):
-        widget, writer = self.watching()
-        fractions = []
-        widget.backlog.connect(fractions.append)
-        self.capture(widget, 10.8)
-        writer.received = FrameInfo(1, 10.8)
-        self.capture(widget, 10.85)
-        self.assertEqual(len(fractions), 2)
-        self.assertLess(fractions[1], fractions[0])
-
-    def test_the_backlog_is_reported_before_the_report_of_falling_behind(self):
-        widget, _ = self.watching(stopWhenBehind=False)
-        events = []
-        widget.backlog.connect(lambda f: events.append('backlog'))
-        widget.behind.connect(lambda lag: events.append('behind'))
-        self.capture(widget, 12.)
-        self.assertEqual(events, ['backlog', 'behind'])
-
-    def test_recording_starts_with_no_backlog(self):
-        widget, source = make_widget_with_source()
-        widget._level = 7
-        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
-                patch.object(QtCore, 'QThread', return_value=MockThread()):
-            widget.record()
-        self.assertEqual(widget._level, 0)
-
-    def test_the_limit_can_be_changed(self):
+    def test_the_limits_of_the_widget_reach_the_monitor(self):
         widget, _ = self.watching(lagLimit=5.)
         self.capture(widget, 12.)
         self.assertTrue(widget.isRecording())
 
-    def test_a_small_memory_budget_stops_the_recording(self):
-        # 0.5 s of a 30 Hz source of 16-byte frames
-        widget, _ = self.watching(_budget=0.5 * 30 * _FRAME.nbytes)
-        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
-            self.capture(widget, 10.6)
-        self.assertFalse(widget.isRecording())
-
-    def test_a_large_memory_budget_leaves_the_time_limit_in_charge(self):
-        widget, _ = self.watching(_budget=1e12)
-        self.capture(widget, 10.9)
-        self.assertTrue(widget.isRecording())
-        with self.assertLogs('QVideo.dvr.QDVRWidget', 'ERROR'):
-            self.capture(widget, 12.)
-        self.assertFalse(widget.isRecording())
-
-    def test_the_budget_defaults_to_most_of_the_available_memory(self):
+    def test_recording_starts_the_monitor_with_the_limits(self):
         widget, source = make_widget_with_source()
-        free = SimpleNamespace(available=1000)
+        widget.lagLimit, widget.maxMemory = 3., 123
         with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
                 patch.object(QtCore, 'QThread', return_value=MockThread()), \
-                patch('psutil.virtual_memory', return_value=free):
+                patch.object(widget._monitor, 'start') as start:
             widget.record()
-        self.assertEqual(widget._budget, 800)
-
-    def test_max_memory_overrides_the_default_budget(self):
-        widget, source = make_widget_with_source()
-        widget.maxMemory = 123
-        with patch.dict(QDVRWidget.Writer, {'.avi': MockWriter}), \
-                patch.object(QtCore, 'QThread', return_value=MockThread()):
-            widget.record()
-        self.assertEqual(widget._budget, 123)
-
-    def test_a_writer_that_has_seen_nothing_is_not_late(self):
-        widget, writer = self.watching()
-        writer.received = None
-        self.capture(widget, 99.)
-        self.assertTrue(widget.isRecording())
-
-    def test_a_frame_without_info_is_ignored(self):
-        widget, _ = self.watching()
-        widget._watch(_FRAME)
-        self.assertTrue(widget.isRecording())
+        start.assert_called_once_with(widget._writer, source.fps, 3., 123)
 
     def test_a_late_event_after_stopping_is_harmless(self):
         widget, _ = self.watching()
@@ -586,15 +495,15 @@ class TestQDVRWidgetRecordingLoad(unittest.TestCase):
         reads.clear()
         for n in range(1, 20):
             source.newFrame.emit(_FRAME)
-            widget.setFrameNumber(n)
-            widget._watch(_FRAME, FrameInfo(n, 10. + n / 30.))
+            widget._setFrameNumber(n)
+            widget._monitor.check(_FRAME, FrameInfo(n, 10. + n / 30.))
         self.assertEqual(reads, [])
 
     def test_a_frame_count_after_the_recording_is_ignored(self):
         widget, source = make_widget_with_source()
         setup_recording(widget, source)
         widget.stop()
-        widget.setFrameNumber(5)  # queued before stop, delivered after
+        widget._setFrameNumber(5)  # queued before stop, delivered after
         self.assertEqual(widget.framenumber, 0)
 
 
@@ -743,11 +652,18 @@ class TestQDVRWidgetPause(unittest.TestCase):
         widget.pause()
         self.assertTrue(widget.isPaused())
 
-    def test_pause_resumes_if_already_paused(self):
+    def test_pausing_twice_leaves_it_paused(self):
         widget = make_widget()
         setup_playing(widget)
-        widget._player.pause()
         widget.pause()
+        widget.pause()
+        self.assertTrue(widget.isPaused())
+
+    def test_play_resumes_a_paused_video(self):
+        widget = make_widget()
+        setup_playing(widget)
+        widget.pause()
+        widget.play()
         self.assertFalse(widget.isPaused())
 
     def test_pause_does_nothing_when_not_playing(self):

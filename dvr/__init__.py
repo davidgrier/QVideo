@@ -16,6 +16,8 @@ Classes
 -------
 QDVRWidget
     Composite widget with record, play, pause, stop, and rewind controls.
+QBacklogMonitor
+    Measures how far the writer of a recording is behind the camera.
 QCircularBuffer
     Ring buffer that keeps the most recent frames and their capture times.
 QCircularDVRWidget
@@ -40,6 +42,7 @@ QHDF5Source
     Threaded playback source backed by :class:`QHDF5Reader`.
 '''
 from .QDVRWidget import QDVRWidget
+from .QBacklogMonitor import QBacklogMonitor
 from .QCircularBuffer import QCircularBuffer
 from .QCircularDVRWidget import QCircularDVRWidget
 from .QOpenCVWriter import QOpenCVWriter
@@ -51,6 +54,7 @@ from .QHDF5Reader import QHDF5Reader, QHDF5Source
 
 __all__ = [
     'QDVRWidget',
+    'QBacklogMonitor',
     'QCircularBuffer',
     'QCircularDVRWidget',
     'QOpenCVWriter',

@@ -18,6 +18,10 @@ QDVRWidget
     Composite widget with record, play, pause, stop, and rewind controls.
 QBacklogMonitor
     Measures how far the writer of a recording is behind the camera.
+QRecorder
+    Records the frames of a source to a file, without a window.
+QPlayer
+    Plays a video file at its own frame rate, without a window.
 QCircularBuffer
     Ring buffer that keeps the most recent frames and their capture times.
 QCircularDVRWidget
@@ -26,44 +30,42 @@ QOpenCVWriter
     OpenCV-backed writer for AVI, MKV, and MP4 files.
 QOpenCVReader
     OpenCV-backed reader for common video file formats.
-QOpenCVSource
-    Threaded playback source backed by :class:`QOpenCVReader`.
 QPyAVWriter
     PyAV-backed writer for AVI, MKV, and MP4 files (requires ``av``).
 QPyAVReader
     PyAV-backed reader for common video file formats (requires ``av``).
-QPyAVSource
-    Threaded playback source backed by :class:`QPyAVReader`.
 QHDF5Writer
     HDF5-backed writer with per-frame timestamps (requires ``h5py``).
 QHDF5Reader
     HDF5-backed reader for files written by :class:`QHDF5Writer`.
-QHDF5Source
-    Threaded playback source backed by :class:`QHDF5Reader`.
 '''
 from .QDVRWidget import QDVRWidget
 from .QBacklogMonitor import QBacklogMonitor
+from .QRecorder import QRecorder
+from .QPlayer import QPlayer
 from .QCircularBuffer import QCircularBuffer
 from .QCircularDVRWidget import QCircularDVRWidget
 from .QOpenCVWriter import QOpenCVWriter
-from .QOpenCVReader import QOpenCVReader, QOpenCVSource
+from .QOpenCVReader import QOpenCVReader
 from .QPyAVWriter import QPyAVWriter
-from .QPyAVReader import QPyAVReader, QPyAVSource
+from .QPyAVReader import QPyAVReader
 from .QHDF5Writer import QHDF5Writer
-from .QHDF5Reader import QHDF5Reader, QHDF5Source
+from .QHDF5Reader import QHDF5Reader
 
 __all__ = [
     'QDVRWidget',
     'QBacklogMonitor',
+    'QRecorder',
+    'QPlayer',
     'QCircularBuffer',
     'QCircularDVRWidget',
     'QOpenCVWriter',
-    'QOpenCVReader', 'QOpenCVSource',
-    'QPyAVWriter', 'QPyAVReader', 'QPyAVSource',
+    'QOpenCVReader',
+    'QPyAVWriter', 'QPyAVReader',
 ]
 
 try:
     import h5py as _h5py
-    __all__ += ['QHDF5Writer', 'QHDF5Reader', 'QHDF5Source']
+    __all__ += ['QHDF5Writer', 'QHDF5Reader']
 except (ImportError, ModuleNotFoundError):
     pass

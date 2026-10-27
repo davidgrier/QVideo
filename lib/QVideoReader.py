@@ -1,9 +1,11 @@
 '''Abstract base class for video file readers.'''
 from abc import abstractmethod
+from collections.abc import Iterator
 from types import TracebackType
 from qtpy import QtCore
 from QVideo.lib._qabc import QABCMeta
 from QVideo.lib import QCamera
+from QVideo.lib.videotypes import Image
 import QVideo
 from pathlib import Path
 import logging
@@ -161,7 +163,11 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
     @property
     @abstractmethod
     def framenumber(self) -> int:
-        '''Current frame index (zero-based).'''
+        '''Current frame index (zero-based).
+
+        Implementations return a stored integer without touching the
+        decoder, so it may be read while another thread is reading.
+        '''
 
     @property
     @abstractmethod
@@ -182,6 +188,53 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
     def shape(self) -> QtCore.QSize:
         '''Frame dimensions as ``QSize(width, height)``.'''
         return QtCore.QSize(int(self.width), int(self.height))
+
+    def __len__(self) -> int:
+        '''Number of frames in the file, or 0 if it is not open.'''
+        return self.length if self._isopen else 0
+
+    def __bool__(self) -> bool:
+        return True  # a reader of an empty file is still a reader
+
+    def __iter__(self) -> Iterator[Image]:
+        '''Iterate over all of the frames, from the first.'''
+        self.seek(0)
+        while True:
+            ok, frame = self.read()
+            if not ok:
+                return
+            yield frame
+
+    def __getitem__(self, index: int | slice) -> Image | list[Image]:
+        '''Return a frame, or a list of frames for a slice.
+
+        Seeking is exact for the formats that store every frame whole;
+        in others it lands on the right frame, but may be slow.  Use the
+        reader from the thread that owns it, and not while a
+        :class:`~QVideo.lib.QVideoSource.QVideoSource` plays it.
+
+        A slice ends early, like iteration, at a frame that cannot be
+        read, which happens when a file has fewer frames than it claims.
+        '''
+        n = len(self)
+        if isinstance(index, slice):
+            start, stop, step = index.indices(n)
+            frames = []
+            for i in range(start, stop, step):
+                if step != 1 or not frames:  # else read on from the last
+                    self.seek(i)
+                ok, frame = self.read()
+                if not ok:
+                    break
+                frames.append(frame)
+            return frames
+        if not -n <= index < n:
+            raise IndexError(f'frame {index} is not in a video of {n} frames')
+        self.seek(index % n)
+        ok, frame = self.read()
+        if not ok:
+            raise IndexError(f'frame {index} could not be read')
+        return frame
 
     @QtCore.Slot(int)
     @abstractmethod

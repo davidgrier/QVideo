@@ -73,7 +73,7 @@ from pathlib import Path
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore
-from QVideo.dvr import QCircularDVRWidget, QDVRWidget
+from QVideo.dvr import QCircularDVRWidget, formats
 from QVideo.lib.videotypes import FrameInfo
 
 app = pg.mkQApp()
@@ -94,7 +94,7 @@ class Slow(QtCore.QObject):
         done.write_text('closed')
 
 
-QDVRWidget.Writer['.slow'] = Slow
+formats.Writer['.slow'] = Slow
 widget = QCircularDVRWidget()
 for i in range(3):
     widget.buffer.append(np.zeros((2, 2), np.uint8), FrameInfo(i, float(i)))
@@ -125,6 +125,59 @@ class TestSavingTeardown(unittest.TestCase):
 
     def test_deleting_the_widget_during_a_save(self):
         self.run_script('delete')
+
+
+HEADLESS_SCRIPT = '''
+import sys
+import tempfile
+from pathlib import Path
+from qtpy import QtCore
+from QVideo.cameras.Noise import QNoiseSource
+from QVideo.dvr import QPlayer, QRecorder
+
+app = QtCore.QCoreApplication([])
+path = str(Path(tempfile.mkdtemp()) / 'run.avi')
+source = QNoiseSource()
+source.start()
+recorder = QRecorder(source)
+recorder.start(path, nframes=100000)
+player = QPlayer()
+
+
+def play():
+    recorder.stop()
+    player.start(path)
+
+
+if sys.argv[1] == 'play':
+    QtCore.QTimer.singleShot(300, play)
+QtCore.QTimer.singleShot(600, app.quit)
+app.exec()
+source.stop()
+source.wait()
+print('clean exit; recording', recorder.isRecording(), 'playing',
+      player.isPlaying())
+'''
+
+
+class TestHeadlessTeardown(unittest.TestCase):
+    '''Quitting stops a recorder or player that nobody stopped.'''
+
+    def run_script(self, what: str) -> None:
+        env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
+        result = subprocess.run([sys.executable, '-c', HEADLESS_SCRIPT, what],
+                                capture_output=True, text=True,
+                                timeout=60, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr[-500:])
+        self.assertNotIn('Destroyed while thread', result.stderr)
+        self.assertIn('clean exit; recording False playing False',
+                      result.stdout)
+
+    def test_quitting_during_a_recording(self):
+        self.run_script('record')
+
+    def test_quitting_during_playback(self):
+        self.run_script('play')
 
 
 if __name__ == '__main__':  # pragma: no cover

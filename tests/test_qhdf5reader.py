@@ -1,10 +1,9 @@
-'''Unit tests for QHDF5Reader and QHDF5Source.'''
+'''Unit tests for QHDF5Reader.'''
 import unittest
 import numpy as np
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
-from QVideo.dvr.QHDF5Reader import QHDF5Reader, QHDF5Source
+from QVideo.dvr.QHDF5Reader import QHDF5Reader
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -210,26 +209,6 @@ class TestQHDF5ReaderClose(unittest.TestCase):
         reader = make_reader()
         reader.close()
         self.assertFalse(reader.isOpen())
-
-
-class TestQHDF5Source(unittest.TestCase):
-
-    def test_accepts_string_filename(self):
-        mock_file, _, _ = make_mock_file()
-        with patch('h5py.File', return_value=mock_file):
-            src = QHDF5Source('test.h5')
-        self.assertIsInstance(src.source, QHDF5Reader)
-
-    def test_accepts_path_filename(self):
-        mock_file, _, _ = make_mock_file()
-        with patch('h5py.File', return_value=mock_file):
-            src = QHDF5Source(Path('test.h5'))
-        self.assertIsInstance(src.source, QHDF5Reader)
-
-    def test_accepts_reader_instance(self):
-        reader = make_reader()
-        src = QHDF5Source(reader)
-        self.assertIs(src.source, reader)
 
 
 if __name__ == '__main__':

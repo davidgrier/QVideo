@@ -1,20 +1,49 @@
 DVR
 ===
 
+Recording and playback are done by two objects without a window,
+:class:`~QVideo.dvr.QRecorder.QRecorder` and
+:class:`~QVideo.dvr.QPlayer.QPlayer`, which choose the file reader or writer
+from the extension of the file name with the tables in
+:mod:`~QVideo.dvr.formats`.  :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` is
+their control panel.  Scripts and notebooks use the recorder and the player
+directly, or open a file with :func:`~QVideo.dvr.formats.openVideo` to get
+its frames as arrays.
+
 QDVRWidget
 ----------
 
 .. automodule:: QVideo.dvr.QDVRWidget
    :members:
 
+QRecorder
+---------
+
+.. automodule:: QVideo.dvr.QRecorder
+   :members:
+
+QPlayer
+-------
+
+.. automodule:: QVideo.dvr.QPlayer
+   :members:
+
+formats
+-------
+
+.. automodule:: QVideo.dvr.formats
+   :members:
+   :undoc-members:
+
 QBacklogMonitor
 ---------------
 
 :class:`~QVideo.dvr.QBacklogMonitor.QBacklogMonitor` measures how far the
 writer of a recording has fallen behind the camera, and reports it in the
-signals ``backlog`` and ``behind``.  The DVR widget uses one, and forwards
-the signals; deciding what to do about a recording that falls behind is for
-the application.
+signals ``backlog`` and ``behind``.  :class:`~QVideo.dvr.QRecorder.QRecorder`
+uses one, and forwards the signals; deciding what to do about a recording
+that falls behind is for the application, and the recorder stops by
+default.
 
 .. automodule:: QVideo.dvr.QBacklogMonitor
    :members:
@@ -40,7 +69,7 @@ QCircularBuffer
 :class:`~QVideo.dvr.QCircularBuffer.QCircularBuffer` is the ring buffer
 behind it.  It stores each frame with its capture information and discards
 the oldest frame when it is full.  It does not write files: the widget does
-that, with the same writers as :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`.
+that, with the writers of :mod:`~QVideo.dvr.formats`.
 
 .. automodule:: QVideo.dvr.QCircularBuffer
    :members:

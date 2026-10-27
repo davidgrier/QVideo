@@ -1,7 +1,6 @@
 '''HDF5 video reader and threaded playback source.'''
 from qtpy import QtCore
-from QVideo.lib import QCamera, QVideoReader, QVideoSource
-from pathlib import Path
+from QVideo.lib import QCamera, QVideoReader
 import logging
 try:
     import h5py
@@ -13,7 +12,7 @@ except (ImportError, ModuleNotFoundError):
     hdf5plugin = None
 
 
-__all__ = ['QHDF5Reader', 'QHDF5Source']
+__all__ = ['QHDF5Reader']
 
 
 logger = logging.getLogger(__name__)
@@ -111,20 +110,3 @@ class QHDF5Reader(QVideoReader):
     def height(self) -> int:
         '''Frame height in pixels.'''
         return self._height
-
-
-class QHDF5Source(QVideoSource):
-
-    '''Video source for HDF5 files.
-
-    Parameters
-    ----------
-    reader : str, Path, or QHDF5Reader
-        Path to the HDF5 file to read, or an existing
-        :class:`QHDF5Reader` instance.
-    '''
-
-    def __init__(self, reader: str | Path | QHDF5Reader) -> None:
-        if isinstance(reader, (str, Path)):
-            reader = QHDF5Reader(str(reader))
-        super().__init__(reader)

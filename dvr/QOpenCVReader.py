@@ -1,11 +1,10 @@
-'''OpenCV video reader and threaded playback source.'''
+'''OpenCV video reader.'''
 from qtpy import QtCore
-from QVideo.lib import QCamera, QVideoReader, QVideoSource
-from pathlib import Path
+from QVideo.lib import QCamera, QVideoReader
 import cv2
 
 
-__all__ = ['QOpenCVReader', 'QOpenCVSource']
+__all__ = ['QOpenCVReader']
 
 
 class QOpenCVReader(QVideoReader):
@@ -91,23 +90,6 @@ class QOpenCVReader(QVideoReader):
     def height(self) -> int:
         '''Frame height in pixels.'''
         return int(self._reader.get(self.HEIGHT))
-
-
-class QOpenCVSource(QVideoSource):
-
-    '''Video source for common video file formats (AVI, MKV, MP4, etc.).
-
-    Parameters
-    ----------
-    reader : str, Path, or QOpenCVReader
-        Path to the video file to read, or an existing
-        :class:`QOpenCVReader` instance.
-    '''
-
-    def __init__(self, reader: str | Path | QOpenCVReader) -> None:
-        if isinstance(reader, (str, Path)):
-            reader = QOpenCVReader(str(reader))
-        super().__init__(reader)
 
 
 if __name__ == '__main__':  # pragma: no cover

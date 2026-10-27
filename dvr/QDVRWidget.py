@@ -1,27 +1,18 @@
 '''Composite DVR widget for recording and playing back video streams.'''
 import functools
-import importlib.util
 import os
 from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
 import numpy as np
 from QVideo.lib import clickable, QVideoSource
-from .QBacklogMonitor import QBacklogMonitor
-from .QOpenCVWriter import QOpenCVWriter
-from .QOpenCVReader import QOpenCVSource
-from .QPyAVWriter import QPyAVWriter
-from .QPyAVReader import QPyAVSource
-
-from .QHDF5Writer import QHDF5Writer
-from .QHDF5Reader import QHDF5Source
+from . import formats
+from .QRecorder import QRecorder
+from .QPlayer import QPlayer
 
 import logging
 
 
 __all__ = ['QDVRWidget']
-
-_h5py_available = importlib.util.find_spec('h5py') is not None
-_pyav_available = importlib.util.find_spec('av') is not None
 
 
 logger = logging.getLogger(__name__)
@@ -46,17 +37,19 @@ class QDVRWidget(QtWidgets.QFrame):
     '''Widget providing the controls of a digital video recorder: record,
     stop, rewind, frame step, play/pause and a position slider.
 
-    Connects to a :class:`~QVideo.lib.QVideoSource.QVideoSource` to
-    capture incoming frames to a file, and can play back previously
-    recorded files.  Supported formats are determined by the
-    :attr:`Writer` and :attr:`Player` class attributes; by default
-    AVI (``.avi``), MKV (``.mkv``), and MP4 (``.mp4``) are supported, by
-    PyAV if it is installed and by OpenCV if not;
-    HDF5 (``.h5``) is also supported when ``h5py`` is installed.
-    To use OpenCV although PyAV is installed, set the entries of
-    :attr:`Writer` and :attr:`Player` to the OpenCV classes.
-    Requesting an unsupported extension is logged
-    as an error and silently ignored.
+    The controls of a :class:`~QVideo.dvr.QRecorder.QRecorder`
+    (:attr:`recorder`), which
+    captures the frames of a
+    :class:`~QVideo.lib.QVideoSource.QVideoSource` to a file, and of a
+    :class:`~QVideo.dvr.QPlayer.QPlayer` (:attr:`playback`), which plays
+    recorded files.
+    The widget asks the user for file names and confirms what could do
+    harm; the recorder and the player do the work, and are available to
+    applications without a window.  Supported formats are those of
+    :mod:`~QVideo.dvr.formats`: AVI (``.avi``), MKV (``.mkv``), and MP4
+    (``.mp4``) by PyAV if it is installed and by OpenCV if not; HDF5
+    (``.h5``) when ``h5py`` is installed.  Requesting an unsupported
+    extension is logged as an error and silently ignored.
 
     Recording and playback stop automatically when the widget is closed
     or the application is about to quit.
@@ -68,20 +61,9 @@ class QDVRWidget(QtWidgets.QFrame):
     filename : str or None
         Default file path for saving.  If ``None``, defaults to
         ``~/default.mkv``.
-    stopWhenBehind : bool
-        Stop recording when the writer falls more than *lagLimit* seconds
-        behind the camera.  A recorder must not drop frames, so frames
-        queue in memory while storage is slower than the camera; stopping
-        keeps a slow disk from filling memory.  Set ``False`` to record
-        through the backlog.  Default: ``True``.
-    lagLimit : float
-        How far [seconds] the writer may fall behind the newest captured
-        frame.  Default: ``1.``.
-    maxMemory : float or None
-        Memory [bytes] that frames waiting for the writer may occupy.
-        The recording is treated as behind as soon as the backlog would
-        exceed it, whatever *lagLimit* says.  ``None`` means 80% of the
-        memory available when recording starts.  Default: ``None``.
+    stopWhenBehind, lagLimit, maxMemory :
+        Passed to the :class:`~QVideo.dvr.QRecorder.QRecorder`, which
+        explains them and which is available as :attr:`recorder`.
     *args :
         Forwarded to :class:`~qtpy.QtWidgets.QFrame`.
     **kwargs :
@@ -109,14 +91,8 @@ class QDVRWidget(QtWidgets.QFrame):
 
     Notes
     -----
-    A :class:`~QVideo.dvr.QBacklogMonitor.QBacklogMonitor` measures the
-    backlog; the widget forwards its signals and decides whether to stop.
-    The limits are read when a recording starts.
-
     Stopping waits for the writer to finish the frames already captured,
-    so no recorded frame is lost.  With *stopWhenBehind* the wait is
-    bounded by the smaller of *lagLimit* seconds and *maxMemory* bytes of
-    data.
+    so no recorded frame is lost.
     '''
 
     #: Emitted for each frame during playback.
@@ -131,61 +107,8 @@ class QDVRWidget(QtWidgets.QFrame):
     behind = QtCore.Signal(float)
     #: Emitted with the reason when the widget stops a recording itself.
     stopped = QtCore.Signal(str)
-    _shutdown = QtCore.Signal()
 
     FILENAME = 'default.mkv'
-
-    Writer: dict[str, type] = {'.avi': QOpenCVWriter,
-                                '.mkv': QOpenCVWriter,
-                                '.mp4': QOpenCVWriter}
-    Player: dict[str, type] = {'.avi': QOpenCVSource,
-                                '.mkv': QOpenCVSource,
-                                '.mp4': QOpenCVSource}
-
-    FileGroups: dict[str, set[str]] = {
-        'Lossless Video': {'.avi', '.mkv'},
-        'Video': {'.mp4'}}
-
-    if _pyav_available:
-        Writer.update(dict.fromkeys(('.avi', '.mkv', '.mp4'), QPyAVWriter))
-        Player.update(dict.fromkeys(('.avi', '.mkv', '.mp4'), QPyAVSource))
-
-    if _h5py_available:
-        Writer['.h5'] = QHDF5Writer
-        Player['.h5'] = QHDF5Source
-        FileGroups['HDF5 files'] = {'.h5'}
-
-    @classmethod
-    def _buildFilter(cls, save: bool) -> str:
-        '''Build a file-dialog filter string from supported formats.
-
-        Parameters
-        ----------
-        save : bool
-            If ``True``, derive extensions from :attr:`Writer`;
-            otherwise from :attr:`Player`.
-
-        Returns
-        -------
-        str
-            A ``;;``-separated filter string suitable for
-            ``QFileDialog``, with extensions grouped by
-            :attr:`FileGroups`.
-        '''
-        formats = set(cls.Writer if save else cls.Player)
-        parts = []
-        covered = set()
-        for label, exts in cls.FileGroups.items():
-            matching = sorted(exts & formats)
-            if matching:
-                covered |= set(matching)
-                parts.append(
-                    f'{label} ({" ".join("*" + e for e in matching)})')
-        ungrouped = sorted(formats - covered)
-        if ungrouped:
-            parts.append(
-                f'Other files ({" ".join("*" + e for e in ungrouped)})')
-        return ';;'.join(parts) if parts else 'All files (*)'
 
     def __init__(self,
                  *args,
@@ -196,16 +119,13 @@ class QDVRWidget(QtWidgets.QFrame):
                  maxMemory: float | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.stopWhenBehind = stopWhenBehind
-        self.lagLimit = lagLimit
-        self.maxMemory = maxMemory
-        self._monitor = QBacklogMonitor(self)
+        #: The recorder that this widget controls.
+        self.recorder = QRecorder(stopWhenBehind=stopWhenBehind,
+                                  lagLimit=lagLimit, maxMemory=maxMemory,
+                                  parent=self)
+        #: The player that this widget controls.
+        self.playback = QPlayer(self)
         self._source: QVideoSource | None = None
-        self._writer: object | None = None
-        self._player: QVideoSource | None = None
-        self._thread: QtCore.QThread | None = None
-        self._length = 0
-        self._fps = 1.  # of the video that plays
         self._setupUi()
         self._connectSignals()
         self.source = source
@@ -341,10 +261,18 @@ class QDVRWidget(QtWidgets.QFrame):
         self.playButton.clicked.connect(self._togglePlay)
         self.forwardButton.clicked.connect(lambda: self.step(1))
         self.slider.valueChanged.connect(lambda n: self.seek(n - 1))
-        self._monitor.backlog.connect(self.backlog)
-        self._monitor.behind.connect(self.behind)
-        self._monitor.behind.connect(self._fellBehind)
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
+        recorder, player = self.recorder, self.playback
+        recorder.recording.connect(self.recording)
+        recorder.recording.connect(self._update)
+        recorder.frameNumber.connect(self._setFrameNumber)
+        recorder.backlog.connect(self.backlog)
+        recorder.behind.connect(self.behind)
+        recorder.stopped.connect(self.stopped)
+        player.playing.connect(self.playing)
+        player.playing.connect(self._update)
+        player.newFrame.connect(self.newFrame)
+        player.positionChanged.connect(self._follow)
+        player.ended.connect(self._updateUi)
 
     def _updateUi(self) -> None:
         '''Enable the controls that make sense and show play or pause.'''
@@ -366,6 +294,14 @@ class QDVRWidget(QtWidgets.QFrame):
             _Icon.SP_MediaPause if running else _Icon.SP_MediaPlay))
         self.playButton.setToolTip('Pause' if running else 'Play')
 
+    @QtCore.Slot(bool)
+    def _update(self, on: bool) -> None:
+        '''Show the controls for a recording or video that has started or
+        stopped, and clear the read-outs when one has stopped.'''
+        if not on:
+            self._display(0, 0, 1.)
+        self._updateUi()
+
     def _display(self, done: int, total: int, rate: float) -> None:
         '''Show *done* of *total* frames, which arrive at *rate* [fps].'''
         with QtCore.QSignalBlocker(self.slider):
@@ -378,15 +314,15 @@ class QDVRWidget(QtWidgets.QFrame):
 
     def isRecording(self) -> bool:
         '''Return ``True`` if recording is in progress.'''
-        return self._writer is not None
+        return self.recorder.isRecording()
 
     def isPlaying(self) -> bool:
         '''Return ``True`` if playback is in progress.'''
-        return self._player is not None
+        return self.playback.isPlaying()
 
     def isPaused(self) -> bool:
         '''Return ``True`` if playback is paused.'''
-        return self.isPlaying() and self._player.isPaused()
+        return self.playback.isPaused()
 
     def getFileName(self) -> str:
         '''Open a file dialog and set the file name.
@@ -409,7 +345,7 @@ class QDVRWidget(QtWidgets.QFrame):
                           Option.DontConfirmOverwrite)
         dialog.setLabelText(QtWidgets.QFileDialog.DialogLabel.Accept,
                             'Select')
-        dialog.setNameFilter(self._buildFilter(True))
+        dialog.setNameFilter(formats.fileFilter(True))
         dialog.selectFile(self.filename)
         if not dialog.exec():
             return ''
@@ -455,48 +391,25 @@ class QDVRWidget(QtWidgets.QFrame):
         if self.isRecording():
             self.stop()
             return
-        writer_class = self._handler(self.Writer)
-        if writer_class is None or not self._mayRecord():
+        if not (self._accepts(formats.Writer) and self._mayRecord()):
             return
         logger.debug(f'Recording: {self.filename}')
-        self._startWriter(writer_class)
-        self.recording.emit(True)
-        self._updateUi()
+        self.recorder.start(self.filename, self.nframes.value(),
+                            self.nskip.value(), overwrite=True)
+        self._display(0, self.recorder.nframes, self.recorder.rate)
 
-    def _handler(self, table: dict[str, type]) -> type | None:
-        '''Return the class of *table* for the file name, or ``None``.
+    def _accepts(self, table: dict[str, type]) -> bool:
+        '''Return whether the file name has an extension of *table*.
 
         Asks for a file name if there is none, and logs an extension that
         the table does not have.
         '''
         if not (self.filename or self.getFileName()):
-            return None
+            return False
         suffix = Path(self.filename).suffix
         if suffix not in table:
             logger.error(f'Unsupported file format: {suffix!r}')
-        return table.get(suffix)
-
-    def _startWriter(self, writer_class: type) -> None:
-        '''Create the writer, run it on its own thread and feed it frames.
-
-        The frame rate is read from the camera once, here: asking for it
-        takes the camera lock, which a camera that waits for its next frame
-        holds, so asking for it with every frame would stall the GUI.
-        '''
-        fps = self.source.fps
-        self._writer = writer_class(self.filename, fps=fps,
-                                    nframes=self.nframes.value(),
-                                    nskip=self.nskip.value())
-        self._monitor.start(self._writer, fps, self.lagLimit, self.maxMemory)
-        self._writer.frameNumber.connect(self._setFrameNumber)
-        self._writer.finished.connect(self.stop)
-        self._thread = QtCore.QThread()
-        self._writer.moveToThread(self._thread)
-        self._shutdown.connect(self._writer.shutdown)
-        self._thread.start()
-        self.source.newFrame.connect(self._writer.write)
-        self.source.newFrame.connect(self._monitor.check)
-        self._display(0, self._writer.target, fps)
+        return suffix in table
 
     @QtCore.Slot()
     def play(self) -> None:
@@ -507,44 +420,28 @@ class QDVRWidget(QtWidgets.QFrame):
         A paused video that has reached its end starts over.
         '''
         if self.isPaused():
-            if 0 < self._length <= self.framenumber:
-                self._player.seek(0)
-            self._player.resume()
+            self.playback.resume()
             self._updateUi()
             return
         if self.isRecording() or self.isPlaying():
             return
-        player_class = self._handler(self.Player)
-        if player_class is None:
+        if not self._accepts(formats.Reader):
             return
         if not Path(self.filename).is_file():
             self._warn(f'There is no file {Path(self.filename).name} '
                        'to play.')
             return
-        self._startPlayer(player_class)
-
-    def _startPlayer(self, player_class: type) -> None:
-        '''Open the file, play it on its own thread and follow it.'''
         logger.debug(f'Starting Playback: {self.filename}')
-        player = player_class(self.filename)
-        if not player.isOpen():
-            return
-        self._player = player
-        reader = player.source
-        self._length, self._fps = reader.length, reader.fps
-        self._display(0, self._length, self._fps)
-        player.newFrame.connect(self._follow)
-        player.newFrame.connect(self.newFrame)
-        self.playing.emit(True)
-        player.start()
-        self._updateUi()
+        try:
+            self.playback.start(self.filename)
+        except OSError:
+            pass  # the reader has said why
 
     @QtCore.Slot()
     def pause(self) -> None:
         '''Pause playback.  :meth:`play` resumes it.'''
-        if self.isPlaying():
-            self._player.pause()
-            self._updateUi()
+        self.playback.pause()
+        self._updateUi()
 
     def _togglePlay(self) -> None:
         if self.isPlaying() and not self.isPaused():
@@ -558,107 +455,42 @@ class QDVRWidget(QtWidgets.QFrame):
 
         The video keeps playing, or stays paused, as it was.
         '''
-        if self.isPlaying():
-            framenumber = max(framenumber, 0)
-            if self._length:
-                framenumber = min(framenumber, self._length - 1)
-            self._player.seek(framenumber)
-
-    def _pauseAt(self, framenumber: int) -> None:
-        self.pause()
-        self.seek(framenumber)
+        self.playback.seek(framenumber)
 
     @QtCore.Slot()
     def rewind(self) -> None:
         '''Go to the first frame and pause.'''
-        self._pauseAt(0)
+        self.playback.rewind()
+        self._updateUi()
 
     def step(self, frames: int = 1) -> None:
         '''Pause and move *frames* frames forward, or back if negative.'''
-        self._pauseAt(self.framenumber - 1 + frames)
+        self.playback.step(frames)
+        self._updateUi()
 
     @QtCore.Slot()
     def stop(self) -> None:
         '''Stop recording or playback.'''
-        self._stopRecording()
-        self._stopPlayback()
-        self._display(0, 0, 1.)
-        self._updateUi()
-
-    def _stopRecording(self) -> None:
-        if not self.isRecording():
-            return
-        logger.debug('Stopping Recording')
-        try:
-            self.source.newFrame.disconnect(self._writer.write)
-            self.source.newFrame.disconnect(self._monitor.check)
-            self._writer.frameNumber.disconnect(self._setFrameNumber)
-            self._writer.finished.disconnect(self.stop)
-        except (RuntimeError, TypeError):
-            logger.debug('Some recording signals were already disconnected')
-        self._monitor.stop()
-        self._shutdown.emit()
-        self._thread.wait()
-        self._thread = None
-        self._writer = None
-        self.recording.emit(False)
-
-    def _stopPlayback(self) -> None:
-        if not self.isPlaying():
-            return
-        logger.debug('Stopping Playback')
-        try:
-            self._player.newFrame.disconnect(self._follow)
-            self._player.newFrame.disconnect(self.newFrame)
-        except (RuntimeError, TypeError):
-            logger.debug('Playback signal was already disconnected')
-        self._player.stop()
-        self._player.wait()
-        self._player = None
-        self.playing.emit(False)
+        self.recorder.stop()
+        self.playback.stop()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         '''Stop recording or playback when the widget is closed.'''
         self.stop()
         super().closeEvent(event)
 
-    def _fellBehind(self, lag: float) -> None:
-        '''Stop the recording, if that is the policy, as it falls behind.'''
-        if self.stopWhenBehind:
-            reason = (f'recording fell {lag:.1f} s behind the camera; '
-                      + self._remedy())
-            logger.error(reason)
-            self.stopped.emit(reason)
-            self.stop()
-
-    def _remedy(self) -> str:
-        '''Suggest what to try when the writer cannot keep up.'''
-        if isinstance(self._writer, QHDF5Writer):
-            return 'use a faster disk, or lower the frame size or rate'
-        tips = ['record to .h5' if '.h5' in self.Writer
-                else 'install QVideo[dvr] to record to .h5']
-        if not _pyav_available:
-            tips.append('install QVideo[av]')
-        tips.append('lower the frame size or rate')
-        return ', or '.join(tips)
-
     @QtCore.Slot(int)
     def _setFrameNumber(self, framenumber: int) -> None:
         '''Show that *framenumber* frames have been recorded.'''
         if self.isRecording():  # one may arrive after the recording stops
-            writer = self._writer
-            self._display(framenumber, writer.target,
-                          writer.fps / writer.nskip)
+            self._display(framenumber, self.recorder.nframes,
+                          self.recorder.rate)
 
-    def _follow(self) -> None:
-        '''Show where playback is; pause at the end of the video.'''
-        if not self.isPlaying():
-            return
-        done = self._player.source.framenumber
-        self._display(done, max(self._length, done), self._fps)
-        if 0 < self._length <= done and not self.isPaused():
-            self._player.pause()
-            self._updateUi()
+    @QtCore.Slot(int)
+    def _follow(self, done: int) -> None:
+        '''Show that *done* frames of the video have been played.'''
+        player = self.playback
+        self._display(done, max(player.length, done), player.fps)
 
     @property
     def source(self) -> QVideoSource | None:
@@ -670,12 +502,8 @@ class QDVRWidget(QtWidgets.QFrame):
     def source(self, source: QVideoSource | None) -> None:
         logger.debug(f'Setting source {type(source)}')
         self._source = source
+        self.recorder.source = source
         self._updateUi()
-
-    @property
-    def player(self) -> QVideoSource | None:
-        '''The active playback source, or ``None`` when not playing.'''
-        return self._player
 
     @property
     def filename(self) -> str:

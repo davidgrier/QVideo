@@ -85,14 +85,16 @@ hard dependency: pip cannot say "use whichever is installed", and a forced
 install would break Raspberry Pi systems that use the system `python3-pyqt*`
 packages.  `import QVideo` with no binding raises an `ImportError` naming the
 extras.  PySide6 is experimental: the library and the whole test suite run
-under it, but the interpreter crashes at random (in roughly a quarter of the
-runs of `tests/test_mainwindow.py`) inside pyqtgraph's `PlotItem` constructor,
-at `QWidgetAction.setDefaultWidget`, so CI runs PySide6 as an
-allowed-failure job.  Abstract `QObject` classes use the shared
-`QABCMeta` (`lib/_qabc.py`) rather than defining their own metaclass, and
-`__setattr__` overrides on `QObject` subclasses must use
-`super().__setattr__` (`object.__setattr__` is rejected by Python 3.12 and
-earlier under PySide6).
+under it, but the interpreter crashes at random inside pyqtgraph's `PlotItem`
+constructor, at `QWidgetAction.setDefaultWidget`, while
+`tests/test_mainwindow.py` builds its plots.  How often depends on the
+platform: about half of the runs of the suite on a macOS development
+machine (Python 3.14, PySide6 6.12), and none that we have seen in CI on
+Linux (Python 3.12).  CI runs PySide6 as an allowed-failure job.  Abstract
+`QObject` classes use the shared `QABCMeta` (`lib/_qabc.py`) rather than
+defining their own metaclass, and `__setattr__` overrides on `QObject`
+subclasses must use `super().__setattr__` (`object.__setattr__` is rejected
+by Python 3.12 and earlier under PySide6).
 
 ### Core abstractions (`lib/`)
 
@@ -189,8 +191,13 @@ both bases connect the camera before it runs; signal connections go in
 
 ### DVR (`dvr/`)
 
-Self-contained recording subsystem. Supports HDF5 (lossless, with timestamps)
-and OpenCV video formats. `QDVRWidget` is the composite UI widget.
+Self-contained recording subsystem. `dvr/formats.py` maps file extensions
+to writer and reader classes (HDF5 lossless with timestamps, PyAV, OpenCV);
+`QRecorder` and `QPlayer` are the headless objects that record a source and
+play a file, each on a thread of its own, and `QDVRWidget` is their control
+panel (`dvr.recorder` and `dvr.playback`; it holds the user dialogs and
+nothing else).  `formats.openVideo`
+returns a reader that is indexed and iterated like a list of frames.
 
 ### Filters (`filters/`)
 

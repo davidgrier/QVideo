@@ -1,10 +1,9 @@
 '''PyAV video reader and threaded playback source.'''
 from qtpy import QtCore
-from QVideo.lib import QCamera, QVideoReader, QVideoSource
-from pathlib import Path
+from QVideo.lib import QCamera, QVideoReader
 
 
-__all__ = ['QPyAVReader', 'QPyAVSource']
+__all__ = ['QPyAVReader']
 
 
 class QPyAVReader(QVideoReader):
@@ -112,20 +111,3 @@ class QPyAVReader(QVideoReader):
     def height(self) -> int:
         '''Frame height in pixels.'''
         return self._stream.codec_context.height
-
-
-class QPyAVSource(QVideoSource):
-
-    '''Video source for the files that :class:`QPyAVReader` reads.
-
-    Parameters
-    ----------
-    reader : str, Path, or QPyAVReader
-        Path to the video file to read, or an existing
-        :class:`QPyAVReader` instance.
-    '''
-
-    def __init__(self, reader: str | Path | QPyAVReader) -> None:
-        if isinstance(reader, (str, Path)):
-            reader = QPyAVReader(str(reader))
-        super().__init__(reader)

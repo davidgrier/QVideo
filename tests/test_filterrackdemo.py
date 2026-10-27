@@ -106,7 +106,8 @@ class TestFilterRackDemoDvrPlayback(unittest.TestCase):
 
     def test_playback_points_the_pipeline_at_the_player(self):
         self.widget.dvrPlayback(True)
-        self.assertIs(self.widget.rack.pipeline.source, self.widget.dvr.player)
+        self.assertIs(self.widget.rack.pipeline.source,
+                      self.widget.dvr.playback.source)
 
     def test_playback_keeps_the_screen_on_the_pipeline(self):
         self.widget.dvrPlayback(True)

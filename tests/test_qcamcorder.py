@@ -83,7 +83,7 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
     def setUp(self):
         self.widget = make_camcorder()
         self.mock_player = MockSource()
-        self.widget.dvr._player = self.mock_player
+        self.widget.dvr.playback._source = self.mock_player
 
     def test_dvr_playback_true_disables_camera_widget(self):
         self.widget.dvrPlayback(True)
@@ -104,7 +104,7 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
         self.assertIs(self.widget.screen.source, self.widget.source)
 
     def test_dvr_playback_false_without_prior_true_does_not_raise(self):
-        self.widget.dvr._player = None
+        self.widget.dvr.playback._source = None
         self.widget.dvrPlayback(False)  # should not raise
 
 

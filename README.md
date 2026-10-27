@@ -33,7 +33,8 @@ abstraction and require no camera-specific code.
   `QYoloWidget` for real-time object detection render markers directly on
   `QVideoScreen`; composite mode lets the DVR record the annotated scene.
 - **Digital video recorder** — lossless HDF5 (with timestamps) and OpenCV
-  video formats; `QDVRWidget` is the composite UI widget.
+  video formats; `QRecorder` and `QPlayer` work without a window, and
+  `QDVRWidget` is their control panel.
 - **Live display** — `QVideoScreen` supports mouse-aware graphical overlays
   for annotations, regions of interest, and user interaction.
 
@@ -56,9 +57,9 @@ pip install QVideo            # use a binding that is already installed
 ```
 
 PySide6 is experimental (`pip install "QVideo[pyside6]"`): the whole test
-suite passes under it in continuous integration, but the interpreter
-occasionally crashes while pyqtgraph builds a plot, so it is not yet
-recommended.
+suite passes under it in continuous integration on Linux, but the
+interpreter crashes at random while pyqtgraph builds a plot, in about half
+of the test runs on a Mac, so it is not yet recommended.
 
 ### Raspberry Pi
 

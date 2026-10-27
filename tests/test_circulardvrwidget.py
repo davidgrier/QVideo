@@ -10,7 +10,7 @@ from qtpy import QtWidgets, QtCore
 
 from QVideo.dvr.QCircularBuffer import QCircularBuffer
 from QVideo.dvr.QCircularDVRWidget import QCircularDVRWidget
-from QVideo.dvr.QDVRWidget import QDVRWidget
+from QVideo.dvr import formats
 from QVideo.lib.videotypes import FrameInfo
 from QVideo.tests.signals import record
 
@@ -237,7 +237,7 @@ class TestWrite(unittest.TestCase):
     def setUp(self):
         FakeWriter.made = []
         FakeWriter.fail_after = None
-        patcher = patch.dict(QDVRWidget.Writer, {'.fake': FakeWriter})
+        patcher = patch.dict(formats.Writer, {'.fake': FakeWriter})
         patcher.start()
         self.addCleanup(patcher.stop)
         self.widget = QCircularDVRWidget()
@@ -302,7 +302,7 @@ class TestRoundTrip(unittest.TestCase):
     def read_back(self, suffix):
         path = str(self.dir / f'buffer{suffix}')
         self.assertTrue(write(self.widget, path))
-        reader = QDVRWidget.Player[suffix](path).source
+        reader = formats.openVideo(path)
         self.addCleanup(reader.close)
         frames = [reader.read()[1] for _ in self.frames]
         return [f if f.ndim == 2 else f[..., 0] for f in frames]
@@ -318,13 +318,13 @@ class TestRoundTrip(unittest.TestCase):
 
     def test_the_opencv_writers_return_every_pixel_too(self):
         from QVideo.dvr.QOpenCVWriter import QOpenCVWriter
-        from QVideo.dvr.QOpenCVReader import QOpenCVSource
-        with patch.dict(QDVRWidget.Writer, {'.mkv': QOpenCVWriter}), \
-                patch.dict(QDVRWidget.Player, {'.mkv': QOpenCVSource}):
+        from QVideo.dvr.QOpenCVReader import QOpenCVReader
+        with patch.dict(formats.Writer, {'.mkv': QOpenCVWriter}), \
+                patch.dict(formats.Reader, {'.mkv': QOpenCVReader}):
             self.check('.mkv')
 
     def test_an_hdf5_file_returns_every_pixel(self):
-        if '.h5' not in QDVRWidget.Writer:
+        if '.h5' not in formats.Writer:
             self.skipTest('h5py is not installed')
         self.check('.h5')
 

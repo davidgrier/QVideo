@@ -6,7 +6,7 @@ import logging
 
 from QVideo.lib.QVideoSource import QVideoSource
 from .QCircularBuffer import QCircularBuffer
-from .QDVRWidget import QDVRWidget
+from . import formats
 
 
 __all__ = ['QCircularDVRWidget']
@@ -41,9 +41,9 @@ class QCircularDVRWidget(QtWidgets.QWidget):
     clicks **Save**, the current buffer contents are written to disk in
     one batch.  The file format is determined by the filename extension,
     and the file is written by the same writers as
-    :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` uses (its ``Writer``
-    table), so every format that it supports is available, with PyAV for
-    video files if that is installed.
+    :class:`~QVideo.dvr.QRecorder.QRecorder` uses (the table in
+    :mod:`~QVideo.dvr.formats`), so every format that it supports is
+    available, with PyAV for video files if that is installed.
 
     Unlike :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` there is no
     *record* / *stop* cycle — the buffer is always accumulating.  This
@@ -139,7 +139,7 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save Circular Buffer',
             self._fileEdit.text(),
-            QDVRWidget._buildFilter(True),
+            formats.fileFilter(True),
             options=QtWidgets.QFileDialog.Option.DontUseNativeDialog)
         if filename:
             self._fileEdit.setText(filename)
@@ -176,14 +176,14 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         no frames, the extension is not supported, or the writer gives up
         (the file cannot be created, or the frame size changed).
         '''
-        suffix = Path(filename).suffix
         if not frames:
             return False
-        if suffix not in QDVRWidget.Writer:
-            logger.error(f'Unsupported file format: {suffix!r}')
+        try:
+            writer_class = formats.writerClass(filename)
+        except ValueError as error:
+            logger.error(error)
             return False
-        writer = QDVRWidget.Writer[suffix](
-            filename, fps=fps, nframes=len(frames))
+        writer = writer_class(filename, fps=fps, nframes=len(frames))
         failed = []
         writer.finished.connect(lambda: failed.append(True))
         for frame, info in frames:

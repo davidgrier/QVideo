@@ -268,5 +268,103 @@ class TestSeekRewind(unittest.TestCase):
         self.assertEqual(reader.framenumber, 0)
 
 
+class _Counting(_FakeVideoReader):
+    '''A reader of ten frames, each filled with its own index.'''
+
+    def __init__(self, length=10):
+        super().__init__()
+        self._length = length
+
+    def read(self):
+        if self._framenumber >= self._length:
+            return False, None
+        frame = np.full((2, 2), self._framenumber, np.uint8)
+        self._framenumber += 1
+        return True, frame
+
+
+class _Lying(_Counting):
+    """A reader that claims ten frames but has only seven."""
+
+    def read(self):
+        if self._framenumber >= 7:
+            return False, None
+        return super().read()
+
+
+def values(frames):
+    return [int(f[0, 0]) for f in frames]
+
+
+class TestSequence(unittest.TestCase):
+    '''A reader can be used like a sequence of frames.'''
+
+    def setUp(self):
+        self.video = _Counting()
+
+    def test_len_is_the_number_of_frames(self):
+        self.assertEqual(len(self.video), 10)
+
+    def test_len_of_a_closed_reader_is_zero(self):
+        self.video.close()
+        self.assertEqual(len(self.video), 0)
+
+    def test_a_reader_is_true_even_without_frames(self):
+        self.assertTrue(_Counting(length=0))
+
+    def test_an_index_gives_that_frame(self):
+        self.assertEqual(values([self.video[0], self.video[7]]), [0, 7])
+
+    def test_a_negative_index_counts_from_the_end(self):
+        self.assertEqual(int(self.video[-1][0, 0]), 9)
+        self.assertEqual(int(self.video[-10][0, 0]), 0)
+
+    def test_an_index_outside_the_video_is_an_error(self):
+        for index in (10, -11, 100):
+            with self.subTest(index):
+                with self.assertRaises(IndexError):
+                    self.video[index]
+
+    def test_a_frame_that_cannot_be_read_is_an_error(self):
+        self.video.read = lambda: (False, None)
+        with self.assertRaises(IndexError):
+            self.video[3]
+
+    def test_a_slice_gives_a_list_of_frames(self):
+        self.assertEqual(values(self.video[2:6]), [2, 3, 4, 5])
+
+    def test_a_slice_with_a_step(self):
+        self.assertEqual(values(self.video[::3]), [0, 3, 6, 9])
+        self.assertEqual(values(self.video[8:1:-3]), [8, 5, 2])
+
+    def test_a_slice_outside_the_video_is_shortened(self):
+        self.assertEqual(values(self.video[7:100]), [7, 8, 9])
+        self.assertEqual(self.video[20:30], [])
+
+    def test_a_slice_ends_where_a_frame_cannot_be_read(self):
+        video = _Lying()
+        self.assertEqual(values(video[5:10]), [5, 6])
+        self.assertEqual(values(video[0:10:2]), [0, 2, 4, 6])
+        self.assertEqual(values(video[:]), list(range(7)))
+
+    def test_a_slice_never_contains_a_missing_frame(self):
+        self.assertTrue(all(f is not None for f in _Lying()[3:10]))
+
+    def test_the_whole_video_is_a_slice(self):
+        self.assertEqual(values(self.video[:]), list(range(10)))
+
+    def test_iteration_starts_from_the_first_frame(self):
+        self.video.seek(6)
+        self.assertEqual(values(self.video), list(range(10)))
+
+    def test_it_can_be_iterated_twice(self):
+        self.assertEqual(values(self.video), values(self.video))
+
+    def test_it_works_as_a_context_manager(self):
+        with _Counting() as video:
+            self.assertEqual(len(video), 10)
+        self.assertEqual(len(video), 0)
+
+
 if __name__ == '__main__':
     unittest.main()

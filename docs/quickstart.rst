@@ -13,8 +13,9 @@ QVideo needs a Qt binding.  PyQt6 is recommended; PyQt5 is also supported:
    pip install QVideo          # use a binding that is already installed
 
 PySide6 (``QVideo[pyside6]``) is experimental: the whole test suite
-passes under it in continuous integration, but the interpreter occasionally
-crashes while pyqtgraph builds a plot, so it is not yet recommended.
+passes under it in continuous integration on Linux, but the interpreter
+crashes at random while pyqtgraph builds a plot, in about half of the test
+runs on a Mac, so it is not yet recommended.
 
 To record video to HDF5 files, add the ``dvr`` extra.  The recorder then
 compresses the frames without loss.  The ``av`` extra adds PyAV, which
@@ -152,6 +153,47 @@ widget that owns the pipeline:
 To apply the same filters to recorded frames, or to design a pipeline
 without a camera, use the thread-free
 :class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`.
+
+Record and play without a window
+--------------------------------
+
+The DVR panel is a control panel for two objects that work without a window.
+A :class:`~QVideo.dvr.QRecorder.QRecorder` writes the frames of a source to a
+file, on a thread of its own, and a
+:class:`~QVideo.dvr.QPlayer.QPlayer` plays a file at its own frame rate.  The
+extension of the file name chooses the format.  Like other Qt objects they
+need the event loop of the application, which in a script you run yourself:
+
+.. code-block:: python
+
+   from qtpy.QtCore import QCoreApplication
+   from QVideo.cameras.Noise import QNoiseSource
+   from QVideo.dvr import QRecorder, QPlayer, formats
+
+   app = QCoreApplication([])
+   source = QNoiseSource()
+   source.start()
+
+   recorder = QRecorder(source)
+   recorder.recording.connect(lambda on: on or app.quit())
+   recorder.start('run.mkv', nframes=300, overwrite=True)
+   app.exec()
+
+   player = QPlayer()
+   player.ended.connect(app.quit)
+   player.start('run.mkv')
+   app.exec()
+   player.stop()
+
+To analyze a recording, open it and use it like a list of arrays.  No thread
+or clock is involved, so it is as fast as the file can be read:
+
+.. code-block:: python
+
+   with formats.openVideo('run.mkv') as video:
+       print(len(video), video[0].shape)
+       mean = [frame.mean() for frame in video]
+       middle = video[100:200]
 
 If a camera will not open
 -------------------------

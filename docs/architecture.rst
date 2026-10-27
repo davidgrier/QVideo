@@ -96,7 +96,7 @@ Display only              As for latest; nothing downstream depends on it.
 
 The recorders (:class:`~QVideo.lib.QVideoWriter.QVideoWriter`) are
 guaranteed.  Their queue is unbounded, so the code that owns a recording
-watches it.  ``QDVRWidget`` compares the capture time of each frame the
+watches it.  ``QRecorder`` compares the capture time of each frame the
 camera delivers (:class:`~QVideo.lib.videotypes.FrameInfo`) with that of
 the newest frame the writer has taken up.  The difference is the backlog,
 and it is measured even while the writer is stuck inside one write.
@@ -104,7 +104,7 @@ and it is measured even while the writer is stuck inside one write.
 allowance, so an interface can warn before anything is lost.  When
 it exceeds ``lagLimit`` (one second by default), or the time the camera
 needs to fill ``maxMemory`` bytes (80% of the available memory by default),
-the widget emits
+the recorder emits
 ``behind(lag)`` once, and again after the writer has caught up and fallen
 behind anew.  By default it then stops the recording
 (``stopWhenBehind=True``) after logging the reason and emitting
@@ -114,9 +114,18 @@ what to try: record to HDF5, install PyAV, or lower the frame size or rate
 that prefers to record through the backlog sets ``stopWhenBehind=False``,
 raises ``lagLimit``, or both.
 
-Stopping a recording never discards captured frames: the widget stops
+Stopping a recording never discards captured frames: the recorder stops
 sending new ones, and the writer finishes those already waiting before it
 closes the file and ends its thread.
+
+Recording and playback do not need a window.
+:class:`~QVideo.dvr.QRecorder.QRecorder` and
+:class:`~QVideo.dvr.QPlayer.QPlayer` do the work, with the classes that
+:mod:`~QVideo.dvr.formats` has for the extension of the file, and
+:class:`~QVideo.dvr.QDVRWidget.QDVRWidget` is their control panel.  To get
+the frames of a recording as arrays, open it with
+:func:`~QVideo.dvr.formats.openVideo`: the reader is indexed and iterated
+like a list, with no thread and no clock.
 
 :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` and
 :class:`~QVideo.lib.QVideoScreen.QVideoScreen` are latest-wins.  The pipeline
@@ -213,6 +222,9 @@ more than once.
 * :class:`~QVideo.lib.QFilterRack.QFilterRack`: nothing; it stops its own
   pipeline when it is deleted.
 * :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`: ``dvr.stop()``.
+* :class:`~QVideo.dvr.QRecorder.QRecorder` and
+  :class:`~QVideo.dvr.QPlayer.QPlayer`: ``recorder.stop()`` and
+  ``player.stop()``.
 * :class:`~QVideo.overlays.trackpy.QTrackpyWidget` and
   :class:`~QVideo.overlays.yolo.QYoloWidget`: ``widget.stop()``, which they
   also do when they are deleted.

@@ -106,7 +106,8 @@ class FilterRackDemo(QCamcorder):
         playback : bool
             ``True`` when DVR playback begins, ``False`` when it ends.
         '''
-        self.rack.source = self.dvr.player if playback else self.source
+        played = self.dvr.playback.source
+        self.rack.source = played if playback else self.source
         self.cameraWidget.setDisabled(playback)
 
     @QtCore.Slot(QtWidgets.QAbstractButton, bool)

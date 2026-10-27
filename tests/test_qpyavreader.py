@@ -1,4 +1,4 @@
-'''Unit tests for QPyAVReader and QPyAVSource.'''
+'''Unit tests for QPyAVReader.'''
 import importlib.util
 import shutil
 import tempfile
@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 from qtpy import QtWidgets
 from QVideo.dvr.QPyAVWriter import QPyAVWriter
-from QVideo.dvr.QPyAVReader import QPyAVReader, QPyAVSource
-from QVideo.lib import QVideoReader, QVideoSource
+from QVideo.dvr.QPyAVReader import QPyAVReader
+from QVideo.lib import QVideoReader
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -21,9 +21,6 @@ class TestQPyAVReaderClass(unittest.TestCase):
 
     def test_is_subclass_of_qvideoreader(self):
         self.assertTrue(issubclass(QPyAVReader, QVideoReader))
-
-    def test_source_is_a_qvideosource(self):
-        self.assertTrue(issubclass(QPyAVSource, QVideoSource))
 
 
 @needs_av
@@ -136,14 +133,6 @@ class TestQPyAVReader(unittest.TestCase):
         reader = self.video()
         reader.close()
         self.assertFalse(reader.isOpen())
-
-    def test_source_accepts_a_path(self):
-        path = str(self.dir / 'src.mkv')
-        self.video('src.mkv')
-        source = QPyAVSource(path)
-        self.assertTrue(source.isOpen())
-        self.assertEqual(source.fps, 30.)
-        source.source.close()
 
 
 if __name__ == '__main__':

@@ -7,6 +7,58 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`QRecorder` and `QPlayer`: recording and playback without a window.**
+  A `QRecorder` writes the frames of a source to a file on a thread of its
+  own, watches the backlog and stops when the writer falls behind
+  (`stopWhenBehind`, `lagLimit` and `maxMemory`, as the DVR widget did); a
+  `QPlayer` plays a file at its own frame rate, and its `source` can be
+  given to a screen or a filter pipeline.  Both are controlled by plain
+  method calls and signals and stop themselves when the application quits.
+  Like any Qt object they rely on the event loop of the application; neither
+  runs one of its own.  `QRecorder.start()` refuses to replace a file that
+  exists (`FileExistsError`) unless called with `overwrite=True`; the DVR
+  widget asks the user first.
+
+### Removed
+
+- **`QOpenCVSource`, `QPyAVSource` and `QHDF5Source` of `QVideo.dvr`.**
+  Each was a `QVideoSource` made from a file name.  Any video file now
+  gives a source with `QVideoSource(formats.openVideo(name))`, and
+  `QPlayer` makes its own.  (`QVideo.cameras.OpenCV.QOpenCVSource`, the
+  source of a camera, is not affected.)
+
+- **`dvr.formats`: the file formats in one place.**  The tables `Writer`
+  and `Reader` map a file extension to the class that writes or reads it;
+  `fileFilter`, `writerClass` and `readerClass` look them up.  An
+  unsupported extension is a `ValueError` that lists the supported ones.
+
+- **Readers behave like sequences of frames.**  `formats.openVideo(name)`
+  returns a reader that supports `len(video)`, `video[i]`, `video[a:b]` and
+  iteration, with no thread, clock or Qt application, so the frames of a
+  recording are available as arrays for analysis.
+
+### Changed
+
+- **`QDVRWidget` is the control panel of a recorder and a player.**  It
+  keeps the file dialogs and the questions to the user, and does the rest
+  through `dvr.recorder` and `dvr.playback`.  Its signals are unchanged.
+  The property `dvr.player` is gone: the source of the video being
+  played is `dvr.playback.source`.
+  The arguments `stopWhenBehind`, `lagLimit` and `maxMemory` still go to
+  the constructor, but the attributes are those of `dvr.recorder`.
+  The class attributes `Writer`, `Player` and `FileGroups`, and
+  `_buildFilter`, are replaced by `formats.Writer`, `formats.Reader`,
+  `formats.Groups` and `formats.fileFilter`; to record a format with
+  another class, set `formats.Writer['.mkv'] = QOpenCVWriter`.  The
+  `Player` table of sources is gone: playback uses the reader's class and
+  a plain `QVideoSource`.
+
+---
+
 ## [4.9.0] — 2026-10-27
 
 ### Changed

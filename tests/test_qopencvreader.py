@@ -1,10 +1,9 @@
-'''Unit tests for QOpenCVReader and QOpenCVSource.'''
+'''Unit tests for QOpenCVReader.'''
 import unittest
 import numpy as np
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
-from QVideo.dvr.QOpenCVReader import QOpenCVReader, QOpenCVSource
+from QVideo.dvr.QOpenCVReader import QOpenCVReader
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -166,26 +165,6 @@ class TestQOpenCVReaderClose(unittest.TestCase):
         reader = make_reader()
         reader.close()
         self.assertIsNone(reader._reader)
-
-
-class TestQOpenCVSource(unittest.TestCase):
-
-    def test_accepts_string_filename(self):
-        cap = make_mock_capture()
-        with patch('cv2.VideoCapture', return_value=cap):
-            src = QOpenCVSource('test.avi')
-        self.assertIsInstance(src.source, QOpenCVReader)
-
-    def test_accepts_path_filename(self):
-        cap = make_mock_capture()
-        with patch('cv2.VideoCapture', return_value=cap):
-            src = QOpenCVSource(Path('test.avi'))
-        self.assertIsInstance(src.source, QOpenCVReader)
-
-    def test_accepts_reader_instance(self):
-        reader = make_reader()
-        src = QOpenCVSource(reader)
-        self.assertIs(src.source, reader)
 
 
 if __name__ == '__main__':

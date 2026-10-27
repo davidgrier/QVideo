@@ -65,6 +65,18 @@ class TestQHDF5ReaderInit(unittest.TestCase):
                 reader = QHDF5Reader('test.h5')
         self.assertFalse(reader.isOpen())
 
+    def test_init_fails_on_a_dataset_that_cannot_be_decoded(self):
+        '''A compressed file read without the hdf5plugin package.'''
+        mock_file, keys, frames = make_mock_file()
+        images = mock_file['images']
+        images['0.000000000'].__getitem__ = MagicMock(side_effect=OSError)
+        with patch('h5py.File', return_value=mock_file):
+            with self.assertLogs('QVideo.dvr.QHDF5Reader', 'WARNING') as logs:
+                reader = QHDF5Reader('test.h5')
+        self.assertFalse(reader.isOpen())
+        self.assertIn('hdf5plugin', logs.output[0])
+        mock_file.close.assert_called_once()
+
     def test_init_fails_on_missing_images_group(self):
         mock_file = MagicMock()
         mock_file.__getitem__ = MagicMock(side_effect=KeyError('images'))

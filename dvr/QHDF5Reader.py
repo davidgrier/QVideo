@@ -2,13 +2,21 @@
 from qtpy import QtCore
 from QVideo.lib import QCamera, QVideoReader, QVideoSource
 from pathlib import Path
+import logging
 try:
     import h5py
 except (ImportError, ModuleNotFoundError):
     h5py = None
+try:
+    import hdf5plugin  # noqa: F401  registers the filters of the files
+except (ImportError, ModuleNotFoundError):
+    hdf5plugin = None
 
 
 __all__ = ['QHDF5Reader', 'QHDF5Source']
+
+
+logger = logging.getLogger(__name__)
 
 
 class QHDF5Reader(QVideoReader):
@@ -35,8 +43,14 @@ class QHDF5Reader(QVideoReader):
         if not self._keys:
             return False
         self._framenumber = 0
-        self._height, self._width = (
-            self._images[self._keys[0]][()].shape[0:2])
+        try:
+            self._height, self._width = (
+                self._images[self._keys[0]][()].shape[0:2])
+        except OSError:
+            logger.warning(f'Cannot read {self.filename!r}: if it is '
+                           'compressed, install the hdf5plugin package')
+            self._file.close()
+            return False
         return True
 
     def _deinitialize(self) -> None:

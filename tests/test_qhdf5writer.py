@@ -1,13 +1,19 @@
 '''Unit tests for QHDF5Writer.'''
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
 from QVideo.dvr.QHDF5Writer import QHDF5Writer
+from QVideo.dvr.QHDF5Reader import QHDF5Reader
 from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+writer_module = sys.modules['QVideo.dvr.QHDF5Writer']  # not the class
 
 _FRAME = np.zeros((480, 640), dtype=np.uint8)
 
@@ -27,8 +33,8 @@ def make_mock_h5file():
     return mock_file, mock_group
 
 
-def make_writer():
-    return QHDF5Writer('test.h5', fps=30)
+def make_writer(**kwargs):
+    return QHDF5Writer('test.h5', fps=30, **kwargs)
 
 
 class TestQHDF5WriterInit(unittest.TestCase):
@@ -126,6 +132,84 @@ class TestQHDF5WriterInternalWrite(unittest.TestCase):
         writer._write(_FRAME)
         keys = [call[0][0] for call in mock_group.create_dataset.call_args_list]
         self.assertEqual(len(set(keys)), 2)
+
+
+class TestQHDF5WriterCompression(unittest.TestCase):
+
+    def roundtrip(self, frames, **kwargs):
+        with tempfile.TemporaryDirectory() as folder:
+            path = str(Path(folder) / 'test.h5')
+            writer = QHDF5Writer(path, fps=30, **kwargs)
+            for i, frame in enumerate(frames):
+                writer.write(frame, FrameInfo(i, i / 30.))
+            writer.close()
+            reader = QHDF5Reader(path)
+            self.addCleanup(reader.close)
+            size = Path(path).stat().st_size
+            return [reader.read()[1] for _ in frames], size
+
+    def frames(self, dtype):
+        rng = np.random.default_rng(0)
+        high = np.iinfo(dtype).max + 1
+        ramp = np.linspace(0, high - 1, 64 * 48).reshape(48, 64)
+        return [(ramp + rng.integers(0, 4, ramp.shape)).clip(
+            0, high - 1).astype(dtype) for _ in range(4)]
+
+    def test_every_filter_returns_every_pixel(self):
+        filters = [None, 'lzf', 'gzip']
+        if writer_module.hdf5plugin is not None:
+            filters += ['zstd', 'lz4', 'blosc2']
+        for dtype in (np.uint8, np.uint16):
+            frames = self.frames(dtype)
+            for name in filters:
+                with self.subTest(dtype=dtype.__name__, compression=name):
+                    back, _ = self.roundtrip(frames, compression=name)
+                    for sent, got in zip(frames, back):
+                        np.testing.assert_array_equal(sent, got)
+
+    def test_compression_makes_the_file_smaller(self):
+        frames = [np.zeros((256, 256), np.uint8) for _ in range(4)]
+        _, raw = self.roundtrip(frames, compression=None)
+        _, packed = self.roundtrip(frames, compression='lzf')
+        self.assertLess(packed, raw)
+
+    def test_zstandard_is_the_default(self):
+        with patch.object(writer_module, '_filter') as chosen:
+            make_writer()
+        chosen.assert_called_once_with('zstd')
+
+    def test_no_compression_gives_no_filter(self):
+        self.assertEqual(writer_module._filter(None), {})
+
+    def test_builtin_filters_need_no_plugin(self):
+        with patch.object(writer_module, 'hdf5plugin', None):
+            self.assertEqual(writer_module._filter('lzf'),
+                             {'compression': 'lzf'})
+            self.assertEqual(writer_module._filter('gzip')['compression'],
+                             'gzip')
+
+    def test_without_the_plugin_frames_are_stored_uncompressed(self):
+        with patch.object(writer_module, 'hdf5plugin', None):
+            with self.assertLogs('QVideo.dvr.QHDF5Writer', 'INFO'):
+                self.assertEqual(writer_module._filter('zstd'), {})
+
+    def test_a_compressed_dataset_is_one_chunk(self):
+        writer = make_writer(compression='lzf')
+        mock_file, mock_group = make_mock_h5file()
+        with patch('h5py.File', return_value=mock_file):
+            writer.open(_FRAME)
+        writer._write(_FRAME)
+        kwargs = mock_group.create_dataset.call_args.kwargs
+        self.assertEqual(kwargs['chunks'], _FRAME.shape)
+        self.assertEqual(kwargs['compression'], 'lzf')
+
+    def test_an_uncompressed_dataset_is_contiguous(self):
+        writer = make_writer(compression=None)
+        mock_file, mock_group = make_mock_h5file()
+        with patch('h5py.File', return_value=mock_file):
+            writer.open(_FRAME)
+        writer._write(_FRAME)
+        self.assertIsNone(mock_group.create_dataset.call_args.kwargs['chunks'])
 
 
 class TestQHDF5WriterCaptureTimes(unittest.TestCase):

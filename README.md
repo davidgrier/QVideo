@@ -81,6 +81,7 @@ Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
 |---------|-------|-------|
 | GenICam cameras (Vimba, etc.) | `pip install QVideo[genicam]` | Requires a vendor-supplied `.cti` producer file |
 | Raspberry Pi camera | `pip install QVideo[picamera]` | Requires `picamera2` |
+| HDF5 recording (compressed without loss) | `pip install QVideo[dvr]` | Requires `h5py` and `hdf5plugin` |
 
 ## Quick start
 

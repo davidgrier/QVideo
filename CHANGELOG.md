@@ -30,6 +30,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **HDF5 recordings are compressed without loss.**  `QHDF5Writer` takes a
+  `compression` argument.  The default, Zstandard, needs `hdf5plugin` (now
+  in the `dvr` extra) and is used if it is installed; `'lz4'`, `'blosc2'`
+  (best for 16-bit data), `'lzf'`, `'gzip'` and `None` are the other
+  choices.  Reading a compressed file needs `hdf5plugin` as well, and the
+  reader says so when it cannot decode a file.  Every filter returns every
+  pixel, at 8 and 16 bits.
 - **The DVR panel is a deck.**  One row of icon buttons (record, stop,
   first frame, one frame back, play/pause, one frame forward), a position
   slider, the frame and time read-outs, the file and the duration and

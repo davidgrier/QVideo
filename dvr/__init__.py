@@ -17,7 +17,7 @@ Classes
 QDVRWidget
     Composite widget with record, play, pause, stop, and rewind controls.
 QCircularBuffer
-    Ring buffer that accumulates timestamped frames for later saving.
+    Ring buffer that keeps the most recent frames and their capture times.
 QCircularDVRWidget
     Widget for saving the last N seconds of video to disk on demand.
 QOpenCVWriter

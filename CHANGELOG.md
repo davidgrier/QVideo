@@ -11,6 +11,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QCircularBuffer` only buffers; `QCircularDVRWidget` saves.**  The
+  buffer had its own HDF5 writer, a copy of `QHDF5Writer` without its
+  compression, and wrote video through OpenCV alone.  It now stores each
+  frame with its `FrameInfo` and offers `frames()` and `actualFps` (the rate
+  of the buffered frames, from their capture times); `QCircularBuffer.save`
+  is gone.  The widget writes the buffer with the writer that
+  `QDVRWidget.Writer` has for the extension, so the circular DVR now uses
+  PyAV when it is installed, compresses HDF5 and writes 16-bit gray, like
+  the recorder, and any writer that a user registers works too.  HDF5 files
+  are keyed by the monotonic capture time, as the recorder's are.
+
 - **The Jupyter code is in one module.**  `live_view`, the camera chooser
   that `await Camera()` shows, and `controls` are implemented in
   `lib/_jupyter.py`, the only module that needs `ipywidgets`.

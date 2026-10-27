@@ -2,7 +2,6 @@
 import sys
 import unittest
 from unittest.mock import patch, MagicMock
-from collections import deque
 import numpy as np
 from qtpy import QtWidgets
 
@@ -110,13 +109,23 @@ class TestAppend(unittest.TestCase):
         buf.append(make_frame())
         self.assertEqual(len(buf), 1)
 
-    def test_append_stores_frame_and_timestamp(self):
+    def test_append_stores_the_frame_with_its_information(self):
         buf = QCircularBuffer()
         frame = make_frame()
-        buf.append(frame)
-        ts, stored = buf._buffer[0]
-        self.assertIsInstance(ts, float)
+        info = FrameInfo(7, 5.0)
+        buf.append(frame, info)
+        stored, stored_info = buf.frames()[0]
         np.testing.assert_array_equal(stored, frame)
+        self.assertIs(stored_info, info)
+
+    def test_append_makes_the_information_that_is_missing(self):
+        buf = QCircularBuffer()
+        buf.append(make_frame())
+        buf.append(make_frame())
+        (_, first), (_, second) = buf.frames()
+        self.assertIsInstance(first, FrameInfo)
+        self.assertEqual((first.index, second.index), (0, 1))
+        self.assertLessEqual(first.timestamp, second.timestamp)
 
     def test_append_accepts_a_one_argument_signal(self):
         from qtpy import QtCore
@@ -129,20 +138,6 @@ class TestAppend(unittest.TestCase):
         e.newFrame.emit(make_frame())
         self.assertEqual(len(buf), 1)
 
-    def test_append_uses_capture_time_when_info_given(self):
-        buf = QCircularBuffer()
-        info = FrameInfo(0, 5.0)
-        buf.append(make_frame(), info)
-        ts, _ = buf._buffer[0]
-        self.assertAlmostEqual(ts, info.wallclock, delta=0.05)
-
-    def test_append_spacing_follows_capture_timestamps(self):
-        buf = QCircularBuffer()
-        buf.append(make_frame(), FrameInfo(0, 5.00))
-        buf.append(make_frame(), FrameInfo(1, 5.25))
-        (t0, _), (t1, _) = buf._buffer
-        self.assertAlmostEqual(t1 - t0, 0.25, places=3)
-
     def test_buffer_wraps_at_maxlen(self):
         buf = QCircularBuffer(fps=5., duration=1)
         frame = make_frame()
@@ -151,100 +146,53 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(len(buf), 5)
 
 
-class TestSaveEmpty(unittest.TestCase):
+class TestFrames(unittest.TestCase):
 
-    def test_save_returns_false_when_empty(self):
+    def test_an_empty_buffer_has_no_frames(self):
+        self.assertEqual(QCircularBuffer().frames(), [])
+
+    def test_the_oldest_frame_comes_first(self):
         buf = QCircularBuffer()
-        self.assertFalse(buf.save('out.mkv'))
+        for i in range(3):
+            buf.append(make_frame(), FrameInfo(i, float(i)))
+        self.assertEqual([info.index for _, info in buf.frames()], [0, 1, 2])
 
+    def test_the_oldest_frames_are_dropped_when_full(self):
+        buf = QCircularBuffer(fps=2., duration=1)
+        for i in range(5):
+            buf.append(make_frame(), FrameInfo(i, float(i)))
+        self.assertEqual([info.index for _, info in buf.frames()], [3, 4])
 
-class TestSaveOpenCV(unittest.TestCase):
-
-    def _fill(self, buf, n=3):
-        frame = make_frame()
-        for _ in range(n):
-            buf.append(frame)
-
-    def test_save_mkv_calls_writer(self):
-        buf = QCircularBuffer(fps=10., duration=5)
-        self._fill(buf)
-        mock_writer = MagicMock()
-        mock_writer.open.return_value = True
-        with patch.object(_module, 'QOpenCVWriter', return_value=mock_writer):
-            result = buf.save('out.mkv')
-        self.assertTrue(result)
-        mock_writer.open.assert_called_once()
-        self.assertEqual(mock_writer._write.call_count, 3)
-        mock_writer.close.assert_called_once()
-
-    def test_save_returns_false_when_writer_fails_to_open(self):
-        buf = QCircularBuffer(fps=10., duration=5)
-        self._fill(buf)
-        mock_writer = MagicMock()
-        mock_writer.open.return_value = False
-        with patch.object(_module, 'QOpenCVWriter', return_value=mock_writer):
-            result = buf.save('out.mkv')
-        self.assertFalse(result)
-
-
-class TestSaveHDF5(unittest.TestCase):
-
-    def _fill(self, buf, n=3):
-        frame = make_frame()
-        for _ in range(n):
-            buf.append(frame)
-
-    def test_save_h5_writes_datasets(self):
-        buf = QCircularBuffer(fps=10., duration=5)
-        self._fill(buf)
-        mock_h5py = MagicMock()
-        mock_file = MagicMock()
-        mock_grp = MagicMock()
-        mock_file.__enter__ = MagicMock(return_value=mock_file)
-        mock_file.__exit__ = MagicMock(return_value=False)
-        mock_file.create_group.return_value = mock_grp
-        mock_h5py.File.return_value = mock_file
-        with patch.dict('sys.modules', {'h5py': mock_h5py}):
-            result = buf.save('out.h5')
-        self.assertTrue(result)
-        mock_grp.create_dataset.assert_called()
-
-    def test_save_h5_returns_false_on_oserror(self):
-        buf = QCircularBuffer(fps=10., duration=5)
-        self._fill(buf)
-        mock_h5py = MagicMock()
-        mock_h5py.File.side_effect = OSError('disk full')
-        with patch.dict('sys.modules', {'h5py': mock_h5py}):
-            result = buf.save('out.h5')
-        self.assertFalse(result)
-
-    def test_save_h5_missing_h5py_returns_false(self):
-        buf = QCircularBuffer(fps=10., duration=5)
-        self._fill(buf)
-        with patch.dict('sys.modules', {'h5py': None}):
-            result = buf.save('out.h5')
-        self.assertFalse(result)
+    def test_the_list_is_a_copy(self):
+        buf = QCircularBuffer()
+        buf.append(make_frame())
+        buf.frames().clear()
+        self.assertEqual(len(buf), 1)
 
 
 class TestActualFps(unittest.TestCase):
 
+    def fill(self, buf, times):
+        for i, t in enumerate(times):
+            buf.append(make_frame(), FrameInfo(i, t))
+
+    def test_an_empty_buffer_returns_nominal_fps(self):
+        self.assertEqual(QCircularBuffer(fps=30.).actualFps, 30.)
+
     def test_single_frame_returns_nominal_fps(self):
         buf = QCircularBuffer(fps=30.)
-        buf.append(make_frame())
-        items = list(buf._buffer)
-        self.assertEqual(buf._actualFps(items), 30.)
+        self.fill(buf, [4.0])
+        self.assertEqual(buf.actualFps, 30.)
 
-    def test_two_frames_computes_fps(self):
+    def test_the_rate_follows_the_capture_times(self):
         buf = QCircularBuffer(fps=30.)
-        items = [(0.0, make_frame()), (1.0, make_frame())]
-        fps = buf._actualFps(items)
-        self.assertAlmostEqual(fps, 1.0)
+        self.fill(buf, [10.0, 10.5, 11.0, 11.5, 12.0])
+        self.assertAlmostEqual(buf.actualFps, 2.0)
 
     def test_zero_elapsed_returns_nominal_fps(self):
         buf = QCircularBuffer(fps=30.)
-        frame = make_frame()
-        items = [(0.0, frame), (0.0, frame)]
-        self.assertEqual(buf._actualFps(items), 30.)
+        self.fill(buf, [3.0, 3.0])
+        self.assertEqual(buf.actualFps, 30.)
 
 
 class TestTotalRAM(unittest.TestCase):

@@ -22,9 +22,11 @@ class QCircularDVRWidget(QtWidgets.QWidget):
     continuously accumulates frames in a
     :class:`~QVideo.dvr.QCircularBuffer.QCircularBuffer`.  When the user
     clicks **Save**, the current buffer contents are written to disk in
-    one batch.  The file format is determined by the filename extension;
-    all formats supported by :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`
-    are available.
+    one batch.  The file format is determined by the filename extension,
+    and the file is written by the same writers as
+    :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` uses (its ``Writer``
+    table), so every format that it supports is available, with PyAV for
+    video files if that is installed.
 
     Unlike :class:`~QVideo.dvr.QDVRWidget.QDVRWidget` there is no
     *record* / *stop* cycle — the buffer is always accumulating.  This
@@ -121,12 +123,37 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         if not filename:
             return
         self._saveButton.setEnabled(False)
-        success = self._buffer.save(filename)
+        success = self._write(filename)
         self._saveButton.setEnabled(True)
         if success:
             self.saved.emit(filename)
         else:
             logger.warning(f'Circular buffer save failed: {filename!r}')
+
+    def _write(self, filename: str) -> bool:
+        '''Write the buffered frames with the writer for the extension.
+
+        Returns ``False`` if the buffer is empty, the extension is not
+        supported, or the writer gives up (the file cannot be created, or
+        the frame size changed within the buffer).
+        '''
+        frames = self._buffer.frames()
+        suffix = Path(filename).suffix
+        if not frames:
+            return False
+        if suffix not in QDVRWidget.Writer:
+            logger.error(f'Unsupported file format: {suffix!r}')
+            return False
+        writer = QDVRWidget.Writer[suffix](
+            filename, fps=self._buffer.actualFps, nframes=len(frames))
+        failed = []
+        writer.finished.connect(lambda: failed.append(True))
+        for frame, info in frames:
+            writer.write(frame, info)
+            if failed:
+                break
+        writer.close()
+        return not failed
 
     @property
     def source(self) -> QVideoSource | None:

@@ -24,9 +24,9 @@ QCircularBuffer
 ---------------
 
 :class:`~QVideo.dvr.QCircularBuffer.QCircularBuffer` is the ring buffer
-behind it.  It stores each frame with a time stamp and discards the oldest
-frame when it is full.  It writes AVI, MKV and MP4 files with OpenCV, and
-HDF5 files with the time of each frame.
+behind it.  It stores each frame with its capture information and discards
+the oldest frame when it is full.  It does not write files: the widget does
+that, with the same writers as :class:`~QVideo.dvr.QDVRWidget.QDVRWidget`.
 
 .. automodule:: QVideo.dvr.QCircularBuffer
    :members:

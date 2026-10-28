@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **`available_cameras()`.**  `from QVideo import available_cameras` lists
+  the cameras that work as `(model, cameraID, name)`, for example
+  `('OpenCV', 0, 'FaceTime HD Camera')`; the first two items are the
+  arguments of `Camera()`.
+
 - **`Filter()`: find filters by name.**  `Filter()` lists the filters that
   QVideo provides and `Filter('Smoothing', 'Canny')` builds them from their
   display names, ignoring case and spaces, so that

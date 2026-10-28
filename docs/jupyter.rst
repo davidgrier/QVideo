@@ -68,6 +68,20 @@ printed summary::
 If the chooser prints ``HBox(...)`` instead of a drop-down, see
 :ref:`jupyter-widgets`.
 
+To see which cameras there are without opening one:
+
+.. code-block:: python
+
+   from QVideo import available_cameras
+
+   available_cameras()
+   # [('OpenCV', 0, 'FaceTime HD Camera'), ('Noise', 0, 'Noise')]
+
+Each entry holds the arguments of ``Camera()`` and the name that the
+device gives itself, so ``Camera('OpenCV', 0)`` opens the first.  The
+function opens and closes each camera to see that it works, so the light
+of a camera may blink.
+
 To open the first available camera without any output:
 
 .. code-block:: python

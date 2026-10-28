@@ -15,6 +15,8 @@ Camera
 .. autoclass:: QVideo.interactive.camera._CameraProxy
    :members: read, filters, live_view, stop_live_view, controls
 
+.. autofunction:: QVideo.interactive.camera.available_cameras
+
 Filter
 ------
 

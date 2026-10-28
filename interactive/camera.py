@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['Camera']
+__all__ = ['Camera', 'available_cameras']
 
 
 _qapp = None  # keeps the application that _ensure_qapp makes alive
@@ -103,6 +103,47 @@ def _working_candidates(
                 cam.close()
                 working.append((key, camera_id))
     return working
+
+
+def _names(key: str) -> dict[int, str]:
+    '''Return the names of the devices that backend *key* can list.'''
+    if key == 'opencv':
+        from QVideo.cameras.OpenCV import QOpenCVDevices
+        return dict(QOpenCVDevices.cameras())
+    return {}
+
+
+def available_cameras() -> list[tuple[str, int, str]]:
+    '''List the cameras that can be opened.
+
+    Each installed backend is asked for its devices and each device is
+    opened and closed again to see that it works, so the light of a
+    camera may blink.  The simulated Noise camera is always listed.
+
+    Returns
+    -------
+    list[tuple[str, int, str]]
+        ``(model, cameraID, name)`` in priority order.  The first two
+        items are the arguments of :func:`Camera`; *name* is the name that
+        the device gives itself (the model for backends that list no
+        names).
+
+    Examples
+    --------
+    ::
+
+        >>> available_cameras()
+        [('OpenCV', 0, 'FaceTime HD Camera'), ('Noise', 0, 'Noise')]
+        >>> camera = Camera('OpenCV', 0)
+    '''
+    found = []
+    for key, _ in _discover(None):
+        names = _names(key)
+        ids = sorted(names) or [0]
+        label = _BACKENDS[key].label
+        for _key, camera_id in _working_candidates([(key, i) for i in ids]):
+            found.append((label, camera_id, names.get(camera_id, label)))
+    return found
 
 
 def _report(working: list[tuple[str, int]]) -> None:

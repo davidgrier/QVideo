@@ -13,7 +13,7 @@ frame = camera.read()
 
 | Module | Contents |
 |--------|----------|
-| `camera.py` | `Camera()` and the proxy that it returns |
+| `camera.py` | `Camera()`, `available_cameras()` and the proxy |
 | `filter.py` | `Filter()`: list filters and build them by name |
 | `widgets.py` | the `ipywidgets` front end: chooser, controls, live view |
 

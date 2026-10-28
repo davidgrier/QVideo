@@ -817,6 +817,25 @@ class TestHelpers(unittest.TestCase):
         good.close.assert_called_once_with()
         bad.close.assert_not_called()
 
+    def test_available_cameras_name_each_working_device(self):
+        names = {0: 'Front', 1: 'Back'}
+        with patch.object(camera_module, '_discover',
+                          return_value=[('opencv', 0), ('noise', 0)]), \
+                patch.object(camera_module, '_names',
+                             side_effect=lambda k: names if k == 'opencv'
+                             else {}), \
+                patch.object(camera_module, '_working_candidates',
+                             side_effect=lambda c: [x for x in c
+                                                    if x != ('opencv', 1)]):
+            found = camera_module.available_cameras()
+        self.assertEqual(found, [('OpenCV', 0, 'Front'),
+                                 ('Noise', 0, 'Noise')])
+
+    def test_available_cameras_are_exported(self):
+        import QVideo
+        self.assertIs(QVideo.available_cameras,
+                      camera_module.available_cameras)
+
     def test_one_camera_is_reported_by_name(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):

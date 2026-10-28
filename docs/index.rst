@@ -20,6 +20,7 @@ Run the full camcorder application directly::
    jupyter
    rpihat
    architecture
+   backends
    extending
    api/lib
    api/cameras

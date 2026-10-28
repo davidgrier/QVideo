@@ -11,15 +11,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- **The window appears while the camera opens.**  `launch()` (so every
-  demo and `python -m QVideo`) shows its window at once, with a notice,
-  and opens the camera on a thread of its own: a camera that takes
-  seconds to open, such as a GenICam camera that reads its whole node
-  map, no longer leaves the screen blank and frozen.  The window is
-  built as soon as the camera is open; if it cannot be opened the
-  program ends with the reason.  `lib.chooser` has two new functions,
-  `open_camera()` (no widget, so it is safe in any thread) and
-  `make_tree()`; `choose_camera()` calls both.
+- **A splash screen shows while the camera opens.**  `launch()` (so
+  every demo and `python -m QVideo`) shows a splash screen at once, with
+  the name of the application, the version and what is happening, and
+  opens the camera on a thread of its own: a camera that takes seconds
+  to open, such as a GenICam camera that reads its whole node map, no
+  longer leaves the screen blank and frozen.  The window appears when
+  the interface is built; if the camera cannot be opened the program
+  ends with the reason.  The fringes are drawn when the splash screen
+  appears, so the package ships no image.  `lib.chooser` has two new
+  functions, `open_camera()` (no widget, so it is safe in any thread)
+  and `make_tree()`; `choose_camera()` calls both.
 - **Writers say why they stop.**  `QVideoWriter.finished` now carries a
   string: empty when the writer has the frames that it was asked for,
   otherwise an explanation.  A writer stops, once, when the size or type

@@ -40,14 +40,10 @@ class TestLaunch(unittest.TestCase):
         shown = []
         self.earlier = [w for w in app.topLevelWidgets()]
 
-        def built():
-            return any(not isinstance(w.centralWidget(), QtWidgets.QLabel)
-                       for w in self.windows())
-
         def run():
             # Let the camera open on its thread and the window be built.
             deadline = time.monotonic() + 5
-            while time.monotonic() < deadline and not built():
+            while time.monotonic() < deadline and not self.windows():
                 app.processEvents()
                 time.sleep(0.005)
             shown.extend(self.windows())
@@ -72,25 +68,32 @@ class TestLaunch(unittest.TestCase):
         tree = make_tree.return_value.start.return_value
         self.assertIs(window.centralWidget().tree, tree)
 
-    def test_the_window_waits_for_the_camera_with_a_notice(self):
+    def splashes(self):
+        '''Splash screens on screen, but not those of earlier tests.'''
+        return [w for w in app.topLevelWidgets()
+                if isinstance(w, QtWidgets.QSplashScreen) and w.isVisible()
+                and w not in self.earlier]
+
+    def test_a_splash_screen_waits_for_the_camera(self):
         self.earlier = list(app.topLevelWidgets())
         gate = threading.Event()
-        notices = []
+        seen = {}
 
         def open_slowly():
             gate.wait(5)
             return 'noise', MagicMock()
 
         def run():
-            window = self.windows()[0]
-            self.addCleanup(window.close)
-            notices.append(window.centralWidget().text())
+            splash, = self.splashes()
+            seen['notice'] = splash.message()
+            seen['windows'] = len(self.windows())
             gate.set()
             deadline = time.monotonic() + 5
-            while (isinstance(window.centralWidget(), QtWidgets.QLabel)
-                   and time.monotonic() < deadline):
+            while not self.windows() and time.monotonic() < deadline:
                 app.processEvents()
                 time.sleep(0.005)
+            seen['splashes'] = len(self.splashes())
+            self.addCleanup(self.windows()[0].close)
 
         with patch.object(launch_module, 'open_camera', open_slowly), \
                 patch.object(launch_module, 'make_tree'), \
@@ -98,7 +101,9 @@ class TestLaunch(unittest.TestCase):
                 patch.object(launch_module.pg, 'exec', run), \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
             launch(_Widget, 'Title')
-        self.assertEqual(notices, ['Opening the camera...'])
+        self.assertEqual(seen['notice'], 'Opening the camera...')
+        self.assertEqual(seen['windows'], 0)  # nothing to show yet
+        self.assertEqual(seen['splashes'], 0)  # gone once the window shows
 
     def test_a_camera_that_cannot_open_ends_the_program(self):
         with patch.object(launch_module, 'open_camera',

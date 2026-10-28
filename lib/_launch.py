@@ -2,6 +2,7 @@
 import sys
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
+from QVideo.lib._splash import say, splash
 from QVideo.lib.chooser import make_tree, open_camera
 
 
@@ -45,9 +46,9 @@ def launch(widget: type[QtWidgets.QWidget],
 
     The camera backend comes from the command-line flags described in
     :func:`~QVideo.lib.chooser.choose_camera` (a noise camera if there are
-    none).  The window appears at once and says that the camera is
-    opening; the camera opens on a thread of its own, so that a slow camera
-    never freezes the window.  The widget then becomes the central widget
+    none).  A splash screen appears at once and says what is happening;
+    the camera opens on a thread of its own, so that a slow camera never
+    freezes it.  The widget then becomes the central widget
     of the :class:`~qtpy.QtWidgets.QMainWindow`, which is how applications
     embed QVideo components, so that sizing and shutdown are exercised in
     that setting.  The window has a status bar that shows the messages of a
@@ -79,20 +80,19 @@ def launch(widget: type[QtWidgets.QWidget],
     app = pg.mkQApp(title)
     window = QtWidgets.QMainWindow()
     window.setWindowTitle(title or '')
-    label = QtWidgets.QLabel('Opening the camera...')
-    label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-    label.setMinimumSize(320, 120)  # not resize(): the screen sizes the window
-    window.setCentralWidget(label)
     QtWidgets.QShortcut(
         QtGui.QKeySequence('Ctrl+Q'), window).activated.connect(app.quit)
+    screen = splash(title)
     problems = []
     opener = _Opener()
 
     def fail(message: str) -> None:
         problems.append(message)
+        screen.close()
         app.quit()
 
     def build(key: str, camera) -> None:
+        say(screen, 'Building the interface...')
         try:
             central = widget(make_tree(key, camera).start(), **kwargs)
         except ImportError as error:
@@ -101,17 +101,24 @@ def launch(widget: type[QtWidgets.QWidget],
         window.setCentralWidget(central)
         if hasattr(central, 'message'):
             central.message.connect(window.statusBar().showMessage)
+        window.show()
+        screen.finish(window)
 
     def finish() -> None:
         opener.requestInterruption()
         opener.wait()
-        if opener.camera is not None and window.centralWidget() is label:
+        screen.close()
+        if opener.camera is not None and window.centralWidget() is None:
             opener.camera.close()
 
     opener.opened.connect(build)
     opener.failed.connect(lambda why: fail(f'Error: {why}'))
     app.aboutToQuit.connect(finish)
-    window.show()
+    screen.show()
+    # macOS shows a splash screen only if it is also raised and activated.
+    screen.raise_()
+    screen.activateWindow()
+    say(screen, 'Opening the camera...')
     opener.start()
     pg.exec()
     if problems:

@@ -4,7 +4,6 @@ from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
-import numpy as np
 import cv2
 
 __all__ = ['LaplacianFilter', 'QLaplacianFilter']

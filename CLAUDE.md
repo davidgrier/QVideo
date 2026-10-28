@@ -333,6 +333,11 @@ The `-c` CLI flag opens `QOpenCVTree` in quality mode.
   normalise), *center* (not centre), *gray* (not grey), *behavior* (not
   behaviour), etc.
 
+`ruff check .` (configured in `pyproject.toml`: pyflakes, bugbear and the
+79-character limit) runs in CI as the `Lint` job; fix what it reports
+rather than silencing it, and keep the per-file ignores to re-exports in
+`__init__.py` and the stubs and mocks of the tests.
+
 ## Naming conventions
 
 Follow the PyQt camelCase convention for all instance attributes on Qt classes:

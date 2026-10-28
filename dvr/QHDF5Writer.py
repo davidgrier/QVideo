@@ -188,7 +188,8 @@ class QHDF5Writer(QVideoWriter):
         hardware = info.hardware_timestamp
         row = (info.timestamp - self._t0, info.index,
                np.nan if hardware is None else hardware)
-        for dataset, value in zip(self._columns.values(), row):
+        for dataset, value in zip(self._columns.values(), row,
+                                strict=True):
             dataset.resize(n + 1, axis=0)
             dataset[n] = value
         if perf_counter() - self._flushed >= _FLUSH_INTERVAL:

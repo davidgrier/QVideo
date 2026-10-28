@@ -107,6 +107,18 @@ packages = [
 "QVideo.overlays"           = "overlays"
 
 
+[tool.ruff]
+line-length = 79
+extend-exclude = ["devel"]
+
+[tool.ruff.lint]
+select = ["F", "B", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Package files re-export names; tests build stubs and mocks.
+"__init__.py" = ["F401"]
+"tests/*" = ["E501", "F401", "F811", "F841", "B018", "B905"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

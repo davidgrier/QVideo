@@ -2,7 +2,7 @@
 from qtpy import QtCore
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
-from QVideo.lib.videotypes import Image, FrameInfo
+from QVideo.lib.videotypes import FrameInfo
 from time import perf_counter
 from typing import TypeAlias
 import numpy as np

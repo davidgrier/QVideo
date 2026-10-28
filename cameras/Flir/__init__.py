@@ -13,8 +13,9 @@ GenTL producer path in ``GENICAM_GENTL64_PATH``.
 
 QVideo does not use PySpin, Spinnaker's own Python wrapper.  The GenTL
 route reaches the camera's whole node map, register nodes included, and
-gives the hardware timestamp of each frame, with nothing beyond the SDK.  PySpin is a separate binary download built only
-for Python 3.12 and earlier, and it fails on later versions.
+gives the hardware timestamp of each frame, with nothing beyond the SDK.
+PySpin is a separate binary download built only for Python 3.12 and
+earlier, and it fails on later versions.
 
 Classes
 -------

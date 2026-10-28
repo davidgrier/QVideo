@@ -230,7 +230,8 @@ class QOpenCVCamera(QCamera):
 
         def distance(label: str) -> int:
             return sum(abs(a - b) for a, b in
-                       zip(self._formatLabels[label][:2], size))
+                       zip(self._formatLabels[label][:2], size,
+                                strict=True))
 
         return min(self._formatLabels, key=distance)
 

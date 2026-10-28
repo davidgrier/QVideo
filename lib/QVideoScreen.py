@@ -391,7 +391,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         import pyqtgraph as pg
         from QVideo.cameras.Noise import QNoiseSource
 
-        app = pg.mkQApp()
+        pg.mkQApp()
         screen = cls()
         source = QNoiseSource(blacklevel=48, whitelevel=128)
         screen.source = source.start()

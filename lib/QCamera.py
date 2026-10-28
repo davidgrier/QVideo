@@ -6,7 +6,6 @@ from types import TracebackType
 from qtpy import QtCore
 from QVideo.lib._qabc import QABCMeta
 from QVideo.lib.videotypes import Image
-import numpy as np
 import logging
 import threading
 

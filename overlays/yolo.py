@@ -75,13 +75,13 @@ class _YoloWorker(QtCore.QObject):
             ) from _importError
         try:
             self.model = YOLO(model_name)
-        except FileNotFoundError:
+        except FileNotFoundError as err:
             raise FileNotFoundError(
                 f'YOLO model "{model_name}" not found.'
                 '\n\tProvide the name of a pretrained ultralytics model'
                 '\n\tor the full path to a custom YOLO weights file.'
                 '\n\tSee https://docs.ultralytics.com/models/ '
-                'for available pretrained models.')
+                'for available pretrained models.') from err
         self.confidence = confidence
 
     @QtCore.Slot(np.ndarray)

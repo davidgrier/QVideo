@@ -140,7 +140,7 @@ class QSnapshot(QtCore.QObject):
         import pyqtgraph as pg
         from QVideo.cameras.Noise import QNoiseSource
 
-        app = pg.mkQApp()
+        pg.mkQApp()
         window = QtWidgets.QWidget()
         snapshot = cls(window)
         source = QNoiseSource()

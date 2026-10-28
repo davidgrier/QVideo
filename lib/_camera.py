@@ -16,6 +16,7 @@ import logging
 from typing import NamedTuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from QVideo.lib._jupyter import LiveView
     from QVideo.lib.videotypes import Image
 
 logger = logging.getLogger(__name__)

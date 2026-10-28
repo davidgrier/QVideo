@@ -152,7 +152,7 @@ Spinnaker) are soft dependencies: the import is wrapped in
 `try/except (ImportError, ModuleNotFoundError)`. Any module-level names derived
 from those imports must also be inside the `try` block (not after it).
 
-When adding a new backend, update all four of the following:
+When adding a new backend, update all five of the following:
 
 1. `lib/_camera.py` — add an entry to `_BACKENDS` (module path, camera class
    name, tree class name, display label) and append the key to
@@ -161,6 +161,11 @@ When adding a new backend, update all four of the following:
    and help string.
 3. `QCamcorder.py` — update the flag list in the module docstring.
 4. `demos/__init__.py` — update the flag list in the module docstring.
+5. `tests/test_conformance_<name>.py` — mix `CameraConformance`
+   (`tests/conformance.py`) into a `TestCase` that defines `makeCamera()`,
+   returning a camera on a simulated device, so that the backend must pass
+   the contract that the rest of QVideo relies on.  Fix the backend, not
+   the check, unless the contract itself is wrong for every backend.
 
 **`cameras/Noise`** is the reference implementation — no hardware required,
 used as a model for tests and for verifying the framework.

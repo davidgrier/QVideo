@@ -5,7 +5,8 @@ from argparse import ArgumentParser
 from typing import NamedTuple
 
 from QVideo.lib import QCameraTree
-from ._camera import Camera, _BACKENDS
+from QVideo.cameras.registry import _BACKENDS
+from QVideo.interactive.camera import Camera
 
 __all__ = ['camera_parser', 'choose_camera']
 

@@ -6,8 +6,7 @@ except RuntimeError as error:
         'QVideo needs a Qt binding.  Install one with '
         'pip install "QVideo[pyqt6]" (recommended) or '
         'pip install "QVideo[pyqt5]"') from error
-from QVideo.lib._camera import Camera
-from QVideo.lib._filter import Filter
+from QVideo.interactive import Camera, Filter
 
 try:
     __version__ = version('QVideo')

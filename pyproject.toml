@@ -81,6 +81,7 @@ packages = [
     "QVideo.demos",
     "QVideo.dvr",
     "QVideo.filters",
+    "QVideo.interactive",
     "QVideo.lib",
     "QVideo.overlays",
 ]
@@ -103,6 +104,7 @@ packages = [
 "QVideo.demos"              = "demos"
 "QVideo.dvr"                = "dvr"
 "QVideo.filters"            = "filters"
+"QVideo.interactive"        = "interactive"
 "QVideo.lib"                = "lib"
 "QVideo.overlays"           = "overlays"
 

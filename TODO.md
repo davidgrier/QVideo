@@ -159,7 +159,7 @@ Potential additions:
 
 ## Screen() API and Composable Vision Pipelines
 
-`Camera()` (`lib/_camera.py`) already proves the "minimal code" factory
+`Camera()` (`interactive/camera.py`) already proves the "minimal code" factory
 pattern works well for QVideo: discover a backend, return something
 usable immediately, and — in Jupyter — stay awaitable/interactive.
 Two follow-on ideas from a 2026-07-10 discussion, in increasing order

@@ -117,13 +117,17 @@ snapshot (`QGenicamCamera.state`), which is read under the lock. `__getattr__`
 delegates attribute access (`camera.fps`) to registered getters, so subclasses
 do not need explicit Python properties for every camera parameter.
 
-**`Camera()`** (`lib/_camera.py`) is the headless front door: it discovers a
-backend, creates a `QApplication` if there is none, and returns a proxy that
-reads frames without any window.  The notebook features (the chooser that
-`await Camera()` shows, `live_view` and `controls`) are in `lib/_jupyter.py`,
-the only module that imports `ipywidgets`; `_camera.py` reaches it through
-`_notebook()`, which imports it on first use, so `Camera()` needs no
-`ipywidgets`.
+**`Camera()`** (`interactive/camera.py`) is the headless front door: it
+discovers a backend, creates a `QApplication` if there is none (and keeps
+it alive), and returns a proxy that reads frames without any window.  The
+proxy's `filters` list is applied by `read()` and `live_view()`, and
+**`Filter()`** (`interactive/filter.py`) lists the filters and builds them
+by name.  The notebook features (the chooser that `await Camera()` shows,
+`live_view` and `controls`) are in `interactive/widgets.py`, the only module
+that imports `ipywidgets`; `camera.py` reaches it through `_notebook()`,
+which imports it on first use, so `Camera()` needs no `ipywidgets`.  The
+table of backends that `Camera()` and the command-line chooser share is
+`cameras/registry.py`.
 
 **`QVideoSource`** wraps a camera in a `QThread`, calling `camera.saferead()`
 in a loop and emitting `newFrame(ndarray)`. It is the standard way to drive a
@@ -154,8 +158,8 @@ from those imports must also be inside the `try` block (not after it).
 
 When adding a new backend, update all five of the following:
 
-1. `lib/_camera.py` — add an entry to `_BACKENDS` (module path, camera class
-   name, tree class name, display label) and append the key to
+1. `cameras/registry.py` — add an entry to `_BACKENDS` (module path, camera
+   class name, tree class name, display label) and append the key to
    `_DISCOVERY_ORDER` at the appropriate priority position.
 2. `lib/chooser.py` — add an entry to `_CAMERAS` with the CLI flag character
    and help string.

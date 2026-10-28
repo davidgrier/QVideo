@@ -311,7 +311,7 @@ Register the backend
 Five small edits make ``Camera()``, the command-line flags and the
 documentation find your backend:
 
-1. ``lib/_camera.py``: add an entry to ``_BACKENDS`` (module, camera class,
+1. ``cameras/registry.py``: add an entry to ``_BACKENDS`` (module, camera class,
    tree class, label) and put the key in ``_DISCOVERY_ORDER``.  Order
    matters: ``Camera()`` tries the earlier entries first, and the
    synthetic Noise camera stays last.

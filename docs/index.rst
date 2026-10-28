@@ -23,6 +23,7 @@ Run the full camcorder application directly::
    backends
    extending
    api/lib
+   api/interactive
    api/cameras
    api/filters
    api/overlays

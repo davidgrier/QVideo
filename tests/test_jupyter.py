@@ -1,4 +1,4 @@
-'''Unit tests for lib/_jupyter.py.'''
+'''Unit tests for interactive/widgets.py.'''
 import importlib.util
 import unittest
 from unittest.mock import MagicMock, patch
@@ -14,7 +14,7 @@ class TestInitialValue(unittest.TestCase):
     '''A camera that has no value for a property gets the type default.'''
 
     def initial(self, value, ptype):
-        from QVideo.lib._jupyter import _initial
+        from QVideo.interactive.widgets import _initial
         return _initial(value, ptype)
 
     def test_a_value_is_kept(self):
@@ -38,7 +38,7 @@ class TestInitialValue(unittest.TestCase):
 class TestCameraControls(unittest.TestCase):
 
     def setUp(self):
-        from QVideo.lib._jupyter import CameraControls
+        from QVideo.interactive.widgets import CameraControls
         self.CameraControls = CameraControls
         self.float_setter = MagicMock()
         self.int_setter   = MagicMock()
@@ -209,7 +209,7 @@ class TestCameraControls(unittest.TestCase):
     def test_a_setter_that_fails_is_reported_and_does_not_raise(self):
         ctrl = self._make()
         self.float_setter.side_effect = ValueError('out of range')
-        with self.assertLogs('QVideo.lib._jupyter', 'WARNING') as logs:
+        with self.assertLogs('QVideo.interactive.widgets', 'WARNING') as logs:
             ctrl._widgets['fps'].value = 60.0
         self.assertIn('fps', logs.output[0])
         self.assertIn('out of range', logs.output[0])
@@ -240,7 +240,7 @@ class TestCameraControls(unittest.TestCase):
     def test_refresh_logs_a_value_that_cannot_be_shown(self):
         ctrl = self._make()
         self.camera._properties['frames']['getter'] = lambda: 'not a number'
-        with self.assertLogs('QVideo.lib._jupyter', 'DEBUG') as logs:
+        with self.assertLogs('QVideo.interactive.widgets', 'DEBUG') as logs:
             ctrl.refresh()
         self.assertIn('frames', logs.output[0])
 
@@ -254,30 +254,30 @@ class TestCameraControls(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_proxy_controls_returns_camera_controls(self):
-        from QVideo.lib._camera import Camera
-        from QVideo.lib._jupyter import CameraControls
+        from QVideo.interactive.camera import Camera
+        from QVideo.interactive.widgets import CameraControls
         cam = MagicMock()
         cam.isOpen.return_value = True
         cam._properties = self.camera._properties
         cam.name = 'Noise'
-        with patch('QVideo.lib._camera._open', return_value=cam):
+        with patch('QVideo.interactive.camera._open', return_value=cam):
             proxy = Camera('noise')
             ctrl = proxy.controls()
         self.assertIsInstance(ctrl, CameraControls)
 
     def test_proxy_controls_raises_without_ipywidgets(self):
-        from QVideo.lib._camera import Camera
+        from QVideo.interactive.camera import Camera
         cam = MagicMock()
         cam.isOpen.return_value = True
         cam._properties = {}
-        with patch('QVideo.lib._camera._open', return_value=cam):
+        with patch('QVideo.interactive.camera._open', return_value=cam):
             proxy = Camera('noise')
-        with patch.dict('sys.modules', {'QVideo.lib._jupyter': None}):
+        with patch.dict('sys.modules', {'QVideo.interactive.widgets': None}):
             with self.assertRaises(ImportError):
                 proxy.controls()
 
     def test_hidden_property_omitted_from_controls(self):
-        from QVideo.lib._jupyter import CameraControls
+        from QVideo.interactive.widgets import CameraControls
         cam = MagicMock()
         cam.name = 'Test'
         cam._properties = {

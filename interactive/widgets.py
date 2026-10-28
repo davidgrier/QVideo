@@ -2,7 +2,7 @@
 
 Everything in this module needs ``ipywidgets``.  The rest of the package
 never imports it unless a notebook feature is used, so ``Camera()`` works
-without ``ipywidgets`` installed (see :mod:`QVideo.lib._camera`).
+without ``ipywidgets`` installed (see :mod:`QVideo.interactive.camera`).
 '''
 import asyncio
 import logging

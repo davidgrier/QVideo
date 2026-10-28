@@ -3,9 +3,9 @@ import unittest
 from qtpy import QtWidgets
 import numpy as np
 import QVideo
-from QVideo.lib import Filter
+from QVideo.interactive import Filter
 from QVideo.lib.QVideoFilter import VideoFilter
-from QVideo.lib._camera import _CameraProxy
+from QVideo.interactive.camera import _CameraProxy
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 

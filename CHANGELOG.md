@@ -58,6 +58,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Removed
 
+- **`QVideo.lib.Camera` is gone.**  The notebook and script front door
+  now has a package of its own, `QVideo.interactive`; import `Camera` and
+  `Filter` from `QVideo`, as before.  The table of camera backends is
+  `QVideo.cameras.registry`.
+
 - **`QOpenCVSource`, `QPyAVSource` and `QHDF5Source` of `QVideo.dvr`.**
   Each was a `QVideoSource` made from a file name.  Any video file now
   gives a source with `QVideoSource(formats.openVideo(name))`, and

@@ -8,59 +8,22 @@ were found, and opens the first working one.
 
 This module needs neither Jupyter nor ``ipywidgets``.  The notebook
 features (the chooser, ``live_view`` and ``controls``) are in
-:mod:`QVideo.lib._jupyter`, which is imported only when one of them is used.
+:mod:`QVideo.interactive.widgets`, which is imported only when one of them
+is used.
 '''
 import contextlib
 import importlib
 import logging
-from typing import NamedTuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from QVideo.cameras.registry import _BACKENDS, _discover
 
 if TYPE_CHECKING:
-    from QVideo.lib._jupyter import LiveView
+    from QVideo.interactive.widgets import LiveView
     from QVideo.lib.videotypes import Image
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['Camera']
-
-
-class _BackendEntry(NamedTuple):
-    module: str
-    camera_cls: str
-    tree_cls: str
-    label: str
-
-
-_BACKENDS: dict[str, _BackendEntry] = {
-    'basler': _BackendEntry(
-        'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler'),
-    'flir': _BackendEntry(
-        'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir'),
-    'ids': _BackendEntry(
-        'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS'),
-    'mv': _BackendEntry(
-        'QVideo.cameras.MV', 'QMVCamera', 'QMVTree', 'MV'),
-    'vimbax': _BackendEntry(
-        'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX'),
-    'picamera': _BackendEntry(
-        'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera'),
-    'opencv': _BackendEntry(
-        'QVideo.cameras.OpenCV', 'QOpenCVCamera', 'QOpenCVTree', 'OpenCV'),
-    'noise': _BackendEntry(
-        'QVideo.cameras.Noise', 'QNoiseCamera', 'QNoiseTree', 'Noise'),
-}
-
-_DISCOVERY_ORDER = [
-    'basler', 'flir', 'ids', 'mv', 'vimbax', 'picamera', 'opencv', 'noise']
-
-
-def _probe(key: str) -> bool:
-    '''Return True if the backend module can be imported.'''
-    try:
-        importlib.import_module(_BACKENDS[key].module)
-        return True
-    except (ImportError, ModuleNotFoundError):
-        return False
 
 
 _qapp = None  # keeps the application that _ensure_qapp makes alive
@@ -96,19 +59,6 @@ def _open(key: str, camera_id: int = 0, errors: list | None = None):
         if errors is not None:
             errors.append((entry.label, ex))
         return None
-
-
-def _discover(model: str | None, camera_id: int = 0) -> list[tuple[str, int]]:
-    '''Return (backend_key, camera_id) pairs for importable backends.'''
-    if model is not None:
-        key = model.lower()
-        if key not in _BACKENDS:
-            raise ValueError(
-                f'Unknown camera model {model!r}. '
-                f'Available: {sorted(_BACKENDS)}'
-            )
-        return [(key, camera_id)] if _probe(key) else []
-    return [(key, camera_id) for key in _DISCOVERY_ORDER if _probe(key)]
 
 
 @contextlib.contextmanager
@@ -194,7 +144,7 @@ def _in_ipython() -> bool:
 def _notebook(feature: str):
     '''Return the Jupyter front end, which needs ipywidgets.'''
     try:
-        return importlib.import_module('QVideo.lib._jupyter')
+        return importlib.import_module('QVideo.interactive.widgets')
     except ImportError as ex:
         raise ImportError(
             f'ipywidgets is required for {feature}. '
@@ -393,8 +343,9 @@ class _CameraProxy:
     def controls(self):
         '''Return an interactive property panel for use in Jupyter.
 
-        Creates a :class:`~QVideo.lib._jupyter.CameraControls` widget that
-        exposes all registered camera properties as editable inputs.
+        Creates a :class:`~QVideo.interactive.widgets.CameraControls`
+        widget that exposes all registered camera properties as editable
+        inputs.
         Read-only properties are shown but disabled.  A **Refresh** button
         re-reads all values from the camera.
 

@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import patch
 from qtpy import QtCore, QtTest, QtWidgets
-from QVideo.lib import QScrollPanel
+from QVideo.widgets import QScrollPanel
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 

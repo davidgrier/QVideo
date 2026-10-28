@@ -2,7 +2,6 @@
 import importlib
 import logging
 from argparse import ArgumentParser
-from typing import NamedTuple
 
 from QVideo.lib import QCamera, QCameraTree
 from QVideo.cameras.registry import _BACKENDS
@@ -13,21 +12,8 @@ __all__ = ['camera_parser', 'choose_camera', 'make_tree', 'open_camera']
 logger = logging.getLogger(__name__)
 
 
-class _CameraEntry(NamedTuple):
-    flag: str
-    help: str
-
-
-_CAMERAS: dict[str, _CameraEntry] = {
-    'opencv':   _CameraEntry('-c', 'OpenCV camera'),
-    'basler':   _CameraEntry('-b', 'Basler pylon camera'),
-    'flir':     _CameraEntry('-f', 'Flir camera'),
-    'ids':      _CameraEntry('-i', 'IDS Imaging camera'),
-    'mv':       _CameraEntry(
-        '-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
-    'vimbax':   _CameraEntry('-v', 'Allied Vision VimbaX camera'),
-    'picamera': _CameraEntry('-p', 'Raspberry Pi camera module'),
-}
+#: The backends that a command-line flag selects, from the registry.
+_CAMERAS = {key: entry for key, entry in _BACKENDS.items() if entry.flag}
 
 
 def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:

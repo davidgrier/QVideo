@@ -35,8 +35,6 @@ QVideoWriter
     Abstract base class for video file writers.
 QSnapshot
     Hotkey-triggered still-frame capture from any ``newFrame`` signal.
-QScrollPanel
-    A panel of controls that scrolls when the window is too short.
 QListCameras
     Widget listing available camera backends.
 '''
@@ -54,19 +52,15 @@ from .QFrameRelay import QFrameRelay
 from .QVideoFilter import VideoFilter, QVideoFilter
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
-from .chooser import choose_camera
 from ._launch import launch
 from .QListCameras import QListCameras
-from .QHistogramWidget import QHistogramWidget
-from .QUniformityWidget import QUniformityWidget
 from .QSnapshot import QSnapshot
-from .QScrollPanel import QScrollPanel
 
 __all__ = '''Image
            FrameInfo
-clickable choose_camera launch QListCameras
+clickable launch QListCameras
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
 QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
-QHistogramWidget QUniformityWidget QSnapshot QScrollPanel
+QSnapshot
 VideoFilter QVideoFilter'''.split()

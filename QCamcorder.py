@@ -25,7 +25,8 @@ If no flag is given, a noise camera is used as a fallback.
 
 from qtpy import QtCore, QtWidgets, QtGui
 from QVideo.lib import (QCameraTree, QVideoSource, QVideoScreen, QSnapshot,
-                        QScrollPanel, launch)
+                        launch)
+from QVideo.widgets import QScrollPanel
 from QVideo.dvr import QDVRWidget
 
 

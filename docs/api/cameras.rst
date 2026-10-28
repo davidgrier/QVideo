@@ -99,3 +99,12 @@ file, and whether the producer can see any cameras.
 
 .. automodule:: QVideo.cameras.gentl
    :members: gentlPaths, findProducer, check
+
+Command-line chooser
+--------------------
+
+The flags of the demos and applications (``-c``, ``-f`` and so on) come
+from the table of backends in :mod:`QVideo.cameras.registry`.
+
+.. automodule:: QVideo.cameras.chooser
+   :members:

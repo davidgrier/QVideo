@@ -4,7 +4,7 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
-from QVideo.lib import QScrollPanel
+from QVideo.widgets import QScrollPanel
 from QVideo.lib.QSnapshot import QSnapshot
 
 

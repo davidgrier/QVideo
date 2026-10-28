@@ -42,29 +42,6 @@ QVideoScreen
 .. automodule:: QVideo.lib.QVideoScreen
    :members:
 
-QHistogramWidget
-----------------
-
-:class:`~QVideo.lib.QHistogramWidget.QHistogramWidget` shows the live
-histogram of the pixel intensities on a screen.  Its draggable handles set
-the range of intensities that the screen displays.  It watches the screen
-and needs no connection to the camera; see
-:class:`~QVideo.demos.histogramdemo.HistogramDemo`.
-
-.. automodule:: QVideo.lib.QHistogramWidget
-   :members:
-
-QUniformityWidget
------------------
-
-:class:`~QVideo.lib.QUniformityWidget.QUniformityWidget` plots the mean
-intensity along x and along y for every frame that the screen displays.
-Flat traces mean that the illumination is uniform.  See
-:class:`~QVideo.demos.uniformitydemo.UniformityDemo`.
-
-.. automodule:: QVideo.lib.QUniformityWidget
-   :members:
-
 VideoFilter
 -----------
 
@@ -190,12 +167,6 @@ its ``pipeline`` attribute::
 .. automodule:: QVideo.lib.QFilterRack
    :members:
 
-Camera chooser
---------------
-
-.. automodule:: QVideo.lib.chooser
-   :members:
-
 .. autofunction:: QVideo.lib.launch
 
 QFrameRelay
@@ -214,18 +185,6 @@ QVideoWriter
 ------------
 
 .. automodule:: QVideo.lib.QVideoWriter
-   :members:
-
-QScrollPanel
-------------
-
-:class:`~QVideo.lib.QScrollPanel.QScrollPanel` shows a panel of controls at
-its natural size and adds a vertical scroll bar when the window is too short
-for it.  :class:`~QVideo.QCamcorder.QCamcorder` puts its controls in one, so
-that applications built on it, such as the filter rack and combined demos,
-work on a small screen.
-
-.. automodule:: QVideo.lib.QScrollPanel
    :members:
 
 QSnapshot

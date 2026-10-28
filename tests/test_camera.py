@@ -41,10 +41,15 @@ class TestBackendsRegistry(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertIn(key, _BACKENDS)
 
-    def test_each_entry_has_four_fields(self):
+    def test_each_entry_names_its_module_classes_and_label(self):
         for key, entry in _BACKENDS.items():
             with self.subTest(key=key):
-                self.assertEqual(len(entry), 4)
+                self.assertTrue(all(entry[:4]))
+
+    def test_the_flag_and_help_come_together(self):
+        for key, entry in _BACKENDS.items():
+            with self.subTest(key=key):
+                self.assertEqual(bool(entry.flag), bool(entry.help))
 
     def test_noise_backend_points_to_correct_module(self):
         self.assertEqual(_BACKENDS['noise'].module, 'QVideo.cameras.Noise')

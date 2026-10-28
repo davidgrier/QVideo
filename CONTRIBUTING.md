@@ -85,8 +85,8 @@ In outline:
    camera subclasses `QCamera` and implements `_initialize`,
    `_deinitialize` and `read`, and registers its adjustable parameters
    with `registerProperty`.  `cameras/Noise` is the reference.
-2. Register it in `cameras/registry.py`, `lib/chooser.py`, `QCamcorder.py`,
-   `demos/__init__.py` and `docs/api/cameras.rst`.
+2. Register it in `cameras/registry.py` (with its command-line flag),
+   `QCamcorder.py`, `demos/__init__.py` and `docs/api/cameras.rst`.
 3. Add `tests/test_conformance_<name>.py`: mix `CameraConformance`
    (`tests/conformance.py`) into a `TestCase` that makes your camera on a
    **simulated device**.  The suite states what the rest of QVideo relies

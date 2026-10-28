@@ -100,11 +100,12 @@ by Python 3.12 and earlier under PySide6).
 
 Each top-level directory has a short `README.md` that says what it is for.
 `lib/` holds the base classes that applications, backends and filters
-subclass, and the machinery that they run on; a finished widget or tool
-that nobody subclasses does not belong there.  `cameras/`, `filters/`,
-`dvr/` and `overlays/` hold families of implementations, `demos/` the
-recipes, and `interactive/` the notebook and script front door
-(`Camera()`, `Filter()`).  Update a directory's README when its role or
+subclass, and the machinery that they run on (`launch()`, `QSnapshot`); a
+finished widget that nobody subclasses belongs in `widgets/`.
+`cameras/`, `filters/`, `dvr/` and `overlays/` hold families of
+implementations (`cameras/` also has the registry and the command-line
+chooser), `demos/` the recipes, and `interactive/` the notebook and script
+front door (`Camera()`, `Filter()`).  Update a directory's README when its role or
 contents change.
 
 ### Core abstractions (`lib/`)
@@ -169,16 +170,16 @@ Spinnaker) are soft dependencies: the import is wrapped in
 `try/except (ImportError, ModuleNotFoundError)`. Any module-level names derived
 from those imports must also be inside the `try` block (not after it).
 
-When adding a new backend, update all five of the following:
+When adding a new backend, update all four of the following:
 
 1. `cameras/registry.py` — add an entry to `_BACKENDS` (module path, camera
-   class name, tree class name, display label) and append the key to
-   `_DISCOVERY_ORDER` at the appropriate priority position.
-2. `lib/chooser.py` — add an entry to `_CAMERAS` with the CLI flag character
-   and help string.
-3. `QCamcorder.py` — update the flag list in the module docstring.
-4. `demos/__init__.py` — update the flag list in the module docstring.
-5. `tests/test_conformance_<name>.py` — mix `CameraConformance`
+   class name, tree class name, display label, command-line flag and its
+   help string; the chooser in `cameras/chooser.py` reads the flags from
+   here) and append the key to `_DISCOVERY_ORDER` at the appropriate
+   priority position.
+2. `QCamcorder.py` — update the flag list in the module docstring.
+3. `demos/__init__.py` — update the flag list in the module docstring.
+4. `tests/test_conformance_<name>.py` — mix `CameraConformance`
    (`tests/conformance.py`) into a `TestCase` that defines `makeCamera()`,
    returning a camera on a simulated device, so that the backend must pass
    the contract that the rest of QVideo relies on.  Fix the backend, not

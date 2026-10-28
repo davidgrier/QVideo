@@ -14,7 +14,11 @@ imports without it.
 | `Picamera` | Raspberry Pi camera modules, including the AI camera |
 
 `registry.py` is the table of backends that `Camera()` and the
-command-line chooser use, and `gentl.py` diagnoses GenTL problems
+command-line chooser use (it holds each backend's flag), `chooser.py`
+turns the command-line flags into an open camera and its controls (it
+opens the camera through `Camera()` of `interactive/`, until hot-plug gives
+the project a public function that opens a camera from its key), and
+`gentl.py` diagnoses GenTL problems
 (`python -m QVideo.cameras.gentl`).
 
 To add a camera, read `docs/backends.rst` ("Writing a camera backend").

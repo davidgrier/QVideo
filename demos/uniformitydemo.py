@@ -7,7 +7,8 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QUniformityWidget, launch
+from QVideo.lib import launch
+from QVideo.widgets import QUniformityWidget
 
 
 __all__ = ['UniformityDemo']
@@ -22,7 +23,7 @@ class UniformityDemo(Demo):
         camera -> screen -> uniformity plots
 
     The recipe is one widget that watches the screen:
-    :class:`~QVideo.lib.QUniformityWidget.QUniformityWidget`.  It shows the
+    :class:`~QVideo.widgets.QUniformityWidget.QUniformityWidget`.  It shows the
     mean intensity as a function of x (averaged over y) and of y (averaged
     over x), updated on every displayed frame.  Flat traces mean uniform
     illumination; a slope, dip or peak locates the non-uniformity.  See

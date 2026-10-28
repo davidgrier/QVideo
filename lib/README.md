@@ -16,10 +16,12 @@ The rest of `lib` is what these classes need to work together: the thread
 that reads a camera (`QVideoSource`), the display (`QVideoScreen`), the
 filter pipeline and rack, the frame types and the errors.
 
-**A file belongs here if it is a base class, or the machinery of one.**
-A finished widget or tool that nobody subclasses does not.  The notebook
-interface is in `interactive/`, and the table of camera backends is
-`cameras/registry.py`.
+**A file belongs here if it is a base class, or the machinery of one:**
+the classes that applications subclass, and what every application
+uses, such as `launch()` and `QSnapshot`, which any project can attach to
+a source.  A finished widget that nobody subclasses goes in `widgets/`.
+The notebook interface is in `interactive/`, and the table of camera
+backends and the command-line chooser are in `cameras/`.
 
 See `docs/architecture.rst` for how the layers fit together and
 `docs/backends.rst` and `docs/extending.rst` for how to extend them.

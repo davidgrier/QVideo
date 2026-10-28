@@ -308,18 +308,17 @@ Tests never use real hardware.
 Register the backend
 --------------------
 
-Five small edits make ``Camera()``, the command-line flags and the
+Four small edits make ``Camera()``, the command-line flags and the
 documentation find your backend:
 
 1. ``cameras/registry.py``: add an entry to ``_BACKENDS`` (module, camera class,
-   tree class, label) and put the key in ``_DISCOVERY_ORDER``.  Order
-   matters: ``Camera()`` tries the earlier entries first, and the
-   synthetic Noise camera stays last.
-2. ``lib/chooser.py``: add an entry to ``_CAMERAS`` with a flag character
-   and a help string.
-3. ``QCamcorder.py``: add the flag to the list in the module docstring.
-4. ``demos/__init__.py``: add the flag to the list in its docstring.
-5. ``docs/api/cameras.rst``: add an ``automodule`` entry.
+   tree class, label, and the flag character and help string that select
+   the camera on the command line) and put the key in
+   ``_DISCOVERY_ORDER``.  Order matters: ``Camera()`` tries the earlier
+   entries first, and the synthetic Noise camera stays last.
+2. ``QCamcorder.py``: add the flag to the list in the module docstring.
+3. ``demos/__init__.py``: add the flag to the list in its docstring.
+4. ``docs/api/cameras.rst``: add an ``automodule`` entry.
 
 Also add the package to the ``packages`` and ``package-dir`` tables in
 ``pyproject.toml``, and an optional dependency (an *extra*) that installs
@@ -341,7 +340,7 @@ Before you open a pull request:
 - ``_deinitialize`` really frees the device, and ``open`` works again.
 - The conformance suite passes on a simulated device.
 - ``ruff check .`` is clean and the lines are at most 79 characters.
-- The five registration edits are made and the documentation builds.
+- The four registration edits are made and the documentation builds.
 - You tried it in ``python -m QVideo`` and, if you can, in a notebook with
   ``await Camera('<name>')``.
 

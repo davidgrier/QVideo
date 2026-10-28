@@ -27,6 +27,7 @@ Run the full camcorder application directly::
    api/cameras
    api/filters
    api/overlays
+   api/widgets
    api/dvr
    api/demos
 

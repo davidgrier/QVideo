@@ -2,7 +2,7 @@
 import unittest
 from qtpy import QtWidgets
 import pyqtgraph as pg
-from QVideo.lib.QHistogramWidget import QHistogramWidget
+from QVideo.widgets.QHistogramWidget import QHistogramWidget
 from QVideo.lib.QVideoScreen import QVideoScreen
 
 

@@ -1,7 +1,7 @@
 '''Unit tests for demos.histogramdemo.'''
 import unittest
 from qtpy import QtWidgets
-from QVideo.lib.QHistogramWidget import QHistogramWidget
+from QVideo.widgets.QHistogramWidget import QHistogramWidget
 from QVideo.lib.QVideoScreen import QVideoScreen
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.demo import Demo

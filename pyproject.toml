@@ -84,6 +84,7 @@ packages = [
     "QVideo.interactive",
     "QVideo.lib",
     "QVideo.overlays",
+    "QVideo.widgets",
 ]
 
 [tool.setuptools.package-data]
@@ -107,6 +108,7 @@ packages = [
 "QVideo.interactive"        = "interactive"
 "QVideo.lib"                = "lib"
 "QVideo.overlays"           = "overlays"
+"QVideo.widgets"            = "widgets"
 
 
 [tool.ruff]

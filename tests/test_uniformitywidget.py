@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from qtpy import QtWidgets
 import pyqtgraph as pg
-from QVideo.lib.QUniformityWidget import QUniformityWidget
+from QVideo.widgets.QUniformityWidget import QUniformityWidget
 from QVideo.lib.QVideoScreen import QVideoScreen
 
 

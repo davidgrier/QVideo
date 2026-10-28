@@ -7,6 +7,26 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking: three widgets and the chooser moved.**  `lib/` holds the
+  base classes and the machinery that applications run on; the rest has
+  a home of its own.  `QHistogramWidget`, `QUniformityWidget` and
+  `QScrollPanel` are in the new `QVideo.widgets` package (finished
+  widgets that nobody subclasses): import them with
+  `from QVideo.widgets import QHistogramWidget`.  The command-line
+  chooser is `QVideo.cameras.chooser` (`camera_parser`, `open_camera`,
+  `make_tree`, `choose_camera`), and `QVideo.lib` no longer exports
+  `choose_camera`.  `QSnapshot`, `QListCameras` and `launch` stay in
+  `lib`.  The old import paths are gone, with no aliases.
+- **One table of camera backends.**  Each entry of `cameras/registry.py`
+  now carries the command-line flag and help text of its backend, and the
+  chooser reads them from there: adding a backend is one edit fewer.
+
+---
+
 ## [4.10.0] — 2026-10-28
 
 ### Added

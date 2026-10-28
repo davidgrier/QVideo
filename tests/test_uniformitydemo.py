@@ -1,7 +1,7 @@
 '''Unit tests for demos.uniformitydemo.'''
 import unittest
 from qtpy import QtWidgets
-from QVideo.lib.QUniformityWidget import QUniformityWidget
+from QVideo.widgets.QUniformityWidget import QUniformityWidget
 from QVideo.lib.QVideoScreen import QVideoScreen
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.demo import Demo

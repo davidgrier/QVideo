@@ -2,7 +2,7 @@
 
 Each demo composes a :class:`~QVideo.lib.QCameraTree.QCameraTree` with one
 or more QVideo widgets into a standalone window.  All demos use
-:func:`~QVideo.lib.chooser.choose_camera` to present a camera-selection
+:func:`~QVideo.cameras.chooser.choose_camera` to present a camera-selection
 dialog at startup, so no camera-specific code is needed in the demo itself.
 
 Recipes

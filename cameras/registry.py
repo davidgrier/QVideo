@@ -1,7 +1,8 @@
 '''Registry of the camera backends that QVideo knows.
 
 ``Camera()``, the command-line chooser and the documentation all use this
-table.  A new backend adds an entry to ``_BACKENDS`` and its key to
+table.  A new backend adds an entry to ``_BACKENDS``, with the flag and
+the help text that select it on the command line, and its key to
 ``_DISCOVERY_ORDER``.
 '''
 import importlib
@@ -13,23 +14,32 @@ class _BackendEntry(NamedTuple):
     camera_cls: str
     tree_cls: str
     label: str
+    flag: str = ''
+    help: str = ''
 
 
 _BACKENDS: dict[str, _BackendEntry] = {
     'basler': _BackendEntry(
-        'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler'),
+        'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler',
+        '-b', 'Basler pylon camera'),
     'flir': _BackendEntry(
-        'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir'),
+        'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir',
+        '-f', 'Flir camera'),
     'ids': _BackendEntry(
-        'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS'),
+        'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS',
+        '-i', 'IDS Imaging camera'),
     'mv': _BackendEntry(
-        'QVideo.cameras.MV', 'QMVCamera', 'QMVTree', 'MV'),
+        'QVideo.cameras.MV', 'QMVCamera', 'QMVTree', 'MV',
+        '-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
     'vimbax': _BackendEntry(
-        'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX'),
+        'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX',
+        '-v', 'Allied Vision VimbaX camera'),
     'picamera': _BackendEntry(
-        'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera'),
+        'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera',
+        '-p', 'Raspberry Pi camera module'),
     'opencv': _BackendEntry(
-        'QVideo.cameras.OpenCV', 'QOpenCVCamera', 'QOpenCVTree', 'OpenCV'),
+        'QVideo.cameras.OpenCV', 'QOpenCVCamera', 'QOpenCVTree', 'OpenCV',
+        '-c', 'OpenCV camera'),
     'noise': _BackendEntry(
         'QVideo.cameras.Noise', 'QNoiseCamera', 'QNoiseTree', 'Noise'),
 }

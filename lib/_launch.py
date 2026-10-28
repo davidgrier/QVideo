@@ -3,7 +3,7 @@ import sys
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib._splash import say, splash
-from QVideo.lib.chooser import make_tree, open_camera
+from QVideo.cameras.chooser import make_tree, open_camera
 
 
 __all__ = ['launch']
@@ -45,7 +45,7 @@ def launch(widget: type[QtWidgets.QWidget],
     '''Show *widget* for a camera chosen on the command line, and run it.
 
     The camera backend comes from the command-line flags described in
-    :func:`~QVideo.lib.chooser.choose_camera` (a noise camera if there are
+    :func:`~QVideo.cameras.chooser.choose_camera` (a noise camera if there are
     none).  A splash screen appears at once and says what is happening;
     the camera opens on a thread of its own, so that a slow camera never
     freezes it.  The widget then becomes the central widget

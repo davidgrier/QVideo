@@ -7,7 +7,8 @@ Run directly::
 '''
 
 from QVideo.demos.demo import Demo
-from QVideo.lib import QHistogramWidget, launch
+from QVideo.lib import launch
+from QVideo.widgets import QHistogramWidget
 
 
 __all__ = ['HistogramDemo']
@@ -23,7 +24,7 @@ class HistogramDemo(Demo):
                      ^----------'  the level handles set the display range
 
     The recipe is one widget that watches the screen:
-    :class:`~QVideo.lib.QHistogramWidget.QHistogramWidget`.  It updates on
+    :class:`~QVideo.widgets.QHistogramWidget.QHistogramWidget`.  It updates on
     every displayed frame, and dragging its level handles changes the range
     that the screen displays.  See :class:`~QVideo.demos.demo.Demo` for the
     parameters.

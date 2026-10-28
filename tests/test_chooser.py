@@ -5,9 +5,10 @@ from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
 import numpy as np
 from qtpy import QtWidgets
-import QVideo.lib.chooser as chooser_module
-from QVideo.lib.chooser import (camera_parser, choose_camera, make_tree,
-                                open_camera, _CameraEntry, _CAMERAS)
+import QVideo.cameras.chooser as chooser_module
+from QVideo.cameras.chooser import (camera_parser, choose_camera, make_tree,
+                                    open_camera, _CAMERAS)
+from QVideo.cameras.registry import _BACKENDS, _BackendEntry
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -45,19 +46,25 @@ class TestChooserAll(unittest.TestCase):
 
 class TestCameraEntry(unittest.TestCase):
 
-    def test_is_named_tuple(self):
-        entry = _CameraEntry('-x', 'help text')
-        self.assertEqual(entry.flag, '-x')
-        self.assertEqual(entry.help, 'help text')
+    def test_the_flags_come_from_the_registry(self):
+        self.assertEqual(set(_CAMERAS),
+                         {k for k, e in _BACKENDS.items() if e.flag})
 
-    def test_cameras_dict_values_are_camera_entries(self):
+    def test_cameras_dict_values_are_backend_entries(self):
         for entry in _CAMERAS.values():
-            self.assertIsInstance(entry, _CameraEntry)
+            self.assertIsInstance(entry, _BackendEntry)
 
-    def test_all_entries_have_non_empty_fields(self):
+    def test_all_entries_have_a_flag_and_help(self):
         for dest, entry in _CAMERAS.items():
             with self.subTest(dest=dest):
-                self.assertTrue(all(entry))
+                self.assertTrue(entry.flag and entry.help)
+
+    def test_flags_are_unique(self):
+        flags = [entry.flag for entry in _CAMERAS.values()]
+        self.assertEqual(len(flags), len(set(flags)))
+
+    def test_every_backend_but_noise_has_a_flag(self):
+        self.assertEqual(set(_BACKENDS) - set(_CAMERAS), {'noise'})
 
 
 class TestCameraParser(unittest.TestCase):
@@ -248,7 +255,7 @@ class TestChooseCameraOpenCV(unittest.TestCase):
     def test_opencv_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-c']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.OpenCV': None}):
                     camera = choose_camera()
@@ -266,7 +273,7 @@ class TestChooseCameraFallback(unittest.TestCase):
         fake = MagicMock(side_effect=QDriverError(reason))
         module = MagicMock(QFlirCamera=fake)
         with patch('sys.argv', ['prog', '-f']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.Flir': module}):
                     camera = choose_camera()
@@ -277,7 +284,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_flir_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-f']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.Flir': None}):
                     camera = choose_camera()
@@ -288,7 +295,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_basler_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-b']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.Basler': None}):
                     camera = choose_camera()
@@ -299,7 +306,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_ids_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-i']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.IDS': None}):
                     camera = choose_camera()
@@ -310,7 +317,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_mv_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-m']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.MV': None}):
                     camera = choose_camera()
@@ -321,7 +328,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_picamera_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-p']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.Picamera': None}):
                     camera = choose_camera()
@@ -332,7 +339,7 @@ class TestChooseCameraFallback(unittest.TestCase):
     def test_vimbax_import_failure_falls_back_to_noise(self):
         from QVideo.cameras.Noise import QNoiseTree
         with patch('sys.argv', ['prog', '-v']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.Vimbax': None}):
                     camera = choose_camera()
@@ -345,7 +352,7 @@ class TestChooseCameraFallback(unittest.TestCase):
         mock_module = MagicMock()
         mock_module.QOpenCVCamera.side_effect = TypeError('no producer')
         with patch('sys.argv', ['prog', '-c']):
-            with patch('QVideo.lib.chooser.logger') as mock_logger:
+            with patch('QVideo.cameras.chooser.logger') as mock_logger:
                 with patch.dict('sys.modules',
                                 {'QVideo.cameras.OpenCV': mock_module}):
                     camera = choose_camera()

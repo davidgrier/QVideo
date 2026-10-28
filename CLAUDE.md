@@ -96,6 +96,17 @@ defining their own metaclass, and `__setattr__` overrides on `QObject`
 subclasses must use `super().__setattr__` (`object.__setattr__` is rejected
 by Python 3.12 and earlier under PySide6).
 
+### Layout
+
+Each top-level directory has a short `README.md` that says what it is for.
+`lib/` holds the base classes that applications, backends and filters
+subclass, and the machinery that they run on; a finished widget or tool
+that nobody subclasses does not belong there.  `cameras/`, `filters/`,
+`dvr/` and `overlays/` hold families of implementations, `demos/` the
+recipes, and `interactive/` the notebook and script front door
+(`Camera()`, `Filter()`).  Update a directory's README when its role or
+contents change.
+
 ### Core abstractions (`lib/`)
 
 **`QCamera`** is the abstract base for all cameras. Subclasses implement three

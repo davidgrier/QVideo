@@ -17,7 +17,7 @@ class QIDSCamera(QGenicamCamera):
     If IDS peak is not installed, or the producer or camera cannot be
     found, instantiation raises :exc:`~QVideo.lib.errors.QCameraError`
     with a message describing what is missing.  Run
-    ``python -m QVideo.lib.gentl ids_u3vgentl.cti`` for a
+    ``python -m QVideo.cameras.gentl ids_u3vgentl.cti`` for a
     step-by-step diagnosis.
 
     Parameters

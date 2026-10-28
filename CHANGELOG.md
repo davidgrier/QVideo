@@ -58,6 +58,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Removed
 
+- **`python -m QVideo.lib.gentl` is now `python -m QVideo.cameras.gentl`.**
+  The GenTL diagnostic belongs with the cameras that use it.
+
 - **`QVideo.lib.Camera` is gone.**  The notebook and script front door
   now has a package of its own, `QVideo.interactive`; import `Camera` and
   `Filter` from `QVideo`, as before.  The table of camera backends is

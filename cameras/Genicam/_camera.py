@@ -3,7 +3,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
-from QVideo.lib import gentl
+from QVideo.cameras import gentl
 from QVideo.lib.errors import QDeviceError, QDriverError
 import numpy as np
 import logging
@@ -321,7 +321,7 @@ class QGenicamCamera(QCamera):
     def _findProducer(*filenames: str) -> 'str | None':
         '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
 
-        See :func:`QVideo.lib.gentl.findProducer`.
+        See :func:`QVideo.cameras.gentl.findProducer`.
 
         Parameters
         ----------

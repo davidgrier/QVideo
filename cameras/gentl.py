@@ -4,7 +4,7 @@ This module deliberately imports nothing from ``harvesters`` or
 ``genicam`` at module level, so that it works when those packages are
 missing.  Run it to find out why a GenICam camera cannot be opened::
 
-    python -m QVideo.lib.gentl Spinnaker_GenTL.cti
+    python -m QVideo.cameras.gentl Spinnaker_GenTL.cti
 
 Without arguments, it reports every ``.cti`` file found on
 ``GENICAM_GENTL64_PATH``.

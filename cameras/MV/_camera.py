@@ -24,7 +24,7 @@ class QMVCamera(QGenicamCamera):
     If mvIMPACT SDK is not installed, or the producer or camera cannot be
     found, instantiation raises :exc:`~QVideo.lib.errors.QCameraError`
     with a message describing what is missing.  Run
-    ``python -m QVideo.lib.gentl mvGenTLProducer.cti`` for a
+    ``python -m QVideo.cameras.gentl mvGenTLProducer.cti`` for a
     step-by-step diagnosis.
 
     Parameters

@@ -19,7 +19,8 @@ class QVimbaXCamera(QGenicamCamera):
     If VimbaX is not installed, or the producer or camera cannot be
     found, instantiation raises :exc:`~QVideo.lib.errors.QCameraError`
     with a message describing what is missing.  Run
-    ``python -m QVideo.lib.gentl VimbaUSBTL.cti`` for a step-by-step diagnosis.
+    ``python -m QVideo.cameras.gentl VimbaUSBTL.cti`` for a step-by-step
+    diagnosis.
 
     Parameters
     ----------

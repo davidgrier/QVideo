@@ -17,7 +17,7 @@ class QFlirCamera(QGenicamCamera):
     If the packages, the producer or the camera cannot be found,
     instantiation raises :exc:`~QVideo.lib.errors.QCameraError` with a
     message describing what is missing.  Run
-    ``python -m QVideo.lib.gentl Spinnaker_GenTL.cti`` for a step-by-step
+    ``python -m QVideo.cameras.gentl Spinnaker_GenTL.cti`` for a step-by-step
     diagnosis.
 
     .. note::

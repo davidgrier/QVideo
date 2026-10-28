@@ -84,3 +84,18 @@ Raspberry Pi AI Camera (IMX500)
 
 .. automodule:: QVideo.cameras.Picamera._imx500
    :members:
+
+GenTL diagnostics
+-----------------
+
+When a GenICam camera (Flir, Basler, IDS, MV, VimbaX) cannot be opened,
+run the diagnostic.  It works even if ``harvesters`` or ``genicam`` are
+not installed::
+
+    python -m QVideo.cameras.gentl Spinnaker_GenTL.cti
+
+It checks the Python packages, ``GENICAM_GENTL64_PATH``, the producer
+file, and whether the producer can see any cameras.
+
+.. automodule:: QVideo.cameras.gentl
+   :members: gentlPaths, findProducer, check

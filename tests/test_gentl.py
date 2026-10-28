@@ -1,4 +1,4 @@
-'''Unit tests for lib/gentl.py and lib/errors.py.'''
+'''Unit tests for cameras/gentl.py and lib/errors.py.'''
 import os
 import sys
 import tempfile
@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from QVideo.lib import gentl
+from QVideo.cameras import gentl
 from QVideo.lib.errors import QCameraError, QDeviceError, QDriverError
 
 

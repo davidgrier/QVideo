@@ -65,6 +65,12 @@ depends only on the ones below it.
 | UI | `QCameraTree`, `QFilterRack`, `QVideoScreen` |
 | Application | `QCamcorder`, `demos/` |
 
+Each directory has a short `README.md` that says what it is for.  `lib/`
+holds the base classes that you subclass (cameras, filters, readers and
+writers) and the machinery that they run on; `cameras/`, `filters/`,
+`dvr/` and `overlays/` hold the implementations, `demos/` the example
+applications and `interactive/` the notebook interface.
+
 `docs/architecture.rst` describes the layers in more detail, and
 `CLAUDE.md` is a concise reference to the conventions of the code.
 

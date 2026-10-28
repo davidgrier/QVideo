@@ -165,6 +165,121 @@ class TestCameraProxy(unittest.TestCase):
                 proxy._ensure_open()
 
 
+class TestCameraFilters(unittest.TestCase):
+
+    def _make_proxy(self, frames=None):
+        cam = make_mock_noise_camera()
+        if frames is not None:
+            cam.saferead.side_effect = [(True, f) for f in frames]
+        proxy = _CameraProxy([('noise', 0)])
+        with patch('QVideo.lib._camera._open', return_value=cam):
+            proxy._ensure_open()
+        return proxy, cam
+
+    def test_there_are_no_filters_at_first(self):
+        proxy, _ = self._make_proxy()
+        self.assertEqual(proxy.filters, [])
+
+    def test_unfiltered_frames_are_the_cameras_frames(self):
+        proxy, _ = self._make_proxy()
+        np.testing.assert_array_equal(proxy.read(), _FRAME)
+
+    def test_filters_are_applied_in_order(self):
+        proxy, _ = self._make_proxy()
+        proxy.filters = [lambda f: f + 1, lambda f: f * 3]
+        self.assertTrue((proxy.read() == 3).all())
+
+    def test_filters_are_not_forwarded_to_the_camera(self):
+        proxy, cam = self._make_proxy()
+        proxy.filters = [lambda f: f]
+        self.assertNotIsInstance(cam.filters, list)
+
+    def test_the_list_may_be_changed_in_place(self):
+        proxy, _ = self._make_proxy()
+        proxy.filters.append(lambda f: f + 2)
+        self.assertTrue((proxy.read() == 2).all())
+
+    def test_assigning_a_list_copies_it(self):
+        proxy, _ = self._make_proxy()
+        filters = [lambda f: f]
+        proxy.filters = filters
+        proxy.filters.append(lambda f: f)
+        self.assertEqual(len(filters), 1)
+
+    def test_an_empty_list_returns_raw_frames(self):
+        proxy, _ = self._make_proxy()
+        proxy.filters = [lambda f: f + 1]
+        proxy.filters = []
+        np.testing.assert_array_equal(proxy.read(), _FRAME)
+
+    def test_a_filter_that_raises_is_reported_and_removed(self):
+        def broken(frame):
+            raise ValueError('oops')
+
+        proxy, _ = self._make_proxy()
+        good = lambda f: f + 1
+        proxy.filters = [broken, good]
+        with self.assertLogs('QVideo.lib._camera', 'WARNING') as logs:
+            frame = proxy.read()
+        self.assertIn('broken', logs.output[0])
+        self.assertIn('oops', logs.output[0])
+        self.assertEqual(proxy.filters, [good])
+        self.assertTrue((frame == 1).all())
+
+    def test_a_filter_without_a_result_asks_for_another_frame(self):
+        frames = [np.full((2, 2), n, np.uint8) for n in range(3)]
+        seen = []
+
+        def third(frame):
+            seen.append(int(frame[0, 0]))
+            return frame if len(seen) == 3 else None
+
+        proxy, cam = self._make_proxy(frames)
+        proxy.filters = [third]
+        self.assertEqual(int(proxy.read()[0, 0]), 2)
+        self.assertEqual(seen, [0, 1, 2])
+        self.assertEqual(cam.saferead.call_count, 3)
+
+    def test_a_failed_read_still_raises(self):
+        proxy, cam = self._make_proxy()
+        cam.saferead.return_value = (False, None)
+        proxy.filters = [lambda f: f]
+        with self.assertRaises(RuntimeError):
+            proxy.read()
+
+    def test_the_filters_of_the_library_work(self):
+        from QVideo.filters import InvertFilter
+        proxy, _ = self._make_proxy()
+        proxy.filters = [InvertFilter()]
+        self.assertTrue((proxy.read() == 255).all())
+
+    def test_live_view_shows_the_filtered_frames(self):
+        proxy, cam = self._make_proxy()
+        proxy.filters = [lambda f: f + 7]
+        shown = []
+        fake = MagicMock(side_effect=lambda read, fps: shown.append(read()))
+        with patch.object(_jupyter(), 'live_view', fake):
+            proxy.live_view()
+        self.assertTrue((shown[0] == 7).all())
+
+
+class TestApplication(unittest.TestCase):
+
+    def test_the_application_that_a_camera_makes_stays_alive(self):
+        # Needs a process of its own: this one already has an application.
+        import os
+        import subprocess
+        import sys
+        code = ('from qtpy.QtWidgets import QApplication\n'
+                'from QVideo import Camera\n'
+                "Camera('Noise').read()\n"
+                'print(QApplication.instance() is not None)')
+        env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
+        result = subprocess.run([sys.executable, '-c', code], env=env,
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.stdout.split()[-1], 'True', result.stderr)
+
+
 class TestOpenErrors(unittest.TestCase):
 
     def test_open_records_exception(self):

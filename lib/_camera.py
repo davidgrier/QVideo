@@ -63,11 +63,19 @@ def _probe(key: str) -> bool:
         return False
 
 
+_qapp = None  # keeps the application that _ensure_qapp makes alive
+
+
 def _ensure_qapp() -> None:
-    '''Create a QApplication if none exists (required before any QCamera).'''
+    '''Create a QApplication if none exists (required before any QCamera).
+
+    The application is kept in a module variable: if nothing refers to it,
+    Python deletes it again as soon as this function returns.
+    '''
+    global _qapp
     from qtpy.QtWidgets import QApplication
     if QApplication.instance() is None:
-        QApplication([])
+        _qapp = QApplication([])
 
 
 def _open(key: str, camera_id: int = 0, errors: list | None = None):
@@ -193,12 +201,37 @@ def _notebook(feature: str):
             'Install it with: pip install ipywidgets') from ex
 
 
+def _apply(filters: list, frame: 'Image') -> 'Image | None':
+    '''Run *frame* through *filters*, in order.
+
+    Returns ``None`` if a filter has no result yet (a filter that averages
+    over several frames, for example).  A filter that raises is reported
+    and removed from *filters*, as the pipeline of a Qt application does.
+    '''
+    for video_filter in list(filters):
+        try:
+            frame = video_filter(frame)
+        except Exception as ex:
+            name = getattr(video_filter, '__name__',
+                           type(video_filter).__name__)
+            logger.warning(f'{name} failed and was removed from '
+                           f'camera.filters: {ex}')
+            filters.remove(video_filter)
+            continue
+        if frame is None:
+            return None
+    return frame
+
+
 class _CameraProxy:
     '''Wraps discovered camera backends; usable immediately and awaitable.
 
     Attribute access and ``read()`` are forwarded to the first successfully
     opened backend.  ``await proxy`` in a Jupyter cell probes all candidates,
     prints which cameras were found, and opens the first working one.
+
+    ``filters`` is a list of callables that ``read()`` (and so
+    ``live_view()``) applies to every frame, in order.
     '''
 
     def __init__(self, candidates: list[tuple[str, int]]) -> None:
@@ -206,6 +239,29 @@ class _CameraProxy:
         object.__setattr__(self, '_selected_key', None)
         object.__setattr__(self, '_camera', None)
         object.__setattr__(self, '_live_view', None)
+        object.__setattr__(self, '_filters', [])
+
+    @property
+    def filters(self) -> list:
+        '''Callables that :meth:`read` applies to every frame, in order.
+
+        Any callable that takes a frame and returns a frame will do,
+        including the filters in :mod:`QVideo.filters`.  Assign a list, or
+        change the list in place::
+
+            camera.filters = [DarkFrameFilter(), GammaFilter()]
+            camera.filters.append(EdgeFilter())
+
+        A filter that raises is reported and removed.  A filter that has no
+        result yet, such as an average over several frames, makes
+        :meth:`read` take another frame.  ``camera.filters = []`` returns
+        to raw frames.
+        '''
+        return object.__getattribute__(self, '_filters')
+
+    @filters.setter
+    def filters(self, filters) -> None:
+        object.__setattr__(self, '_filters', list(filters))
 
     def _ensure_open(self) -> None:
         if object.__getattribute__(self, '_camera') is not None:
@@ -234,19 +290,25 @@ class _CameraProxy:
                 + (f':\n{_describe(errors)}' if errors else ''))
 
     def read(self) -> 'Image':
-        '''Read one frame and return it as a numpy array.'''
+        '''Read one frame, apply :attr:`filters`, return it as an array.'''
         self._ensure_open()
         camera = object.__getattribute__(self, '_camera')
-        ok, frame = camera.saferead()
-        if not ok or frame is None:
-            raise RuntimeError('Camera read failed')
-        return frame
+        while True:
+            ok, frame = camera.saferead()
+            if not ok or frame is None:
+                raise RuntimeError('Camera read failed')
+            frame = _apply(self.filters, frame)
+            if frame is not None:
+                return frame
 
     def __getattr__(self, name: str):
         self._ensure_open()
         return getattr(object.__getattribute__(self, '_camera'), name)
 
     def __setattr__(self, name: str, value) -> None:
+        if name == 'filters':
+            object.__setattr__(self, name, value)
+            return
         self._ensure_open()
         setattr(object.__getattribute__(self, '_camera'), name, value)
 

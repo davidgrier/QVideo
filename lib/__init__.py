@@ -55,6 +55,7 @@ from .QVideoFilter import VideoFilter, QVideoFilter
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
 from ._camera import Camera
+from ._filter import Filter
 from .chooser import choose_camera
 from ._launch import launch
 from .QListCameras import QListCameras
@@ -65,7 +66,7 @@ from .QScrollPanel import QScrollPanel
 
 __all__ = '''Image
            FrameInfo
-clickable Camera choose_camera launch QListCameras
+clickable Camera Filter choose_camera launch QListCameras
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
 QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen

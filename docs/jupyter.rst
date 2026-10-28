@@ -168,6 +168,74 @@ Pass ``fps`` to control the display update rate (default 30):
 
        pip install "QVideo[jupyter]"
 
+Filtering frames
+----------------
+
+``camera.filters`` is a list of filters that ``camera.read()`` and
+``camera.live_view()`` apply to every frame, in order.  Use any of the
+filters in :mod:`QVideo.filters`, or any function that takes a frame and
+returns a frame:
+
+.. code-block:: python
+
+   from QVideo.filters import DarkFrameFilter, GammaFilter
+
+   camera = await Camera()
+   gamma = GammaFilter()
+   camera.filters = [DarkFrameFilter(), gamma]
+   camera.live_view()           # shows the filtered video
+   frame = camera.read()        # a filtered frame
+
+Change the list while the feed runs and the next frame uses it:
+
+.. code-block:: python
+
+   camera.filters.append(lambda frame: 255 - frame)
+   camera.filters = []          # back to raw frames
+
+Filters have settings, which you change on the filter itself, for example
+``gamma.gamma = 0.5``; the documentation of each filter names them.
+
+- A filter that raises is reported with a warning and removed from the
+  list; the feed continues with the others.
+- A filter that needs several frames before it has a result, such as an
+  average, makes ``read()`` take more frames until it has one.
+- Filters run in the notebook's own process, one frame at a time, so a slow
+  filter lowers the rate of the display but not what the camera captures.
+
+Finding filters by name
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``Filter()`` lists the filters that QVideo provides, and ``Filter('name')``
+builds them, so that a notebook needs no imports:
+
+.. code-block:: python
+
+   from QVideo import Camera, Filter
+
+   Filter()                         # ['Blob', 'Canny', 'Cartoon', ...]
+
+   camera = await Camera()
+   camera.filters = Filter('Smoothing', 'Canny')
+   camera.filters = Filter(['Smoothing', 'Canny'])    # the same
+
+Case and spaces do not matter (``'darkframe'`` finds ``'Dark Frame'``), and
+a name that does not exist raises an error that suggests the nearest ones.
+The filters come with their default settings; change them through the list:
+
+.. code-block:: python
+
+   camera.filters[1].threshold1 = 50
+
+A filter that needs a calibration, such as ``'Dark Frame'`` or
+``'Flat Field'``, passes frames through until it has one.  Keep the filter
+and call ``capture()`` to take the calibration from the next frame:
+
+.. code-block:: python
+
+   camera.filters = Filter('Dark Frame')
+   camera.filters[0].capture()
+
 Acquiring a sequence of frames
 -------------------------------
 

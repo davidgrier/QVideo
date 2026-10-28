@@ -11,6 +11,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **`Filter()`: find filters by name.**  `Filter()` lists the filters that
+  QVideo provides and `Filter('Smoothing', 'Canny')` builds them from their
+  display names, ignoring case and spaces, so that
+  `camera.filters = Filter('Smoothing', 'Canny')` needs no imports.  A
+  wrong name raises an error that suggests the nearest ones.
+
+- **`camera.filters` in notebooks.**  The camera that `Camera()` returns
+  has a list of filters that `read()` and `live_view()` apply to every
+  frame, in order: `camera.filters = [DarkFrameFilter(), GammaFilter()]`.
+  Any filter of `QVideo.filters` or any function of a frame will do; a
+  filter that raises is reported and removed, and one that has no result
+  yet makes `read()` take another frame.
+
 - **Hardware timestamps for GenICam cameras.**
   `FrameInfo.hardware_timestamp` now holds the camera's own timestamp for
   each frame, in seconds, for every GenICam camera (Basler, FLIR, IDS, MV,
@@ -93,6 +106,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the PyAV writer.
 
 ### Fixed
+
+- **`Camera()` no longer loses the application it makes.**  When a
+  script or notebook had no `QApplication`, `Camera()` made one without
+  keeping a reference, so Python deleted it again at once and anything
+  that built a widget afterwards stopped with "Must construct a
+  QApplication before a QWidget".  The application now lives as long as
+  the process.
 
 - **The first recording of a session no longer stops itself.**  `av` was
   imported when the first frame arrived, which held up the writer for a

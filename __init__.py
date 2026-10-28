@@ -7,10 +7,11 @@ except RuntimeError as error:
         'pip install "QVideo[pyqt6]" (recommended) or '
         'pip install "QVideo[pyqt5]"') from error
 from QVideo.lib._camera import Camera
+from QVideo.lib._filter import Filter
 
 try:
     __version__ = version('QVideo')
 except PackageNotFoundError:  # not installed (e.g. bare source checkout)
     __version__ = 'unknown'
 
-__all__ = ['Camera', '__version__']
+__all__ = ['Camera', 'Filter', '__version__']

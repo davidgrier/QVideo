@@ -1,8 +1,12 @@
 '''GenTL environment helpers and a command-line diagnostic.
 
-This module deliberately imports nothing from ``harvesters`` or
-``genicam`` at module level, so that it works when those packages are
-missing.  Run it to find out why a GenICam camera cannot be opened::
+This is the diagnostic of the :mod:`QVideo.cameras.Genicam` family: the
+Flir, Basler, IDS, MV and VimbaX backends are subclasses of the GenICam
+camera and share it.  It lives beside that package, not in it, because
+importing :mod:`QVideo.cameras.Genicam` fails when ``harvesters`` or
+``genicam`` are missing, which is the case that the diagnostic must handle.
+So this module deliberately imports nothing from them at module level.
+Run it to find out why a GenICam camera cannot be opened::
 
     python -m QVideo.cameras.gentl Spinnaker_GenTL.cti
 

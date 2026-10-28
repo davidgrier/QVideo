@@ -11,6 +11,12 @@ Requires the ``genicam`` and ``harvesters`` packages::
 
     pip install genicam harvesters
 
+If a camera of this family cannot be opened, ``python -m
+QVideo.cameras.gentl`` (see :mod:`QVideo.cameras.gentl`) diagnoses the
+Python packages, the ``GENICAM_GENTL64_PATH`` variable and the producer
+file.  It is a module of its own because it must run when the packages
+above are missing.
+
 Classes
 -------
 QGenicamCamera

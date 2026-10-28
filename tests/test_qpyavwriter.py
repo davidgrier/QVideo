@@ -120,15 +120,6 @@ class TestQPyAVWriter(unittest.TestCase):
         self.assertFalse(ok)
         self.assertFalse(writer.isOpen())
 
-    def test_a_change_of_shape_stops_the_recording(self):
-        writer = QPyAVWriter(str(self.dir / 'a.mkv'), fps=30)
-        done = record(writer.finished)
-        writer.write(np.zeros((16, 16), np.uint8))
-        with self.assertLogs('QVideo.dvr.QPyAVWriter', 'WARNING'):
-            writer.write(np.zeros((16, 20), np.uint8))
-        writer.close()
-        self.assertEqual(len(done), 1)
-
     def test_a_frame_that_is_not_contiguous_is_written(self):
         frame = self.frames((48, 64))[0]
         back = self.read(self.write([frame.T.T[:, ::-1][:, ::-1]]))

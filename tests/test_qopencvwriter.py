@@ -77,10 +77,6 @@ class TestQOpenCVWriterInit(unittest.TestCase):
         writer = make_writer()
         self.assertIsNone(writer._writer)
 
-    def test_shape_is_none_initially(self):
-        writer = make_writer()
-        self.assertIsNone(writer._shape)
-
     def test_codecs_from_avi_extension(self):
         writer = make_writer('test.avi')
         self.assertEqual(writer._codecs, QOpenCVWriter.CODEC_MAP['.avi'])
@@ -127,18 +123,6 @@ class TestQOpenCVWriterOpen(unittest.TestCase):
                 result = writer.open(_FRAME_COLOR)
         self.assertFalse(result)
 
-    def test_open_sets_shape_on_success(self):
-        writer = make_writer()
-        with patch('cv2.VideoWriter', return_value=make_mock_vw(True)):
-            writer.open(_FRAME_COLOR)
-        self.assertEqual(writer._shape, _FRAME_COLOR.shape)
-
-    def test_open_does_not_set_shape_on_failure(self):
-        writer = make_writer()
-        with patch('cv2.VideoWriter', return_value=make_mock_vw(False)):
-            with self.assertLogs('QVideo.dvr.QOpenCVWriter', level='WARNING'):
-                writer.open(_FRAME_COLOR)
-        self.assertIsNone(writer._shape)
 
     def test_open_tries_ffv1_first_for_gray_avi(self):
         writer = make_writer('test.avi')
@@ -286,21 +270,6 @@ class TestQOpenCVWriterInternalWrite(unittest.TestCase):
             writer._write(_FRAME_GRAY)
         mock_cvt.assert_not_called()
 
-    def test_write_shape_mismatch_emits_finished(self):
-        writer, _ = self._open_writer()
-        received = []
-        writer.finished.connect(lambda: received.append(True))
-        with self.assertLogs('QVideo.dvr.QOpenCVWriter', level='WARNING'):
-            writer._write(np.zeros((240, 320, 3), dtype=np.uint8))
-        self.assertEqual(len(received), 1)
-
-    def test_write_shape_mismatch_does_not_write(self):
-        writer, mock_vw = self._open_writer()
-        with self.assertLogs('QVideo.dvr.QOpenCVWriter', level='WARNING'):
-            writer._write(np.zeros((240, 320, 3), dtype=np.uint8))
-        mock_vw.write.assert_not_called()
-
-
 class TestQOpenCVWriterClose(unittest.TestCase):
 
     def test_close_releases_video_writer(self):
@@ -317,13 +286,6 @@ class TestQOpenCVWriterClose(unittest.TestCase):
             writer.open(_FRAME_COLOR)
         writer.close()
         self.assertIsNone(writer._writer)
-
-    def test_close_clears_shape(self):
-        writer = make_writer()
-        with patch('cv2.VideoWriter', return_value=make_mock_vw(True)):
-            writer.open(_FRAME_COLOR)
-        writer.close()
-        self.assertIsNone(writer._shape)
 
     def test_isopen_false_after_close(self):
         writer = make_writer()

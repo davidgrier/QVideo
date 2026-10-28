@@ -66,7 +66,9 @@ class QRecorder(QtCore.QObject):
         allowed, with the lag in seconds.
     stopped(str)
         Emitted with the reason when the recorder stops a recording by
-        itself, just before ``recording(False)``.
+        itself, just before ``recording(False)``: it fell behind the
+        camera, or the writer could not go on (the size of the frames
+        changed, the file could not be written).
 
     Examples
     --------
@@ -195,7 +197,7 @@ class QRecorder(QtCore.QObject):
         self._nframes, self._rate = writer.target, fps / nskip
         self._monitor.start(writer, fps, self.lagLimit, self.maxMemory)
         writer.frameNumber.connect(self.frameNumber)
-        writer.finished.connect(self.stop)
+        writer.finished.connect(self._writerFinished)
         self._thread = QtCore.QThread()
         writer.moveToThread(self._thread)
         self._shutdown.connect(writer.shutdown)
@@ -218,7 +220,7 @@ class QRecorder(QtCore.QObject):
             self._source.newFrame.disconnect(self._writer.write)
             self._source.newFrame.disconnect(self._monitor.check)
             self._writer.frameNumber.disconnect(self.frameNumber)
-            self._writer.finished.disconnect(self.stop)
+            self._writer.finished.disconnect(self._writerFinished)
         except (RuntimeError, TypeError):
             logger.debug('Some recording signals were already disconnected')
         self._monitor.stop()
@@ -227,6 +229,16 @@ class QRecorder(QtCore.QObject):
         self._thread = None
         self._writer = None
         self.recording.emit(False)
+
+    @QtCore.Slot(str)
+    def _writerFinished(self, reason: str) -> None:
+        '''Stop the recording, saying why if the writer could not go on.'''
+        if not self.isRecording():
+            return
+        if reason:
+            logger.error(reason)
+            self.stopped.emit(reason)
+        self.stop()
 
     def _fellBehind(self, lag: float) -> None:
         '''Stop the recording, if that is the policy, as it falls behind.'''

@@ -205,7 +205,7 @@ class TestFileSelection(unittest.TestCase):
 class FakeWriter(QtCore.QObject):
     '''Records what it is asked to write.'''
 
-    finished = QtCore.Signal()
+    finished = QtCore.Signal(str)
     made = []
     fail_after = None
 
@@ -219,7 +219,7 @@ class FakeWriter(QtCore.QObject):
     def write(self, frame, info=None):
         self.written.append((frame, info))
         if len(self.written) == self.fail_after:
-            self.finished.emit()
+            self.finished.emit('it failed')
 
     def close(self):
         self.closed = True

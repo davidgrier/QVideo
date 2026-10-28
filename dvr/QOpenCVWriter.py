@@ -28,10 +28,6 @@ class QOpenCVWriter(QVideoWriter):
     is used only for color frames, because it changes the values of gray
     frames and is several times faster than FFV1 only for color.
 
-    If the shape of a subsequent frame differs from the first, recording
-    stops immediately and :attr:`~QVideo.lib.QVideoWriter.finished` is
-    emitted.
-
     Parameters
     ----------
     filename : str
@@ -72,7 +68,6 @@ class QOpenCVWriter(QVideoWriter):
         self._colorCodecs = (self._codecs if codec else
                              self.COLOR_CODEC_MAP.get(suffix, self._codecs))
         self._writer = None
-        self._shape = None
 
     def open(self, frame: Image) -> bool:
         '''Open the video file using the first available codec.
@@ -95,10 +90,7 @@ class QOpenCVWriter(QVideoWriter):
         '''
         color = (frame.ndim == 3)
         self._writer = self._getWriter(frame.shape, color)
-        if self._writer is not None:
-            self._shape = frame.shape
-            return True
-        return False
+        return self._writer is not None
 
     def _getWriter(self,
                    shape: tuple[int, ...],
@@ -135,17 +127,11 @@ class QOpenCVWriter(QVideoWriter):
         return (self._writer is not None) and self._writer.isOpened()
 
     def _write(self, frame: Image, info: FrameInfo | None = None) -> None:
-        '''Write *frame* to the video file, stopping if the shape changes.
+        '''Write *frame* to the video file.
 
         The capture metadata *info* is not stored: video containers
         record only a nominal frame rate.
         '''
-        if frame.shape != self._shape:
-            logger.warning(
-                f'Frame shape {frame.shape} does not match '
-                f'expected {self._shape}: stopping recording')
-            self.finished.emit()
-            return
         if frame.ndim == 3:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         self._writer.write(frame)
@@ -155,4 +141,3 @@ class QOpenCVWriter(QVideoWriter):
         if self.isOpen():
             self._writer.release()
         self._writer = None
-        self._shape = None

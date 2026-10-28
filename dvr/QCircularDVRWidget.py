@@ -185,7 +185,8 @@ class QCircularDVRWidget(QtWidgets.QWidget):
             return False
         writer = writer_class(filename, fps=fps, nframes=len(frames))
         failed = []
-        writer.finished.connect(lambda: failed.append(True))
+        writer.finished.connect(
+            lambda reason: reason and failed.append(reason))
         for frame, info in frames:
             writer.write(frame, info)
             if failed:

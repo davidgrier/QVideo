@@ -11,6 +11,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Writers say why they stop.**  `QVideoWriter.finished` now carries a
+  string: empty when the writer has the frames that it was asked for,
+  otherwise an explanation.  A writer stops, once, when the size or type
+  of the frames changes (a writer whose format can store such frames sets
+  `fixedSize = False`), when the file cannot be opened or when writing
+  raises an exception, instead of failing again with every frame.
+  `QRecorder` and `QDVRWidget` report the explanation through `stopped`
+  and end the recording.
+
 - **`QSourceSelector`.**  `QVideo.dvr.QSourceSelector` is a group of radio
   buttons that chooses which source of frames to record: add each source
   with a name and connect `sourceChanged` to the recorder.  It is disabled
@@ -97,6 +106,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QVideoWriter.finished` carries a string.**  A slot of your own
+  should take it: the reason that the writer stopped, empty if all is
+  well.
+
 - **`await Camera()` no longer asks about the simulated camera.**  A
   single real camera is opened without a question (it used to show a
   chooser for the camera and Noise), and Noise alone says that no hardware
@@ -136,6 +149,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the PyAV writer.
 
 ### Fixed
+
+- **Composite recording works.**  The rendered scene that a screen emits
+  in `composite` mode had four channels (RGBA), which the PyAV writer
+  refused ("Unexpected numpy array shape"), so recording from
+  `CombinedDemo` or `CompositeDemo` failed.  It now has three, like every
+  color frame.
 
 - **`Camera()` no longer loses the application it makes.**  When a
   script or notebook had no `QApplication`, `Camera()` made one without

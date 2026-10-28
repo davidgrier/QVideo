@@ -225,7 +225,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._composite = bool(value)
 
     def _renderComposite(self) -> Image:
-        '''Capture the widget (video + overlays) as an RGBA numpy array.
+        '''Capture the widget (video + overlays) as an RGB numpy array.
 
         Uses :meth:`QWidget.grab` to snapshot the widget's current visual
         state.  This avoids painter conflicts that arise from rendering the
@@ -235,12 +235,15 @@ class QVideoScreen(GraphicsLayoutWidget):
         Returns
         -------
         numpy.ndarray
-            Array of shape ``(H, W, 4)`` and dtype ``uint8``.
-            Returns an empty ``(0, 0, 4)`` array if the widget has no size.
+            Array of shape ``(H, W, 3)`` and dtype ``uint8``, like every
+            color frame (a grab is opaque, so it has no alpha channel).
+            *H* and *W* are even: an odd last row or column is dropped,
+            because video encoders need it.
+            Returns an empty ``(0, 0, 3)`` array if the widget has no size.
         '''
         pixmap = self.grab()
         if pixmap.isNull():
-            return np.empty((0, 0, 4), dtype=np.uint8)
+            return np.empty((0, 0, 3), dtype=np.uint8)
         try:
             fmt = QtGui.QImage.Format.Format_RGBA8888
         except AttributeError:
@@ -250,7 +253,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         ptr = qimage.bits()
         if hasattr(ptr, 'setsize'):
             ptr.setsize(h * w * 4)
-        return np.frombuffer(ptr, np.uint8).reshape(h, w, 4).copy()
+        scene = np.frombuffer(ptr, np.uint8).reshape(h, w, 4)
+        # H.264 cannot encode an odd number of pixels
+        return scene[:h // 2 * 2, :w // 2 * 2, :3].copy()
 
     def addOverlay(self, item: object) -> None:
         '''Add a graphics item to the view

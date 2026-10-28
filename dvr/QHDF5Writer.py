@@ -174,14 +174,6 @@ class QHDF5Writer(QVideoWriter):
             info = FrameInfo(0, perf_counter())
         if self._frames is None:
             self._create(frame, info)
-        elif (frame.shape, frame.dtype) != (self._frames.shape[1:],
-                                            self._frames.dtype):
-            logger.warning(
-                f'Frame of shape {frame.shape} and type {frame.dtype} does '
-                f'not match the file, {self._frames.shape[1:]} and '
-                f'{self._frames.dtype}: stopping recording')
-            self.finished.emit()
-            return
         n = len(self._frames)
         self._frames.resize(n + 1, axis=0)
         self._frames[n] = frame

@@ -378,18 +378,24 @@ class TestParentsFollowTheShape(unittest.TestCase):
 
 
 class TestRenderComposite(unittest.TestCase):
-    '''The composite frame is a grab of the widget as RGBA bytes.'''
+    '''The composite frame is a grab of the widget as an RGB array.'''
 
-    def test_the_grab_becomes_an_rgba_array_of_its_size(self):
+    def test_the_grab_becomes_an_rgb_array_of_its_size(self):
         screen = make_screen()
         screen.resize(64, 48)
         picture = screen._renderComposite()
         self.assertEqual(picture.dtype, np.uint8)
         self.assertEqual(picture.ndim, 3)
-        self.assertEqual(picture.shape[2], 4)
+        self.assertEqual(picture.shape[2], 3)
         grabbed = screen.grab()
         self.assertEqual(picture.shape[:2],
-                         (grabbed.height(), grabbed.width()))
+                         (grabbed.height() // 2 * 2, grabbed.width() // 2 * 2))
+
+    def test_the_size_is_even_so_that_video_encoders_accept_it(self):
+        screen = make_screen()
+        screen.resize(61, 47)
+        height, width = screen._renderComposite().shape[:2]
+        self.assertEqual((height % 2, width % 2), (0, 0))
 
     def test_the_array_does_not_share_the_memory_of_the_image(self):
         screen = make_screen()
@@ -402,7 +408,7 @@ class TestRenderComposite(unittest.TestCase):
         screen = make_screen()
         with patch.object(screen, 'grab', return_value=QtGui.QPixmap()):
             picture = screen._renderComposite()
-        self.assertEqual(picture.shape, (0, 0, 4))
+        self.assertEqual(picture.shape, (0, 0, 3))
 
 
 class TestFitToVideo(unittest.TestCase):

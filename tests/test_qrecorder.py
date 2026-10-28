@@ -268,5 +268,64 @@ class TestRemedy(RecorderCase):
         self.assertIn('faster disk', remedy)
 
 
+class TestFrameSize(RecorderCase):
+
+    def test_a_writer_that_fails_stops_the_recording_with_the_reason(self):
+        self.recorder.start('x.fake')
+        reasons = record(self.recorder.stopped)
+        with self.assertLogs('QVideo.dvr.QRecorder', 'ERROR') as logs:
+            self.writer.finished.emit('the frame size changed')
+        self.assertFalse(self.recorder.isRecording())
+        self.assertEqual(reasons, [('the frame size changed',)])
+        self.assertIn('the frame size changed', logs.output[0])
+
+    def test_the_reason_arrives_before_the_recording_ends(self):
+        self.recorder.start('x.fake')
+        states = []
+        self.recorder.stopped.connect(
+            lambda reason: states.append(self.recorder.isRecording()))
+        with self.assertLogs('QVideo.dvr.QRecorder', 'ERROR'):
+            self.writer.finished.emit('why')
+        self.assertEqual(states, [True])
+
+    def test_a_normal_finish_stops_without_a_reason(self):
+        self.recorder.start('x.fake')
+        reasons = record(self.recorder.stopped)
+        self.writer.finished.emit('')
+        self.assertFalse(self.recorder.isRecording())
+        self.assertEqual(reasons, [])
+
+    def test_a_late_failure_is_ignored(self):
+        self.recorder.start('x.fake')
+        writer = self.writer
+        self.recorder.stop()
+        reasons = record(self.recorder.stopped)
+        writer.finished.emit('late')
+        self.assertEqual(reasons, [])
+
+
+class TestFrameSizeEndToEnd(unittest.TestCase):
+    '''A real writer in its thread, and a source whose frames change size.'''
+
+    def setUp(self):
+        self.folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.folder, True)
+        self.source = FakeSource()
+        self.recorder = QRecorder(self.source)
+        self.addCleanup(self.recorder.stop)
+
+    def test_the_recording_stops_when_the_size_changes(self):
+        self.recorder.start(str(Path(self.folder) / 'x.h5'))
+        reasons = record(self.recorder.stopped)
+        self.source.newFrame.emit(_FRAME, FrameInfo(0, 10.))
+        with self.assertLogs('QVideo.dvr.QRecorder', 'ERROR'):
+            self.source.newFrame.emit(np.zeros((6, 8), np.uint8),
+                                      FrameInfo(1, 10.1))
+            self.assertTrue(
+                until(lambda: not self.recorder.isRecording()))
+        self.assertEqual(len(reasons), 1)
+        self.assertIn('frame size changed', reasons[0][0])
+
+
 if __name__ == '__main__':
     unittest.main()

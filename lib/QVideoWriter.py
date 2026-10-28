@@ -43,8 +43,11 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
     frameNumber(int)
         Emitted when a frame is written, providing the number of frames
         written so far.
-    finished()
-        Emitted when the video writing is finished.
+    finished(str)
+        Emitted once when the writer stops, with the reason: an empty
+        string when it has the frames that it was asked for, otherwise an
+        explanation.  A writer that has stopped ignores the frames that
+        follow.
 
     Slots
     -----
@@ -97,7 +100,11 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
     #: Emitted when a new frame is written, with the current frame number.
     frameNumber = QtCore.Signal(int)
     #: Emitted when video writing is complete.
-    finished = QtCore.Signal()
+    finished = QtCore.Signal(str)
+
+    #: Whether the file has one frame size and type.  A writer that can
+    #: store frames of different sizes sets this to ``False``.
+    fixedSize = True
 
     def __init__(self,
                  filename: str,
@@ -113,6 +120,8 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         self.target = nframes
         self.blank = False
         self.received: FrameInfo | None = None
+        self._frameType: tuple[tuple[int, ...], np.dtype] | None = None
+        self._stopped = False
 
     @abstractmethod
     def open(self, frame: Image) -> bool:
@@ -143,9 +152,14 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
 
         Opens the file on the first call, writes every :attr:`nskip`-th
         frame received (starting with the first), and emits
-        :attr:`finished` when :attr:`nframes` have been written or when
-        the file cannot be opened.  :attr:`framenumber` counts frames
-        received, written or not.
+        :attr:`finished` when :attr:`nframes` have been written.
+        :attr:`framenumber` counts frames received, written or not.
+
+        The writer stops, with :attr:`finished` saying why (``''`` when all is
+        well), when the file
+        cannot be opened, when a frame has a size or type other than that
+        of the first (unless :attr:`fixedSize` is ``False``), and when
+        writing raises an exception.  It then ignores every frame.
 
         Parameters
         ----------
@@ -156,20 +170,49 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
             :attr:`~QVideo.lib.QVideoSource.newFrame`.  If omitted, the
             frame is stamped with the current time.
         '''
+        if self._stopped:
+            return
         if info is None:
             info = FrameInfo(self.framenumber, perf_counter())
         self.received = info
         if not self.isOpen() and not self.open(frame):
             logger.warning(f'Could not write to {self.filename}')
-            self.finished.emit()
+            self._stop(f'could not open {self.filename!r}')
+            return
+        if self._frameType is None:
+            self._frameType = frame.shape, frame.dtype
+        elif self.fixedSize and (frame.shape,
+                                 frame.dtype) != self._frameType:
+            self._stop(self._changed(frame))
             return
         if self.framenumber >= self.target * self.nskip:
-            self.finished.emit()
+            self._stop()
             return
         if self.framenumber % self.nskip == 0:
-            self._write(np.zeros_like(frame) if self.blank else frame, info)
+            try:
+                self._write(np.zeros_like(frame) if self.blank else frame,
+                            info)
+            except Exception as error:
+                logger.exception(f'Could not write to {self.filename}')
+                self._stop(f'{type(error).__name__}: {error}')
+                return
             self.frameNumber.emit(self.framenumber // self.nskip + 1)
         self.framenumber += 1
+
+    def _stop(self, reason: str = '') -> None:
+        '''Stop writing; *reason* is empty if all is well.'''
+        self._stopped = True
+        self.finished.emit(reason)
+
+    def _changed(self, frame: Image) -> str:
+        '''Describe a frame that differs from the frames of the file.'''
+        def describe(shape, dtype):
+            size = 'x'.join(str(n) for n in reversed(shape))
+            return f'{size} {dtype}'
+        return (f'the frame size changed from {describe(*self._frameType)} '
+                f'to {describe(frame.shape, frame.dtype)} during the '
+                'recording, and a file has only one; a filter or a '
+                'resized window may have changed it')
 
     @abstractmethod
     def _write(self, frame: Image, info: FrameInfo) -> None:

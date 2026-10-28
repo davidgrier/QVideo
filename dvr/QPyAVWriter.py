@@ -29,10 +29,6 @@ class QPyAVWriter(QVideoWriter):
     The file is opened lazily on the first frame so that frame dimensions
     and color mode can be determined automatically.
 
-    If the shape of a subsequent frame differs from the first, recording
-    stops immediately and :attr:`~QVideo.lib.QVideoWriter.finished` is
-    emitted.
-
     The ``av`` package is optional: it is imported when the first file is
     opened.
 
@@ -68,7 +64,6 @@ class QPyAVWriter(QVideoWriter):
         self._container = None
         self._stream = None
         self._format = None
-        self._shape = None
         self._index = 0
 
     def open(self, frame: Image) -> bool:
@@ -110,7 +105,7 @@ class QPyAVWriter(QVideoWriter):
             logger.warning(f'Could not open {self.filename!r}: {ex}')
             return False
         self._container, self._stream = container, stream
-        self._shape, self._index = frame.shape, 0
+        self._index = 0
         return True
 
     def _pixelFormat(self, codec: str) -> str:
@@ -124,17 +119,11 @@ class QPyAVWriter(QVideoWriter):
         return self._container is not None
 
     def _write(self, frame: Image, info: FrameInfo | None = None) -> None:
-        '''Write *frame* to the video file, stopping if the shape changes.
+        '''Write *frame* to the video file.
 
         The capture metadata *info* is not stored: the frames are
         written at a constant frame rate.
         '''
-        if frame.shape != self._shape:
-            logger.warning(
-                f'Frame shape {frame.shape} does not match '
-                f'expected {self._shape}: stopping recording')
-            self.finished.emit()
-            return
         picture = self._av.VideoFrame.from_ndarray(
             np.ascontiguousarray(frame), format=self._format)
         picture.pts = self._index
@@ -150,4 +139,3 @@ class QPyAVWriter(QVideoWriter):
             self._container.close()
         self._container = None
         self._stream = None
-        self._shape = None

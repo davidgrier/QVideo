@@ -242,11 +242,11 @@ class TestFramesThatDoNotMatch(WriterCase):
     def check(self, other):
         writer = self.make()
         writer.write(_FRAME, FrameInfo(0, 1.))
-        finished = record(writer.finished)
-        with self.assertLogs('QVideo.dvr.QHDF5Writer', 'WARNING'):
-            writer.write(other, FrameInfo(1, 2.))
+        stops = record(writer.finished)
+        writer.write(other, FrameInfo(1, 2.))
         writer.close()
-        self.assertEqual(len(finished), 1)
+        self.assertEqual(len(stops), 1)
+        self.assertIn('size changed', stops[0][0])
         with h5py.File(self.path, 'r') as f:
             self.assertEqual(f['frames'].shape[0], 1)
             self.assertEqual(f['timestamp'].shape[0], 1)

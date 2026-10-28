@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 from qtpy import QtCore, QtWidgets
 from QVideo.tests.signals import record
+from unittest.mock import patch
 from QVideo.lib.QVideoWriter import QVideoWriter
 from QVideo.lib.videotypes import FrameInfo
 
@@ -321,6 +322,84 @@ class TestQVideoWriterWriteFrame(unittest.TestCase):
         frame = np.ones((480, 640), dtype=np.uint8) * 128
         w.write(frame)
         np.testing.assert_array_equal(w._written[0], frame)
+
+
+class TestQVideoWriterStopping(unittest.TestCase):
+    '''A writer says once why it stopped, and then writes nothing.'''
+
+    def setUp(self):
+        self.writer = _ConcreteWriter('out.avi')
+        self.stops = record(self.writer.finished)
+        self.writer.write(_FRAME)
+
+    def test_frames_of_the_same_size_are_written(self):
+        self.writer.write(_FRAME)
+        self.assertEqual(len(self.writer._written), 2)
+        self.assertEqual(self.stops, [])
+
+    def test_a_frame_of_another_size_is_not_written(self):
+        self.writer.write(np.zeros((6, 8), dtype=np.uint8))
+        self.assertEqual(len(self.writer._written), 1)
+
+    def test_a_change_of_size_says_so_with_both_sizes(self):
+        self.writer.write(np.zeros((6, 8), dtype=np.uint8))
+        (reason,), = self.stops
+        self.assertIn(f'{_FRAME.shape[1]}x{_FRAME.shape[0]} uint8', reason)
+        self.assertIn('8x6 uint8', reason)
+
+    def test_a_change_of_color_mode_is_a_change_of_size(self):
+        self.writer.write(np.zeros(_FRAME.shape + (3,), dtype=np.uint8))
+        self.assertIn('size changed', self.stops[0][0])
+
+    def test_a_change_of_type_is_an_error_too(self):
+        self.writer.write(_FRAME.astype(np.uint16))
+        self.assertIn('uint16', self.stops[0][0])
+
+    def test_a_writer_that_allows_any_size_accepts_a_change(self):
+        class Flexible(_ConcreteWriter):
+            fixedSize = False
+        writer = Flexible('out.avi')
+        stops = record(writer.finished)
+        writer.write(_FRAME)
+        writer.write(np.zeros((6, 8), dtype=np.uint8))
+        self.assertEqual(len(writer._written), 2)
+        self.assertEqual(stops, [])
+
+    def test_nothing_is_written_after_stopping(self):
+        self.writer.write(np.zeros((6, 8), dtype=np.uint8))
+        self.writer.write(_FRAME)
+        self.assertEqual(len(self.writer._written), 1)
+        self.assertEqual(len(self.stops), 1)
+
+    def test_skipped_frames_are_checked_too(self):
+        writer = _ConcreteWriter('out.avi', nskip=3)
+        stops = record(writer.finished)
+        writer.write(_FRAME)
+        writer.write(np.zeros((6, 8), dtype=np.uint8))
+        self.assertEqual(len(stops), 1)
+
+    def test_the_target_is_a_normal_stop_with_no_message(self):
+        writer = _ConcreteWriter('out.avi', nframes=1)
+        stops = record(writer.finished)
+        writer.write(_FRAME)
+        writer.write(_FRAME)
+        self.assertEqual(stops, [('',)])
+
+    def test_an_exception_stops_the_writer_and_is_explained(self):
+        writer = _ConcreteWriter('out.avi')
+        stops = record(writer.finished)
+        with patch.object(writer, '_write', side_effect=ValueError('bad')), \
+                self.assertLogs('QVideo.lib.QVideoWriter', 'ERROR'):
+            writer.write(_FRAME)
+        writer.write(_FRAME)
+        self.assertEqual(stops, [('ValueError: bad',)])
+
+    def test_a_file_that_cannot_be_opened_says_so(self):
+        writer = _FailingWriter('out.avi')
+        stops = record(writer.finished)
+        with self.assertLogs('QVideo.lib.QVideoWriter', 'WARNING'):
+            writer.write(_FRAME)
+        self.assertIn('out.avi', stops[0][0])
 
 
 class TestQVideoWriterAbstractBodies(unittest.TestCase):

@@ -31,7 +31,7 @@ class FakeSource(QtCore.QObject):
 
 class FakeWriter(QtCore.QObject):
     '''Behaves like a QVideoWriter, and keeps a note of what it did.'''
-    finished = QtCore.Signal()
+    finished = QtCore.Signal(str)
     frameNumber = QtCore.Signal(int)
     made: list = []
 
@@ -49,7 +49,7 @@ class FakeWriter(QtCore.QObject):
     def write(self, frame, info=None):
         self.threads.add(threading.current_thread())
         if self.written >= self.target:
-            self.finished.emit()
+            self.finished.emit('')
             return
         self.written += 1
         self.frameNumber.emit(self.written)

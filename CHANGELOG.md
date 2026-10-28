@@ -84,6 +84,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`await Camera()` no longer asks about the simulated camera.**  A
+  single real camera is opened without a question (it used to show a
+  chooser for the camera and Noise), and Noise alone says that no hardware
+  was found.  The chooser appears for two or more real cameras, with a
+  line that says to press Open and what to do if the notebook shows
+  `HBox(...)` instead of a drop-down.  The Jupyter chapter now recommends
+  `%pip install "QVideo[pyqt6,jupyter]"` and explains how to get widgets
+  drawn.
+
 - **`QDVRWidget` is the control panel of a recorder and a player.**  It
   keeps the file dialogs and the questions to the user, and does the rest
   through `dvr.recorder` and `dvr.playback`.  Its signals are unchanged.

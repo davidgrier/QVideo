@@ -599,7 +599,7 @@ class TestLiveView(unittest.TestCase):
 
 class TestJupyterChooser(unittest.TestCase):
 
-    _WORKING_TWO = [('opencv', 0), ('noise', 0)]
+    _WORKING_TWO = [('opencv', 0), ('flir', 0)]
     _WORKING_ONE = [('noise', 0)]
     _OPTIONS = [('OpenCV', ('opencv', 0)), ('Noise', ('noise', 0))]
 
@@ -624,11 +624,51 @@ class TestJupyterChooser(unittest.TestCase):
             patch('QVideo.interactive.widgets._display'),
         )
 
-    def test_single_camera_calls_report_and_returns(self):
-        with patch.object(camera_module, '_report') as mock_report:
+    def test_noise_alone_says_that_no_hardware_was_found(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
             result = self._run(camera_module._choose(self._WORKING_ONE))
-        mock_report.assert_called_once_with(self._WORKING_ONE)
         self.assertEqual(result, ('noise', 0))
+        self.assertIn('No camera hardware found', out.getvalue())
+
+    def test_one_real_camera_is_used_without_asking(self):
+        working = [('opencv', 0), ('noise', 0)]
+        with patch.object(camera_module, '_report') as mock_report, \
+                patch.object(camera_module, '_notebook') as notebook:
+            result = self._run(camera_module._choose(working))
+        notebook.assert_not_called()
+        mock_report.assert_called_once_with([('opencv', 0)])
+        self.assertEqual(result, ('opencv', 0))
+
+    def test_the_real_camera_wins_wherever_noise_is_listed(self):
+        working = [('noise', 0), ('opencv', 0)]
+        with patch.object(camera_module, '_report'):
+            result = self._run(camera_module._choose(working))
+        self.assertEqual(result, ('opencv', 0))
+
+    def test_the_prompt_says_how_to_get_past_a_widget_that_is_not_drawn(self):
+        mock_dropdown, mock_button, callbacks = self._make_widget_mocks()
+        out = io.StringIO()
+
+        async def run():
+            async def fire():
+                await asyncio.sleep(0)
+                for cb in callbacks:
+                    cb(None)
+            asyncio.ensure_future(fire())
+            with patch('ipywidgets.Dropdown', return_value=mock_dropdown), \
+                 patch('ipywidgets.Button', return_value=mock_button), \
+                 patch('ipywidgets.HBox', return_value=MagicMock()), \
+                 patch('ipywidgets.Layout', return_value=MagicMock()), \
+                 patch('QVideo.interactive.widgets._display'), \
+                 contextlib.redirect_stdout(out):
+                await camera_module._choose(self._WORKING_TWO)
+
+        self._run(run())
+        text = out.getvalue()
+        self.assertIn('press Open', text)
+        self.assertIn('HBox(...)', text)
+        self.assertIn("Camera('OpenCV')", text)
 
     def test_the_dropdown_labels_the_cameras_by_backend(self):
         mock_dropdown, mock_button, callbacks = self._make_widget_mocks()
@@ -649,7 +689,8 @@ class TestJupyterChooser(unittest.TestCase):
             return dropdown
 
         dropdown = self._run(run())
-        self.assertEqual(dropdown.call_args.kwargs['options'], self._OPTIONS)
+        self.assertEqual(dropdown.call_args.kwargs['options'],
+                         [('OpenCV', ('opencv', 0)), ('Flir', ('flir', 0))])
 
     def test_returns_selected_camera(self):
         mock_dropdown, mock_button, callbacks = self._make_widget_mocks()

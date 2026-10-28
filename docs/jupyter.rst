@@ -4,45 +4,41 @@ Using QVideo in Jupyter
 Installation
 ------------
 
-Install QVideo with pip in the **same environment** that your Jupyter
-kernel uses:
+In a notebook, install QVideo with the ``%pip`` magic.  Unlike ``pip`` in a
+terminal, it installs into the environment that the notebook's kernel uses,
+so ``import QVideo`` works afterwards:
 
-.. code-block:: bash
+.. code-block:: python
 
-   pip install QVideo
+   %pip install "QVideo[pyqt6,jupyter]"
 
-That single command installs QVideo and all required dependencies,
-including PyQt5 and OpenCV.  Once it completes, ``import QVideo`` will
-work in any notebook running in that environment.
+The extras do two things.  ``pyqt6`` installs the Qt layer that QVideo
+needs (without one, ``import QVideo`` stops with a message that names the
+choices), and ``jupyter`` installs :mod:`ipywidgets`, which the camera
+chooser, the property panel and the live view use.  OpenCV and the other
+required packages come with QVideo.
 
-For the interactive camera chooser and the property control panel, also
-install :mod:`ipywidgets`:
-
-.. code-block:: bash
-
-   pip install ipywidgets
+Restart the kernel after the installation (**Kernel > Restart**), and
+reload the browser tab if you installed :mod:`ipywidgets` for the first
+time, so that the notebook can draw its widgets.
 
 .. note::
 
-   The most common problem is installing QVideo in one environment while
-   Jupyter runs in another.  If ``import QVideo`` still fails after
-   installation, confirm that the notebook kernel points to the right
-   environment:
+   If ``import QVideo`` still fails, the notebook kernel probably runs in
+   another environment than the one you installed into.  Check it:
 
    .. code-block:: python
 
       import sys
-      print(sys.executable)   # should be the interpreter where QVideo is installed
+      print(sys.executable)   # the interpreter where QVideo is installed
 
-   If it is not, either install QVideo into the environment shown, or
-   register a kernel from the correct environment:
+   Install into the environment shown, or register a kernel from the right
+   environment and select it in the kernel menu:
 
    .. code-block:: bash
 
       pip install ipykernel
       python -m ipykernel install --user --name qvideo --display-name "QVideo"
-
-   Then select the **QVideo** kernel in the Jupyter kernel menu.
 
 Acquiring a frame
 -----------------
@@ -54,15 +50,23 @@ Acquiring a frame
    camera = await Camera()
    frame  = camera.read()
 
-``await Camera()`` probes all installed backends and opens the first
-working one.  When multiple cameras are detected an interactive chooser
-appears — select a camera from the dropdown and click **Open**.
+``await Camera()`` probes all installed backends and opens a camera that
+works:
+
+- With one real camera, it opens that camera.  The simulated Noise camera
+  is only a fallback, and ``Camera('Noise')`` selects it.
+- With no camera, it says that no hardware was found and uses Noise.
+- With several real cameras, a chooser appears: select a camera from the
+  drop-down and click **Open**.  The cell shows ``[*]`` until you do.
 
 When :mod:`ipywidgets` is not installed the chooser falls back to a
 printed summary::
 
-   Available cameras: OpenCV, Noise
-   Using OpenCV. To select a different one: Camera('Noise')
+   Available cameras: Flir, OpenCV
+   Using Flir. To select a different one: Camera('OpenCV')
+
+If the chooser prints ``HBox(...)`` instead of a drop-down, see
+:ref:`jupyter-widgets`.
 
 To open the first available camera without any output:
 
@@ -245,6 +249,30 @@ Acquiring a sequence of frames
 
    frames = [camera.read() for _ in range(50)]
    stack  = np.stack(frames)   # shape: (50, height, width, ...)
+
+.. _jupyter-widgets:
+
+Widgets show up as text
+-----------------------
+
+If a cell prints something like ``HBox(children=(Dropdown(...)))``
+instead of a drop-down, the notebook received the widget but cannot draw
+it.  The Python side is fine; the browser side of :mod:`ipywidgets` is not
+loaded.  Try these in order:
+
+1. Run ``import ipywidgets; ipywidgets.IntSlider()`` in a cell.  If a
+   slider appears, the problem is in QVideo's cell, not in Jupyter.
+2. Reload the browser tab, then rerun the cell.
+3. Restart the kernel.  If you installed :mod:`ipywidgets` after JupyterLab
+   started, restart JupyterLab as well.
+4. Install the browser side into the environment that runs JupyterLab:
+   ``pip install -U ipywidgets jupyterlab_widgets``, then restart.
+5. Compare ``sys.executable`` in a notebook cell with ``which jupyter`` in
+   a terminal.  If they name different environments, install into the one
+   that the kernel uses (with ``%pip``).
+
+Meanwhile you do not need widgets: ``Camera('OpenCV')`` opens a camera by
+name, and ``camera.read()`` returns a frame.
 
 Environment notes
 -----------------

@@ -119,17 +119,29 @@ def _report(working: list[tuple[str, int]]) -> None:
 async def _choose(working: list[tuple[str, int]]) -> tuple[str, int]:
     '''Return the camera to use among those that work.
 
-    A notebook with ``ipywidgets`` shows a drop-down when there is more
-    than one; otherwise the cameras are reported and the first is used.
+    The simulated Noise camera is a fallback, not a choice: a single real
+    camera is used without asking, and Noise alone says that no hardware
+    was found.  A notebook with ``ipywidgets`` shows a drop-down when there
+    are several real cameras; otherwise they are reported and the first is
+    used.
     '''
-    if len(working) > 1:
-        try:
-            options = [(_BACKENDS[k].label, (k, cid)) for k, cid in working]
-            return await _notebook('the camera chooser').choose(options)
-        except ImportError:
-            pass
-    _report(working)
-    return working[0]
+    real = [camera for camera in working if camera[0] != 'noise']
+    if not real:
+        print('No camera hardware found; using the simulated Noise camera.')
+        return working[0]
+    if len(real) == 1:
+        _report(real)
+        return real[0]
+    try:
+        options = [(_BACKENDS[k].label, (k, cid)) for k, cid in working]
+        choose = _notebook('the camera chooser').choose
+    except ImportError:
+        _report(working)
+        return working[0]
+    print('Choose a camera and press Open.  If you see HBox(...) instead of '
+          'a drop-down,\nthis Jupyter cannot show widgets: use '
+          f"Camera('{options[0][0]}') instead.")
+    return await choose(options)
 
 
 def _in_ipython() -> bool:

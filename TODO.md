@@ -100,33 +100,44 @@ of backend.
 
 ---
 
-## Hot-Plug Support
+## Hot-Plug Support  **Planned; not urgent**
 
-Camera connections and disconnections during a running session are not
-currently handled; the application typically crashes or hangs when a camera
-is physically removed.
+A camera that is unplugged during a session is not handled: the read
+warnings flood the log (deliberately, until this is built) and the live
+view freezes.  The design recovers inside the capture thread that
+`QVideoSource` already owns, so no change to how cameras open is needed
+for reconnection, and every change is additive (fits a minor release).
 
-- **Disconnect detection** — `QVideoSource` should catch the hardware error
-  (read failure, exception from `camera.saferead()`) and emit a
-  `cameraDisconnected` signal rather than propagating the exception.  The
-  source thread should stop gracefully and leave the UI in a recoverable
-  state.
-- **Reconnect / re-initialize** — after a disconnect signal, the source (or
-  a supervising widget) should periodically retry `camera._initialize()` and
-  emit `cameraReconnected` once the device is available again, automatically
-  resuming the live feed without user intervention.
-- **OS-level device notifications** — use `QFileSystemWatcher` (Linux
-  `/dev/video*`) or platform device-arrival events (Windows
-  `WM_DEVICECHANGE`, macOS IOKit) to trigger discovery when a new camera is
-  plugged in, rather than relying solely on read errors to detect changes.
-- **GenICam producer events** — Harvesters exposes `on_new_buffer` and
-  device-lost callbacks; wire these into the disconnect/reconnect machinery
-  so GenICam cameras benefit from the same hot-plug handling as OpenCV
-  cameras.
-- **UI feedback** — the `QCameraTree` (and `QCameraChooser` above) should
-  reflect device state visually: grayed-out controls when disconnected,
-  a status indicator, and an optional toast/notification when a camera
-  comes back online.
+- **Detection** — a camera is lost after `lossTimeout` seconds (default 2)
+  without a frame; a backend may report it at once with `self.lost(reason)`.
+  The source then stops calling `read()`, which ends the warning flood.
+- **State machine** — `QVideoSource` goes `running -> lost -> reconnecting
+  -> running` and emits `lost(str)`, `reconnecting(int)` and
+  `reconnected()`.  Reconnection closes the camera (guarded: Spinnaker 4.3
+  hung in `DevClose`), then reopens it at a back-off interval until the
+  user stops the source.
+- **Identity and settings** — the camera records its identity (serial
+  number, else model and index) and reconnects only to the same device;
+  `QCamera.set` keeps the values applied so far, which the source replays
+  after a reconnect.
+- **Consumers** — the screen keeps the last frame and shows a "camera
+  lost" notice; `QCameraTree` is disabled while lost; `QRecorder` stops
+  with "camera lost" (`stopWhenLost=True`); `QCamcorder` shows the reason
+  in the status bar.
+- **Backends** — OpenCV reopens the same index; Genicam/FLIR must
+  rediscover (`update()`) and create the same serial again, with a close
+  that cannot block; Picamera is not hot-pluggable.
+- **Phases** — (0) Noise `unplug()`/`plug()` and a conformance group for
+  surviving loss; (1) the state machine and the consumers, tested with
+  Noise; (2) OpenCV, tried on a USB webcam; (3) FLIR rediscovery, tried on
+  the camera; (4) optional: starting with no camera and discovering new
+  devices (OS notifications or polling), which needs the camera to open
+  on a worker thread and is the only route back to a splash screen.
+- **Open decisions** — reconnect to the same camera only (recommended) or
+  any of the same model; stop recording on loss (recommended) or let HDF5
+  continue; notice on the screen or status bar only; retry forever
+  (recommended) or give up; replay settings (recommended) or camera
+  defaults.
 
 ---
 

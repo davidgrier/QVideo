@@ -5,13 +5,13 @@ Run directly::
 
     python -m QVideo.demos.compositedemo
 
-When the "Composite" checkbox is checked, the DVR records the rendered
+When "Composite" is selected under "Record from", the DVR records the rendered
 scene (the video frame plus the trackpy particle markers) instead of the
 raw camera frames.
 '''
 
-from qtpy import QtCore, QtWidgets
 from QVideo.QCamcorder import QCamcorder
+from QVideo.dvr import QSourceSelector
 from QVideo.lib import launch
 from QVideo.overlays import QTrackpyWidget
 
@@ -26,13 +26,13 @@ class CompositeDemo(QCamcorder):
     Data flow::
 
         camera -> screen (+ trackpy markers)
-           |         '--> recorder, when Composite is checked
+           |         '--> recorder, when Composite is selected
            '----> trackpy detection
-           '----> recorder, when it is not
+           '----> recorder, when Raw is selected
 
     Two extensions of :class:`~QVideo.QCamcorder.QCamcorder`, both in
     :meth:`_setupUi`: a trackpy overlay that detects particles and marks
-    them on the screen, and a checkbox that switches the recorder from the
+    them on the screen, and a selector that switches the recorder from the
     camera to the screen, whose ``composite`` flag makes it render the
     markers into the frames it emits.  See
     :class:`~QVideo.QCamcorder.QCamcorder` for the parameters.
@@ -43,26 +43,21 @@ class CompositeDemo(QCamcorder):
         self.trackpy = QTrackpyWidget(self)
         self.trackpy.source = self.source
         self.screen.addOverlay(self.trackpy.overlay)
-        self._compositeCheck = QtWidgets.QCheckBox('Composite')
+        self.selector = QSourceSelector()
+        self.selector.addSource('Raw', self.source)
+        self.selector.addSource('Composite', self.screen)
         self._controls.addWidget(self.trackpy)
-        self._controls.addWidget(self._compositeCheck)
+        self._controls.addWidget(self.selector)
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
-        self._compositeCheck.toggled.connect(self._onCompositeToggled)
+        self.selector.sourceChanged.connect(self._setRecordingSource)
+        self.dvr.recording.connect(self.selector.setDisabled)
 
-    @QtCore.Slot(bool)
-    def _onCompositeToggled(self, checked: bool) -> None:
-        '''Switch between raw and composite recording.
-
-        Parameters
-        ----------
-        checked : bool
-            ``True`` to record the rendered scene (video + overlay);
-            ``False`` to record raw camera frames.
-        '''
-        self.screen.composite = checked
-        self.dvr.source = self.screen if checked else self.source
+    def _setRecordingSource(self, source) -> None:
+        '''Render the overlay into the recording in Composite mode.'''
+        self.screen.composite = source is self.screen
+        self.dvr.source = source
 
 
 if __name__ == '__main__':  # pragma: no cover

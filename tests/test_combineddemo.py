@@ -50,9 +50,8 @@ class TestStructure(unittest.TestCase):
 
     def test_composite_is_a_fourth_recording_mode(self):
         demo = make_demo()
-        self.assertEqual(demo._modeComposite.text(), 'Composite')
-        self.assertIn(demo._modeComposite, demo._modeGroup.buttons())
-        self.assertEqual(len(demo._modeGroup.buttons()), 4)
+        self.assertEqual([b.text() for b in demo.selector._sources],
+                         ['Raw', 'Filtered', 'Display', 'Composite'])
 
 
 class TestModes(unittest.TestCase):
@@ -64,28 +63,28 @@ class TestModes(unittest.TestCase):
 
     def test_composite_records_the_rendered_scene(self):
         demo = make_demo()
-        demo._modeComposite.setChecked(True)
+        demo.selector.sourceName = 'Composite'
         self.assertIs(demo.dvr.source, demo.screen)
         self.assertTrue(demo.screen.composite)
 
     def test_filtered_records_the_pipeline_without_the_overlay(self):
         demo = make_demo()
-        demo._modeComposite.setChecked(True)
-        demo._modeFiltered.setChecked(True)
+        demo.selector.sourceName = 'Composite'
+        demo.selector.sourceName = 'Filtered'
         self.assertIs(demo.dvr.source, demo.rack.pipeline)
         self.assertFalse(demo.screen.composite)
 
     def test_display_records_the_screen_without_the_overlay(self):
         demo = make_demo()
-        demo._modeComposite.setChecked(True)
-        demo._modeDisplay.setChecked(True)
+        demo.selector.sourceName = 'Composite'
+        demo.selector.sourceName = 'Display'
         self.assertIs(demo.dvr.source, demo.screen)
         self.assertFalse(demo.screen.composite)
 
     def test_leaving_composite_for_raw_records_the_camera(self):
         demo = make_demo()
-        demo._modeComposite.setChecked(True)
-        demo._modeRaw.setChecked(True)
+        demo.selector.sourceName = 'Composite'
+        demo.selector.sourceName = 'Raw'
         self.assertIs(demo.dvr.source, demo.source)
         self.assertFalse(demo.screen.composite)
 

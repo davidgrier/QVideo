@@ -7,6 +7,7 @@ from qtpy.QtTest import QSignalSpy
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.filterrackdemo import FilterRackDemo
+from QVideo.dvr import QSourceSelector
 from QVideo.lib import QFilterRack, QFilterPipeline
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
@@ -68,27 +69,21 @@ class TestFilterRackDemoInit(unittest.TestCase):
         widget = make_demo()
         self.assertIs(widget.dvr.source, widget.source)
 
-    def test_mode_raw_is_radio_button(self):
+    def test_selector_offers_the_three_streams(self):
         widget = make_demo()
-        self.assertIsInstance(widget._modeRaw, QtWidgets.QRadioButton)
+        self.assertIsInstance(widget.selector, QSourceSelector)
+        self.assertEqual([b.text() for b in widget.selector._sources],
+                         ['Raw', 'Filtered', 'Display'])
 
-    def test_mode_filtered_is_radio_button(self):
+    def test_raw_is_selected_by_default(self):
         widget = make_demo()
-        self.assertIsInstance(widget._modeFiltered, QtWidgets.QRadioButton)
+        self.assertEqual(widget.selector.sourceName, 'Raw')
 
-    def test_mode_display_is_radio_button(self):
-        widget = make_demo()
-        self.assertIsInstance(widget._modeDisplay, QtWidgets.QRadioButton)
-
-    def test_mode_raw_checked_by_default(self):
-        widget = make_demo()
-        self.assertTrue(widget._modeRaw.isChecked())
-
-    def test_mode_box_in_controls(self):
+    def test_selector_in_controls(self):
         widget = make_demo()
         layout = widget.controls.layout()
         items = [layout.itemAt(i).widget() for i in range(layout.count())]
-        self.assertIn(widget._modeBox, items)
+        self.assertIn(widget.selector, items)
 
     def test_rack_in_controls(self):
         widget = make_demo()
@@ -131,21 +126,23 @@ class TestFilterRackDemoModes(unittest.TestCase):
         self.widget = make_demo()
 
     def test_raw_mode_sets_dvr_source_to_camera(self):
-        self.widget._onModeToggled(self.widget._modeRaw, True)
+        self.widget.selector.sourceName = 'Filtered'
+        self.widget.selector.sourceName = 'Raw'
         self.assertIs(self.widget.dvr.source, self.widget.source)
 
     def test_filtered_mode_sets_dvr_source_to_pipeline(self):
-        self.widget._onModeToggled(self.widget._modeFiltered, True)
+        self.widget.selector.sourceName = 'Filtered'
         self.assertIs(self.widget.dvr.source, self.widget.rack.pipeline)
 
     def test_display_mode_sets_dvr_source_to_screen(self):
-        self.widget._onModeToggled(self.widget._modeDisplay, True)
+        self.widget.selector.sourceName = 'Display'
         self.assertIs(self.widget.dvr.source, self.widget.screen)
 
-    def test_deselect_does_not_change_source(self):
-        self.widget._onModeToggled(self.widget._modeFiltered, True)
-        self.widget._onModeToggled(self.widget._modeFiltered, False)
-        self.assertIs(self.widget.dvr.source, self.widget.rack.pipeline)
+    def test_the_choice_is_locked_while_recording(self):
+        self.widget.dvr.recording.emit(True)
+        self.assertFalse(self.widget.selector.isEnabled())
+        self.widget.dvr.recording.emit(False)
+        self.assertTrue(self.widget.selector.isEnabled())
 
 
 if __name__ == '__main__':  # pragma: no cover

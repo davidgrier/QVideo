@@ -25,7 +25,6 @@ pipeline here, are combined by application code like this and not by the
 framework, because only the application knows which stream each one needs.
 '''
 
-from qtpy import QtWidgets
 from QVideo.demos.filterrackdemo import FilterRackDemo
 from QVideo.lib import launch
 from QVideo.overlays import QTrackpyWidget
@@ -61,19 +60,12 @@ class CombinedDemo(FilterRackDemo):
         self.trackpy.source = self.rack.pipeline
         self.screen.addOverlay(self.trackpy.overlay)
         self._controls.addWidget(self.trackpy)
-        self._modeComposite = QtWidgets.QRadioButton('Composite')
-        self._modeBox.layout().addWidget(self._modeComposite, 1, 0)
-        self._modeGroup.addButton(self._modeComposite)
-        self._sources[self._modeComposite] = self.screen
+        self.selector.addSource('Composite', self.screen)
 
-    def _onModeToggled(self,
-                       button: QtWidgets.QAbstractButton,
-                       checked: bool) -> None:
-        '''Record the rendered scene in Composite mode, and the usual
-        stream in the other modes.'''
-        if checked:
-            self.screen.composite = button is self._modeComposite
-        super()._onModeToggled(button, checked)
+    def _setRecordingSource(self, source) -> None:
+        '''Render the overlay into the recording in Composite mode.'''
+        self.screen.composite = self.selector.sourceName == 'Composite'
+        super()._setRecordingSource(source)
 
 
 if __name__ == '__main__':  # pragma: no cover

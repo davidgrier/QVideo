@@ -18,6 +18,8 @@ QDVRWidget
     Composite widget with record, play, pause, stop, and rewind controls.
 QBacklogMonitor
     Measures how far the writer of a recording is behind the camera.
+QSourceSelector
+    Radio buttons that choose which stream to record.
 QRecorder
     Records the frames of a source to a file, without a window.
 QPlayer
@@ -41,6 +43,7 @@ QHDF5Reader
 '''
 from .QDVRWidget import QDVRWidget
 from .QBacklogMonitor import QBacklogMonitor
+from .QSourceSelector import QSourceSelector
 from .QRecorder import QRecorder
 from .QPlayer import QPlayer
 from .QCircularBuffer import QCircularBuffer
@@ -55,6 +58,7 @@ from .QHDF5Reader import QHDF5Reader
 __all__ = [
     'QDVRWidget',
     'QBacklogMonitor',
+    'QSourceSelector',
     'QRecorder',
     'QPlayer',
     'QCircularBuffer',

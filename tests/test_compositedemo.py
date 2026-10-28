@@ -5,6 +5,7 @@ from qtpy import QtCore, QtWidgets
 import QVideo.overlays.trackpy as _trackpy_mod
 from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
+from QVideo.dvr import QSourceSelector
 from QVideo.demos.compositedemo import CompositeDemo
 from QVideo.overlays.trackpy import QTrackpyWidget, _TrackpyWorker
 
@@ -41,13 +42,11 @@ class TestCompositeDemoInit(unittest.TestCase):
             widget = CompositeDemo(tree)
         self.assertIs(widget.trackpy.source, tree.source)
 
-    def test_composite_check_is_qcheckbox(self):
+    def test_the_selector_offers_raw_and_composite(self):
         widget = make_demo()
-        self.assertIsInstance(widget._compositeCheck, QtWidgets.QCheckBox)
-
-    def test_composite_check_label(self):
-        widget = make_demo()
-        self.assertEqual(widget._compositeCheck.text(), 'Composite')
+        self.assertIsInstance(widget.selector, QSourceSelector)
+        self.assertEqual([b.text() for b in widget.selector._sources],
+                         ['Raw', 'Composite'])
 
     def test_controls_contains_trackpy_widget(self):
         widget = make_demo()
@@ -55,11 +54,11 @@ class TestCompositeDemoInit(unittest.TestCase):
         items = [layout.itemAt(i).widget() for i in range(layout.count())]
         self.assertIn(widget.trackpy, items)
 
-    def test_controls_contains_composite_check(self):
+    def test_controls_contains_the_selector(self):
         widget = make_demo()
         layout = widget.controls.layout()
         items = [layout.itemAt(i).widget() for i in range(layout.count())]
-        self.assertIn(widget._compositeCheck, items)
+        self.assertIn(widget.selector, items)
 
     def test_overlay_added_to_screen(self):
         widget = make_demo()
@@ -71,26 +70,33 @@ class TestCompositeDemoToggle(unittest.TestCase):
     def setUp(self):
         self.widget = make_demo()
 
-    def test_composite_off_by_default(self):
-        self.assertFalse(self.widget._compositeCheck.isChecked())
-
-    def test_toggle_on_sets_screen_composite(self):
-        self.widget._onCompositeToggled(True)
-        self.assertTrue(self.widget.screen.composite)
-
-    def test_toggle_on_sets_dvr_source_to_screen(self):
-        self.widget._onCompositeToggled(True)
-        self.assertIs(self.widget.dvr.source, self.widget.screen)
-
-    def test_toggle_off_clears_screen_composite(self):
-        self.widget._onCompositeToggled(True)
-        self.widget._onCompositeToggled(False)
+    def test_raw_is_selected_by_default(self):
+        self.assertEqual(self.widget.selector.sourceName, 'Raw')
         self.assertFalse(self.widget.screen.composite)
 
-    def test_toggle_off_restores_dvr_source_to_camera(self):
-        self.widget._onCompositeToggled(True)
-        self.widget._onCompositeToggled(False)
+    def test_composite_sets_screen_composite(self):
+        self.widget.selector.sourceName = 'Composite'
+        self.assertTrue(self.widget.screen.composite)
+
+    def test_composite_sets_dvr_source_to_screen(self):
+        self.widget.selector.sourceName = 'Composite'
+        self.assertIs(self.widget.dvr.source, self.widget.screen)
+
+    def test_raw_clears_screen_composite(self):
+        self.widget.selector.sourceName = 'Composite'
+        self.widget.selector.sourceName = 'Raw'
+        self.assertFalse(self.widget.screen.composite)
+
+    def test_raw_restores_dvr_source_to_camera(self):
+        self.widget.selector.sourceName = 'Composite'
+        self.widget.selector.sourceName = 'Raw'
         self.assertIs(self.widget.dvr.source, self.widget.source)
+
+    def test_the_selector_is_locked_while_recording(self):
+        self.widget.dvr.recording.emit(True)
+        self.assertFalse(self.widget.selector.isEnabled())
+        self.widget.dvr.recording.emit(False)
+        self.assertTrue(self.widget.selector.isEnabled())
 
 
 if __name__ == '__main__':  # pragma: no cover

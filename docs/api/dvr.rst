@@ -35,6 +35,12 @@ formats
    :members:
    :undoc-members:
 
+QSourceSelector
+---------------
+
+.. automodule:: QVideo.dvr.QSourceSelector
+   :members:
+
 QBacklogMonitor
 ---------------
 

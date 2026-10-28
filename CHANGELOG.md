@@ -11,6 +11,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **`QSourceSelector`.**  `QVideo.dvr.QSourceSelector` is a group of radio
+  buttons that chooses which source of frames to record: add each source
+  with a name and connect `sourceChanged` to the recorder.  It is disabled
+  while a recording runs, because a filter may change the size of the
+  frames and a writer cannot follow.  `FilterRackDemo`, `CombinedDemo` and
+  `CompositeDemo` use it, so `CompositeDemo` now has a Raw/Composite pair
+  of buttons instead of a check box.
+
 - **`available_cameras()`.**  `from QVideo import available_cameras` lists
   the cameras that work as `(model, cameraID, name)`, for example
   `('OpenCV', 0, 'FaceTime HD Camera')`; the first two items are the

@@ -27,8 +27,9 @@ see each frame exactly once.  The three recording modes are:
     frames that are actually rendered to screen are recorded.
 '''
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore
 from QVideo.QCamcorder import QCamcorder
+from QVideo.dvr import QSourceSelector
 from QVideo.lib import QFilterRack, launch
 from QVideo.filters import QSmoothingFilter, QThresholdFilter
 
@@ -65,34 +66,17 @@ class FilterRackDemo(QCamcorder):
         self.rack.add(QSmoothingFilter())
         self.rack.add(QThresholdFilter())
         self.screen.source = self.rack.pipeline
-        self._setupModes()
-        self._controls.addWidget(self._modeBox)
+        self.selector = QSourceSelector()
+        self.selector.addSource('Raw', self.source)
+        self.selector.addSource('Filtered', self.rack.pipeline)
+        self.selector.addSource('Display', self.screen)
+        self._controls.addWidget(self.selector)
         self._controls.addWidget(self.rack)
-
-    def _setupModes(self) -> None:
-        '''Make the buttons that choose the stream the recorder saves.'''
-        self._modeBox = QtWidgets.QGroupBox('Record from')
-        self._modeBox.setFlat(True)
-        layout = QtWidgets.QGridLayout(self._modeBox)
-        layout.setContentsMargins(4, 0, 4, 0)
-        self._modeRaw = QtWidgets.QRadioButton('Raw')
-        self._modeFiltered = QtWidgets.QRadioButton('Filtered')
-        self._modeDisplay = QtWidgets.QRadioButton('Display')
-        self._modeRaw.setChecked(True)
-        for column, btn in enumerate((self._modeRaw, self._modeFiltered,
-                                      self._modeDisplay)):
-            layout.addWidget(btn, 0, column)
-        self._modeGroup = QtWidgets.QButtonGroup(self)
-        self._modeGroup.addButton(self._modeRaw)
-        self._modeGroup.addButton(self._modeFiltered)
-        self._modeGroup.addButton(self._modeDisplay)
-        self._sources = {self._modeRaw: self.source,
-                         self._modeFiltered: self.rack.pipeline,
-                         self._modeDisplay: self.screen}
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
-        self._modeGroup.buttonToggled.connect(self._onModeToggled)
+        self.selector.sourceChanged.connect(self._setRecordingSource)
+        self.dvr.recording.connect(self.selector.setDisabled)
 
     @QtCore.Slot(bool)
     def dvrPlayback(self, playback: bool) -> None:
@@ -111,21 +95,9 @@ class FilterRackDemo(QCamcorder):
         self.rack.source = played if playback else self.source
         self.cameraWidget.setDisabled(playback)
 
-    @QtCore.Slot(QtWidgets.QAbstractButton, bool)
-    def _onModeToggled(self,
-                       button: QtWidgets.QAbstractButton,
-                       checked: bool) -> None:
-        '''Switch the DVR source when a recording-mode button is selected.
-
-        Parameters
-        ----------
-        button : QAbstractButton
-            The button whose state changed.
-        checked : bool
-            ``True`` when the button is selected; ``False`` on deselection.
-        '''
-        if checked:
-            self.dvr.source = self._sources[button]
+    def _setRecordingSource(self, source) -> None:
+        '''Record the stream that the selector chose.'''
+        self.dvr.source = source
 
 
 if __name__ == '__main__':  # pragma: no cover

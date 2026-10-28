@@ -73,14 +73,15 @@ class FilterRackDemo(QCamcorder):
         '''Make the buttons that choose the stream the recorder saves.'''
         self._modeBox = QtWidgets.QGroupBox('Record from')
         self._modeBox.setFlat(True)
-        layout = QtWidgets.QHBoxLayout(self._modeBox)
+        layout = QtWidgets.QGridLayout(self._modeBox)
         layout.setContentsMargins(4, 0, 4, 0)
         self._modeRaw = QtWidgets.QRadioButton('Raw')
         self._modeFiltered = QtWidgets.QRadioButton('Filtered')
         self._modeDisplay = QtWidgets.QRadioButton('Display')
         self._modeRaw.setChecked(True)
-        for btn in (self._modeRaw, self._modeFiltered, self._modeDisplay):
-            layout.addWidget(btn)
+        for column, btn in enumerate((self._modeRaw, self._modeFiltered,
+                                      self._modeDisplay)):
+            layout.addWidget(btn, 0, column)
         self._modeGroup = QtWidgets.QButtonGroup(self)
         self._modeGroup.addButton(self._modeRaw)
         self._modeGroup.addButton(self._modeFiltered)

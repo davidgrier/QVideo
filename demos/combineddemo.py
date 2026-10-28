@@ -62,7 +62,7 @@ class CombinedDemo(FilterRackDemo):
         self.screen.addOverlay(self.trackpy.overlay)
         self._controls.addWidget(self.trackpy)
         self._modeComposite = QtWidgets.QRadioButton('Composite')
-        self._modeBox.layout().addWidget(self._modeComposite)
+        self._modeBox.layout().addWidget(self._modeComposite, 1, 0)
         self._modeGroup.addButton(self._modeComposite)
         self._sources[self._modeComposite] = self.screen
 

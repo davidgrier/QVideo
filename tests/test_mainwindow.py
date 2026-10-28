@@ -76,12 +76,18 @@ class TestInMainWindow(unittest.TestCase):
                         central.screen.updateShape(shape)
                         settle()
                         # no larger than the screen, unless the controls
-                        # need it
-                        least = window.minimumSizeHint()
+                        # need it (the style sets how much that is)
+                        least = window.minimumSizeHint().expandedTo(
+                            window.minimumSize())
+                        info = (f'size {window.size()}, '
+                                f'sizeHint {window.sizeHint()}, '
+                                f'minimumSizeHint {window.minimumSizeHint()}, '
+                                f'minimumSize {window.minimumSize()}, '
+                                f'screen {available.size()}')
                         self.assertLessEqual(window.width(), max(
-                            available.width(), least.width()))
+                            available.width(), least.width()), info)
                         self.assertLessEqual(window.height(), max(
-                            available.height(), least.height()))
+                            available.height(), least.height()), info)
                         self.assertTrue(self.covers(central, shape))
 
     def test_the_whole_frame_stays_in_view_when_the_window_is_resized(self):

@@ -107,6 +107,28 @@ pg.exec()
 Replace `QNoiseSource` with `QOpenCVSource`, `QGenicamSource`, etc. to switch
 hardware — the rest of the code is identical.
 
+## In a Jupyter notebook
+
+QVideo needs no window in a notebook.  Install it into the notebook's own
+environment with the `%pip` magic, restart the kernel, and ask for a camera:
+
+```python
+%pip install "QVideo[pyqt6,jupyter]"
+```
+
+```python
+from QVideo import Camera, Filter
+
+camera = await Camera()                        # opens the camera it finds
+camera.filters = Filter('Smoothing', 'Canny')  # optional; Filter() lists them
+camera.live_view()                             # live video in the cell
+frame = camera.read()                          # a (filtered) NumPy array
+```
+
+`camera.controls()` shows the camera's settings as widgets.  See the
+[Jupyter chapter](https://qvideo.readthedocs.io/en/latest/jupyter.html) for
+details, including what to do if widgets show up as text.
+
 ## Camera backends
 
 | Backend | Class | Hardware |

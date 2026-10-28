@@ -11,6 +11,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **The window appears while the camera opens.**  `launch()` (so every
+  demo and `python -m QVideo`) shows its window at once, with a notice,
+  and opens the camera on a thread of its own: a camera that takes
+  seconds to open, such as a GenICam camera that reads its whole node
+  map, no longer leaves the screen blank and frozen.  The window is
+  built as soon as the camera is open; if it cannot be opened the
+  program ends with the reason.  `lib.chooser` has two new functions,
+  `open_camera()` (no widget, so it is safe in any thread) and
+  `make_tree()`; `choose_camera()` calls both.
 - **Writers say why they stop.**  `QVideoWriter.finished` now carries a
   string: empty when the writer has the frames that it was asked for,
   otherwise an explanation.  A writer stops, once, when the size or type
@@ -150,6 +159,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **A GenICam camera shows live video.**  A producer hands out frames
+  oldest first by default, so a reader a little slower than the camera
+  kept a queue of old frames: with a FLIR camera the video lagged by
+  about a second at the start and caught up over half a minute.  The
+  camera now asks its stream for the newest frame, and a producer that
+  cannot do this keeps its default.
+
+- **The GenICam camera tree builds in a fraction of the time.**  Showing
+  or hiding a row made the tree read every setting of the camera again,
+  once for each row: 64,000 reads and 6.6 s for a FLIR camera.  Showing
+  rows reads nothing now, and the tree builds in 0.5 s.
+
+- **The GenICam camera tree no longer freezes the interface.**  The
+  tree polled every visible node from the GUI thread, one request for
+  the lock each, while the capture thread held the lock to wait for its
+  next frame: with a FLIR camera the window stalled for seconds (a
+  spinning beach ball on macOS) and the capture thread was starved.  The
+  tree now asks `QGenicamCamera.states(names)` for many nodes at once,
+  under one hold of the lock, reads 32 parameters per poll (the poll
+  runs every 0.2 s and cycles through them), and refreshes limits,
+  values and enabled states from the same snapshot.  `state()` also
+  reports `writable`.
 - **Composite recording works.**  The rendered scene that a screen emits
   in `composite` mode had four channels (RGBA), which the PyAV writer
   refused ("Unexpected numpy array shape"), so recording from

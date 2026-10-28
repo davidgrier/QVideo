@@ -1,5 +1,7 @@
 '''Unit tests for launch() and the applications that call it.'''
 import runpy
+import threading
+import time
 import unittest
 import warnings
 from unittest.mock import MagicMock, patch
@@ -27,34 +29,117 @@ class _Talker(_Widget):
 
 class TestLaunch(unittest.TestCase):
 
+    def windows(self):
+        '''Main windows on screen, but not those of earlier tests.'''
+        return [w for w in app.topLevelWidgets()
+                if isinstance(w, QtWidgets.QMainWindow) and w.isVisible()
+                and w not in self.earlier]
+
     def run_launch(self, widget, **kwargs):
-        '''Launch *widget*; return the camera chooser and the window.'''
+        '''Launch *widget*; return the mocked tree and the window.'''
         shown = []
+        self.earlier = [w for w in app.topLevelWidgets()]
+
+        def built():
+            return any(not isinstance(w.centralWidget(), QtWidgets.QLabel)
+                       for w in self.windows())
 
         def run():
-            shown.extend(w for w in app.topLevelWidgets()
-                         if isinstance(w, QtWidgets.QMainWindow)
-                         and w.isVisible())
+            # Let the camera open on its thread and the window be built.
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and not built():
+                app.processEvents()
+                time.sleep(0.005)
+            shown.extend(self.windows())
 
-        with patch.object(launch_module, 'choose_camera') as choose, \
+        camera = MagicMock()
+        with patch.object(launch_module, 'open_camera',
+                          return_value=('noise', camera)), \
+                patch.object(launch_module, 'make_tree') as make_tree, \
                 patch.object(launch_module.pg, 'mkQApp') as make_app, \
                 patch.object(launch_module.pg, 'exec', run), \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
             launch(widget, 'Title', **kwargs)
         self.make_app = make_app
+        self.camera = camera
         for window in shown:
             self.addCleanup(window.close)
-        return choose, shown[0]
+        return make_tree, shown[0]
 
     def test_the_widget_is_built_from_the_started_camera(self):
-        choose, window = self.run_launch(_Widget)
-        tree = choose.return_value.start.return_value
+        make_tree, window = self.run_launch(_Widget)
+        make_tree.assert_called_once_with('noise', self.camera)
+        tree = make_tree.return_value.start.return_value
         self.assertIs(window.centralWidget().tree, tree)
 
-    def test_further_arguments_reach_the_widget(self):
-        _, window = self.run_launch(_Widget, filters=['Canny'])
-        self.assertEqual(window.centralWidget().kwargs,
-                         {'filters': ['Canny']})
+    def test_the_window_waits_for_the_camera_with_a_notice(self):
+        self.earlier = list(app.topLevelWidgets())
+        gate = threading.Event()
+        notices = []
+
+        def open_slowly():
+            gate.wait(5)
+            return 'noise', MagicMock()
+
+        def run():
+            window = self.windows()[0]
+            self.addCleanup(window.close)
+            notices.append(window.centralWidget().text())
+            gate.set()
+            deadline = time.monotonic() + 5
+            while (isinstance(window.centralWidget(), QtWidgets.QLabel)
+                   and time.monotonic() < deadline):
+                app.processEvents()
+                time.sleep(0.005)
+
+        with patch.object(launch_module, 'open_camera', open_slowly), \
+                patch.object(launch_module, 'make_tree'), \
+                patch.object(launch_module.pg, 'mkQApp'), \
+                patch.object(launch_module.pg, 'exec', run), \
+                patch.object(launch_module.QtWidgets, 'QShortcut'):
+            launch(_Widget, 'Title')
+        self.assertEqual(notices, ['Opening the camera...'])
+
+    def test_a_camera_that_cannot_open_ends_the_program(self):
+        with patch.object(launch_module, 'open_camera',
+                          side_effect=RuntimeError('no camera')), \
+                patch.object(launch_module.pg, 'mkQApp') as make_app, \
+                patch.object(launch_module.QtWidgets, 'QShortcut'):
+            quits = []
+            make_app.return_value.quit = lambda: quits.append(1)
+            make_app.return_value.aboutToQuit = MagicMock()
+
+            def run():
+                deadline = time.monotonic() + 5
+                while not quits and time.monotonic() < deadline:
+                    app.processEvents()
+                    time.sleep(0.005)
+            with patch.object(launch_module.pg, 'exec', run):
+                with self.assertRaises(SystemExit) as raised:
+                    launch(_Widget, 'Title')
+        self.assertIn('no camera', str(raised.exception))
+
+    def test_the_camera_is_closed_if_the_window_is_gone_before_it_opens(self):
+        camera = MagicMock()
+
+        def open_slowly():
+            time.sleep(0.2)
+            return 'noise', camera
+
+        with patch.object(launch_module, 'open_camera', open_slowly), \
+                patch.object(launch_module.pg, 'mkQApp'), \
+                patch.object(launch_module.QtWidgets, 'QShortcut'):
+            quitting = []
+
+            def run():
+                quitting[0]()  # the application quits at once
+
+            with patch.object(launch_module.pg, 'exec', run):
+                with patch.object(launch_module.pg, 'mkQApp') as make_app:
+                    make_app.return_value.aboutToQuit.connect = \
+                        quitting.append
+                    launch(_Widget, 'Title')
+        camera.close.assert_called_once()
 
     def test_the_widget_is_the_center_of_a_main_window(self):
         _, window = self.run_launch(_Widget)

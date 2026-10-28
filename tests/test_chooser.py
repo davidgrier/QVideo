@@ -1,11 +1,13 @@
 '''Unit tests for chooser.py.'''
+import threading
 import unittest
 from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
 import numpy as np
 from qtpy import QtWidgets
 import QVideo.lib.chooser as chooser_module
-from QVideo.lib.chooser import camera_parser, choose_camera, _CameraEntry, _CAMERAS
+from QVideo.lib.chooser import (camera_parser, choose_camera, make_tree,
+                                open_camera, _CameraEntry, _CAMERAS)
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -187,6 +189,38 @@ class TestChooseCameraDefault(unittest.TestCase):
             camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
         camera.close()
+
+
+class TestOpenCameraAndMakeTree(unittest.TestCase):
+    '''Opening a camera builds no widget; the tree is a second step.'''
+
+    def test_open_camera_returns_the_key_and_an_open_camera(self):
+        with patch('sys.argv', ['prog']):
+            key, camera = open_camera()
+        self.assertEqual(key, 'noise')
+        self.assertTrue(camera.isOpen())
+        camera.close()
+
+    def test_open_camera_works_in_a_thread_without_a_widget(self):
+        from QVideo.lib import QCamera
+        result = []
+        with patch('sys.argv', ['prog']):
+            thread = threading.Thread(
+                target=lambda: result.append(open_camera()))
+            thread.start()
+            thread.join(10)
+        key, camera = result[0]
+        self.assertIsInstance(camera, QCamera)
+        camera.close()
+
+    def test_make_tree_builds_the_tree_of_the_backend(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        with patch('sys.argv', ['prog']):
+            key, camera = open_camera()
+        tree = make_tree(key, camera)
+        self.assertIsInstance(tree, QNoiseTree)
+        self.assertIs(tree.camera, camera)
+        tree.close()
 
 
 class TestChooseCameraOpenCV(unittest.TestCase):

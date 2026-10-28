@@ -1,7 +1,7 @@
 '''Unit tests for QGenicamTree.'''
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from qtpy import QtWidgets
 
 
@@ -514,6 +514,56 @@ class TestUpdateLimits(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestPollChunks
+# ---------------------------------------------------------------------------
+
+class TestPollChunks(unittest.TestCase):
+    '''A poll reads a few parameters in one request, then the next few.'''
+
+    def make(self, n=5, chunk=2):
+        features = [_float_feature(f'F{i}', value=1.0) for i in range(n)]
+        tree, cam, nm = make_tree(features=features)
+        tree._pollChunk = chunk
+        return tree, cam, nm
+
+    def test_a_poll_asks_the_camera_once(self):
+        tree, cam, _ = self.make()
+        with patch.object(cam, 'states', wraps=cam.states) as states:
+            tree._pollCamera()
+        self.assertEqual(states.call_count, 1)
+
+    def test_a_poll_reads_only_a_chunk(self):
+        tree, cam, _ = self.make()
+        with patch.object(cam, 'states', wraps=cam.states) as states:
+            tree._pollCamera()
+        self.assertEqual(len(list(states.call_args[0][0])), 2)
+
+    def test_successive_polls_cover_every_parameter(self):
+        tree, cam, nm = self.make()
+        for i in range(5):
+            nm.get_node(f'F{i}').value = 2.0
+        for _ in range(3):
+            tree._pollCamera()
+        for i in range(5):
+            self.assertAlmostEqual(tree._parameters[f'F{i}'].value(), 2.0)
+
+    def test_the_cycle_starts_again(self):
+        tree, cam, nm = self.make()
+        for _ in range(3):
+            tree._pollCamera()
+        nm.get_node('F0').value = 3.0
+        tree._pollCamera()
+        self.assertAlmostEqual(tree._parameters['F0'].value(), 3.0)
+
+    def test_a_change_of_a_property_reads_everything_at_once(self):
+        tree, cam, _ = self.make()
+        with patch.object(cam, 'states', wraps=cam.states) as states:
+            tree._handleItemChanges()
+        self.assertEqual(states.call_count, 1)
+        self.assertEqual(len(list(states.call_args[0][0])), 5)
+
+
+# ---------------------------------------------------------------------------
 # TestUpdateValues
 # ---------------------------------------------------------------------------
 
@@ -653,3 +703,21 @@ class TestVisibilityProp(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestShowingRows(unittest.TestCase):
+    '''Showing and hiding rows does not read the camera again.'''
+
+    def test_hiding_rows_reads_no_settings(self):
+        features = [_float_feature(f'F{i}', value=1.0) for i in range(5)]
+        tree, cam, _ = make_tree(features=features)
+        with patch.object(type(cam), 'settings',
+                          new_callable=PropertyMock) as settings:
+            tree.controls = ['F0']
+            tree.visibility = tree.visibility
+        settings.assert_not_called()
+
+    def test_the_sync_is_restored(self):
+        tree, _, _ = make_tree(features=[_float_feature('F0', value=1.)])
+        tree._updateVisible()
+        self.assertFalse(tree._ignoreSync)

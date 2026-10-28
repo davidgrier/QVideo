@@ -50,11 +50,15 @@ class QGenicamTree(QCameraTree):
         Forwarded to :class:`~QVideo.lib.QCameraTree.QCameraTree`.
     '''
 
+    #: Parameters that one poll of the camera reads.
+    _pollChunk = 32
+
     def __init__(self, *args,
                  camera: QGenicamCamera,
                  visibility: EVisibility = EVisibility.Guru,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
+        self._pollCursor = 0
         self._scaleFactors: dict[str, float] = {}
         self._decParams: set[str] = set()
         description = self.description(camera)
@@ -68,7 +72,7 @@ class QGenicamTree(QCameraTree):
     def _startTimer(self) -> None:
         '''Start the timer to poll camera-side changes.'''
         self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(500)
+        self._timer.setInterval(200)
         self._timer.timeout.connect(self._pollCamera)
         self._timer.start()
         instance = QtCore.QCoreApplication.instance()
@@ -214,14 +218,25 @@ class QGenicamTree(QCameraTree):
             return
         logger.debug('Handling item changes')
         self._updateVisible()
-        self._updateEnabled()
-        self._updateLimits()
-        self._updateValues()
+        params, states = self._snapshot()
+        self._updateEnabled(params, states)
+        self._updateLimits(params, states)
+        self._updateValues(params, states)
 
     def _updateVisible(self) -> None:
-        for item in self.listAllItems()[1:]:
-            p = item.param
-            p.setOpts(visible=self.visible(p))
+        '''Show the parameters that should be visible.
+
+        Showing or hiding a row changes no value, but every change that
+        pyqtgraph reports would make :meth:`_sync` read all of the
+        camera's settings again, once for each row.
+        '''
+        ignoring, self._ignoreSync = self._ignoreSync, True
+        try:
+            for item in self.listAllItems()[1:]:
+                p = item.param
+                p.setOpts(visible=self.visible(p))
+        finally:
+            self._ignoreSync = ignoring
 
     def visible(self, param) -> bool:
         ptype = param.opts['type']
@@ -233,29 +248,42 @@ class QGenicamTree(QCameraTree):
         visibility = get('visibility', EVisibility.Invisible)
         return visibility <= self.visibility
 
-    def _updateEnabled(self) -> None:
-        for item in self.listAllItems()[1:]:
-            p = item.param
-            if p.opts.get('visible', False):
-                name = p.opts['name']
-                if self.camera.hasNode(name):
-                    p.setOpts(enabled=self.camera.isReadWrite(name))
+    def _visibleParams(self) -> list[tuple[Any, str]]:
+        '''Return the visible parameters that the camera has, with names.'''
+        pairs = ((item.param, item.param.opts.get('name'))
+                 for item in self.listAllItems()[1:])
+        return [(p, name) for p, name in pairs
+                if p.opts.get('visible', False) and self.camera.hasNode(name)]
 
-    def _updateLimits(self) -> None:
+    def _snapshot(self, params: list | None = None) -> tuple[list, dict]:
+        '''Read the nodes of *params* together, under one lock.
+
+        The camera thread holds the lock while it waits for a frame, so
+        the interface asks for the nodes that it needs in one request.
+        '''
+        if params is None:
+            params = self._visibleParams()
+        return params, self.camera.states([name for _, name in params])
+
+    def _updateEnabled(self, params: list | None = None,
+                       states: dict | None = None) -> None:
+        if states is None:
+            params, states = self._snapshot(params)
+        for p, name in params:
+            p.setOpts(enabled=states[name]['writable'])
+
+    def _updateLimits(self, params: list | None = None,
+                      states: dict | None = None) -> None:
         '''Refresh Parameter constraints from the live GenICam node values.
 
         Called after every property change so that dependent nodes (e.g.
         ``OffsetX`` range after a ``Width`` change) reflect the current
         hardware state in the UI.  Only visible leaf parameters are updated.
         '''
-        for item in self.listAllItems()[1:]:
-            p = item.param
-            if not p.opts.get('visible', False):
-                continue
-            name = p.opts.get('name')
-            if not self.camera.hasNode(name):
-                continue
-            state = self.camera.state(name)
+        if states is None:
+            params, states = self._snapshot(params)
+        for p, name in params:
+            state = states[name]
             kind, inc = state['kind'], state.get('inc')
             if kind == 'int':
                 p.setOpts(limits=(state['min'], state['max']), step=inc)
@@ -283,7 +311,8 @@ class QGenicamTree(QCameraTree):
             value *= self._scaleFactors[name]
         return value
 
-    def _updateValues(self) -> None:
+    def _updateValues(self, params: list | None = None,
+                      states: dict | None = None) -> None:
         '''Refresh read-only Parameter values from the live GenICam node map.
 
         Called after every property change so that derived read-only nodes
@@ -291,14 +320,10 @@ class QGenicamTree(QCameraTree):
         state in the UI.  Only visible read-only leaf parameters are updated.
         Signals are blocked during the update to prevent re-entrant calls.
         '''
-        for item in self.listAllItems()[1:]:
-            p = item.param
-            if not p.opts.get('visible', False):
-                continue
-            name = p.opts.get('name')
-            if not self.camera.hasNode(name):
-                continue
-            state = self.camera.state(name)
+        if states is None:
+            params, states = self._snapshot(params)
+        for p, name in params:
+            state = states[name]
             if state['access'] != EAccessMode.RO:
                 continue
             if state['kind'] == 'register':
@@ -313,12 +338,18 @@ class QGenicamTree(QCameraTree):
                 p.blockSignals(False)
 
     def _pollCamera(self) -> None:
-        '''Refresh all readable Parameter values and enabled states.
+        '''Refresh the next few Parameters from the camera.
 
         Called by the poll timer to pick up autonomous camera-side changes
         that do not generate host-side notifications — e.g. ``Gain`` being
         adjusted during auto-exposure, or ``GainAuto`` reverting from
         ``"Once"`` to ``"Off"`` after the sweep completes.
+
+        Each call reads :attr:`_pollChunk` parameters in a single request
+        and the next call the following ones, so that no call holds the
+        camera from its frames for long; a full cycle takes
+        ``len(params) / _pollChunk`` calls.  Limits, values and enabled
+        states of the chunk are refreshed from the same snapshot.
 
         Returns immediately if the camera is no longer open (e.g. during
         application shutdown) to prevent accessing freed C++ genapi objects.
@@ -327,24 +358,23 @@ class QGenicamTree(QCameraTree):
         :meth:`_handleItemChanges` fires when a value changes.
         :attr:`_ignoreSync` is set for the duration so that the resulting
         ``sigTreeStateChanged`` emissions do not send values back to the
-        camera. :meth:`_updateEnabled` is called unconditionally so that
-        access-mode changes (e.g. ``ExposureTime`` becoming writable again
-        after the sweep) are reflected even when the controlling node value
-        has not changed.
+        camera.  Access-mode changes (e.g. ``ExposureTime`` becoming
+        writable again after the sweep) are reflected even when the
+        controlling node value has not changed.
         '''
         if not self.camera.isOpen():
             return
+        params = self._visibleParams()
+        if self._pollCursor >= len(params):
+            self._pollCursor = 0
+        chunk = params[self._pollCursor:self._pollCursor + self._pollChunk]
+        self._pollCursor += self._pollChunk
+        params, states = self._snapshot(chunk)
         self._ignoreSync = True
         try:
-            self._updateLimits()
-            for item in self.listAllItems()[1:]:
-                p = item.param
-                if not p.opts.get('visible', False):
-                    continue
-                name = p.opts.get('name')
-                if not self.camera.hasNode(name):
-                    continue
-                state = self.camera.state(name)
+            self._updateLimits(params, states)
+            for p, name in params:
+                state = states[name]
                 if state['access'] not in (EAccessMode.RO, EAccessMode.RW):
                     continue
                 if state['kind'] == 'register':
@@ -353,7 +383,7 @@ class QGenicamTree(QCameraTree):
                 if value is None:
                     continue
                 p.setValue(value)
-            self._updateEnabled()
+            self._updateEnabled(params, states)
         finally:
             self._ignoreSync = False
 

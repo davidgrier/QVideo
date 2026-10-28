@@ -874,8 +874,8 @@ class TestRegisters(unittest.TestCase):
         cam, _, device = make_camera(device=device)
         device.remote_device.node_map.get_node.return_value = feature
         self.assertEqual(cam.state('UserData'), dict(
-            access=_EAccessMode.RW, kind='register', length=3,
-            address=0x400, value='0a 1b ff'))
+            access=_EAccessMode.RW, writable=True, kind='register',
+            length=3, address=0x400, value='0a 1b ff'))
 
 
 class TestState(unittest.TestCase):
@@ -890,8 +890,9 @@ class TestState(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width', value=640,
                                 min=64, max=1920, inc=4)
         _, state = self.state_of(feature)
-        self.assertEqual(state, dict(access=_EAccessMode.RW, kind='int',
-                                     min=64, max=1920, inc=4, value=640))
+        self.assertEqual(state, dict(access=_EAccessMode.RW, writable=True,
+                                     kind='int', min=64, max=1920, inc=4,
+                                     value=640))
 
     def test_float_with_increment(self):
         feature = _make_feature(_IFloat, name='Gamma', value=1.,
@@ -921,7 +922,8 @@ class TestState(unittest.TestCase):
     def test_command_has_neither_value_nor_limits(self):
         feature = _make_feature(_ICommand, name='AcquisitionStop')
         _, state = self.state_of(feature)
-        self.assertEqual(state, dict(access=_EAccessMode.RW, kind='other'))
+        self.assertEqual(state, dict(access=_EAccessMode.RW, writable=True,
+                                     kind='other'))
 
     def test_unreadable_node_reports_no_value(self):
         feature = _make_feature(_IInteger, name='Width', mode='WO',
@@ -1075,3 +1077,55 @@ class TestActualFps(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestStates(unittest.TestCase):
+    '''Several nodes are read together, under one hold of the lock.'''
+
+    def camera(self):
+        features = {name: _make_feature(_IInteger, name=name, value=1,
+                                        min=0, max=2, inc=1)
+                    for name in ('Width', 'Height')}
+        cam, _, device = make_camera()
+        device.remote_device.node_map.get_node.side_effect = features.get
+        return cam
+
+    def test_one_snapshot_per_name(self):
+        states = self.camera().states(['Width', 'Height'])
+        self.assertEqual(set(states), {'Width', 'Height'})
+        self.assertEqual(states['Height']['value'], 1)
+
+    def test_the_lock_is_taken_once(self):
+        cam = self.camera()
+        real = cam._mutex
+        mutex = MagicMock(wraps=real)
+        mutex.__enter__ = MagicMock(side_effect=real.__enter__)
+        mutex.__exit__ = MagicMock(side_effect=real.__exit__)
+        cam._mutex = mutex
+        cam.states(['Width', 'Height'])
+        self.assertEqual(mutex.__enter__.call_count, 1)
+
+    def test_a_node_is_writable_when_it_is_read_write(self):
+        cam = self.camera()
+        self.assertTrue(cam.state('Width')['writable'])
+
+    def test_a_protected_node_is_writable(self):
+        cam = self.camera()
+        cam._protected = {'Width'}
+        node = cam.node('Width')
+        node.node.get_access_mode.return_value = _EAccessMode.RO
+        self.assertTrue(cam.state('Width')['writable'])
+
+
+class TestNewestFrames(unittest.TestCase):
+    '''A live view gets the newest frame, not a queue of old ones.'''
+
+    def test_the_stream_delivers_the_newest_frame(self):
+        cam, _, device = make_camera()
+        stream = device.data_streams[0].node_map
+        self.assertEqual(stream.StreamBufferHandlingMode.value, 'NewestOnly')
+
+    def test_a_producer_without_the_setting_still_opens(self):
+        cam, _, device = make_camera()
+        device.data_streams = []
+        cam._keepNewestFrames()

@@ -4,11 +4,11 @@ import logging
 from argparse import ArgumentParser
 from typing import NamedTuple
 
-from QVideo.lib import QCameraTree
+from QVideo.lib import QCamera, QCameraTree
 from QVideo.cameras.registry import _BACKENDS
 from QVideo.interactive.camera import Camera
 
-__all__ = ['camera_parser', 'choose_camera']
+__all__ = ['camera_parser', 'choose_camera', 'make_tree', 'open_camera']
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +74,13 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     return parser
 
 
-def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
-    '''Chooses and returns a camera tree based on command-line arguments.
+def open_camera(parser: ArgumentParser | None = None) -> tuple[str, QCamera]:
+    '''Open the camera that the command-line arguments name.
 
-    Tries to import and instantiate the camera backend selected by the
-    command-line flags.  Falls back to :class:`QNoiseTree` if the
-    requested backend cannot be imported or instantiated.
+    Tries the backend selected by the command-line flags and falls back to
+    the noise camera, with a warning, if it cannot be opened.  It builds
+    no widget, so it may run in a thread of its own while the interface
+    starts; see :func:`~QVideo.lib.launch`.
 
     Parameters
     ----------
@@ -90,8 +91,9 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
 
     Returns
     -------
-    QCameraTree
-        The chosen camera tree widget.
+    tuple
+        The key of the backend (as in :mod:`QVideo.cameras.registry`) and
+        the open camera.
     '''
     args, _ = camera_parser(parser).parse_known_args()
     model = 'noise'
@@ -109,11 +111,43 @@ def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
         proxy._ensure_open()
 
     key = object.__getattribute__(proxy, '_selected_key')
+    return key, object.__getattribute__(proxy, '_camera')
+
+
+def make_tree(key: str, camera: QCamera) -> QCameraTree:
+    '''Return the camera tree widget for an open *camera*.
+
+    Parameters
+    ----------
+    key : str
+        Key of the backend that opened the camera.
+    camera : QCamera
+        The open camera.
+    '''
     backend = _BACKENDS[key]
     module = importlib.import_module(backend.module)
-    tree_cls = getattr(module, backend.tree_cls)
-    camera = object.__getattribute__(proxy, '_camera')
-    return tree_cls(camera=camera)
+    return getattr(module, backend.tree_cls)(camera=camera)
+
+
+def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:
+    '''Chooses and returns a camera tree based on command-line arguments.
+
+    Opens the camera with :func:`open_camera` and builds its tree with
+    :func:`make_tree`, in the calling thread.
+
+    Parameters
+    ----------
+    parser : ArgumentParser | None
+        An optional ArgumentParser to parse command-line arguments.
+        If provided, camera options will be added to it.
+        If None, a new ArgumentParser is created.
+
+    Returns
+    -------
+    QCameraTree
+        The chosen camera tree widget.
+    '''
+    return make_tree(*open_camera(parser))
 
 
 if __name__ == '__main__':  # pragma: no cover

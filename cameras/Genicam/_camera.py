@@ -1,5 +1,5 @@
 '''GenICam cameras and sources, driven through Harvesters.'''
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from contextlib import suppress
 from typing import TYPE_CHECKING
 from QVideo.lib import QCamera, QVideoSource
@@ -177,9 +177,23 @@ class QGenicamCamera(QCamera):
         '''
         before = self._scan_modes(root)
         self._device.start()
+        self._keepNewestFrames()
         after = self._scan_modes(root)
         return {name for name, mode in before.items()
                 if name in after and after[name] != mode}
+
+    def _keepNewestFrames(self) -> None:
+        '''Ask the producer to deliver the newest frame, not the oldest.
+
+        By default a producer hands out the frames in the order in which
+        they were captured, so a reader that is a little slower than the
+        camera keeps a queue of old frames and shows video that lags.  A
+        live view wants the frame that the camera captured last.  A
+        producer that cannot do this keeps its default.
+        '''
+        with suppress(Exception):
+            stream = self._device.data_streams[0].node_map
+            stream.StreamBufferHandlingMode.value = 'NewestOnly'
 
     def _registerAliases(self) -> None:
         '''Register the lowercase names for the standard nodes that exist.'''
@@ -569,9 +583,7 @@ class QGenicamCamera(QCamera):
     def state(self, name: str) -> dict[str, object]:
         '''Return a snapshot of the named node, read under the device lock.
 
-        Read the device through this method, not through :meth:`node`,
-        wherever acquisition may be running (for example a GUI that polls
-        the hardware): it never overlaps a frame read.
+        See :meth:`states`.
 
         Parameters
         ----------
@@ -581,30 +593,60 @@ class QGenicamCamera(QCamera):
         Returns
         -------
         dict
-            ``access`` (:class:`EAccessMode`) and ``kind`` (``'int'``,
-            ``'float'``, ``'enum'``, ``'register'`` or ``'other'``)
-            always; ``min``, ``max`` and ``inc`` for numbers (``inc`` is
-            ``None`` when the node has no increment); ``entries``
-            (symbolic names) for an enumeration; ``length`` and
-            ``address`` for a register; and ``value`` when the node is
-            readable.
+            ``access`` (:class:`EAccessMode`), ``writable`` (``True`` if
+            the node can be written now, or after stopping acquisition)
+            and ``kind`` (``'int'``, ``'float'``, ``'enum'``,
+            ``'register'`` or ``'other'``) always; ``min``, ``max`` and
+            ``inc`` for numbers (``inc`` is ``None`` when the node has no
+            increment); ``entries`` (symbolic names) for an enumeration;
+            ``length`` and ``address`` for a register; and ``value`` when
+            the node is readable.
         '''
-        node = self.node(name)
+        return self.states([name])[name]
+
+    def states(self, names: Iterable[str]) -> dict[str, dict[str, object]]:
+        '''Return snapshots of the named nodes, read under one lock.
+
+        Read the device through this method, not through :meth:`node`,
+        wherever acquisition may be running (for example a GUI that polls
+        the hardware): it never overlaps a frame read.  The camera thread
+        holds the lock while it waits for a frame, so a reader that has to
+        queue for it once for every node is slow; ask for the nodes that
+        you need together.
+
+        Parameters
+        ----------
+        names : iterable of str
+            GenICam node names.  Each must exist (see :meth:`hasNode`).
+
+        Returns
+        -------
+        dict
+            The result of :meth:`state` for each name.
+        '''
+        nodes = {name: self.node(name) for name in names}
         with self._mutex:
-            state = {'access': node.node.get_access_mode(), 'kind': 'other'}
-            ptype, meta = self._feature_spec(node)
-            if 'limits' in meta:
-                state.update(kind='enum', entries=meta['limits'])
-            elif ptype in (int, float):
-                state.update(kind=ptype.__name__, min=meta['minimum'],
-                             max=meta['maximum'], inc=meta.get('step'))
-            if isinstance(node, IRegister):
-                state.update(kind='register', length=node.length,
-                             address=node.address)
-            if isinstance(node, IReadable):
-                value = self._make_getter(node)()
-                if value is not None:
-                    state['value'] = value
+            return {name: self._snapshot(name, node)
+                    for name, node in nodes.items()}
+
+    def _snapshot(self, name: str, node: IValue) -> dict[str, object]:
+        '''Read *node*; the caller holds the device lock.'''
+        mode = node.node.get_access_mode()
+        state = {'access': mode, 'kind': 'other',
+                 'writable': mode == EAccessMode.RW or name in self._protected}
+        ptype, meta = self._feature_spec(node)
+        if 'limits' in meta:
+            state.update(kind='enum', entries=meta['limits'])
+        elif ptype in (int, float):
+            state.update(kind=ptype.__name__, min=meta['minimum'],
+                         max=meta['maximum'], inc=meta.get('step'))
+        if isinstance(node, IRegister):
+            state.update(kind='register', length=node.length,
+                         address=node.address)
+        if isinstance(node, IReadable):
+            value = self._make_getter(node)()
+            if value is not None:
+                state['value'] = value
         return state
 
 

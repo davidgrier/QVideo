@@ -149,10 +149,15 @@ class QVideoSource(QtCore.QThread):
                     self.source.seek(target)
                 ok, frame = self.source.saferead()
                 if ok:
-                    info = FrameInfo(self._frames, perf_counter())
+                    info = FrameInfo(self._frames, perf_counter(),
+                                     self._hardwareTimestamp())
                     self._frames += 1
                     self.newFrame.emit(frame, info)
         logger.debug('streaming finished')
+
+    def _hardwareTimestamp(self) -> float | None:
+        '''Return the camera's timestamp for the frame just read, if any.'''
+        return getattr(self.source, 'hardwareTimestamp', None)
 
     def __del__(self) -> None:
         # The garbage collector may get here after Qt has deleted the C++

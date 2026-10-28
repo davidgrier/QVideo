@@ -146,6 +146,7 @@ def _make_device(node_map=None, is_valid=True):
     image.data = np.zeros(480 * 640, dtype=np.uint8)
     buf = MagicMock()
     buf.payload.components = [image]
+    buf.timestamp_ns = 2_500_000_000
     cm = MagicMock()
     cm.__enter__ = MagicMock(return_value=buf)
     cm.__exit__ = MagicMock(return_value=False)
@@ -610,6 +611,27 @@ class TestRead(unittest.TestCase):
         cam, _, _ = make_camera()
         _, frame = cam.read()
         self.assertEqual(frame.shape, (480, 640))
+
+    def test_the_hardware_timestamp_is_in_seconds(self):
+        cam, _, _ = make_camera()
+        cam.read()
+        self.assertAlmostEqual(cam.hardwareTimestamp, 2.5)
+
+    def test_a_camera_without_a_clock_has_no_hardware_timestamp(self):
+        device = _make_device()
+        device.fetch.return_value.__enter__.return_value.timestamp_ns = 0
+        cam, _, _ = make_camera(device=device)
+        cam.read()
+        self.assertIsNone(cam.hardwareTimestamp)
+
+    def test_a_failed_read_clears_the_hardware_timestamp(self):
+        cam, _, device = make_camera()
+        cam.read()
+        device.fetch.return_value.__enter__.side_effect = _TimeoutException
+        with self.assertLogs('QVideo.cameras.Genicam._camera',
+                             level='WARNING'):
+            cam.read()
+        self.assertIsNone(cam.hardwareTimestamp)
 
     def test_returns_false_none_on_timeout(self):
         device = _make_device()

@@ -11,6 +11,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Hardware timestamps for GenICam cameras.**
+  `FrameInfo.hardware_timestamp` now holds the camera's own timestamp for
+  each frame, in seconds, for every GenICam camera (Basler, FLIR, IDS, MV,
+  VimbaX); it is `None` when the camera has no clock, and the HDF5
+  recording stores it.  A camera subclass sets `QCamera.hardwareTimestamp`
+  in `read()` and the source copies it into the frame's `FrameInfo`.
+
 - **GenICam register nodes.**  The raw blocks of camera memory that a
   GenICam node map calls registers (lookup tables, user data, vendor
   structures) appear as read-only properties holding their bytes in

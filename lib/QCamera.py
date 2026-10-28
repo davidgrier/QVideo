@@ -94,6 +94,12 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     #: Emitted by :meth:`get` with the property name and current value.
     propertyValue = QtCore.Signal(str, object)
 
+    #: The camera's own timestamp for the frame most recently read [s], in
+    #: the camera's native clock, or ``None`` if it provides none.  A
+    #: subclass sets it in :meth:`read`; the source copies it into the
+    #: :class:`~QVideo.lib.videotypes.FrameInfo` of the frame.
+    hardwareTimestamp: float | None = None
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._mutex = threading.RLock()

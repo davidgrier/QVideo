@@ -11,6 +11,11 @@ GenTL producer path in ``GENICAM_GENTL64_PATH``.
     camera is released, which blocks application exit.  The bug is fixed
     in Spinnaker 4.4.0.
 
+QVideo does not use PySpin, Spinnaker's own Python wrapper.  The GenTL
+route reaches the camera's whole node map, register nodes included, and
+gives the hardware timestamp of each frame, with nothing beyond the SDK.  PySpin is a separate binary download built only
+for Python 3.12 and earlier, and it fails on later versions.
+
 Classes
 -------
 QFlirCamera

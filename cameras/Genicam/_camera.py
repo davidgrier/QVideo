@@ -248,6 +248,7 @@ class QGenicamCamera(QCamera):
             ``(True, frame)`` on success, ``(False, None)`` on timeout.
         '''
         frame = None
+        self.hardwareTimestamp = None
         try:
             with self._device.fetch(timeout=1) as buffer:
                 components = buffer.payload.components
@@ -259,6 +260,9 @@ class QGenicamCamera(QCamera):
                 width = image.width
                 channels = int(image.num_components_per_pixel)
                 frame = image.data.copy()
+                nanoseconds = buffer.timestamp_ns
+                if nanoseconds:
+                    self.hardwareTimestamp = nanoseconds * 1e-9
             frame = frame.reshape(height, width, channels).squeeze()
         except TimeoutException:
             logger.warning('camera acquisition timed out')

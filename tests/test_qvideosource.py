@@ -24,6 +24,7 @@ def make_mock_source(fps=30., width=640, height=480,
     source = MagicMock()
     source.fps = fps
     source.actualFps = fps
+    source.hardwareTimestamp = None
     source.shape = QtCore.QSize(width, height)
     source.isOpen.return_value = True
     source.saferead.return_value = (read_ok, frame)
@@ -345,6 +346,24 @@ class TestRun(unittest.TestCase):
 
     def test_hardware_timestamp_is_none_by_default(self):
         source, ref = one_shot_source(read_ok=True)
+        vs = make_vs(source)
+        ref[0] = vs
+        spy = record(vs.newFrame)
+        vs.run()
+        self.assertIsNone(spy[0][1].hardware_timestamp)
+
+    def test_hardware_timestamp_comes_from_the_camera(self):
+        source, ref = one_shot_source(read_ok=True)
+        source.hardwareTimestamp = 12.5
+        vs = make_vs(source)
+        ref[0] = vs
+        spy = record(vs.newFrame)
+        vs.run()
+        self.assertEqual(spy[0][1].hardware_timestamp, 12.5)
+
+    def test_a_source_without_a_hardware_clock_gives_none(self):
+        source, ref = one_shot_source(read_ok=True)
+        del source.hardwareTimestamp  # as a video file reader has none
         vs = make_vs(source)
         ref[0] = vs
         spy = record(vs.newFrame)

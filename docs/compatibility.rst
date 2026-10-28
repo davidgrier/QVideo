@@ -61,8 +61,8 @@ Other backends
 
 The Noise backend needs no hardware and runs wherever QVideo does.
 The Picamera backend requires a Raspberry Pi.  The remaining GenICam
-backends (Basler, IDS, MV, VimbaX) and the PySpin-based Spinnaker
-backend have not been systematically tested on any platform.
+backends (Basler, IDS, MV, VimbaX) have not been systematically tested
+on any platform.
 
 Windows
 -------

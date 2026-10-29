@@ -13,6 +13,7 @@ Recognition, 779-788. https://doi.org/10.1109/CVPR.2016.91
 
 from qtpy import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
+from QVideo.lib import QOverlayWidget
 from QVideo.lib.videotypes import Image
 import numpy as np
 import logging
@@ -85,7 +86,7 @@ class _YoloWorker(QtCore.QObject):
         self.confidence = confidence
 
     @QtCore.Slot(np.ndarray)
-    def detect(self, image: Image) -> None:
+    def process(self, image: Image) -> None:
         '''Run YOLO detection on *image* and emit :attr:`newData`.
 
         Parameters
@@ -160,7 +161,7 @@ class QYoloOverlay(pg.GraphicsObject):
         self.update()
 
 
-class QYoloWidget(QtWidgets.QGroupBox):
+class QYoloWidget(QOverlayWidget):
     '''Control widget for the YOLO object-detection overlay.
 
     Runs YOLO inference in a background thread and renders detected
@@ -181,107 +182,23 @@ class QYoloWidget(QtWidgets.QGroupBox):
 
     '''
 
-    #: Emitted for each processed frame with the detections
-    #: :class:`~pandas.DataFrame`, or ``None`` on error / no detections.
-    newData = QtCore.Signal(object)
-    _detect = QtCore.Signal(np.ndarray)
-
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
                  model_name: str = 'yolo11n.pt',
                  confidence: float = 0.25) -> None:
-        if pd is None:
-            raise ImportError(
-                'pandas is required for QYoloWidget.'
-                '\n\tInstall it with: pip install pandas'
-                '\n\tor: pip install "QVideo[overlays]"')
-        if YOLO is None:
-            raise ImportError(
-                'ultralytics is required for QYoloWidget.'
-                '\n\tInstall it with: pip install ultralytics'
-                '\n\tSee https://docs.ultralytics.com/ for more information.'
-            ) from _importError
-        super().__init__('YOLO', parent)
-        self._source = None
-        self._ready = True
-        self._overlay = QYoloOverlay()
-        self._worker = _YoloWorker(model_name=model_name,
-                                   confidence=confidence)
-        self._thread = QtCore.QThread(self)
-        self._worker.moveToThread(self._thread)
-        self._detect.connect(self._worker.detect)
-        self._worker.newData.connect(self._onNewData)
-        self._thread.start()
-        thread = self._thread
-        self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
-        self._setupUi()
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
+        worker = _YoloWorker(model_name=model_name, confidence=confidence)
+        super().__init__('YOLO', QYoloOverlay(), worker, parent)
 
     def _setupUi(self) -> None:
-        self.setCheckable(True)
-        self.setChecked(False)
-        self.setFlat(True)
-        layout = QtWidgets.QFormLayout(self)
-        layout.setContentsMargins(2, 5, 2, 5)
-
+        super()._setupUi()
         self._confidenceSpinBox = QtWidgets.QDoubleSpinBox()
         self._confidenceSpinBox.setRange(0., 1.)
         self._confidenceSpinBox.setSingleStep(0.05)
         self._confidenceSpinBox.setDecimals(2)
         self._confidenceSpinBox.setValue(self._worker.confidence)
         self._confidenceSpinBox.valueChanged.connect(self._setConfidence)
-        layout.addRow('Confidence', self._confidenceSpinBox)
-
-        self.toggled.connect(self._overlay.setVisible)
-
-    @property
-    def source(self):
-        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` analyzed.'''
-        return self._source
-
-    @source.setter
-    def source(self, source) -> None:
-        if self._source is not None:
-            self._source.newFrame.disconnect(self._onNewFrame)
-        self._source = source
-        if source is not None:
-            source.newFrame.connect(self._onNewFrame)
-
-    @property
-    def overlay(self) -> QYoloOverlay:
-        '''The :class:`QYoloOverlay` graphics item for this widget.'''
-        return self._overlay
-
-    @QtCore.Slot(np.ndarray)
-    def _onNewFrame(self, image: Image) -> None:
-        if self._ready and self.isChecked():
-            self._ready = False
-            self._detect.emit(image)
-
-    @QtCore.Slot(object)
-    def _onNewData(self, features) -> None:
-        self._ready = True
-        self._overlay.setFeatures(features)
-        self.newData.emit(features)
+        self._layout.addRow('Confidence', self._confidenceSpinBox)
 
     @QtCore.Slot(float)
     def _setConfidence(self, value: float) -> None:
         self._worker.confidence = value
-
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the worker thread when the widget is closed.'''
-        self.stop()
-        super().closeEvent(event)
-
-    @QtCore.Slot()
-    def stop(self) -> None:
-        '''Disconnect the video source and stop the worker thread.
-
-        The widget also does this when it is deleted and when the
-        application quits.  Calling it first, as the last step before the
-        widget goes, makes the order explicit (see
-        :ref:`shutting-down`).  It is safe to call more than once.
-        '''
-        self.source = None
-        self._thread.quit()
-        self._thread.wait()

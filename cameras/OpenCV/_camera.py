@@ -174,10 +174,10 @@ class QOpenCVCamera(QCamera):
             self.registerProperty('color', getter=self._getColor,
                                   setter=self._setColor, ptype=bool)
             self._probeProperties()
-            if 'resolution' in self._properties:
+            if 'resolution' in self.properties:
                 for name in ('width', 'height', 'fps'):
-                    if name in self._properties:
-                        self._properties[name]['hidden'] = True
+                    if name in self.properties:
+                        self.properties[name]['hidden'] = True
             self.shapeChanged.emit(self.shape)
         else:
             self._device.release()

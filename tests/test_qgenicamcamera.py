@@ -7,7 +7,7 @@ import logging
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -538,6 +538,65 @@ class TestUnconnectedNodeMap(unittest.TestCase):
                     make_camera(device=_make_device(node_map))
 
 
+class TestUsbLink(unittest.TestCase):
+    '''A USB3 Vision camera on a slow link says so when it opens.'''
+
+    def open_at(self, speed):
+        feature = _make_feature(_IEnumeration, name='U3VCurrentSpeed')
+        feature.to_string.return_value = speed
+        return make_camera_with_node(feature)
+
+    def test_a_slow_link_is_reported(self):
+        for speed in ('HighSpeed', 'FullSpeed', 'LowSpeed'):
+            with self.subTest(speed=speed):
+                with self.assertLogs('QVideo.cameras.Genicam._camera',
+                                     level='WARNING') as logs:
+                    self.open_at(speed)
+                self.assertIn(speed, logs.output[0])
+                self.assertIn('USB 3', logs.output[0])
+
+    def test_superspeed_is_not_reported(self):
+        for speed in ('SuperSpeed', 'SuperSpeedPlus'):
+            with self.subTest(speed=speed):
+                with self.assertNoLogs('QVideo.cameras.Genicam._camera',
+                                       level='WARNING'):
+                    self.open_at(speed)
+
+    def test_a_camera_without_a_usb_link_is_not_reported(self):
+        with self.assertNoLogs('QVideo.cameras.Genicam._camera',
+                               level='WARNING'):
+            make_camera()
+
+
+class TestFailedOpen(unittest.TestCase):
+    '''A camera that fails to open does not stay claimed.
+
+    A device that is half open keeps the camera from every later open in
+    the process.
+    '''
+
+    def test_a_failure_after_the_device_opened_releases_it(self):
+        device = _make_device()
+        device.start.side_effect = RuntimeError('Feature not present')
+        harvester = MagicMock()
+        harvester.create.return_value = device
+        with patch.object(_cam_module, 'Harvester',
+                          return_value=harvester):
+            with self.assertRaises(RuntimeError):
+                _ConcreteCamera()
+        device.destroy.assert_called_once()
+        harvester.reset.assert_called_once()
+
+    def test_a_camera_that_cannot_be_found_is_released(self):
+        harvester = MagicMock()
+        harvester.create.side_effect = IndexError('list index out of range')
+        with patch.object(_cam_module, 'Harvester',
+                          return_value=harvester):
+            with self.assertRaises(QDeviceError):
+                _ConcreteCamera()
+        harvester.reset.assert_called_once()
+
+
 class TestLoadNodeMap(unittest.TestCase):
     '''The node map that harvesters did not connect is built from the port.'''
 
@@ -1014,6 +1073,60 @@ class TestWidthHeight(unittest.TestCase):
         spy = record(cam.shapeChanged)
         cam.set('Height', 480)
         self.assertEqual(len(spy), 1)
+
+
+class TestAliases(unittest.TestCase):
+    '''The lowercase names that every camera shares, for the SFNC nodes.'''
+
+    def camera(self, *names):
+        features = [_make_feature(_IInteger, name=name, value=7, min=1,
+                                  max=9, inc=1) for name in names]
+        device = _make_device()
+        root = MagicMock(spec=_ICategory)
+        root.features = features
+        device.remote_device.node_map.get_node.return_value = root
+        cam, _, _ = make_camera(device=device)
+        return cam
+
+    def test_the_standard_names_stand_for_the_nodes_that_exist(self):
+        cam = self.camera('Width', 'Height', 'AcquisitionFrameRate')
+        self.assertEqual(cam.aliases, {'width': 'Width', 'height': 'Height',
+                                       'fps': 'AcquisitionFrameRate'})
+
+    def test_an_alias_is_not_a_property_and_is_not_a_setting(self):
+        cam = self.camera('Width', 'Height')
+        self.assertNotIn('width', cam.properties)
+        self.assertNotIn('width', cam.settings)
+        self.assertEqual(set(cam.settings), set(cam.properties))
+
+    def test_a_node_that_the_camera_lacks_has_no_alias(self):
+        cam = self.camera('Width')
+        self.assertEqual(cam.aliases, {'width': 'Width'})
+
+    def test_the_first_choice_of_frame_rate_node_wins(self):
+        cam = self.camera('AcquisitionFrameRateAbs', 'AcquisitionFrameRate')
+        self.assertEqual(cam.aliases['fps'], 'AcquisitionFrameRate')
+
+    def test_the_older_frame_rate_node_serves_when_it_is_alone(self):
+        cam = self.camera('AcquisitionFrameRateAbs')
+        self.assertEqual(cam.aliases['fps'], 'AcquisitionFrameRateAbs')
+
+    def test_the_shape_is_found_through_the_aliases(self):
+        cam = self.camera('Width', 'Height')
+        self.assertEqual(cam.shape, QtCore.QSize(7, 7))
+
+    def test_setting_an_alias_signals_the_shape_like_its_node(self):
+        cam = self.camera('Width', 'Height')
+        spy = record(cam.shapeChanged)
+        cam.set('width', 7)
+        cam.set('height', 7)
+        self.assertEqual(len(spy), 2)
+
+    def test_another_property_does_not_signal_the_shape(self):
+        cam = self.camera('Width', 'Gain')
+        spy = record(cam.shapeChanged)
+        cam.set('Gain', 7)
+        self.assertEqual(len(spy), 0)
 
 
 # ---------------------------------------------------------------------------

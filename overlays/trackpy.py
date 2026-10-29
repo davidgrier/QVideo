@@ -11,8 +11,9 @@ microscopy for colloidal studies. Journal of Colloid and Interface
 Science, 179(1), 298-310. https://doi.org/10.1006/jcis.1996.0217
 '''
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 import pyqtgraph as pg
+from QVideo.lib import QOverlayWidget
 from QVideo.lib.videotypes import Image
 import numpy as np
 import warnings
@@ -32,6 +33,13 @@ except Exception as ex:  # a broken installation raises more than ImportError
     _importError = ex
 
 
+def _option(key: str, doc: str) -> property:
+    '''A property of the worker that reads and writes a locate option.'''
+    return property(lambda self: self._opts[key],
+                    lambda self, value: self._opts.__setitem__(key, value),
+                    doc=doc)
+
+
 class _TrackpyWorker(QtCore.QObject):
     '''Runs :func:`trackpy.locate` in a background thread.
 
@@ -41,13 +49,13 @@ class _TrackpyWorker(QtCore.QObject):
         Expected particle diameter [pixels]. Must be odd.
     minmass : float
         Minimum integrated brightness to report a particle.
-
-    Attributes
-    ----------
-    _opts : dict
-        Keyword arguments forwarded to :func:`trackpy.locate` on every call.
-        Initialized with ``minmass``, ``characterize=False``, and
-        ``invert=False``.
+    separation : float or None
+        Minimum separation of particle centers [pixels]; ``None`` lets
+        trackpy choose.
+    noiseSize : int
+        Width of the Gaussian blur that suppresses noise [pixels].
+    invert : bool
+        Look for dark particles on a bright background.
 
     Signals
     -------
@@ -58,15 +66,26 @@ class _TrackpyWorker(QtCore.QObject):
 
     newData = QtCore.Signal(object)
 
-    def __init__(self, diameter: int = 11, minmass: float = 100.) -> None:
+    minmass = _option('minmass', 'Minimum integrated brightness.')
+    separation = _option('separation', 'Minimum separation of centers.')
+    noiseSize = _option('noise_size', 'Width of the noise filter [pixels].')
+    invert = _option('invert', 'Look for dark particles.')
+
+    def __init__(self,
+                 diameter: int = 11,
+                 minmass: float = 100.,
+                 separation: float | None = None,
+                 noiseSize: int = 1,
+                 invert: bool = False) -> None:
         super().__init__()
         if tp is None:
             raise ImportError(
                 'trackpy is required for QTrackpyWidget.'
                 '\n\tInstall it with: pip install trackpy') from _importError
         self.diameter = diameter
-        self._opts = {'minmass': minmass, 'separation': None,
-                      'noise_size': 1, 'characterize': False, 'invert': False}
+        self._opts = {'minmass': minmass, 'separation': separation,
+                      'noise_size': noiseSize, 'characterize': False,
+                      'invert': invert}
 
     @property
     def diameter(self) -> int:
@@ -77,17 +96,8 @@ class _TrackpyWorker(QtCore.QObject):
     def diameter(self, value: int) -> None:
         self._diameter = int(value) | 1
 
-    @property
-    def minmass(self) -> float:
-        '''Minimum integrated brightness (alias for ``_opts[\'minmass\']``).'''
-        return self._opts['minmass']
-
-    @minmass.setter
-    def minmass(self, value: float) -> None:
-        self._opts['minmass'] = value
-
     @QtCore.Slot(np.ndarray)
-    def locate(self, image: Image) -> None:
+    def process(self, image: Image) -> None:
         '''Run :func:`trackpy.locate` on *image* and emit :attr:`newData`.
 
         Parameters
@@ -141,7 +151,7 @@ class QTrackpyOverlay(pg.ScatterPlotItem):
                          y=features['y'].to_numpy())
 
 
-class QTrackpyWidget(QtWidgets.QGroupBox):
+class QTrackpyWidget(QOverlayWidget):
     '''Control widget for the trackpy particle-tracking overlay.
 
     Runs :func:`trackpy.locate` in a background thread and renders
@@ -172,11 +182,6 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
 
     '''
 
-    #: Emitted for each processed frame with the :func:`trackpy.locate`
-    #: :class:`~pandas.DataFrame`, or ``None`` on error.
-    newData = QtCore.Signal(object)
-    _locate = QtCore.Signal(np.ndarray)
-
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
                  diameter: int = 11,
@@ -184,100 +189,46 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
                  separation: float | None = None,
                  noise_size: int = 1,
                  invert: bool = False) -> None:
-        if tp is None:
-            raise ImportError(
-                'trackpy is required for QTrackpyWidget.'
-                '\n\tInstall it with: pip install trackpy') from _importError
-        super().__init__('Trackpy', parent)
-        self._source = None
-        self._ready = True
-        self._overlay = QTrackpyOverlay()
-        self._worker = _TrackpyWorker(diameter=diameter, minmass=minmass)
-        self._worker._opts['separation'] = separation
-        self._worker._opts['noise_size'] = noise_size
-        self._worker._opts['invert'] = invert
-        self._thread = QtCore.QThread(self)
-        self._worker.moveToThread(self._thread)
-        self._locate.connect(self._worker.locate)
-        self._worker.newData.connect(self._onNewData)
-        self._thread.start()
-        thread = self._thread
-        self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
-        self._setupUi()
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
+        worker = _TrackpyWorker(diameter, minmass, separation, noise_size,
+                                invert)
+        super().__init__('Trackpy', QTrackpyOverlay(), worker, parent)
 
     def _setupUi(self) -> None:
-        self.setCheckable(True)
-        self.setChecked(False)
-        self.setFlat(True)
-        layout = QtWidgets.QFormLayout(self)
-        layout.setContentsMargins(2, 5, 2, 5)
+        super()._setupUi()
+        worker = self._worker
 
         self._diameterSpinBox = QtWidgets.QSpinBox()
         self._diameterSpinBox.setRange(3, 201)
         self._diameterSpinBox.setSingleStep(2)
-        self._diameterSpinBox.setValue(self._worker.diameter)
+        self._diameterSpinBox.setValue(worker.diameter)
         self._diameterSpinBox.valueChanged.connect(self._setDiameter)
-        layout.addRow('Diameter', self._diameterSpinBox)
+        self._layout.addRow('Diameter', self._diameterSpinBox)
 
         self._minmassSpinBox = QtWidgets.QDoubleSpinBox()
         self._minmassSpinBox.setRange(0., 1e7)
         self._minmassSpinBox.setSingleStep(10.)
-        self._minmassSpinBox.setValue(self._worker.minmass)
+        self._minmassSpinBox.setValue(worker.minmass)
         self._minmassSpinBox.valueChanged.connect(self._setMinmass)
-        layout.addRow('Min mass', self._minmassSpinBox)
+        self._layout.addRow('Min mass', self._minmassSpinBox)
 
         self._separationSpinBox = QtWidgets.QDoubleSpinBox()
         self._separationSpinBox.setRange(0., 1000.)
         self._separationSpinBox.setSingleStep(1.)
         self._separationSpinBox.setSpecialValueText('auto')
-        sep = self._worker._opts['separation']
-        self._separationSpinBox.setValue(0. if sep is None else sep)
+        self._separationSpinBox.setValue(worker.separation or 0.)
         self._separationSpinBox.valueChanged.connect(self._setSeparation)
-        layout.addRow('Separation', self._separationSpinBox)
+        self._layout.addRow('Separation', self._separationSpinBox)
 
         self._noiseSizeSpinBox = QtWidgets.QSpinBox()
         self._noiseSizeSpinBox.setRange(1, 20)
-        self._noiseSizeSpinBox.setValue(self._worker._opts['noise_size'])
+        self._noiseSizeSpinBox.setValue(worker.noiseSize)
         self._noiseSizeSpinBox.valueChanged.connect(self._setNoiseSize)
-        layout.addRow('Noise size', self._noiseSizeSpinBox)
+        self._layout.addRow('Noise size', self._noiseSizeSpinBox)
 
         self._invertCheckBox = QtWidgets.QCheckBox()
-        self._invertCheckBox.setChecked(self._worker._opts['invert'])
+        self._invertCheckBox.setChecked(worker.invert)
         self._invertCheckBox.toggled.connect(self._setInvert)
-        layout.addRow('Invert', self._invertCheckBox)
-
-        self.toggled.connect(self._overlay.setVisible)
-
-    @property
-    def source(self):
-        '''The :class:`~QVideo.lib.QVideoSource.QVideoSource` being tracked.'''
-        return self._source
-
-    @source.setter
-    def source(self, source) -> None:
-        if self._source is not None:
-            self._source.newFrame.disconnect(self._onNewFrame)
-        self._source = source
-        if source is not None:
-            source.newFrame.connect(self._onNewFrame)
-
-    @property
-    def overlay(self) -> QTrackpyOverlay:
-        '''The :class:`QTrackpyOverlay` graphics item for this widget.'''
-        return self._overlay
-
-    @QtCore.Slot(np.ndarray)
-    def _onNewFrame(self, image: Image) -> None:
-        if self._ready and self.isChecked():
-            self._ready = False
-            self._locate.emit(image)
-
-    @QtCore.Slot(object)
-    def _onNewData(self, features) -> None:
-        self._ready = True
-        self._overlay.setFeatures(features)
-        self.newData.emit(features)
+        self._layout.addRow('Invert', self._invertCheckBox)
 
     @QtCore.Slot(int)
     def _setDiameter(self, value: int) -> None:
@@ -290,34 +241,16 @@ class QTrackpyWidget(QtWidgets.QGroupBox):
 
     @QtCore.Slot(float)
     def _setMinmass(self, value: float) -> None:
-        self._worker._opts['minmass'] = value
+        self._worker.minmass = value
 
     @QtCore.Slot(float)
     def _setSeparation(self, value: float) -> None:
-        self._worker._opts['separation'] = None if value == 0. else value
+        self._worker.separation = None if value == 0. else value
 
     @QtCore.Slot(int)
     def _setNoiseSize(self, value: int) -> None:
-        self._worker._opts['noise_size'] = value
+        self._worker.noiseSize = value
 
     @QtCore.Slot(bool)
     def _setInvert(self, checked: bool) -> None:
-        self._worker._opts['invert'] = checked
-
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the worker thread when the widget is closed.'''
-        self.stop()
-        super().closeEvent(event)
-
-    @QtCore.Slot()
-    def stop(self) -> None:
-        '''Disconnect the video source and stop the worker thread.
-
-        The widget also does this when it is deleted and when the
-        application quits.  Calling it first, as the last step before the
-        widget goes, makes the order explicit (see
-        :ref:`shutting-down`).  It is safe to call more than once.
-        '''
-        self.source = None
-        self._thread.quit()
-        self._thread.wait()
+        self._worker.invert = checked

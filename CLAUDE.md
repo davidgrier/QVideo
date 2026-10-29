@@ -104,9 +104,9 @@ subclass, and the machinery that they run on (`launch()`, `QSnapshot`); a
 finished widget that nobody subclasses belongs in `widgets/`.
 `cameras/`, `filters/`, `dvr/` and `overlays/` hold families of
 implementations (`cameras/` also has the table of backends, the code that
-opens a camera from it, and the command-line chooser, all in `chooser.py`), `demos/` the recipes, and
-`interactive/` the notebook and script front door (`Camera()`,
-`Filter()`).  Update a directory's README when its role or
+opens a camera from it, and the command-line chooser, all in `chooser.py`),
+`demos/` the recipes, and `interactive/` the notebook and script front door
+(`Camera()`, `Filter()`).  Update a directory's README when its role or
 contents change.
 
 ### Core abstractions (`lib/`)
@@ -119,7 +119,7 @@ methods:
 - `read() -> (bool, ndarray | None)` — capture one frame
 
 `registerProperty(name, getter, setter, ptype, **meta)` stores a property spec
-in `self._properties` (a dict). The base-class `get` / `set` / `execute` all
+in `self.properties` (a dict). The base-class `get` / `set` / `execute` all
 route through this dict. One reentrant lock (`camera._mutex`, a
 `threading.RLock`) serializes all device access: `registerProperty` and
 `registerMethod` wrap every getter, setter and method in it and `saferead`
@@ -130,7 +130,12 @@ snapshots (`QGenicamCamera.states`), read under one hold of the lock: the
 capture thread holds it while it waits for a frame, so a GUI that asks for the
 lock once per node stalls. `__getattr__`
 delegates attribute access (`camera.fps`) to registered getters, so subclasses
-do not need explicit Python properties for every camera parameter.
+do not need explicit Python properties for every camera parameter.  A
+backend whose properties have the names of a standard (GenICam's `Width`)
+lists the shared lowercase names (`width`, `height`, `fps`) in
+`camera.aliases`; an alias works as an attribute and in `get`, `set` and
+`shape`, but it is not a property, so `settings` and `properties` have the
+same names on every backend.
 
 **`Camera()`** (`interactive/camera.py`) is the headless front door: it
 discovers a backend, creates a `QApplication` if there is none (and keeps
@@ -149,8 +154,8 @@ in a loop and emitting `newFrame(ndarray)`. It is the standard way to drive a
 camera from the GUI thread.
 
 **`QCameraTree`** is a `pyqtgraph.parametertree` widget. It reads
-`camera._properties` to auto-build a control tree — no manual UI code needed
-per camera. It requires `_properties` to be a proper dict (populated via
+`camera.properties` to auto-build a control tree — no manual UI code needed
+per camera. It requires `properties` to be a proper dict (populated via
 `registerProperty`).
 
 **`VideoFilter`** objects run in a **`QFilterPipeline`** (a worker thread),
@@ -173,7 +178,7 @@ from those imports must also be inside the `try` block (not after it).
 
 When adding a new backend, update all four of the following:
 
-1. `cameras/chooser.py` — add an entry to `_BACKENDS` (module path, camera
+1. `cameras/chooser.py` — add an entry to `BACKENDS` (module path, camera
    class name, tree class name, display label, command-line flag and its
    help string) and append the key to `_DISCOVERY_ORDER` at the
    appropriate priority position.
@@ -244,6 +249,15 @@ frames (the default `depth=1` always processes the newest), removes and
 reports a filter that raises, and never touches a widget from the worker
 thread: the rack hands it plain `VideoFilter` objects.
 
+A filter that corrects frames with a reference that the user captures (dark
+frame, flat field) subclasses `ReferenceFilter` (`lib/QReferenceFilter.py`),
+which does the capturing; the subclass implements `_makeReference` and
+`_correct`, and its widget subclasses `QReferenceFilter`.
+
+An overlay's control widget subclasses `QOverlayWidget`
+(`lib/QOverlayWidget.py`), which runs the worker thread; the subclass supplies
+the worker, the graphics item and its controls.
+
 The rack comes in two classes.  `QFilterRackWidget` is a pure widget with
 no thread: calling it applies the filters in the caller's thread (recorded
 frames, pipeline design).  `QFilterRack` subclasses it and owns a
@@ -264,6 +278,9 @@ state; none of them owns a thread.
   clicked with `button.click()`, which honors a disabled button; enable it
   first when the test needs the click.
 - Hardware is always mocked — never rely on physical devices in tests.
+- `tests/test_imports.py` imports every public module in an interpreter of
+  its own.  It is slow and fails rarely, so it runs only with
+  `QVIDEO_TEST_IMPORTS=1`; run it after moving or renaming modules.
 - For cameras with optional dependencies, inject mock modules into
   `sys.modules` **before** importing the module under test:
   ```python

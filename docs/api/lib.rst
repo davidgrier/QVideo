@@ -62,6 +62,34 @@ fragments to produce a standalone ``filter.py`` file.  See
 .. automodule:: QVideo.lib.QVideoFilter
    :members:
 
+ReferenceFilter
+---------------
+
+:class:`~QVideo.lib.QReferenceFilter.ReferenceFilter` is the base of the
+filters that correct every frame with a reference that the user captures:
+:class:`~QVideo.filters.darkframe.DarkFrameFilter` and
+:class:`~QVideo.filters.flatfield.FlatFieldFilter` are two.  It averages
+frames into the reference; a subclass implements two short methods that
+say what the reference is and how it corrects a frame.
+:class:`~QVideo.lib.QReferenceFilter.QReferenceFilter` is its widget, with
+the *frames* spinbox and the *Capture* and *Reset* buttons.  See
+:ref:`extending-reference` for an example.
+
+.. automodule:: QVideo.lib.QReferenceFilter
+   :members:
+
+QOverlayWidget
+--------------
+
+:class:`~QVideo.lib.QOverlayWidget.QOverlayWidget` is the base of the control
+widgets of overlays: it runs the analysis of a worker on a thread of its own,
+hands it one frame at a time, passes the results to the graphics item, and
+stops cleanly.  A subclass supplies the worker, the graphics item and its
+controls.  See :ref:`extending-overlays` for an example.
+
+.. automodule:: QVideo.lib.QOverlayWidget
+   :members:
+
 QFilterPipeline
 ---------------
 
@@ -204,12 +232,6 @@ filtered frames (``QVideoScreen.newFrame``), or the fully rendered scene
 with overlays (``QVideoScreen.newFrame`` with ``composite=True``).
 
 .. automodule:: QVideo.lib.QSnapshot
-   :members:
-
-QListCameras
-------------
-
-.. automodule:: QVideo.lib.QListCameras
    :members:
 
 clickable

@@ -38,3 +38,19 @@ work on a small screen.
 
 .. automodule:: QVideo.widgets.QScrollPanel
    :members:
+
+QCameraChooser
+--------------
+
+:class:`~QVideo.widgets.QCameraChooser.QCameraChooser` is a combo box of the
+cameras that can be opened, found by
+:func:`~QVideo.cameras.chooser.available_cameras`.  Opening each device to
+see that it works can take seconds, so the chooser looks on a thread of its
+own: it says that it is looking, and the window does not freeze.  Choosing
+an entry emits ``cameraSelected(model, cameraID)``, the arguments of
+:func:`~QVideo.Camera`.  The names of the OpenCV cameras come from the
+``cv2-enumerate-cameras`` package (the ``opencv`` extra); without it the
+entries read "OpenCV 0" and so on.
+
+.. automodule:: QVideo.widgets.QCameraChooser
+   :members:

@@ -301,7 +301,7 @@ class TestProperties(unittest.TestCase):
         self.assertTrue(self.cam.color)
 
     def test_color_is_settable(self):
-        self.assertIsNotNone(self.cam._properties['color']['setter'])
+        self.assertIsNotNone(self.cam.properties['color']['setter'])
 
     def test_brightness_registered(self):
         self.assertIn('Brightness', self.cam.properties)
@@ -338,25 +338,25 @@ class TestProperties(unittest.TestCase):
         self.assertTrue(self.cam.AeEnable)
 
     def test_float_control_has_minimum(self):
-        spec = self.cam._properties['Brightness']
+        spec = self.cam.properties['Brightness']
         self.assertIn('minimum', spec)
 
     def test_float_control_has_maximum(self):
-        spec = self.cam._properties['Brightness']
+        spec = self.cam.properties['Brightness']
         self.assertIn('maximum', spec)
 
     def test_float_control_minimum_value(self):
-        self.assertEqual(self.cam._properties['Brightness']['minimum'], -1.0)
+        self.assertEqual(self.cam.properties['Brightness']['minimum'], -1.0)
 
     def test_float_control_maximum_value(self):
-        self.assertEqual(self.cam._properties['Brightness']['maximum'], 1.0)
+        self.assertEqual(self.cam.properties['Brightness']['maximum'], 1.0)
 
     def test_bool_control_has_no_minimum(self):
-        spec = self.cam._properties['AeEnable']
+        spec = self.cam.properties['AeEnable']
         self.assertNotIn('minimum', spec)
 
     def test_bool_control_has_no_maximum(self):
-        spec = self.cam._properties['AeEnable']
+        spec = self.cam.properties['AeEnable']
         self.assertNotIn('maximum', spec)
 
     def test_unknown_control_not_registered(self):
@@ -507,11 +507,11 @@ class TestFrameRate(unittest.TestCase):
         self.assertAlmostEqual(self.cam.fps, 1_000_000 / 33333, places=1)
 
     def test_fps_maximum(self):
-        spec = self.cam._properties['fps']
+        spec = self.cam.properties['fps']
         self.assertAlmostEqual(spec['maximum'], 1_000_000 / 33333, places=1)
 
     def test_fps_minimum(self):
-        spec = self.cam._properties['fps']
+        spec = self.cam.properties['fps']
         self.assertAlmostEqual(
             spec['minimum'], 1_000_000 / 120000000, places=4)
 
@@ -631,19 +631,19 @@ class TestFocus(unittest.TestCase):
         self.assertIn('autofocus', self.cam.methods)
 
     def test_af_state_is_read_only(self):
-        self.assertIsNone(self.cam._properties['AfState']['setter'])
+        self.assertIsNone(self.cam.properties['AfState']['setter'])
 
     def test_af_state_initial_value(self):
         self.assertEqual(self.cam.AfState, 0)
 
     def test_lens_position_has_minimum(self):
-        self.assertIn('minimum', self.cam._properties['LensPosition'])
+        self.assertIn('minimum', self.cam.properties['LensPosition'])
 
     def test_lens_position_has_maximum(self):
-        self.assertIn('maximum', self.cam._properties['LensPosition'])
+        self.assertIn('maximum', self.cam.properties['LensPosition'])
 
     def test_lens_position_range(self):
-        spec = self.cam._properties['LensPosition']
+        spec = self.cam.properties['LensPosition']
         self.assertEqual(spec['minimum'], 0.0)
         self.assertEqual(spec['maximum'], 32.0)
 
@@ -710,19 +710,19 @@ class TestAwbMode(unittest.TestCase):
         self.assertEqual(self.cam.AwbMode, 0)
 
     def test_awb_mode_has_minimum(self):
-        self.assertIn('minimum', self.cam._properties['AwbMode'])
+        self.assertIn('minimum', self.cam.properties['AwbMode'])
 
     def test_awb_mode_has_maximum(self):
-        self.assertIn('maximum', self.cam._properties['AwbMode'])
+        self.assertIn('maximum', self.cam.properties['AwbMode'])
 
     def test_awb_mode_minimum_value(self):
-        self.assertEqual(self.cam._properties['AwbMode']['minimum'], 0)
+        self.assertEqual(self.cam.properties['AwbMode']['minimum'], 0)
 
     def test_awb_mode_maximum_value(self):
-        self.assertEqual(self.cam._properties['AwbMode']['maximum'], 7)
+        self.assertEqual(self.cam.properties['AwbMode']['maximum'], 7)
 
     def test_awb_mode_is_settable(self):
-        self.assertIsNotNone(self.cam._properties['AwbMode']['setter'])
+        self.assertIsNotNone(self.cam.properties['AwbMode']['setter'])
 
     def test_set_awb_mode_calls_set_controls(self):
         self.cam.set('AwbMode', 5)
@@ -763,28 +763,28 @@ class TestColourGains(unittest.TestCase):
         self.assertAlmostEqual(self.cam.ColourGainB, 1.8)
 
     def test_colour_gain_r_has_minimum(self):
-        self.assertIn('minimum', self.cam._properties['ColourGainR'])
+        self.assertIn('minimum', self.cam.properties['ColourGainR'])
 
     def test_colour_gain_r_has_maximum(self):
-        self.assertIn('maximum', self.cam._properties['ColourGainR'])
+        self.assertIn('maximum', self.cam.properties['ColourGainR'])
 
     def test_colour_gain_r_minimum_value(self):
-        self.assertEqual(self.cam._properties['ColourGainR']['minimum'], 0.0)
+        self.assertEqual(self.cam.properties['ColourGainR']['minimum'], 0.0)
 
     def test_colour_gain_r_maximum_value(self):
-        self.assertEqual(self.cam._properties['ColourGainR']['maximum'], 32.0)
+        self.assertEqual(self.cam.properties['ColourGainR']['maximum'], 32.0)
 
     def test_colour_gain_b_minimum_value(self):
-        self.assertEqual(self.cam._properties['ColourGainB']['minimum'], 0.0)
+        self.assertEqual(self.cam.properties['ColourGainB']['minimum'], 0.0)
 
     def test_colour_gain_b_maximum_value(self):
-        self.assertEqual(self.cam._properties['ColourGainB']['maximum'], 32.0)
+        self.assertEqual(self.cam.properties['ColourGainB']['maximum'], 32.0)
 
     def test_colour_gain_r_is_settable(self):
-        self.assertIsNotNone(self.cam._properties['ColourGainR']['setter'])
+        self.assertIsNotNone(self.cam.properties['ColourGainR']['setter'])
 
     def test_colour_gain_b_is_settable(self):
-        self.assertIsNotNone(self.cam._properties['ColourGainB']['setter'])
+        self.assertIsNotNone(self.cam.properties['ColourGainB']['setter'])
 
     def test_set_colour_gain_r_sends_both_gains(self):
         self.cam.set('ColourGainR', 2.0)
@@ -841,10 +841,10 @@ class TestFlip(unittest.TestCase):
         self.assertIn('vflip', self.cam.properties)
 
     def test_hflip_is_settable(self):
-        self.assertIsNotNone(self.cam._properties['hflip']['setter'])
+        self.assertIsNotNone(self.cam.properties['hflip']['setter'])
 
     def test_vflip_is_settable(self):
-        self.assertIsNotNone(self.cam._properties['vflip']['setter'])
+        self.assertIsNotNone(self.cam.properties['vflip']['setter'])
 
     def test_hflip_constructor_kwarg(self):
         cam, _ = make_camera(hflip=True)

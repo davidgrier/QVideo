@@ -92,7 +92,7 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         frame = _make_frame()
         mock_tp.locate.return_value = _make_features()
         spy = self._collect()
-        self._worker.locate(frame)
+        self._worker.process(frame)
         mock_tp.locate.assert_called_once()
         args, kwargs = mock_tp.locate.call_args
         self.assertEqual(args[0].ndim, 2)
@@ -105,27 +105,27 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         features = _make_features()
         mock_tp.locate.return_value = features
         spy = self._collect()
-        self._worker.locate(_make_frame())
+        self._worker.process(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIs(spy[0][0], features)
 
     def test_locate_converts_color_to_gray(self):
         mock_tp.locate.return_value = _make_features()
-        self._worker.locate(_make_frame(color=True))
+        self._worker.process(_make_frame(color=True))
         args, _ = mock_tp.locate.call_args
         self.assertEqual(args[0].ndim, 2)
 
     def test_locate_passes_grayscale_unchanged(self):
         frame = _make_frame()
         mock_tp.locate.return_value = _make_features()
-        self._worker.locate(frame)
+        self._worker.process(frame)
         args, _ = mock_tp.locate.call_args
         np.testing.assert_array_equal(args[0], frame)
 
     def test_locate_emits_none_on_exception(self):
         mock_tp.locate.side_effect = RuntimeError('oops')
         spy = self._collect()
-        self._worker.locate(_make_frame())
+        self._worker.process(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
@@ -183,14 +183,6 @@ def _make_widget(**kwargs):
 
 class TestQTrackpyWidgetInit(unittest.TestCase):
 
-    def test_initially_unchecked(self):
-        w = _make_widget()
-        self.assertFalse(w.isChecked())
-
-    def test_no_source_by_default(self):
-        w = _make_widget()
-        self.assertIsNone(w.source)
-
     def test_initial_diameter_reflected_in_spinbox(self):
         w = _make_widget(diameter=15)
         self.assertEqual(w._diameterSpinBox.value(), 15)
@@ -198,101 +190,6 @@ class TestQTrackpyWidgetInit(unittest.TestCase):
     def test_initial_minmass_reflected_in_spinbox(self):
         w = _make_widget(minmass=200.)
         self.assertAlmostEqual(w._minmassSpinBox.value(), 200.)
-
-
-class TestQTrackpyWidgetSource(unittest.TestCase):
-
-    def test_source_setter_connects_newframe(self):
-        w = _make_widget()
-        src = MockSource()
-        w.source = src
-        self.assertIs(w.source, src)
-
-    def test_source_setter_none_after_source(self):
-        w = _make_widget()
-        src = MockSource()
-        w.source = src
-        w.source = None
-        self.assertIsNone(w.source)
-
-    def test_source_replacement_disconnects_old(self):
-        w = _make_widget()
-        src1 = MockSource()
-        src2 = MockSource()
-        w.source = src1
-        w.source = src2
-        # src1.newFrame should no longer reach the worker
-        spy = record(w.newData)
-        w.setChecked(True)
-        src1.newFrame.emit(_make_frame())
-        QtWidgets.QApplication.processEvents()
-        self.assertEqual(len(spy), 0)
-
-
-class TestQTrackpyWidgetNewFrame(unittest.TestCase):
-
-    def setUp(self):
-        self._w = _make_widget()
-        mock_tp.reset_mock()
-        mock_tp.locate.return_value = _make_features()
-
-    def test_new_frame_ignored_when_unchecked(self):
-        spy = record(self._w._locate)
-        self._w._onNewFrame(_make_frame())
-        self.assertEqual(len(spy), 0)
-
-    def test_new_frame_dispatched_when_checked_and_ready(self):
-        self._w.setChecked(True)
-        spy = record(self._w._locate)
-        self._w._onNewFrame(_make_frame())
-        self.assertEqual(len(spy), 1)
-
-    def test_ready_flag_cleared_before_dispatch(self):
-        # Break the sync round-trip so we can inspect _ready mid-flight.
-        self._w.setChecked(True)
-        self._w._locate.disconnect(self._w._worker.locate)
-        try:
-            self._w._onNewFrame(_make_frame())
-            self.assertFalse(self._w._ready)
-        finally:
-            self._w._locate.connect(self._w._worker.locate)
-
-    def test_second_frame_dropped_while_busy(self):
-        self._w.setChecked(True)
-        self._w._ready = False   # simulate worker still running
-        spy = record(self._w._locate)
-        self._w._onNewFrame(_make_frame())
-        self.assertEqual(len(spy), 0)
-
-
-class TestQTrackpyWidgetNewData(unittest.TestCase):
-
-    def setUp(self):
-        self._w = _make_widget()
-        self._w._ready = False  # simulate in-flight request
-
-    def test_ready_flag_restored(self):
-        self._w._onNewData(_make_features())
-        self.assertTrue(self._w._ready)
-
-    def test_new_data_signal_emitted(self):
-        spy = record(self._w.newData)
-        features = _make_features()
-        self._w._onNewData(features)
-        self.assertEqual(len(spy), 1)
-        self.assertIs(spy[0][0], features)
-
-    def test_overlay_updated(self):
-        features = _make_features(4)
-        self._w._onNewData(features)
-        pts = self._w._overlay.getData()
-        self.assertEqual(len(pts[0]), 4)
-
-    def test_none_features_clears_overlay(self):
-        self._w._overlay.setFeatures(_make_features())
-        self._w._onNewData(None)
-        pts = self._w._overlay.getData()
-        self.assertEqual(len(pts[0]), 0)
 
 
 class TestQTrackpyWidgetOverlay(unittest.TestCase):
@@ -351,6 +248,30 @@ class TestTrackpyWorkerOpts(unittest.TestCase):
         w = _TrackpyWorker()
         w.minmass = 42.
         self.assertAlmostEqual(w._opts['minmass'], 42.)
+
+
+class TestTrackpyWorkerOptions(unittest.TestCase):
+    '''The options of the worker are properties, not a dict to poke.'''
+
+    def test_the_constructor_sets_the_options(self):
+        worker = _TrackpyWorker(7, 50., separation=9., noiseSize=2,
+                                invert=True)
+        self.assertEqual(worker.diameter, 7)
+        self.assertEqual(worker._opts['minmass'], 50.)
+        self.assertEqual(worker._opts['separation'], 9.)
+        self.assertEqual(worker._opts['noise_size'], 2)
+        self.assertTrue(worker._opts['invert'])
+
+    def test_each_option_reads_what_locate_gets(self):
+        worker = _TrackpyWorker()
+        for name, key, value in (('minmass', 'minmass', 5.),
+                                 ('separation', 'separation', 12.),
+                                 ('noiseSize', 'noise_size', 3),
+                                 ('invert', 'invert', True)):
+            with self.subTest(name):
+                setattr(worker, name, value)
+                self.assertEqual(worker._opts[key], value)
+                self.assertEqual(getattr(worker, name), value)
 
 
 class TestQTrackpyWidgetMinmass(unittest.TestCase):
@@ -429,42 +350,6 @@ class TestQTrackpyWidgetInvert(unittest.TestCase):
         w = _make_widget(invert=True)
         w._setInvert(False)
         self.assertFalse(w._worker._opts['invert'])
-
-
-class TestQTrackpyWidgetCleanup(unittest.TestCase):
-
-    def test_stop_disconnects_source(self):
-        w = _make_widget()
-        src = MockSource()
-        w.source = src
-        w.stop()
-        self.assertIsNone(w.source)
-
-    def test_stop_stops_thread(self):
-        w = _make_widget()
-        thread = w._thread
-        thread.quit = MagicMock()
-        thread.wait = MagicMock()
-        w.stop()
-        thread.quit.assert_called_once()
-        thread.wait.assert_called_once()
-
-    def test_stop_twice_is_safe(self):
-        w = _make_widget()
-        w.stop()
-        w.stop()
-        self.assertFalse(w._thread.isRunning())
-
-    def test_deleting_the_widget_stops_the_thread(self):
-        w = _make_widget()
-        thread = w._thread
-        thread.quit = MagicMock()
-        thread.wait = MagicMock()
-        w.deleteLater()
-        QtCore.QCoreApplication.sendPostedEvents(
-            None, QtCore.QEvent.Type.DeferredDelete)
-        thread.quit.assert_called_once()
-        thread.wait.assert_called_once()
 
 
 if __name__ == '__main__':  # pragma: no cover

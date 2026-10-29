@@ -64,6 +64,18 @@ The Picamera backend requires a Raspberry Pi.  The remaining GenICam
 backends (Basler, IDS, MV, VimbaX) have not been systematically tested
 on any platform.
 
+USB 3 cameras
+-------------
+
+A USB 3 camera on a cable or port without the SuperSpeed wires still
+enumerates and answers every command, but its stream is slow and may
+stall: the first frame never arrives and the window freezes.  A GenICam
+camera that reports its link speed (``U3VCurrentSpeed``) logs a warning
+when the link is slower than SuperSpeed.  Use a USB 3 cable, plug the
+camera into a USB 3 port without a hub, and check the speed of the
+link (on macOS, ``system_profiler SPUSBHostDataType`` shows 5 Gb/s for
+SuperSpeed and 480 Mb/s for a USB 2 link).
+
 Windows
 -------
 

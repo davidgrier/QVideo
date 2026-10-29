@@ -4,7 +4,6 @@ from qtpy import QtCore, QtWidgets, QtGui
 from QVideo.lib.QVideoFilter import (
     QVideoFilter, VideoFilter, renderPipeline)
 from QVideo.lib.videotypes import Image
-import QVideo.filters as videofilters
 import pyqtgraph as pg
 
 
@@ -348,19 +347,26 @@ class QFilterRackWidget(QtWidgets.QWidget):
         self.filtersChanged.emit()
 
     @classmethod
-    def _registry(cls) -> dict[str, type[QVideoFilter]]:
-        '''Map :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
-        to class for every exported
-        :class:`~QVideo.lib.QVideoFilter.QVideoFilter` that has a
-        non-empty :attr:`display_name`.
+    def availableFilters(cls) -> dict[str, type[QVideoFilter]]:
+        '''Return the filters that the rack can offer, by display name.
+
+        Returns
+        -------
+        dict[str, type[QVideoFilter]]
+            Each
+            :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
+            of an exported
+            :class:`~QVideo.lib.QVideoFilter.QVideoFilter` with a
+            non-empty display name, mapped to its class and sorted by
+            name.  Iterate it for the names; index it for a class.
         '''
-        return {
-            klass.display_name: klass
-            for name in videofilters.__all__
-            if isinstance(klass := getattr(videofilters, name, None), type)
-            and issubclass(klass, QVideoFilter)
-            and klass.display_name
-        }
+        import QVideo.filters as videofilters  # not at import: it needs lib
+        classes = (getattr(videofilters, name, None)
+                   for name in videofilters.__all__)
+        return dict(sorted(
+            (klass.display_name, klass) for klass in classes
+            if isinstance(klass, type) and issubclass(klass, QVideoFilter)
+            and klass.display_name))
 
     def addByName(self, name: str) -> None:
         '''Instantiate a filter by display name and add it to the rack.
@@ -376,23 +382,10 @@ class QFilterRackWidget(QtWidgets.QWidget):
         ValueError
             If *name* does not match any registered filter.
         '''
-        klass = self._registry().get(name)
+        klass = self.availableFilters().get(name)
         if klass is None:
             raise ValueError(f'{name!r} is not a known filter')
         self.add(klass())
-
-    @classmethod
-    def availableFilters(cls) -> list[str]:
-        '''Return display names of all available filters, sorted.
-
-        Returns
-        -------
-        list[str]
-            Sorted list of
-            :attr:`~QVideo.lib.QVideoFilter.QVideoFilter.display_name`
-            values for every exported filter with a non-empty display name.
-        '''
-        return sorted(cls._registry())
 
     def exportPipeline(self) -> str:
         '''Generate Python source that implements the current enabled pipeline.
@@ -461,10 +454,10 @@ class QFilterRackWidget(QtWidgets.QWidget):
         self.filtersChanged.emit()
 
     def _addFilterDialog(self) -> None:
-        registry = self._registry()
-        if not registry:
+        available = self.availableFilters()
+        if not available:
             return
-        picker = _FilterPicker(registry, self)
+        picker = _FilterPicker(available, self)
         if picker.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             name = picker.selected()
             if name:

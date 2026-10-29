@@ -47,7 +47,7 @@ class TestCameraControls(unittest.TestCase):
 
         self.camera = MagicMock()
         self.camera.name = 'TestCamera'
-        self.camera._properties = {
+        self.camera.properties = {
             'fps': {
                 'getter': lambda: 30.0,
                 'setter': self.float_setter,
@@ -135,25 +135,25 @@ class TestCameraControls(unittest.TestCase):
 
     def test_float_slider_not_created_for_infinite_max(self):
         import ipywidgets as widgets
-        self.camera._properties['fps']['maximum'] = float('inf')
+        self.camera.properties['fps']['maximum'] = float('inf')
         ctrl = self._make()
         self.assertIsInstance(ctrl._widgets['fps'], widgets.FloatText)
 
     def test_float_slider_not_created_for_infinite_min(self):
         import ipywidgets as widgets
-        self.camera._properties['fps']['minimum'] = float('-inf')
+        self.camera.properties['fps']['minimum'] = float('-inf')
         ctrl = self._make()
         self.assertIsInstance(ctrl._widgets['fps'], widgets.FloatText)
 
     def test_non_finite_value_replaced_with_default(self):
         import math
-        self.camera._properties['fps']['getter'] = lambda: float('nan')
+        self.camera.properties['fps']['getter'] = lambda: float('nan')
         ctrl = self._make()
         self.assertTrue(math.isfinite(ctrl._widgets['fps'].value))
 
     def test_widget_count_matches_properties(self):
         ctrl = self._make()
-        self.assertEqual(len(ctrl._widgets), len(self.camera._properties))
+        self.assertEqual(len(ctrl._widgets), len(self.camera.properties))
 
     # ------------------------------------------------------------------
     # Initial values
@@ -227,26 +227,26 @@ class TestCameraControls(unittest.TestCase):
 
     def test_refresh_updates_widget_values(self):
         ctrl = self._make()
-        self.camera._properties['fps']['getter'] = lambda: 90.0
+        self.camera.properties['fps']['getter'] = lambda: 90.0
         ctrl.refresh()
         self.assertAlmostEqual(ctrl._widgets['fps'].value, 90.0)
 
     def test_refresh_does_not_trigger_setters(self):
         ctrl = self._make()
-        self.camera._properties['fps']['getter'] = lambda: 90.0
+        self.camera.properties['fps']['getter'] = lambda: 90.0
         ctrl.refresh()
         self.float_setter.assert_not_called()
 
     def test_refresh_logs_a_value_that_cannot_be_shown(self):
         ctrl = self._make()
-        self.camera._properties['frames']['getter'] = lambda: 'not a number'
+        self.camera.properties['frames']['getter'] = lambda: 'not a number'
         with self.assertLogs('QVideo.interactive.widgets', 'DEBUG') as logs:
             ctrl.refresh()
         self.assertIn('frames', logs.output[0])
 
     def test_refresh_handles_none_getter(self):
         ctrl = self._make()
-        self.camera._properties['fps']['getter'] = lambda: None
+        self.camera.properties['fps']['getter'] = lambda: None
         ctrl.refresh()  # should not raise
 
     # ------------------------------------------------------------------
@@ -258,7 +258,7 @@ class TestCameraControls(unittest.TestCase):
         from QVideo.interactive.widgets import CameraControls
         cam = MagicMock()
         cam.isOpen.return_value = True
-        cam._properties = self.camera._properties
+        cam.properties = self.camera.properties
         cam.name = 'Noise'
         with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy = Camera('noise')
@@ -269,7 +269,7 @@ class TestCameraControls(unittest.TestCase):
         from QVideo.interactive.camera import Camera
         cam = MagicMock()
         cam.isOpen.return_value = True
-        cam._properties = {}
+        cam.properties = {}
         with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy = Camera('noise')
         with patch.dict('sys.modules', {'QVideo.interactive.widgets': None}):
@@ -280,7 +280,7 @@ class TestCameraControls(unittest.TestCase):
         from QVideo.interactive.widgets import CameraControls
         cam = MagicMock()
         cam.name = 'Test'
-        cam._properties = {
+        cam.properties = {
             'visible': {'getter': lambda: 1.0, 'setter': None, 'ptype': float},
             'hidden':  {'getter': lambda: 2.0, 'setter': None, 'ptype': float,
                         'hidden': True},

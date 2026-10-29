@@ -189,18 +189,51 @@ class TestQCameraTreeSync(unittest.TestCase):
         tree._parameters['width'].setValue(320)
 
 
+class TestSyncIgnored(unittest.TestCase):
+    '''The tree stops listening while the camera sets its parameters.'''
+
+    def test_the_tree_ignores_changes_inside_the_block(self):
+        tree = make_tree()
+        with tree._syncIgnored():
+            self.assertTrue(tree._ignoreSync)
+        self.assertFalse(tree._ignoreSync)
+
+    def test_the_tree_listens_again_after_an_error(self):
+        tree = make_tree()
+        with self.assertRaises(ValueError):
+            with tree._syncIgnored():
+                raise ValueError('the camera failed')
+        self.assertFalse(tree._ignoreSync)
+
+    def test_blocks_nest(self):
+        tree = make_tree()
+        with tree._syncIgnored():
+            with tree._syncIgnored():
+                pass
+            self.assertTrue(tree._ignoreSync)
+        self.assertFalse(tree._ignoreSync)
+
+    def test_a_camera_that_fails_does_not_silence_the_tree(self):
+        cam = make_camera()
+        tree = make_tree(source=make_source(cam))
+        with patch.object(type(tree), 'set', side_effect=RuntimeError):
+            with self.assertRaises(RuntimeError):
+                tree._sync(None, [])
+        self.assertFalse(tree._ignoreSync)
+
+
 class TestQCameraTreeDefaultDescriptionNone(unittest.TestCase):
 
     def test_skips_properties_with_none_getter(self):
         '''_defaultDescription omits entries whose getter returns None.'''
         cam = make_camera()
-        cam._properties['_fake'] = {'getter': lambda: None, 'setter': None}
+        cam.properties['_fake'] = {'getter': lambda: None, 'setter': None}
         try:
             desc = QCameraTree._defaultDescription(cam)
             names = [e['name'] for e in desc]
             self.assertNotIn('_fake', names)
         finally:
-            del cam._properties['_fake']
+            del cam.properties['_fake']
 
 
 class TestQCameraTreeCloseEvent(unittest.TestCase):

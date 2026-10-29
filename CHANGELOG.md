@@ -9,6 +9,40 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **A USB 3 camera on a slow link says so.**  A GenICam camera that
+  reports `U3VCurrentSpeed` logs a warning when it opens at less than
+  SuperSpeed.  A cable or port without the SuperSpeed wires lets the
+  camera enumerate and answer commands, but its stream is slow and may
+  stall, so that the first frame never arrives and the window freezes.
+- **`ReferenceFilter` and `QReferenceFilter`: a pattern for calibration
+  filters.**  A filter that corrects frames with a reference that the
+  user captures needs only two methods, `_makeReference` (what the
+  average of the captured frames makes of the reference) and `_correct`
+  (how the reference corrects a frame); the base class averages the
+  frames and has `capture()`, `reset()`, `nFrames`, `isCapturing`,
+  `reference` and the `captured` signal, and its widget has the *frames*
+  spinbox and the *Capture* and *Reset* buttons.  `DarkFrameFilter` and
+  `FlatFieldFilter` and their widgets are built on them, which removes
+  about 160 duplicated lines; the user guide shows how to write a third.
+  The stored reference is `reference`, no longer `_dark` or `_flat`.
+
+- **`QCameraChooser`: a combo box of the cameras that work.**  It lists
+  what `available_cameras()` finds, looks on a thread of its own so that
+  the window does not freeze while each device is opened, and emits
+  `cameraSelected(model, cameraID)`, the arguments of `Camera()`, when the
+  user chooses one.  It replaces the three camera-list widgets below.
+- **`QOverlayWidget`: the base of an overlay's control widget.**  It runs
+  the worker on a thread of its own, hands it one frame at a time, passes
+  the results to the graphics item, shows or hides the item with the check
+  box, and stops cleanly; a subclass supplies the worker, the graphics
+  item and its controls, so the overlay in the user guide shrinks to a
+  few lines.  `QTrackpyWidget` and `QYoloWidget` are built on it, which
+  removes about 200 lines; their workers have the slot `process`, as the
+  guide always said, and the trackpy worker has properties for its
+  options instead of a dict that the widget wrote into.
+
 ### Changed
 
 - **Breaking: three widgets and the chooser moved.**  `lib/` holds the
@@ -19,7 +53,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `from QVideo.widgets import QHistogramWidget`.  The command-line
   chooser is `QVideo.cameras.chooser` (`camera_parser`, `open_camera`,
   `make_tree`, `choose_camera`), and `QVideo.lib` no longer exports
-  `choose_camera`.  `QSnapshot`, `QListCameras` and `launch` stay in
+  `choose_camera`.  `QSnapshot` and `launch` stay in
   `lib`.  The old import paths are gone, with no aliases.
 - **`cameras` no longer depends on `interactive`, and choosing a camera
   is one module.**  `QVideo.cameras.chooser` holds the table of backends,
@@ -30,6 +64,64 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   of the table carries the command-line flag and help text of its
   backend, so adding a backend is one edit fewer.  `cameras` now imports
   only from `lib`.
+- **`lib` loads without `filters`.**  `QFilterRackWidget` imports the
+  filters when the rack first needs them, so `lib` imports no other
+  QVideo package at load time but `cameras`, for `launch()`.
+- **Breaking: the camera's property table and the table of backends are
+  public.**  `QCamera.properties` is the dict of the registered
+  properties, name to spec, that `QCameraTree` and the notebook widgets
+  read; it replaces the private `_properties` and the old `properties`,
+  which returned only the names (iterate the dict for them).  In
+  `QVideo.cameras.chooser` the table is `BACKENDS` and the function that
+  lists the importable candidates is `discover`, and
+  `available_cameras()` and `working()` moved there from `interactive`;
+  `QVideo.available_cameras` is unchanged.
+- **`QCamera.aliases`: the shared names are a map, not properties.**  A
+  backend whose properties have the names of a standard, such as GenICam's
+  `Width`, lists `width`, `height` and `fps` in `camera.aliases`; they work
+  as attributes and in `get`, `set` and `shape`.  The GenICam camera no
+  longer copies them into `properties` and no longer overrides `settings`
+  to hide them, so `settings` and `properties` have the same names on
+  every backend, and the conformance suite checks it.  The backend guide
+  shows how a new interface offers the shared names.
+- **Breaking: `availableFilters()` returns the filters, not just their
+  names.**  `QFilterRackWidget.availableFilters()` maps each display name
+  to its widget class, sorted by name: iterate it for the names, index it
+  for a class.  It replaces the private `_registry()`, which
+  `Filter()` reached into; `Filter()` still lists the sorted names.
+- **Breaking: `ROIdemo` is `roidemo`.**  The module is named like the
+  other demos (`python -m QVideo.demos.roidemo`); the classes `ROIDemo`
+  and `CropROI` keep their names.
+- **`camera_parser` rejects a conflicting flag.**  A parser of the caller
+  that already defines one of the camera flags now raises the
+  `argparse` error instead of silently skipping it.
+
+### Removed
+
+- **Breaking: `QListCameras`, `QListCVCameras` and `QListFlirCameras`
+  are gone.**  Nothing used them, and each listed the cameras of one
+  backend; `QCameraChooser` lists the cameras of all of them.  `lib` no
+  longer exports `QListCameras`.
+- **Six `example()` methods.**  `QVideoReader.example` and
+  `QVideoReader.examplevideo` (the sample video is in the documentation,
+  which the installed package does not ship), `QSnapshot.example`,
+  `QVideoScreen.example`, `QVideoSource.example` and
+  `QListCameras.example` repeated what the demos show, were not tested,
+  and made `lib` import the Noise camera.  `QCamera`, `QCameraTree`,
+  `QVideoFilter` and `QFilterRackWidget` keep theirs, which
+  `python -m QVideo.cameras.Noise._camera` and the filter modules use.
+
+### Fixed
+
+- **A camera tree listens again after a failed synchronization.**  The
+  flag that stops a tree from echoing the camera's own changes back to
+  it was reset by hand, so an error while the tree read the camera left
+  the tree deaf to every later edit.  `QCameraTree._syncIgnored()`
+  resets it however the block ends.
+- **A GenICam camera that fails to open is released.**  A camera that
+  failed after its device had opened stayed claimed, and every later
+  open in the process found no camera.  The camera is now released
+  however `_initialize` fails.
 
 ---
 

@@ -9,6 +9,8 @@ extend.
 |-----------------|----------|---------------|
 | a camera | `QCamera` (and `QVideoSource`, `QCameraTree`) | `cameras/` |
 | a filter | `VideoFilter` (and `QVideoFilter` for its controls) | `filters/` |
+| a calibration filter | `ReferenceFilter` | `filters/` |
+| an overlay | `QOverlayWidget` | `overlays/` |
 | a file format | `QVideoWriter`, `QVideoReader` | `dvr/` |
 | an application | a widget that takes a `QCameraTree` | `demos/` |
 
@@ -22,6 +24,12 @@ uses, such as `launch()` and `QSnapshot`, which any project can attach to
 a source.  A finished widget that nobody subclasses goes in `widgets/`.
 The notebook interface is in `interactive/`, and the table of camera
 backends and the command-line chooser are in `cameras/`.
+
+`lib` does not import the packages above it, with one exception: `launch()`
+opens the camera that the command line names through
+`cameras/chooser.py`, because starting an application is the job of the
+layer that knows every camera.  Nothing else in `lib` imports
+`cameras`, `filters` or `demos` when it loads.
 
 See `docs/architecture.rst` for how the layers fit together and
 `docs/backends.rst` and `docs/extending.rst` for how to extend them.

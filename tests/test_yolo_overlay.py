@@ -119,7 +119,7 @@ class TestYoloWorkerDetect(unittest.TestCase):
     def test_detect_emits_dataframe_on_detections(self):
         self._worker.model.return_value = _make_mock_results(2)
         spy = record(self._worker.newData)
-        self._worker.detect(_make_frame())
+        self._worker.process(_make_frame())
         self.assertEqual(len(spy), 1)
         features = spy[0][0]
         self.assertIsNotNone(features)
@@ -128,21 +128,21 @@ class TestYoloWorkerDetect(unittest.TestCase):
     def test_detect_emits_none_on_no_detections(self):
         self._worker.model.return_value = _make_mock_results(0)
         spy = record(self._worker.newData)
-        self._worker.detect(_make_frame())
+        self._worker.process(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
     def test_detect_emits_none_on_exception(self):
         self._worker.model.side_effect = RuntimeError('oops')
         spy = record(self._worker.newData)
-        self._worker.detect(_make_frame())
+        self._worker.process(_make_frame())
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
     def test_detect_dataframe_has_expected_columns(self):
         self._worker.model.return_value = _make_mock_results(1)
         spy = record(self._worker.newData)
-        self._worker.detect(_make_frame())
+        self._worker.process(_make_frame())
         features = spy[0][0]
         for col in ('x1', 'y1', 'x2', 'y2', 'confidence', 'class', 'label'):
             self.assertIn(col, features.columns)
@@ -150,7 +150,7 @@ class TestYoloWorkerDetect(unittest.TestCase):
     def test_detect_passes_confidence_to_model(self):
         self._worker.confidence = 0.5
         self._worker.model.return_value = _make_mock_results(0)
-        self._worker.detect(_make_frame())
+        self._worker.process(_make_frame())
         _, kwargs = self._worker.model.call_args
         self.assertEqual(kwargs['conf'], 0.5)
 
@@ -186,104 +186,9 @@ class TestQYoloOverlay(unittest.TestCase):
 
 class TestQYoloWidgetInit(unittest.TestCase):
 
-    def test_initially_unchecked(self):
-        w = _make_widget()
-        self.assertFalse(w.isChecked())
-
-    def test_no_source_by_default(self):
-        w = _make_widget()
-        self.assertIsNone(w.source)
-
     def test_initial_confidence_in_spinbox(self):
         w = _make_widget(confidence=0.5)
         self.assertAlmostEqual(w._confidenceSpinBox.value(), 0.5)
-
-
-class TestQYoloWidgetSource(unittest.TestCase):
-
-    def test_source_setter_connects_newframe(self):
-        w = _make_widget()
-        src = MockSource()
-        w.source = src
-        self.assertIs(w.source, src)
-
-    def test_source_setter_none_after_source(self):
-        w = _make_widget()
-        w.source = MockSource()
-        w.source = None
-        self.assertIsNone(w.source)
-
-    def test_source_replacement_disconnects_old(self):
-        w = _make_widget()
-        src1, src2 = MockSource(), MockSource()
-        w.source = src1
-        w.source = src2
-        w.setChecked(True)
-        spy = record(w.newData)
-        src1.newFrame.emit(_make_frame())
-        QtWidgets.QApplication.processEvents()
-        self.assertEqual(len(spy), 0)
-
-
-class TestQYoloWidgetNewFrame(unittest.TestCase):
-
-    def setUp(self):
-        self._w = _make_widget()
-
-    def test_new_frame_ignored_when_unchecked(self):
-        spy = record(self._w._detect)
-        self._w._onNewFrame(_make_frame())
-        self.assertEqual(len(spy), 0)
-
-    def test_new_frame_dispatched_when_checked_and_ready(self):
-        self._w.setChecked(True)
-        spy = record(self._w._detect)
-        self._w._onNewFrame(_make_frame())
-        self.assertEqual(len(spy), 1)
-
-    def test_ready_flag_cleared_before_dispatch(self):
-        self._w.setChecked(True)
-        self._w._detect.disconnect(self._w._worker.detect)
-        try:
-            self._w._onNewFrame(_make_frame())
-            self.assertFalse(self._w._ready)
-        finally:
-            self._w._detect.connect(self._w._worker.detect)
-
-    def test_second_frame_dropped_while_busy(self):
-        self._w.setChecked(True)
-        self._w._ready = False
-        spy = record(self._w._detect)
-        self._w._onNewFrame(_make_frame())
-        self.assertEqual(len(spy), 0)
-
-
-class TestQYoloWidgetNewData(unittest.TestCase):
-
-    def setUp(self):
-        self._w = _make_widget()
-        self._w._ready = False
-
-    def test_ready_flag_restored(self):
-        self._w._onNewData(_make_features())
-        self.assertTrue(self._w._ready)
-
-    def test_new_data_signal_emitted(self):
-        spy = record(self._w.newData)
-        features = _make_features()
-        self._w._onNewData(features)
-        self.assertEqual(len(spy), 1)
-        self.assertIs(spy[0][0], features)
-
-    def test_overlay_updated(self):
-        features = _make_features(2)
-        self._w._onNewData(features)
-        self.assertIs(self._w._overlay._features, features)
-
-    def test_none_features_clears_overlay(self):
-        self._w._overlay.setFeatures(_make_features())
-        self._w._onNewData(None)
-        self.assertIsNone(self._w._overlay._features)
 
 
 class TestQYoloWidgetOverlay(unittest.TestCase):
@@ -299,40 +204,6 @@ class TestQYoloWidgetConfidence(unittest.TestCase):
         w = _make_widget()
         w._setConfidence(0.6)
         self.assertAlmostEqual(w._worker.confidence, 0.6)
-
-
-class TestQYoloWidgetCleanup(unittest.TestCase):
-
-    def test_stop_disconnects_source(self):
-        w = _make_widget()
-        w.source = MockSource()
-        w.stop()
-        self.assertIsNone(w.source)
-
-    def test_stop_stops_thread(self):
-        w = _make_widget()
-        w._thread.quit = MagicMock()
-        w._thread.wait = MagicMock()
-        w.stop()
-        w._thread.quit.assert_called_once()
-        w._thread.wait.assert_called_once()
-
-    def test_stop_twice_is_safe(self):
-        w = _make_widget()
-        w.stop()
-        w.stop()
-        self.assertFalse(w._thread.isRunning())
-
-    def test_deleting_the_widget_stops_the_thread(self):
-        w = _make_widget()
-        thread = w._thread
-        thread.quit = MagicMock()
-        thread.wait = MagicMock()
-        w.deleteLater()
-        QtCore.QCoreApplication.sendPostedEvents(
-            None, QtCore.QEvent.Type.DeferredDelete)
-        thread.quit.assert_called_once()
-        thread.wait.assert_called_once()
 
 
 if __name__ == '__main__':  # pragma: no cover

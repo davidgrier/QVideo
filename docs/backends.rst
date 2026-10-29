@@ -116,6 +116,19 @@ base class derives ``camera.shape`` from the first two, and the display,
 the recorder and the notebook interface depend on it.  If your hardware
 changes its frame size, emit ``shapeChanged`` after the change.
 
+If your hardware names its features after a standard, as GenICam does
+(``Width``, ``Height``, ``AcquisitionFrameRate``), register them under
+those names and say which names stand for ``width``, ``height`` and
+``fps`` in the dict :attr:`~QVideo.lib.QCamera.QCamera.aliases`::
+
+    self.aliases.update(width='Width', height='Height',
+                        fps='AcquisitionFrameRate')
+
+An alias is not a property: it does not appear in ``properties`` or in
+``settings``, and the tree shows the standard names.  But ``camera.width``,
+``camera.fps = 30``, ``get('width')``, ``set('fps', 30)`` and ``shape``
+all find the property that the alias stands for.
+
 ``fps`` is the rate that was asked for.  If the camera can report the rate
 that it delivers, which can be lower, override ``actualFps``; the recorder
 uses it.
@@ -311,7 +324,7 @@ Register the backend
 Four small edits make ``Camera()``, the command-line flags and the
 documentation find your backend:
 
-1. ``cameras/chooser.py``: add an entry to ``_BACKENDS`` (module, camera class,
+1. ``cameras/chooser.py``: add an entry to ``BACKENDS`` (module, camera class,
    tree class, label, and the flag character and help string that select
    the camera on the command line) and put the key in
    ``_DISCOVERY_ORDER``.  Order matters: ``Camera()`` tries the earlier
@@ -335,7 +348,8 @@ Checklist
 Before you open a pull request:
 
 - ``read`` returns a new RGB or gray ``uint8``/``uint16`` array each time.
-- ``width``, ``height`` and ``fps`` are registered.
+- ``width``, ``height`` and ``fps`` are registered, or are aliases of
+  properties that are.
 - Failing to open raises ``QDriverError`` or ``QDeviceError`` with advice.
 - ``_deinitialize`` really frees the device, and ``open`` works again.
 - The conformance suite passes on a simulated device.

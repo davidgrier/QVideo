@@ -23,6 +23,12 @@ QFrameRelay
     Latest-frame handoff from a capture thread to a GUI-thread consumer.
 QVideoFilter
     Qt widget wrapper around a :class:`VideoFilter`.
+ReferenceFilter
+    Filter that corrects frames with a reference that it captured.
+QReferenceFilter
+    Widget of a :class:`ReferenceFilter`, with its capture controls.
+QOverlayWidget
+    Control widget of an overlay that analyzes frames on a thread.
 QFilterRackWidget
     Dynamic, user-reorderable pipeline of :class:`QVideoFilter` widgets.
 QFilterPipeline
@@ -35,8 +41,6 @@ QVideoWriter
     Abstract base class for video file writers.
 QSnapshot
     Hotkey-triggered still-frame capture from any ``newFrame`` signal.
-QListCameras
-    Widget listing available camera backends.
 '''
 from .videotypes import Image, FrameInfo
 from .clickable import clickable
@@ -50,17 +54,19 @@ from .QFilterPipeline import QFilterPipeline
 from .QFilterRack import QFilterRack
 from .QFrameRelay import QFrameRelay
 from .QVideoFilter import VideoFilter, QVideoFilter
+from .QReferenceFilter import ReferenceFilter, QReferenceFilter
+from .QOverlayWidget import QOverlayWidget
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
 from ._launch import launch
-from .QListCameras import QListCameras
 from .QSnapshot import QSnapshot
 
 __all__ = '''Image
            FrameInfo
-clickable launch QListCameras
+clickable launch
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
 QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
 QSnapshot
-VideoFilter QVideoFilter'''.split()
+VideoFilter QVideoFilter ReferenceFilter QReferenceFilter
+QOverlayWidget'''.split()

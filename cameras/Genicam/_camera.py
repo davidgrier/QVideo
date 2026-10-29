@@ -95,7 +95,6 @@ class QGenicamCamera(QCamera):
                     'height': ('Height',),
                     'fps': ('AcquisitionFrameRate',
                             'AcquisitionFrameRateAbs')}
-    _ALIASES = frozenset(_ALIAS_NODES)
 
     #: Nodes that report the frame rate that the camera delivers, in order
     #: of preference: the standard name, then names of older firmware.
@@ -120,14 +119,19 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if a valid camera device was opened successfully.
         '''
-        self._openDevice(self._locateProducer())
-        self._connectNodeMap()
-        root = self.node()
-        self._protected = self._startAcquisition(root)
-        self._register_features(root)
-        with suppress(Exception):
-            self._modelName = str(self._nodeMap.DeviceModelName.value)
-        self._registerAliases()
+        try:
+            self._openDevice(self._locateProducer())
+            self._connectNodeMap()
+            root = self.node()
+            self._protected = self._startAcquisition(root)
+            self._register_features(root)
+            with suppress(Exception):
+                self._modelName = str(self._nodeMap.DeviceModelName.value)
+            self._registerAliases()
+            self._checkLink()
+        except Exception:
+            self._cleanup()  # a camera that is half open stays claimed
+            raise
         return True
 
     def _openDevice(self, producer: str) -> None:
@@ -138,7 +142,6 @@ class QGenicamCamera(QCamera):
             self._harvester.add_file(producer)
             self._harvester.update()
         except Exception as ex:
-            self._cleanup()
             raise QDriverError(
                 f'{type(self).__name__}: cannot load GenTL producer '
                 f'{producer}: {ex}') from ex
@@ -146,7 +149,6 @@ class QGenicamCamera(QCamera):
             self._device = self._harvester.create(self._cameraID)
         except Exception as ex:
             count = len(self._harvester.device_info_list)
-            self._cleanup()
             raise QDeviceError(
                 f'{type(self).__name__}: cannot open camera '
                 f'{self._cameraID} ({count} found via {Path(producer).name}'
@@ -164,7 +166,6 @@ class QGenicamCamera(QCamera):
                      'loading manually from device port')
         self._nodeMap = self._load_node_map(self._device)
         if self._nodeMap is None:
-            self._cleanup()
             raise QDeviceError(
                 f'{type(self).__name__}: cannot read the GenICam '
                 'node map from the camera')
@@ -195,12 +196,29 @@ class QGenicamCamera(QCamera):
             stream = self._device.data_streams[0].node_map
             stream.StreamBufferHandlingMode.value = 'NewestOnly'
 
+    def _checkLink(self) -> None:
+        '''Warn if a USB3 Vision camera runs slower than SuperSpeed.
+
+        A camera on a cable or port that lacks the SuperSpeed wires still
+        enumerates and answers every command, but its stream is too slow
+        or stalls: the first frame may never arrive.
+        '''
+        if 'U3VCurrentSpeed' not in self.properties:
+            return
+        speed = self.get('U3VCurrentSpeed')
+        if not str(speed).startswith('SuperSpeed'):
+            logger.warning(
+                f'{self.name}: the USB link runs at {speed}, not '
+                'SuperSpeed.  Use a USB 3 cable and plug the camera into '
+                'a USB 3 port, without a hub if possible.')
+
     def _registerAliases(self) -> None:
-        '''Register the lowercase names for the standard nodes that exist.'''
+        '''Offer the lowercase names for the standard nodes that exist.'''
         for alias, nodes in self._ALIAS_NODES.items():
             for node in nodes:
-                if node in self._properties and alias not in self._properties:
-                    self._properties[alias] = self._properties[node]
+                if node in self.properties and alias not in self.properties:
+                    self.aliases[alias] = node
+                    break
 
     @classmethod
     def _locateProducer(cls) -> str:
@@ -293,9 +311,9 @@ class QGenicamCamera(QCamera):
         was asked for.
         '''
         for name in self._ACTUAL_FPS_NODES:
-            if name in self._properties:
+            if name in self.properties:
                 try:
-                    value = float(self._properties[name]['getter']())
+                    value = float(self.properties[name]['getter']())
                 except Exception as ex:
                     logger.debug(f'cannot read {name}: {ex}')
                     continue
@@ -303,32 +321,9 @@ class QGenicamCamera(QCamera):
                     return value
         return self.fps
 
-    @property
-    def settings(self) -> QCamera.Settings:
-        '''All registered property values, excluding standard-name aliases.
-
-        GenICam cameras register lowercase aliases (``width``, ``height``,
-        ``fps``) that map to canonical SFNC node names (``Width``, ``Height``,
-        ``AcquisitionFrameRate``).  Those aliases are excluded here so that
-        :class:`~QVideo.cameras.Genicam._tree.QGenicamTree` does not try to
-        sync them to tree parameters — the canonical names are already
-        present and do the right thing.  Attribute access
-        (``camera.fps``) still works
-        because :meth:`~QVideo.lib.QCamera.QCamera.__getattr__` reads
-        ``_properties`` directly, not ``settings``.
-        '''
-        return {name: spec['getter']()
-                for name, spec in self._properties.items()
-                if name not in self._ALIASES}
-
-    @settings.setter
-    def settings(self, settings: QCamera.Settings) -> None:
-        for key, value in settings.items():
-            self.set(key, value)
-
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
         super().set(key, value)
-        if key.lower() in ('width', 'height'):
+        if self._canonical(key) in ('Width', 'Height'):
             self.shapeChanged.emit(self.shape)
 
     @staticmethod

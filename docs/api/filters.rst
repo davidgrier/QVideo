@@ -22,6 +22,9 @@ pixel values reflect the true signal rather than hardware artifacts.
 Apply them early in the pipeline — typically as the first two filters
 — before any feature-detection or enhancement steps.
 
+Both are :class:`~QVideo.lib.QReferenceFilter.ReferenceFilter` filters,
+which average the frames that you capture into a reference.
+
 :class:`~QVideo.filters.darkframe.DarkFrameFilter` subtracts a stored
 dark frame from every incoming image, removing thermal electrons,
 amplifier offset, and fixed-pattern noise.  Click *Capture* with the

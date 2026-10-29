@@ -176,7 +176,7 @@ class TestLaunch(unittest.TestCase):
 APPLICATIONS = [('QVideo.demos.demo', 'Demo'),
                 ('QVideo.demos.filterdemo', 'FilterDemo'),
                 ('QVideo.demos.filterrackdemo', 'FilterRackDemo'),
-                ('QVideo.demos.ROIdemo', 'ROIDemo'),
+                ('QVideo.demos.roidemo', 'ROIDemo'),
                 ('QVideo.demos.histogramdemo', 'HistogramDemo'),
                 ('QVideo.demos.uniformitydemo', 'UniformityDemo'),
                 ('QVideo.demos.circulardemo', 'CircularDemo'),

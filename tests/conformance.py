@@ -50,7 +50,7 @@ class CameraConformance:
 
     def writable(self):
         '''Names of the properties that can be written.'''
-        properties = self.camera._properties
+        properties = self.camera.properties
         return [name for name in self.camera.properties
                 if properties[name]['setter'] is not None]
 
@@ -117,7 +117,7 @@ class CameraConformance:
     def test_every_property_reads_as_its_declared_type(self):
         for name in self.camera.properties:
             with self.subTest(name):
-                ptype = self.camera._properties[name]['ptype']
+                ptype = self.camera.properties[name]['ptype']
                 value = self.camera.get(name)
                 if value is None:  # not readable at the moment
                     continue
@@ -125,10 +125,15 @@ class CameraConformance:
                     ptype = (int, float)
                 self.assertIsInstance(value, ptype)
 
-    def test_the_settings_name_only_properties(self):
-        # A backend may leave out aliases, such as width for Width.
-        self.assertLessEqual(set(self.camera.settings),
-                             set(self.camera.properties))
+    def test_the_settings_are_the_properties(self):
+        self.assertEqual(set(self.camera.settings),
+                         set(self.camera.properties))
+
+    def test_an_alias_stands_for_a_property_and_is_not_one(self):
+        for alias, name in self.camera.aliases.items():
+            with self.subTest(alias):
+                self.assertIn(name, self.camera.properties)
+                self.assertNotIn(alias, self.camera.properties)
 
     def test_the_settings_can_be_applied_again(self):
         settings = self.camera.settings
@@ -155,7 +160,7 @@ class CameraConformance:
                     self.assertEqual(after, before)
 
     def test_a_read_only_property_refuses_a_write_quietly(self):
-        properties = self.camera._properties
+        properties = self.camera.properties
         names = [n for n in self.camera.properties
                  if properties[n]['setter'] is None]
         if not names:

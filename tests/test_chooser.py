@@ -7,7 +7,7 @@ import numpy as np
 from qtpy import QtWidgets
 import QVideo.cameras.chooser as chooser_module
 from QVideo.cameras.chooser import (camera_parser, choose_camera, make_tree,
-                                    open_camera, _BACKENDS, _BackendEntry,
+                                    open_camera, BACKENDS, _BackendEntry,
                                     _CAMERAS)
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -48,7 +48,7 @@ class TestCameraEntry(unittest.TestCase):
 
     def test_the_flags_come_from_the_registry(self):
         self.assertEqual(set(_CAMERAS),
-                         {k for k, e in _BACKENDS.items() if e.flag})
+                         {k for k, e in BACKENDS.items() if e.flag})
 
     def test_cameras_dict_values_are_backend_entries(self):
         for entry in _CAMERAS.values():
@@ -64,7 +64,7 @@ class TestCameraEntry(unittest.TestCase):
         self.assertEqual(len(flags), len(set(flags)))
 
     def test_every_backend_but_noise_has_a_flag(self):
-        self.assertEqual(set(_BACKENDS) - set(_CAMERAS), {'noise'})
+        self.assertEqual(set(BACKENDS) - set(_CAMERAS), {'noise'})
 
 
 class TestCameraParser(unittest.TestCase):

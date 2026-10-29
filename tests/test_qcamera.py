@@ -180,7 +180,7 @@ class TestRegistration(unittest.TestCase):
 
     def test_properties_returns_list(self):
         cam = make_camera()
-        self.assertIsInstance(cam.properties, list)
+        self.assertIsInstance(cam.properties, dict)
 
     def test_registered_properties_present(self):
         cam = make_camera()
@@ -348,8 +348,66 @@ class TestShape(unittest.TestCase):
 
     def test_shape_returns_zero_size_when_not_registered(self):
         cam = make_camera()
-        cam._properties.clear()
+        cam.properties.clear()
         self.assertEqual(cam.shape, QtCore.QSize(0, 0))
+
+
+class _StandardCamera(_FakeCamera):
+    '''A camera whose properties have the names of a standard.'''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.properties.clear()
+        self._Width, self._Height, self._Rate = 640, 480, 30.
+        self.registerProperty('Width', ptype=int)
+        self.registerProperty('Height', ptype=int)
+        self.registerProperty('Rate', ptype=float)
+        self.aliases.update(width='Width', height='Height', fps='Rate')
+
+
+class TestAliases(unittest.TestCase):
+    '''Other names for properties, for the names that every camera shares.'''
+
+    def setUp(self):
+        self.cam = _StandardCamera()
+
+    def test_there_are_none_by_default(self):
+        self.assertEqual(make_camera().aliases, {})
+
+    def test_an_alias_is_not_a_property(self):
+        self.assertNotIn('width', self.cam.properties)
+        self.assertIn('Width', self.cam.properties)
+
+    def test_the_settings_and_the_properties_have_the_same_names(self):
+        self.assertEqual(set(self.cam.settings), set(self.cam.properties))
+
+    def test_an_alias_reads_as_an_attribute(self):
+        self.assertEqual(self.cam.width, 640)
+        self.assertEqual(self.cam.fps, 30.)
+
+    def test_an_alias_writes_as_an_attribute(self):
+        self.cam.width = 320
+        self.assertEqual(self.cam._Width, 320)
+        self.assertNotIn('width', self.cam.__dict__)
+
+    def test_get_takes_an_alias(self):
+        self.assertEqual(self.cam.get('height'), 480)
+
+    def test_get_emits_the_name_of_the_property(self):
+        spy = record(self.cam.propertyValue)
+        self.cam.get('height')
+        self.assertEqual(spy, [('Height', 480)])
+
+    def test_set_takes_an_alias(self):
+        self.cam.set('fps', 15.)
+        self.assertEqual(self.cam._Rate, 15.)
+
+    def test_the_shape_is_found_by_alias(self):
+        self.assertEqual(self.cam.shape, QtCore.QSize(640, 480))
+
+    def test_an_unknown_name_is_still_an_error_that_names_it(self):
+        with self.assertRaisesRegex(AttributeError, 'nonsense'):
+            self.cam.nonsense
 
 
 class TestSettings(unittest.TestCase):

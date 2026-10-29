@@ -117,13 +117,13 @@ class TestQFilterRackWidgetAddByName(unittest.TestCase):
 
 class TestQFilterRackWidgetAvailableFilters(unittest.TestCase):
 
-    def test_returns_list(self):
+    def test_returns_dict(self):
         result = QFilterRackWidget.availableFilters()
-        self.assertIsInstance(result, list)
+        self.assertIsInstance(result, dict)
 
-    def test_returns_sorted(self):
+    def test_names_are_sorted(self):
         result = QFilterRackWidget.availableFilters()
-        self.assertEqual(result, sorted(result))
+        self.assertEqual(list(result), sorted(result))
 
     def test_contains_known_filters(self):
         result = QFilterRackWidget.availableFilters()
@@ -426,7 +426,7 @@ class TestQFilterRackWidgetDialogs(unittest.TestCase):
     def test_the_chosen_filter_is_added(self):
         rack = make_rack()
         Accepted = QtWidgets.QDialog.DialogCode.Accepted
-        with patch.object(rack, '_registry', return_value={'Edge': object}), \
+        with patch.object(rack, 'availableFilters', return_value={'Edge': object}), \
                 patch.object(_module, '_FilterPicker',
                              return_value=self.picker(Accepted)), \
                 patch.object(rack, 'addByName') as add:
@@ -436,7 +436,7 @@ class TestQFilterRackWidgetDialogs(unittest.TestCase):
     def test_a_cancelled_dialog_adds_nothing(self):
         rack = make_rack()
         Rejected = QtWidgets.QDialog.DialogCode.Rejected
-        with patch.object(rack, '_registry', return_value={'Edge': object}), \
+        with patch.object(rack, 'availableFilters', return_value={'Edge': object}), \
                 patch.object(_module, '_FilterPicker',
                              return_value=self.picker(Rejected)), \
                 patch.object(rack, 'addByName') as add:
@@ -446,7 +446,7 @@ class TestQFilterRackWidgetDialogs(unittest.TestCase):
     def test_nothing_is_added_when_nothing_is_selected(self):
         rack = make_rack()
         Accepted = QtWidgets.QDialog.DialogCode.Accepted
-        with patch.object(rack, '_registry', return_value={'Edge': object}), \
+        with patch.object(rack, 'availableFilters', return_value={'Edge': object}), \
                 patch.object(_module, '_FilterPicker',
                              return_value=self.picker(Accepted, name=None)), \
                 patch.object(rack, 'addByName') as add:
@@ -455,7 +455,7 @@ class TestQFilterRackWidgetDialogs(unittest.TestCase):
 
     def test_there_is_no_dialog_without_filters_to_offer(self):
         rack = make_rack()
-        with patch.object(rack, '_registry', return_value={}), \
+        with patch.object(rack, 'availableFilters', return_value={}), \
                 patch.object(_module, '_FilterPicker') as picker:
             rack._addFilterDialog()
         picker.assert_not_called()
@@ -525,17 +525,14 @@ class TestQFilterRackWidgetSwitchOff(unittest.TestCase):
         rack.switchOff(VideoFilter(), ValueError('bad'))
 
 
-class TestQFilterRackWidgetRegistry(unittest.TestCase):
+class TestQFilterRackWidgetFilterClasses(unittest.TestCase):
 
-    def test_registry_returns_dict(self):
-        self.assertIsInstance(QFilterRackWidget._registry(), dict)
-
-    def test_registry_maps_name_to_class(self):
-        reg = QFilterRackWidget._registry()
+    def test_available_filters_map_name_to_class(self):
+        reg = QFilterRackWidget.availableFilters()
         self.assertIs(reg.get('Smoothing'), QSmoothingFilter)
 
-    def test_registry_excludes_empty_display_name(self):
-        reg = QFilterRackWidget._registry()
+    def test_available_filters_exclude_empty_display_name(self):
+        reg = QFilterRackWidget.availableFilters()
         for name in reg:
             self.assertTrue(name)
 
@@ -550,7 +547,7 @@ class TestQFilterRackWidgetRegistry(unittest.TestCase):
 class TestFilterPicker(unittest.TestCase):
 
     def _make_registry(self) -> dict:
-        return QFilterRackWidget._registry()
+        return QFilterRackWidget.availableFilters()
 
     def test_picker_creates_tree(self):
         picker = _FilterPicker(self._make_registry())
@@ -574,7 +571,7 @@ class TestFilterPicker(unittest.TestCase):
         leaf_item = cat_item.child(0)
         picker._tree.setCurrentItem(leaf_item)
         name = picker.selected()
-        self.assertIn(name, QFilterRackWidget._registry())
+        self.assertIn(name, QFilterRackWidget.availableFilters())
 
     def test_picker_categories_are_not_selectable(self):
         picker = _FilterPicker(self._make_registry())

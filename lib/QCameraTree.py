@@ -2,6 +2,7 @@
 from qtpy import QtCore, QtGui, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from QVideo.lib import QCamera, QVideoSource
+import contextlib
 import math
 import logging
 
@@ -69,7 +70,7 @@ class QCameraTree(ParameterTree):
     @staticmethod
     def _defaultDescription(camera: QCamera) -> Description:
         entries = []
-        for name, spec in camera._properties.items():
+        for name, spec in camera.properties.items():
             value = spec['getter']()
             if value is None:
                 continue
@@ -166,6 +167,21 @@ class QCameraTree(ParameterTree):
         step = 10 ** (math.floor(math.log10(abs(value))) - 1)
         param.setOpts(step=step)
 
+    @contextlib.contextmanager
+    def _syncIgnored(self):
+        '''Ignore the changes that the tree reports while the block runs.
+
+        Setting a parameter from the camera makes the tree report a
+        change, which :meth:`_sync` would send back to the camera.  The
+        blocks may nest, and the tree listens again when the outermost one
+        ends, even if it raises.
+        '''
+        ignoring, self._ignoreSync = self._ignoreSync, True
+        try:
+            yield
+        finally:
+            self._ignoreSync = ignoring
+
     @QtCore.Slot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:
         if self._ignoreSync:
@@ -176,10 +192,9 @@ class QCameraTree(ParameterTree):
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
                 self._updateStep(param)
-        self._ignoreSync = True
-        for key, value in self.camera.settings.items():
-            self.set(key, value)
-        self._ignoreSync = False
+        with self._syncIgnored():
+            for key, value in self.camera.settings.items():
+                self.set(key, value)
 
     @QtCore.Slot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:

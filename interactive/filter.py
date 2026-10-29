@@ -56,7 +56,7 @@ def Filter(*names: str | list[str] | tuple[str, ...]
     ``capture()`` on the filter that you get to take it from the next
     frame.
     '''
-    registry = QFilterRackWidget._registry()
+    registry = QFilterRackWidget.availableFilters()
     if not names:
         return sorted(registry)
     if len(names) == 1 and isinstance(names[0], (list, tuple)):

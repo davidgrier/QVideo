@@ -1,6 +1,7 @@
 '''Unit tests for interactive/camera.py and the table in chooser.py.'''
 import asyncio
 import contextlib
+import copy
 import importlib
 import io
 import logging
@@ -11,7 +12,7 @@ from qtpy import QtWidgets
 
 import QVideo.cameras.chooser as chooser_module
 import QVideo.interactive.camera as camera_module
-from QVideo.cameras.chooser import _BACKENDS, _discover, _probe
+from QVideo.cameras.chooser import BACKENDS, discover, _probe
 from QVideo.interactive.camera import Camera, _CameraProxy
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -34,29 +35,29 @@ def make_mock_noise_camera(open_ok=True, read_ok=True):
 class TestBackendsRegistry(unittest.TestCase):
 
     def test_backends_is_dict(self):
-        self.assertIsInstance(_BACKENDS, dict)
+        self.assertIsInstance(BACKENDS, dict)
 
     def test_required_backends_present(self):
         for key in ('basler', 'flir', 'ids', 'mv', 'vimbax',
                     'picamera', 'opencv', 'noise'):
             with self.subTest(key=key):
-                self.assertIn(key, _BACKENDS)
+                self.assertIn(key, BACKENDS)
 
     def test_each_entry_names_its_module_classes_and_label(self):
-        for key, entry in _BACKENDS.items():
+        for key, entry in BACKENDS.items():
             with self.subTest(key=key):
                 self.assertTrue(all(entry[:4]))
 
     def test_the_flag_and_help_come_together(self):
-        for key, entry in _BACKENDS.items():
+        for key, entry in BACKENDS.items():
             with self.subTest(key=key):
                 self.assertEqual(bool(entry.flag), bool(entry.help))
 
     def test_noise_backend_points_to_correct_module(self):
-        self.assertEqual(_BACKENDS['noise'].module, 'QVideo.cameras.Noise')
+        self.assertEqual(BACKENDS['noise'].module, 'QVideo.cameras.Noise')
 
     def test_opencv_backend_points_to_correct_module(self):
-        self.assertEqual(_BACKENDS['opencv'].module, 'QVideo.cameras.OpenCV')
+        self.assertEqual(BACKENDS['opencv'].module, 'QVideo.cameras.OpenCV')
 
 
 class TestProbe(unittest.TestCase):
@@ -72,42 +73,42 @@ class TestProbe(unittest.TestCase):
 class TestDiscover(unittest.TestCase):
 
     def test_returns_noise_when_no_model_and_others_blocked(self):
-        blocked = {k: None for k in _BACKENDS if k != 'noise'}
-        with patch.dict('sys.modules', {_BACKENDS[k].module: None
+        blocked = {k: None for k in BACKENDS if k != 'noise'}
+        with patch.dict('sys.modules', {BACKENDS[k].module: None
                                         for k in blocked}):
-            result = _discover(None, 0)
+            result = discover(None, 0)
         keys = [k for k, _ in result]
         self.assertIn('noise', keys)
 
     def test_model_none_returns_list_of_tuples(self):
-        result = _discover(None, 0)
+        result = discover(None, 0)
         self.assertIsInstance(result, list)
         for item in result:
             self.assertEqual(len(item), 2)
 
     def test_model_noise_returns_noise_entry(self):
-        result = _discover('Noise', 0)
+        result = discover('Noise', 0)
         self.assertEqual(result, [('noise', 0)])
 
     def test_model_opencv_returns_opencv_entry(self):
-        result = _discover('OpenCV', 0)
+        result = discover('OpenCV', 0)
         self.assertEqual(result, [('opencv', 0)])
 
     def test_model_case_insensitive(self):
-        self.assertEqual(_discover('NOISE', 0), _discover('noise', 0))
-        self.assertEqual(_discover('OpenCV', 0), _discover('opencv', 0))
+        self.assertEqual(discover('NOISE', 0), discover('noise', 0))
+        self.assertEqual(discover('OpenCV', 0), discover('opencv', 0))
 
     def test_unknown_model_raises_value_error(self):
         with self.assertRaises(ValueError):
-            _discover('Unknown', 0)
+            discover('Unknown', 0)
 
     def test_returns_empty_when_model_module_blocked(self):
         with patch.dict('sys.modules', {'QVideo.cameras.Basler': None}):
-            result = _discover('basler', 0)
+            result = discover('basler', 0)
         self.assertEqual(result, [])
 
     def test_camera_id_preserved_in_result(self):
-        result = _discover('noise', 3)
+        result = discover('noise', 3)
         self.assertEqual(result, [('noise', 3)])
 
 
@@ -170,6 +171,18 @@ class TestCameraProxy(unittest.TestCase):
         with patch('QVideo.cameras.chooser.create_camera', return_value=fail_cam):
             with self.assertRaises(RuntimeError):
                 proxy._ensure_open()
+
+    def test_copying_a_proxy_does_not_open_a_camera(self):
+        proxy = _CameraProxy([('noise', 0)])
+        with patch('QVideo.cameras.chooser.create_camera') as create:
+            twin = copy.copy(proxy)
+        create.assert_not_called()
+        self.assertIsInstance(twin, _CameraProxy)
+
+    def test_a_double_underscore_name_is_not_forwarded(self):
+        proxy, cam = self._make_proxy()
+        with self.assertRaises(AttributeError):
+            proxy.__wrapped__
 
 
 class TestCameraFilters(unittest.TestCase):
@@ -325,7 +338,7 @@ class TestOpenErrors(unittest.TestCase):
         proxy = _CameraProxy([('flir', 0), ('basler', 0)])
 
         def fake_open(key, camera_id, errors):
-            errors.append((_BACKENDS[key].label, RuntimeError(f'why {key}')))
+            errors.append((BACKENDS[key].label, RuntimeError(f'why {key}')))
         with patch('QVideo.cameras.chooser.create_camera', side_effect=fake_open):
             with self.assertRaises(RuntimeError) as ctx:
                 proxy._ensure_open()
@@ -372,8 +385,8 @@ class TestCameraFactory(unittest.TestCase):
 
     def test_no_model_returns_proxy(self):
         cam = make_mock_noise_camera()
-        blocked = {_BACKENDS[k].module: None
-                   for k in _BACKENDS if k != 'noise'}
+        blocked = {BACKENDS[k].module: None
+                   for k in BACKENDS if k != 'noise'}
         with patch.dict('sys.modules', blocked):
             with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
                 result = Camera()
@@ -817,7 +830,7 @@ class TestHelpers(unittest.TestCase):
         cameras = {'noise': good, 'opencv': bad, 'flir': None}
         with patch.object(chooser_module, 'create_camera',
                           side_effect=lambda key, i: cameras[key]):
-            working = camera_module._working_candidates(
+            working = chooser_module.working(
                 [('noise', 0), ('opencv', 0), ('flir', 0)])
         self.assertEqual(working, [('noise', 0)])
         good.close.assert_called_once_with()
@@ -825,12 +838,12 @@ class TestHelpers(unittest.TestCase):
 
     def test_available_cameras_name_each_working_device(self):
         names = {0: 'Front', 1: 'Back'}
-        with patch.object(camera_module, '_discover',
+        with patch.object(chooser_module, 'discover',
                           return_value=[('opencv', 0), ('noise', 0)]), \
-                patch.object(camera_module, '_names',
+                patch.object(chooser_module, '_names',
                              side_effect=lambda k: names if k == 'opencv'
                              else {}), \
-                patch.object(camera_module, '_working_candidates',
+                patch.object(chooser_module, 'working',
                              side_effect=lambda c: [x for x in c
                                                     if x != ('opencv', 1)]):
             found = camera_module.available_cameras()
@@ -847,15 +860,15 @@ class TestHelpers(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             camera_module._report([('noise', 0)])
         self.assertEqual(out.getvalue(),
-                         f"Camera: {_BACKENDS['noise'].label}\n")
+                         f"Camera: {BACKENDS['noise'].label}\n")
 
     def test_several_cameras_say_how_to_pick_another(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             camera_module._report([('opencv', 0), ('noise', 0)])
         text = out.getvalue()
-        self.assertIn(f"Using {_BACKENDS['opencv'].label}", text)
-        self.assertIn(f"Camera('{_BACKENDS['noise'].label}')", text)
+        self.assertIn(f"Using {BACKENDS['opencv'].label}", text)
+        self.assertIn(f"Camera('{BACKENDS['noise'].label}')", text)
 
     def test_awaiting_the_proxy_selects_a_camera(self):
         proxy = _CameraProxy([('noise', 0)])
@@ -880,7 +893,7 @@ class TestAwait(unittest.TestCase):
         patches = [
             patch.object(camera_module, '_in_ipython',
                          return_value=in_ipython),
-            patch.object(camera_module, '_working_candidates',
+            patch.object(chooser_module, 'working',
                          return_value=working),
             patch('QVideo.cameras.chooser.create_camera', return_value=cam)]
         if choose is not None:
@@ -917,7 +930,7 @@ class TestAwait(unittest.TestCase):
     def test_a_single_candidate_is_not_probed(self):
         proxy = _CameraProxy([('noise', 0)])
         self.select(proxy, True, [])
-        camera_module._working_candidates.assert_not_called()
+        chooser_module.working.assert_not_called()
 
 
 class TestInIPython(unittest.TestCase):

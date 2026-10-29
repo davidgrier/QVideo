@@ -180,12 +180,11 @@ class QGenicamTree(QCameraTree):
                 if key in self._scaleFactors:
                     value = value / self._scaleFactors[key]  # type: ignore
                 self.camera.set(key, value)
-        self._ignoreSync = True
-        for key, value in self.camera.settings.items():
-            if key in self._scaleFactors:
-                value = value * self._scaleFactors[key]  # type: ignore
-            self.set(key, value)
-        self._ignoreSync = False
+        with self._syncIgnored():
+            for key, value in self.camera.settings.items():
+                if key in self._scaleFactors:
+                    value = value * self._scaleFactors[key]  # type: ignore
+                self.set(key, value)
 
     @property
     def controls(self) -> list[str] | None:
@@ -230,13 +229,10 @@ class QGenicamTree(QCameraTree):
         pyqtgraph reports would make :meth:`_sync` read all of the
         camera's settings again, once for each row.
         '''
-        ignoring, self._ignoreSync = self._ignoreSync, True
-        try:
+        with self._syncIgnored():
             for item in self.listAllItems()[1:]:
                 p = item.param
                 p.setOpts(visible=self.visible(p))
-        finally:
-            self._ignoreSync = ignoring
 
     def visible(self, param) -> bool:
         ptype = param.opts['type']
@@ -356,7 +352,7 @@ class QGenicamTree(QCameraTree):
 
         Signals are not blocked so that the visual widgets update and
         :meth:`_handleItemChanges` fires when a value changes.
-        :attr:`_ignoreSync` is set for the duration so that the resulting
+        :meth:`_syncIgnored` is in force for the duration so that the resulting
         ``sigTreeStateChanged`` emissions do not send values back to the
         camera.  Access-mode changes (e.g. ``ExposureTime`` becoming
         writable again after the sweep) are reflected even when the
@@ -370,8 +366,7 @@ class QGenicamTree(QCameraTree):
         chunk = params[self._pollCursor:self._pollCursor + self._pollChunk]
         self._pollCursor += self._pollChunk
         params, states = self._snapshot(chunk)
-        self._ignoreSync = True
-        try:
+        with self._syncIgnored():
             self._updateLimits(params, states)
             for p, name in params:
                 state = states[name]
@@ -384,8 +379,6 @@ class QGenicamTree(QCameraTree):
                     continue
                 p.setValue(value)
             self._updateEnabled(params, states)
-        finally:
-            self._ignoreSync = False
 
 
 if __name__ == '__main__':  # pragma: no cover

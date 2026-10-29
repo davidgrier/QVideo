@@ -442,7 +442,7 @@ class QPicamera(QCamera):
         self._device.stop()
         self._configure(self._device.camera_config['main']['size'])
         self._device.start()
-        # _reconfigure does not rebuild _properties, so if the new
+        # _reconfigure does not rebuild properties, so if the new
         # configuration changes the available controls or their ranges the
         # stale registrations persist silently.
         if self._controlValues:

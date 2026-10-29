@@ -93,7 +93,7 @@ class TestGetResolution(unittest.TestCase):
                     QOpenCVCamera.WIDTH: s[0],
                     QOpenCVCamera.HEIGHT: s[1]}.get(prop, 0)
                 self.assertIn(cam._getResolution(),
-                              cam._properties['resolution']['limits'])
+                              cam.properties['resolution']['limits'])
 
 
 class TestInit(unittest.TestCase):
@@ -359,7 +359,7 @@ class TestProperties(unittest.TestCase):
 
     def test_resolution_registered_when_formats_available(self):
         cam = make_camera(width=640, height=480, fps=30.)
-        self.assertIn('resolution', cam._properties)
+        self.assertIn('resolution', cam.properties)
 
     def test_resolution_not_registered_without_formats(self):
         device = make_mock_device()
@@ -368,7 +368,7 @@ class TestProperties(unittest.TestCase):
              patch('QVideo.cameras.OpenCV._camera.probe_formats',
                    return_value=[]):
             cam = QOpenCVCamera()
-        self.assertNotIn('resolution', cam._properties)
+        self.assertNotIn('resolution', cam.properties)
 
     def test_resolution_getter_returns_label(self):
         cam = make_camera(width=640, height=480, fps=30.)
@@ -378,7 +378,7 @@ class TestProperties(unittest.TestCase):
 
     def test_resolution_limits_match_formats(self):
         cam = make_camera(width=640, height=480, fps=30.)
-        limits = cam._properties['resolution']['limits']
+        limits = cam.properties['resolution']['limits']
         self.assertEqual(len(limits), len(cam._formats))
         for label in limits:
             self.assertIn(label, cam._formatLabels)
@@ -405,8 +405,8 @@ class TestProperties(unittest.TestCase):
         cam = make_camera(width=640, height=480, fps=30.)
         for name in ('width', 'height', 'fps'):
             with self.subTest(name=name):
-                if name in cam._properties:
-                    self.assertTrue(cam._properties[name].get('hidden', False))
+                if name in cam.properties:
+                    self.assertTrue(cam.properties[name].get('hidden', False))
 
     def test_width_height_not_hidden_without_formats(self):
         device = make_mock_device()
@@ -417,9 +417,9 @@ class TestProperties(unittest.TestCase):
             cam = QOpenCVCamera()
         for name in ('width', 'height'):
             with self.subTest(name=name):
-                if name in cam._properties:
+                if name in cam.properties:
                     self.assertFalse(
-                        cam._properties[name].get('hidden', False))
+                        cam.properties[name].get('hidden', False))
 
 
 class TestRead(unittest.TestCase):

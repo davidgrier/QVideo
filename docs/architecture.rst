@@ -31,7 +31,7 @@ Subclasses implement three methods:
 * ``read() -> (bool, ndarray | None)`` — capture one frame.
 
 :meth:`~QVideo.lib.QCamera.QCamera.registerProperty` stores a property
-spec in ``self._properties``.  :meth:`~QVideo.lib.QCamera.QCamera.get`,
+spec in ``self.properties``.  :meth:`~QVideo.lib.QCamera.QCamera.get`,
 :meth:`~QVideo.lib.QCamera.QCamera.set`, and
 :meth:`~QVideo.lib.QCamera.QCamera.execute` all route through this dict
 through this dict.  Attribute access (``camera.fps``) delegates to
@@ -150,7 +150,7 @@ UI layer
 --------
 
 :class:`~QVideo.lib.QCameraTree.QCameraTree` is a
-``pyqtgraph.ParameterTree`` widget that reads ``camera._properties`` to
+``pyqtgraph.ParameterTree`` widget that reads ``camera.properties`` to
 auto-build a control panel — no manual UI code is needed per camera.
 
 :class:`~QVideo.lib.QVideoScreen.QVideoScreen` displays live frames from
@@ -199,7 +199,7 @@ built on the framework, following two inheritance chains:
   :class:`~QVideo.demos.yolodemo.YoloDemo` extends it with a
   :class:`~QVideo.overlays.yolo.QYoloWidget` panel and live YOLO
   detection bounding boxes.
-* :class:`~QVideo.demos.ROIdemo.ROIDemo` extends
+* :class:`~QVideo.demos.roidemo.ROIDemo` extends
   :class:`~QVideo.QCamcorder.QCamcorder` with a draggable ROI overlay.
   :class:`~QVideo.demos.compositedemo.CompositeDemo` extends it with a
   :class:`~QVideo.overlays.trackpy.QTrackpyWidget` panel and a

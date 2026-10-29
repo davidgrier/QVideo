@@ -15,7 +15,7 @@ import importlib
 import logging
 from typing import TYPE_CHECKING
 from QVideo.cameras import chooser
-from QVideo.cameras.chooser import _BACKENDS, _discover
+from QVideo.cameras.chooser import BACKENDS, available_cameras, discover
 
 if TYPE_CHECKING:
     from QVideo.interactive.widgets import LiveView
@@ -29,69 +29,15 @@ __all__ = ['Camera', 'available_cameras']
 def _unavailable(model: str) -> str:
     '''Return the reason the backend for *model* cannot be imported.'''
     try:
-        importlib.import_module(_BACKENDS[model.lower()].module)
+        importlib.import_module(BACKENDS[model.lower()].module)
     except (ImportError, ModuleNotFoundError) as ex:
         return f':\n{ex}'
     return ''
 
 
-def _working_candidates(
-        candidates: list[tuple[str, int]]) -> list[tuple[str, int]]:
-    '''Return only the candidates whose cameras open successfully.'''
-    working = []
-    with chooser.quiet():
-        for key, camera_id in candidates:
-            cam = chooser.create_camera(key, camera_id)
-            if cam is not None and cam.isOpen():
-                cam.close()
-                working.append((key, camera_id))
-    return working
-
-
-def _names(key: str) -> dict[int, str]:
-    '''Return the names of the devices that backend *key* can list.'''
-    if key == 'opencv':
-        from QVideo.cameras.OpenCV import QOpenCVDevices
-        return dict(QOpenCVDevices.cameras())
-    return {}
-
-
-def available_cameras() -> list[tuple[str, int, str]]:
-    '''List the cameras that can be opened.
-
-    Each installed backend is asked for its devices and each device is
-    opened and closed again to see that it works, so the light of a
-    camera may blink.  The simulated Noise camera is always listed.
-
-    Returns
-    -------
-    list[tuple[str, int, str]]
-        ``(model, cameraID, name)`` in priority order.  The first two
-        items are the arguments of :func:`Camera`; *name* is the name that
-        the device gives itself (the model for backends that list no
-        names).
-
-    Examples
-    --------
-    ::
-
-        >>> available_cameras()
-        [('OpenCV', 0, 'FaceTime HD Camera'), ('Noise', 0, 'Noise')]
-        >>> camera = Camera('OpenCV', 0)
-    '''
-    found = []
-    for key, _ in _discover(None):
-        names = _names(key)
-        ids = sorted(names) or [0]
-        label = _BACKENDS[key].label
-        for _key, camera_id in _working_candidates([(key, i) for i in ids]):
-            found.append((label, camera_id, names.get(camera_id, label)))
-    return found
-
-
 def _report(working: list[tuple[str, int]]) -> None:
     '''Print available cameras and which one was selected.'''
-    labels = [_BACKENDS[k].label for k, _ in working]
+    labels = [BACKENDS[k].label for k, _ in working]
     if len(labels) == 1:
         print(f'Camera: {labels[0]}')
     else:
@@ -117,7 +63,7 @@ async def _choose(working: list[tuple[str, int]]) -> tuple[str, int]:
         _report(real)
         return real[0]
     try:
-        options = [(_BACKENDS[k].label, (k, cid)) for k, cid in working]
+        options = [(BACKENDS[k].label, (k, cid)) for k, cid in working]
         choose = _notebook('the camera chooser').choose
     except ImportError:
         _report(working)
@@ -203,16 +149,16 @@ class _CameraProxy:
         :meth:`read` take another frame.  ``camera.filters = []`` returns
         to raw frames.
         '''
-        return object.__getattribute__(self, '_filters')
+        return self._filters
 
     @filters.setter
     def filters(self, filters) -> None:
         object.__setattr__(self, '_filters', list(filters))
 
     def _ensure_open(self) -> None:
-        if object.__getattribute__(self, '_camera') is not None:
+        if self._camera is not None:
             return
-        candidates = object.__getattribute__(self, '_candidates')
+        candidates = self._candidates
         key, camera = chooser.open_first(candidates)
         object.__setattr__(self, '_selected_key', key)
         object.__setattr__(self, '_camera', camera)
@@ -220,7 +166,7 @@ class _CameraProxy:
     def read(self) -> 'Image':
         '''Read one frame, apply :attr:`filters`, return it as an array.'''
         self._ensure_open()
-        camera = object.__getattribute__(self, '_camera')
+        camera = self._camera
         while True:
             ok, frame = camera.saferead()
             if not ok or frame is None:
@@ -230,19 +176,21 @@ class _CameraProxy:
                 return frame
 
     def __getattr__(self, name: str):
+        if name.startswith('__'):  # copy and pickle probe for these
+            raise AttributeError(name)
         self._ensure_open()
-        return getattr(object.__getattribute__(self, '_camera'), name)
+        return getattr(self._camera, name)
 
     def __setattr__(self, name: str, value) -> None:
         if name == 'filters':
             object.__setattr__(self, name, value)
             return
         self._ensure_open()
-        setattr(object.__getattribute__(self, '_camera'), name, value)
+        setattr(self._camera, name, value)
 
     def __repr__(self) -> str:
-        key = object.__getattribute__(self, '_selected_key')
-        label = _BACKENDS[key].label if key else 'uninitialized'
+        key = self._selected_key
+        label = BACKENDS[key].label if key else 'uninitialized'
         return f'<Camera: {label}>'
 
     def live_view(self, fps: float = 30.0) -> 'LiveView':
@@ -313,7 +261,7 @@ class _CameraProxy:
             # ... in a later cell ...
             camera.stop_live_view()
         '''
-        lv = object.__getattribute__(self, '_live_view')
+        lv = self._live_view
         if lv is not None:
             lv.stop()
             object.__setattr__(self, '_live_view', None)
@@ -348,15 +296,15 @@ class _CameraProxy:
         '''
         self._ensure_open()
         controls = _notebook('camera.controls()').CameraControls
-        return controls(object.__getattribute__(self, '_camera'))
+        return controls(self._camera)
 
     def __await__(self):
         return self._select().__await__()
 
     async def _select(self) -> '_CameraProxy':
-        candidates = object.__getattribute__(self, '_candidates')
+        candidates = self._candidates
         if len(candidates) > 1 and _in_ipython():
-            working = _working_candidates(candidates)
+            working = chooser.working(candidates)
             if working:
                 chosen = await _choose(working)
                 object.__setattr__(self, '_candidates', [chosen])
@@ -408,7 +356,7 @@ def Camera(model: str | None = None, cameraID: int = 0) -> _CameraProxy:
         camera = Camera('Noise')
         frame = camera.read()
     '''
-    candidates = _discover(model, cameraID)
+    candidates = discover(model, cameraID)
     if not candidates:
         raise RuntimeError(
             'No camera available'

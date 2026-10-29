@@ -209,7 +209,7 @@ class CameraControls:
         name : str
             Property name (used to key ``self._widgets``).
         spec : dict
-            Property spec dict from ``camera._properties``.
+            Property spec dict from ``camera.properties``.
 
         Returns
         -------
@@ -236,7 +236,7 @@ class CameraControls:
         widget_layout = widgets.Layout(flex='1 1 auto', min_width='150px')
 
         rows = []
-        for name, spec in self._camera._properties.items():
+        for name, spec in self._camera.properties.items():
             if spec.get('hidden'):
                 continue
             w = self._make_widget(name, spec)
@@ -279,7 +279,7 @@ class CameraControls:
         self._updating = True
         try:
             for name, w in self._widgets.items():
-                value = self._camera._properties[name]['getter']()
+                value = self._camera.properties[name]['getter']()
                 if value is None:
                     continue
                 try:

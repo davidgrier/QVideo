@@ -102,7 +102,16 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._mutex = threading.RLock()
-        self._properties: dict[str, dict[str, object]] = {}
+        #: Other names for registered properties, mapped to the names that
+        #: they stand for: a backend whose properties have the names of a
+        #: standard (``Width``) can offer the names that every camera
+        #: shares (``width``) here.  They work as attributes and in
+        #: :meth:`get` and :meth:`set`, but they are not properties.
+        self.aliases: dict[str, str] = {}
+        #: The registered properties: each name maps to its spec (getter,
+        #: setter, type and limits).  Iterate it for the names, which are
+        #: the keys of :attr:`settings`.
+        self.properties: dict[str, dict[str, object]] = {}
         self._methods: dict[str, Callable[[], object]] = {}
         self._isOpen = False
         self._modelName: str | None = None
@@ -132,11 +141,13 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
 
         Allows ``camera.fps``, ``camera.width``, etc. to work without
         declaring explicit Python properties for every camera parameter.
-        Only called when normal attribute lookup has already failed.
+        An alias (see :attr:`aliases`) reads the property that it stands
+        for.  Only called when normal attribute lookup has already failed.
         '''
-        if ('_properties' in self.__dict__ and
-                name in self._properties):
-            return self._properties[name]['getter']()
+        if 'properties' in self.__dict__:
+            key = self._canonical(name)
+            if key in self.properties:
+                return self.properties[key]['getter']()
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'")
 
@@ -144,18 +155,23 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         '''Delegate attribute assignment to registered property setters.
 
         Routes ``camera.fps = 30`` through :meth:`set` (serialized with reads,
-        type-coerced) for any name in ``_properties``.  All other names —
-        including internal backing attributes and Qt object attributes —
-        fall through to ``super().__setattr__``.
+        type-coerced) for any name in ``properties`` or ``aliases``.  All
+        other names, including internal backing attributes and Qt object
+        attributes, fall through to ``super().__setattr__``.
 
-        The ``'_properties' in self.__dict__`` guard ensures that writes
-        during ``__init__`` (before ``_properties`` is created) are always
+        The ``'properties' in self.__dict__`` guard ensures that writes
+        during ``__init__`` (before ``properties`` is created) are always
         handled by ``super().__setattr__``.
         '''
-        if '_properties' in self.__dict__ and name in self._properties:
+        if ('properties' in self.__dict__
+                and self._canonical(name) in self.properties):
             self.set(name, value)
         else:
             super().__setattr__(name, value)
+
+    def _canonical(self, name: str) -> str:
+        '''Return the property that *name* stands for.'''
+        return self.aliases.get(name, name)
 
     # ------------------------------------------------------------------
     # Registration API
@@ -202,7 +218,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             def getter(): return getattr(self, f'_{name}')
         if setter is _AUTO:
             def setter(v): return setattr(self, f'_{name}', ptype(v))
-        self._properties[name] = dict(
+        self.properties[name] = dict(
             getter=self._serialized(getter),
             setter=self._serialized(setter),
             ptype=ptype, **meta)
@@ -296,11 +312,6 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     # ------------------------------------------------------------------
 
     @property
-    def properties(self) -> list[str]:
-        '''Names of all registered properties.'''
-        return list(self._properties.keys())
-
-    @property
     def methods(self) -> list[str]:
         '''Names of all registered methods.'''
         return list(self._methods.keys())
@@ -313,7 +324,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         :attr:`propertyValue` for each property.
         '''
         return {name: spec['getter']()
-                for name, spec in self._properties.items()}
+                for name, spec in self.properties.items()}
 
     @settings.setter
     def settings(self, settings: Settings) -> None:
@@ -338,10 +349,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         value : PropertyValue
             New value to assign.
         '''
-        if key not in self._properties:
+        key = self._canonical(key)
+        if key not in self.properties:
             logger.error(f'Unknown property: {key}')
             return
-        setter = self._properties[key]['setter']
+        setter = self.properties[key]['setter']
         if setter is None:
             logger.warning(f'Property {key!r} is read-only')
         else:
@@ -364,10 +376,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         PropertyValue or None
             Current value, or ``None`` if the property is unknown.
         '''
-        if key not in self._properties:
+        key = self._canonical(key)
+        if key not in self.properties:
             logger.error(f'Unknown property: {key}')
             return None
-        value = self._properties[key]['getter']()
+        value = self.properties[key]['getter']()
         self.propertyValue.emit(key, value)
         return value
 
@@ -443,8 +456,8 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         registered.
         '''
         try:
-            w = self._properties['width']['getter']()
-            h = self._properties['height']['getter']()
+            w = self.properties[self._canonical('width')]['getter']()
+            h = self.properties[self._canonical('height')]['getter']()
         except KeyError:
             return QtCore.QSize(0, 0)
         return QtCore.QSize(int(w), int(h))

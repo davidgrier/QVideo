@@ -204,6 +204,53 @@ the new one.  ``get`` uses integer arithmetic to avoid uint8 wrap-around,
 then clips back to 8-bit.
 
 
+.. _extending-reference:
+
+Writing a reference filter
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some corrections need a *reference* that the user captures: a dark frame
+to subtract, a flat field to divide by.  They all work the same way: the
+user clicks *Capture*, the filter averages a number of frames into the
+reference, and every later frame is corrected with it.
+:class:`~QVideo.lib.QReferenceFilter.ReferenceFilter` does the capturing,
+so a new calibration filter is two short methods, and
+:class:`~QVideo.lib.QReferenceFilter.QReferenceFilter` supplies the
+widget.
+
+.. code-block:: python
+
+   import numpy as np
+   from QVideo.lib import ReferenceFilter, QReferenceFilter
+
+
+   class BiasFilter(ReferenceFilter):
+       '''Subtract the average of a few frames from every frame.'''
+
+       def _makeReference(self, mean):
+           return mean          # the average of the captured frames
+
+       def _correct(self, frame, reference):
+           corrected = frame.astype(np.float32) - reference
+           return np.clip(corrected, 0, 255).astype(np.uint8)
+
+
+   class QBiasFilter(QReferenceFilter):
+       display_name = 'Bias'    # the title, and the name in the picker
+       filterClass = BiasFilter
+
+``_makeReference`` receives the average of the captured frames as a
+floating-point array and returns the reference, or ``None`` if the average
+cannot serve as one (a flat field whose mean is zero, for example).
+``_correct`` receives a frame and the reference, which have the same shape;
+frames of another shape pass through unchanged, as do all frames until the
+first capture completes.  The filter has ``capture()``, ``reset()``,
+``nFrames``, ``isCapturing``, ``reference`` and a ``captured`` signal
+without any further code.
+
+Add the filter to ``filters/__init__.py``, with its tests, as for any other
+filter.
+
 .. _extending-export:
 
 Supporting pipeline export
@@ -318,6 +365,8 @@ a rack widget through ``rack=``.
 
 ----
 
+.. _extending-overlays:
+
 Overlays
 --------
 
@@ -339,11 +388,13 @@ components:
    increases downward, with the origin at the top-left corner of the frame.
    Register it with :meth:`~QVideo.lib.QVideoScreen.QVideoScreen.addOverlay`.
 
-**Widget** (``QGroupBox``)
+**Widget** (:class:`~QVideo.lib.QOverlayWidget.QOverlayWidget`)
    Wires the worker and graphics item together and exposes user-facing
-   controls.  Exposes a :attr:`source` property that, when set, connects
-   the video source to the worker.  Exposes an :attr:`overlay` property
-   that returns the graphics item for registration with a screen.
+   controls.  The base class runs the thread, hands the worker one frame at
+   a time, and has a :attr:`source` property that connects the video source
+   and an :attr:`overlay` property that returns the graphics item for
+   registration with a screen.  A subclass names the group box and adds
+   its controls.
 
 
 Writing a simple overlay
@@ -354,8 +405,9 @@ The example below marks the brightest pixel in each frame with a crosshair:
 .. code-block:: python
 
    import numpy as np
-   from qtpy import QtCore, QtWidgets
+   from qtpy import QtCore
    import pyqtgraph as pg
+   from QVideo.lib import QOverlayWidget
    from QVideo.lib.videotypes import Image
 
 
@@ -377,81 +429,39 @@ The example below marks the brightest pixel in each frame with a crosshair:
                             symbol='+', size=20, pxMode=True)
 
        @QtCore.Slot(object)
-       def setPosition(self, pos) -> None:
+       def setFeatures(self, pos) -> None:
            if pos is None:
                self.setData([], [])
            else:
                self.setData(x=[pos[0]], y=[pos[1]])
 
 
-   class QBrightSpotWidget(QtWidgets.QGroupBox):
+   class QBrightSpotWidget(QOverlayWidget):
        '''Overlay that marks the brightest pixel in each frame.'''
 
-       _process = QtCore.Signal(np.ndarray)
-
        def __init__(self, parent=None) -> None:
-           super().__init__('Bright Spot', parent)
-           self.setCheckable(True)
-           self.setChecked(False)
-           self._overlay = _BrightSpotOverlay()
-           self._worker = _BrightSpotWorker()
-           self._thread = QtCore.QThread(self)
-           self._worker.moveToThread(self._thread)
-           self._process.connect(self._worker.process)
-           self._worker.newData.connect(self._overlay.setPosition)
-           self.toggled.connect(self._overlay.setVisible)
-           self._thread.start()
-           self._source = None
-           thread = self._thread
-           self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
-           QtCore.QCoreApplication.instance().aboutToQuit.connect(
-               self.stop)
+           super().__init__('Bright Spot', _BrightSpotOverlay(),
+                            _BrightSpotWorker(), parent)
 
-       @QtCore.Slot()
-       def stop(self) -> None:
-           '''Stop the worker thread (see :ref:`shutting-down`).'''
-           self.source = None
-           self._thread.quit()
-           self._thread.wait()
-
-       @property
-       def overlay(self) -> pg.ScatterPlotItem:
-           '''The graphics item to register with a screen.'''
-           return self._overlay
-
-       @property
-       def source(self):
-           '''The video source supplying frames to this overlay.'''
-           return self._source
-
-       @source.setter
-       def source(self, source) -> None:
-           if self._source is not None:
-               self._source.newFrame.disconnect(self._onNewFrame)
-           self._source = source
-           if source is not None:
-               source.newFrame.connect(self._onNewFrame)
-
-       @QtCore.Slot(np.ndarray)
-       def _onNewFrame(self, frame: Image) -> None:
-           if self.isChecked():
-               self._process.emit(frame)
+The base class does the rest.  A subclass that has controls overrides
+``_setupUi``, calls ``super()._setupUi()`` first, and adds rows to the form
+layout ``self._layout``; the built-in
+:class:`~QVideo.overlays.trackpy.QTrackpyWidget` is an example.
 
 Key design decisions:
 
-- The ``_process`` signal is a private :class:`~pyqtgraph.Qt.QtCore.Signal`
-  on the widget rather than connecting ``source.newFrame`` directly to the
-  worker.  This lets ``_onNewFrame`` gate dispatch on ``isChecked()``, so
-  the worker thread is idle when the overlay is disabled.
+- The worker is a ``QObject`` with a slot ``process(image)`` and a signal
+  ``newData``; the graphics item has a method ``setFeatures`` that receives
+  every result.  The widget calls them, so you never connect them yourself.
+- The widget hands the worker a frame only when the overlay is switched on
+  and the worker has finished the last one, so the thread is idle when the
+  overlay is off and frames never queue up behind a slow analysis.
 - ``stop`` ends the worker thread, and it is safe to call twice.  The
-  thread stops when the application quits (``aboutToQuit``) and when the
-  widget is deleted (``destroyed``).  The ``destroyed`` handler refers to
-  the thread through a local name and not through ``self``, which is
-  already being deleted when the signal is emitted.  See
+  thread stops when the application quits (``aboutToQuit``), when the
+  widget closes and when it is deleted (``destroyed``).  See
   :ref:`shutting-down`.
-- ``toggled.connect(self._overlay.setVisible)`` hides the markers when the
-  group box is unchecked, giving immediate visual feedback.
-
+- The check box shows and hides the graphics item, giving immediate visual
+  feedback.
 
 Wiring an overlay into an application
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

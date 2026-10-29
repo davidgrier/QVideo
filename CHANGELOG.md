@@ -7,7 +7,29 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [Unreleased]
+## [4.11.0] — 2026-10-29
+
+### Upgrading from 4.10
+
+Code that imports the left column needs the right column.  Nothing has
+an alias.
+
+| 4.10 | 4.11 |
+|---|---|
+| `QVideo.lib.QHistogramWidget` | `QVideo.widgets.QHistogramWidget` |
+| `QVideo.lib.QUniformityWidget` | `QVideo.widgets.QUniformityWidget` |
+| `QVideo.lib.QScrollPanel` | `QVideo.widgets.QScrollPanel` |
+| `QVideo.lib.choose_camera` | `QVideo.cameras.chooser.choose_camera` |
+| `QVideo.lib.chooser` (`camera_parser`, ...) | `QVideo.cameras.chooser` |
+| `QVideo.cameras.registry` | `QVideo.cameras.chooser` |
+| `QVideo.interactive.camera.working` | `QVideo.cameras.chooser.working` |
+| `camera.properties` (list of names) | `list(camera.properties)` |
+| `camera._properties` (dict of specs) | `camera.properties` |
+| `rack._registry()` | `rack.availableFilters()` |
+| `QVideo.demos.ROIdemo` | `QVideo.demos.roidemo` |
+| `QListCameras`, `QListCVCameras`, ... | `QCameraChooser` |
+| `.example()` of reader, snapshot, screen, source | the demos |
+| `DarkFrameFilter._dark`, `FlatFieldFilter._flat` | `.reference` |
 
 ### Added
 

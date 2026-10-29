@@ -124,3 +124,13 @@ class QCameraChooser(QtWidgets.QComboBox):
         if scanner is not None:
             scanner.requestInterruption()
             scanner.wait()
+
+
+if __name__ == '__main__':  # pragma: no cover
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    chooser = QCameraChooser()
+    chooser.cameraSelected.connect(
+        lambda model, cameraID: print(f'Camera({model!r}, {cameraID})'))
+    chooser.show()
+    sys.exit(app.exec())

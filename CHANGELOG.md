@@ -21,9 +21,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `make_tree`, `choose_camera`), and `QVideo.lib` no longer exports
   `choose_camera`.  `QSnapshot`, `QListCameras` and `launch` stay in
   `lib`.  The old import paths are gone, with no aliases.
-- **One table of camera backends.**  Each entry of `cameras/registry.py`
-  now carries the command-line flag and help text of its backend, and the
-  chooser reads them from there: adding a backend is one edit fewer.
+- **`cameras` no longer depends on `interactive`, and choosing a camera
+  is one module.**  `QVideo.cameras.chooser` holds the table of backends,
+  the code that opens a camera from it (`create_camera`, `open_first`)
+  and the command-line chooser; the separate `registry` module is gone.
+  `Camera()` and the chooser both open cameras with `open_first`, and the
+  chooser no longer builds a notebook proxy to get a camera.  Each entry
+  of the table carries the command-line flag and help text of its
+  backend, so adding a backend is one edit fewer.  `cameras` now imports
+  only from `lib`.
 
 ---
 

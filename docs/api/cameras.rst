@@ -100,11 +100,16 @@ file, and whether the producer can see any cameras.
 .. automodule:: QVideo.cameras.gentl
    :members: gentlPaths, findProducer, check
 
-Command-line chooser
---------------------
+Choosing and opening a camera
+-----------------------------
 
-The flags of the demos and applications (``-c``, ``-f`` and so on) come
-from the table of backends in :mod:`QVideo.cameras.registry`.
+The module holds the table of backends, with the flag that selects each
+one (``-c``, ``-f`` and so on), the code that opens a camera from the
+table, and the chooser that turns the flags of a command line into an open
+camera and its controls.
+:func:`~QVideo.cameras.chooser.open_first` opens the first camera of a
+list of candidates that works, and says why the others did not; the
+chooser and ``Camera()`` both use it.
 
 .. automodule:: QVideo.cameras.chooser
    :members:

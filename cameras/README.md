@@ -13,13 +13,11 @@ imports without it.
 | `Flir`, `Basler`, `IDS`, `MV`, `Vimbax` | `Genicam` with a vendor producer |
 | `Picamera` | Raspberry Pi camera modules, including the AI camera |
 
-`registry.py` is the table of backends that `Camera()` and the
-command-line chooser use (it holds each backend's flag), `chooser.py`
-turns the command-line flags into an open camera and its controls (it
-opens the camera through `Camera()` of `interactive/`, until hot-plug gives
-the project a public function that opens a camera from its key), and
-`gentl.py` diagnoses GenTL problems
-(`python -m QVideo.cameras.gentl`).
+`chooser.py` is where a camera is chosen: the table of backends (with the
+flag of each), the code that opens a camera from it, which `Camera()` and
+the command-line chooser share, and the chooser that turns the flags of a
+command line into an open camera and its controls.  `gentl.py` diagnoses
+GenTL problems (`python -m QVideo.cameras.gentl`).
 
 To add a camera, read `docs/backends.rst` ("Writing a camera backend").
 A backend is accepted when it passes the conformance suite

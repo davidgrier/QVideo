@@ -11,11 +11,11 @@ features (the chooser, ``live_view`` and ``controls``) are in
 :mod:`QVideo.interactive.widgets`, which is imported only when one of them
 is used.
 '''
-import contextlib
 import importlib
 import logging
 from typing import TYPE_CHECKING
-from QVideo.cameras.registry import _BACKENDS, _discover
+from QVideo.cameras import chooser
+from QVideo.cameras.chooser import _BACKENDS, _discover
 
 if TYPE_CHECKING:
     from QVideo.interactive.widgets import LiveView
@@ -24,63 +24,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 __all__ = ['Camera', 'available_cameras']
-
-
-_qapp = None  # keeps the application that _ensure_qapp makes alive
-
-
-def _ensure_qapp() -> None:
-    '''Create a QApplication if none exists (required before any QCamera).
-
-    The application is kept in a module variable: if nothing refers to it,
-    Python deletes it again as soon as this function returns.
-    '''
-    global _qapp
-    from qtpy.QtWidgets import QApplication
-    if QApplication.instance() is None:
-        _qapp = QApplication([])
-
-
-def _open(key: str, camera_id: int = 0, errors: list | None = None):
-    '''Import and instantiate the camera for *key*. Returns None on failure.
-
-    If *errors* is given, a ``(label, exception)`` pair is appended to it
-    when the camera cannot be created.
-    '''
-    _ensure_qapp()
-    entry = _BACKENDS[key]
-    try:
-        module = importlib.import_module(entry.module)
-        cls = getattr(module, entry.camera_cls)
-        return cls(cameraID=camera_id)
-    except Exception as ex:
-        logger.warning(f'Could not open {entry.label}: {ex}')
-        logger.debug(f'Where {entry.label} failed to open:', exc_info=True)
-        if errors is not None:
-            errors.append((entry.label, ex))
-        return None
-
-
-@contextlib.contextmanager
-def _quiet():
-    '''Suppress sub-ERROR log messages from QVideo loggers during probing.
-
-    Nothing is suppressed when debug logging is on, so that the tracebacks
-    of failures to open a camera can be seen.
-    '''
-    root = logging.getLogger('QVideo')
-    saved = root.level
-    if root.getEffectiveLevel() > logging.DEBUG:
-        root.setLevel(logging.ERROR)
-    try:
-        yield
-    finally:
-        root.setLevel(saved)
-
-
-def _describe(errors: list) -> str:
-    '''Format ``(label, reason)`` pairs, one backend per paragraph.'''
-    return '\n'.join(f'{label}: {reason}' for label, reason in errors)
 
 
 def _unavailable(model: str) -> str:
@@ -96,9 +39,9 @@ def _working_candidates(
         candidates: list[tuple[str, int]]) -> list[tuple[str, int]]:
     '''Return only the candidates whose cameras open successfully.'''
     working = []
-    with _quiet():
+    with chooser.quiet():
         for key, camera_id in candidates:
-            cam = _open(key, camera_id)
+            cam = chooser.create_camera(key, camera_id)
             if cam is not None and cam.isOpen():
                 cam.close()
                 working.append((key, camera_id))
@@ -270,27 +213,9 @@ class _CameraProxy:
         if object.__getattribute__(self, '_camera') is not None:
             return
         candidates = object.__getattribute__(self, '_candidates')
-        hardware = [k for k, _ in candidates if k != 'noise']
-        errors = []
-        with _quiet():
-            for key, camera_id in candidates:
-                cam = _open(key, camera_id, errors)
-                if cam is not None and cam.isOpen():
-                    object.__setattr__(self, '_camera', cam)
-                    object.__setattr__(self, '_selected_key', key)
-                    break
-                if cam is not None:
-                    errors.append((_BACKENDS[key].label,
-                                   'device failed to open'))
-        if object.__getattribute__(self, '_camera') is None:
-            raise RuntimeError(
-                'No camera could be opened'
-                + (f':\n{_describe(errors)}' if errors else ''))
-        selected = object.__getattribute__(self, '_selected_key')
-        if selected == 'noise' and hardware:
-            logger.warning(
-                'No camera hardware detected; using simulated camera'
-                + (f':\n{_describe(errors)}' if errors else ''))
+        key, camera = chooser.open_first(candidates)
+        object.__setattr__(self, '_selected_key', key)
+        object.__setattr__(self, '_camera', camera)
 
     def read(self) -> 'Image':
         '''Read one frame, apply :attr:`filters`, return it as an array.'''

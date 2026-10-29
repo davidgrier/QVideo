@@ -6,7 +6,7 @@ builds them from their display names, so that a notebook needs no imports::
     camera.filters = Filter('Smoothing', 'Canny')
 '''
 import difflib
-from QVideo.interactive.camera import _ensure_qapp
+from QVideo.cameras.chooser import ensure_qapp
 from QVideo.lib.QFilterRackWidget import QFilterRackWidget
 from QVideo.lib.QVideoFilter import VideoFilter
 
@@ -62,7 +62,7 @@ def Filter(*names: str | list[str] | tuple[str, ...]
     if len(names) == 1 and isinstance(names[0], (list, tuple)):
         names = tuple(names[0])
     keys = {_key(name): name for name in registry}
-    _ensure_qapp()
+    ensure_qapp()
     filters = []
     for name in names:
         found = keys.get(_key(name))

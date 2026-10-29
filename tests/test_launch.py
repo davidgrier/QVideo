@@ -49,9 +49,9 @@ class TestLaunch(unittest.TestCase):
             shown.extend(self.windows())
 
         camera = MagicMock()
-        with patch.object(launch_module, 'open_camera',
+        with patch.object(launch_module.chooser, 'open_camera',
                           return_value=('noise', camera)), \
-                patch.object(launch_module, 'make_tree') as make_tree, \
+                patch.object(launch_module.chooser, 'make_tree') as make_tree, \
                 patch.object(launch_module.pg, 'mkQApp') as make_app, \
                 patch.object(launch_module.pg, 'exec', run), \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
@@ -95,8 +95,8 @@ class TestLaunch(unittest.TestCase):
             seen['splashes'] = len(self.splashes())
             self.addCleanup(self.windows()[0].close)
 
-        with patch.object(launch_module, 'open_camera', open_slowly), \
-                patch.object(launch_module, 'make_tree'), \
+        with patch.object(launch_module.chooser, 'open_camera', open_slowly), \
+                patch.object(launch_module.chooser, 'make_tree'), \
                 patch.object(launch_module.pg, 'mkQApp'), \
                 patch.object(launch_module.pg, 'exec', run), \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
@@ -106,7 +106,7 @@ class TestLaunch(unittest.TestCase):
         self.assertEqual(seen['splashes'], 0)  # gone once the window shows
 
     def test_a_camera_that_cannot_open_ends_the_program(self):
-        with patch.object(launch_module, 'open_camera',
+        with patch.object(launch_module.chooser, 'open_camera',
                           side_effect=RuntimeError('no camera')), \
                 patch.object(launch_module.pg, 'mkQApp') as make_app, \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
@@ -131,7 +131,7 @@ class TestLaunch(unittest.TestCase):
             time.sleep(0.2)
             return 'noise', camera
 
-        with patch.object(launch_module, 'open_camera', open_slowly), \
+        with patch.object(launch_module.chooser, 'open_camera', open_slowly), \
                 patch.object(launch_module.pg, 'mkQApp'), \
                 patch.object(launch_module.QtWidgets, 'QShortcut'):
             quitting = []

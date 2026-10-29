@@ -1,19 +1,184 @@
-'''Command-line camera selection utility for QVideo applications.'''
+'''Which cameras exist, how to open one, and how a command line picks it.
+
+The table of backends comes first; ``Camera()``, the command-line flags and
+the documentation all use it.  A new backend adds an entry to
+``_BACKENDS``, with the flag and the help text that select it on the
+command line, and its key to ``_DISCOVERY_ORDER``.  Next is the code that
+opens a camera from the table, and last the chooser that turns the flags
+of a command line into an open camera and its controls.
+'''
+import contextlib
 import importlib
 import logging
 from argparse import ArgumentParser
+from typing import NamedTuple
 
 from QVideo.lib import QCamera, QCameraTree
-from QVideo.cameras.registry import _BACKENDS
-from QVideo.interactive.camera import Camera
 
 __all__ = ['camera_parser', 'choose_camera', 'make_tree', 'open_camera']
 
 logger = logging.getLogger(__name__)
 
 
-#: The backends that a command-line flag selects, from the registry.
+class _BackendEntry(NamedTuple):
+    module: str
+    camera_cls: str
+    tree_cls: str
+    label: str
+    flag: str = ''
+    help: str = ''
+
+
+_BACKENDS: dict[str, _BackendEntry] = {
+    'basler': _BackendEntry(
+        'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler',
+        '-b', 'Basler pylon camera'),
+    'flir': _BackendEntry(
+        'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir',
+        '-f', 'Flir camera'),
+    'ids': _BackendEntry(
+        'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS',
+        '-i', 'IDS Imaging camera'),
+    'mv': _BackendEntry(
+        'QVideo.cameras.MV', 'QMVCamera', 'QMVTree', 'MV',
+        '-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
+    'vimbax': _BackendEntry(
+        'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX',
+        '-v', 'Allied Vision VimbaX camera'),
+    'picamera': _BackendEntry(
+        'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera',
+        '-p', 'Raspberry Pi camera module'),
+    'opencv': _BackendEntry(
+        'QVideo.cameras.OpenCV', 'QOpenCVCamera', 'QOpenCVTree', 'OpenCV',
+        '-c', 'OpenCV camera'),
+    'noise': _BackendEntry(
+        'QVideo.cameras.Noise', 'QNoiseCamera', 'QNoiseTree', 'Noise'),
+}
+
+_DISCOVERY_ORDER = [
+    'basler', 'flir', 'ids', 'mv', 'vimbax', 'picamera', 'opencv', 'noise']
+
+
+def _probe(key: str) -> bool:
+    '''Return True if the backend module can be imported.'''
+    try:
+        importlib.import_module(_BACKENDS[key].module)
+        return True
+    except (ImportError, ModuleNotFoundError):
+        return False
+
+
+def _discover(model: str | None, camera_id: int = 0) -> list[tuple[str, int]]:
+    '''Return (backend_key, camera_id) pairs for importable backends.'''
+    if model is not None:
+        key = model.lower()
+        if key not in _BACKENDS:
+            raise ValueError(
+                f'Unknown camera model {model!r}. '
+                f'Available: {sorted(_BACKENDS)}'
+            )
+        return [(key, camera_id)] if _probe(key) else []
+    return [(key, camera_id) for key in _DISCOVERY_ORDER if _probe(key)]
+
+
+#: The backends that a command-line flag selects.
 _CAMERAS = {key: entry for key, entry in _BACKENDS.items() if entry.flag}
+
+
+_qapp = None  # keeps the application that ensure_qapp makes alive
+
+
+def ensure_qapp() -> None:
+    '''Create a QApplication if none exists (required before any QCamera).
+
+    The application is kept in a module variable: if nothing refers to it,
+    Python deletes it again as soon as this function returns.
+    '''
+    global _qapp
+    from qtpy.QtWidgets import QApplication
+    if QApplication.instance() is None:
+        _qapp = QApplication([])
+
+
+def create_camera(key: str, camera_id: int = 0, errors: list | None = None):
+    '''Import and instantiate the camera for *key*. Returns None on failure.
+
+    If *errors* is given, a ``(label, exception)`` pair is appended to it
+    when the camera cannot be created.
+    '''
+    ensure_qapp()
+    entry = _BACKENDS[key]
+    try:
+        module = importlib.import_module(entry.module)
+        cls = getattr(module, entry.camera_cls)
+        return cls(cameraID=camera_id)
+    except Exception as ex:
+        logger.warning(f'Could not open {entry.label}: {ex}')
+        logger.debug(f'Where {entry.label} failed to open:', exc_info=True)
+        if errors is not None:
+            errors.append((entry.label, ex))
+        return None
+
+
+@contextlib.contextmanager
+def quiet():
+    '''Suppress sub-ERROR log messages from QVideo loggers during probing.
+
+    Nothing is suppressed when debug logging is on, so that the tracebacks
+    of failures to open a camera can be seen.
+    '''
+    root = logging.getLogger('QVideo')
+    saved = root.level
+    if root.getEffectiveLevel() > logging.DEBUG:
+        root.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        root.setLevel(saved)
+
+
+def describe(errors: list) -> str:
+    '''Format ``(label, reason)`` pairs, one backend per paragraph.'''
+    return '\n'.join(f'{label}: {reason}' for label, reason in errors)
+
+
+def open_first(candidates: list[tuple[str, int]]) -> tuple[str, object]:
+    '''Open the first of *candidates* that works.
+
+    Parameters
+    ----------
+    candidates : list of (str, int)
+        Backend keys of :mod:`QVideo.cameras.chooser` and camera IDs, in
+        the order to try them.
+
+    Returns
+    -------
+    tuple
+        The key of the backend and the open camera.
+
+    Raises
+    ------
+    RuntimeError
+        If no candidate opens, with the reason that each one gave.
+    '''
+    hardware = [key for key, _ in candidates if key != 'noise']
+    errors = []
+    with quiet():
+        for key, camera_id in candidates:
+            camera = create_camera(key, camera_id, errors)
+            if camera is not None and camera.isOpen():
+                break
+            if camera is not None:
+                errors.append((_BACKENDS[key].label, 'device failed to open'))
+        else:
+            raise RuntimeError(
+                'No camera could be opened'
+                + (f':\n{describe(errors)}' if errors else ''))
+    if key == 'noise' and hardware:
+        logger.warning(
+            'No camera hardware detected; using simulated camera'
+            + (f':\n{describe(errors)}' if errors else ''))
+    return key, camera
 
 
 def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
@@ -78,7 +243,7 @@ def open_camera(parser: ArgumentParser | None = None) -> tuple[str, QCamera]:
     Returns
     -------
     tuple
-        The key of the backend (as in :mod:`QVideo.cameras.registry`) and
+        The key of the backend (as in :mod:`QVideo.cameras.chooser`) and
         the open camera.
     '''
     args, _ = camera_parser(parser).parse_known_args()
@@ -89,15 +254,10 @@ def open_camera(parser: ArgumentParser | None = None) -> tuple[str, QCamera]:
             break
 
     try:
-        proxy = Camera(model, args.cameraID)
-        proxy._ensure_open()
-    except (RuntimeError, ValueError) as ex:
+        return open_first(_discover(model, args.cameraID))
+    except RuntimeError as ex:
         logger.warning(str(ex))
-        proxy = Camera('noise', args.cameraID)
-        proxy._ensure_open()
-
-    key = object.__getattribute__(proxy, '_selected_key')
-    return key, object.__getattribute__(proxy, '_camera')
+        return open_first(_discover('noise', args.cameraID))
 
 
 def make_tree(key: str, camera: QCamera) -> QCameraTree:

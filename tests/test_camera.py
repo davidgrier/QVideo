@@ -1,4 +1,4 @@
-'''Unit tests for interactive/camera.py and cameras/registry.py.'''
+'''Unit tests for interactive/camera.py and the table in chooser.py.'''
 import asyncio
 import contextlib
 import importlib
@@ -9,8 +9,9 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 from qtpy import QtWidgets
 
+import QVideo.cameras.chooser as chooser_module
 import QVideo.interactive.camera as camera_module
-from QVideo.cameras.registry import _BACKENDS, _discover, _probe
+from QVideo.cameras.chooser import _BACKENDS, _discover, _probe
 from QVideo.interactive.camera import Camera, _CameraProxy
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -114,20 +115,20 @@ class TestCameraProxy(unittest.TestCase):
 
     def _make_proxy(self, open_ok=True, read_ok=True):
         cam = make_mock_noise_camera(open_ok=open_ok, read_ok=read_ok)
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy = Camera('noise')
         return proxy, cam
 
     def test_read_returns_ndarray(self):
         proxy, _ = self._make_proxy()
-        with patch('QVideo.interactive.camera._open',
+        with patch('QVideo.cameras.chooser.create_camera',
                    return_value=make_mock_noise_camera()):
             frame = proxy.read()
         self.assertIsInstance(frame, np.ndarray)
 
     def test_read_raises_on_failure(self):
         proxy, _ = self._make_proxy(read_ok=False)
-        with patch('QVideo.interactive.camera._open',
+        with patch('QVideo.cameras.chooser.create_camera',
                    return_value=make_mock_noise_camera(read_ok=False)):
             with self.assertRaises(RuntimeError):
                 proxy.read()
@@ -135,20 +136,20 @@ class TestCameraProxy(unittest.TestCase):
     def test_getattr_forwards_to_camera(self):
         proxy, cam = self._make_proxy()
         cam.fps = 30.
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             result = proxy.fps
         self.assertEqual(result, 30.)
 
     def test_setattr_forwards_to_camera(self):
         proxy, cam = self._make_proxy()
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy.fps = 60.
         cam.__setattr__('fps', 60.)  # verify delegation happened
         self.assertEqual(cam.fps, 60.)
 
     def test_repr_shows_backend_label(self):
         proxy, cam = self._make_proxy()
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy._ensure_open()
         self.assertIn('Noise', repr(proxy))
 
@@ -157,7 +158,7 @@ class TestCameraProxy(unittest.TestCase):
         good_cam = make_mock_noise_camera(open_ok=True)
         proxy = _CameraProxy([('basler', 0), ('noise', 0)])
         side_effects = [fail_cam, good_cam]
-        with patch('QVideo.interactive.camera._open', side_effect=side_effects):
+        with patch('QVideo.cameras.chooser.create_camera', side_effect=side_effects):
             proxy._ensure_open()
         self.assertEqual(
             object.__getattribute__(proxy, '_selected_key'), 'noise'
@@ -166,7 +167,7 @@ class TestCameraProxy(unittest.TestCase):
     def test_ensure_open_raises_when_all_fail(self):
         fail_cam = make_mock_noise_camera(open_ok=False)
         proxy = _CameraProxy([('noise', 0)])
-        with patch('QVideo.interactive.camera._open', return_value=fail_cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=fail_cam):
             with self.assertRaises(RuntimeError):
                 proxy._ensure_open()
 
@@ -178,7 +179,7 @@ class TestCameraFilters(unittest.TestCase):
         if frames is not None:
             cam.saferead.side_effect = [(True, f) for f in frames]
         proxy = _CameraProxy([('noise', 0)])
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy._ensure_open()
         return proxy, cam
 
@@ -292,14 +293,14 @@ class TestOpenErrors(unittest.TestCase):
         errors = []
         boom = RuntimeError('GENICAM_GENTL64_PATH is not set')
         with patch('importlib.import_module', side_effect=boom):
-            self.assertIsNone(camera_module._open('flir', 0, errors))
+            self.assertIsNone(chooser_module.create_camera('flir', 0, errors))
         self.assertEqual(errors, [('Flir', boom)])
 
     def test_open_logs_where_the_failure_was(self):
         boom = RuntimeError('Feature not present')
         with patch('importlib.import_module', side_effect=boom):
-            with self.assertLogs('QVideo.interactive.camera', 'DEBUG') as logs:
-                camera_module._open('flir', 0, [])
+            with self.assertLogs('QVideo.cameras.chooser', 'DEBUG') as logs:
+                chooser_module.create_camera('flir', 0, [])
         record = [r for r in logs.records if r.levelname == 'DEBUG'][0]
         self.assertIn('Flir', record.getMessage())
         self.assertIs(record.exc_info[1], boom)
@@ -311,7 +312,7 @@ class TestOpenErrors(unittest.TestCase):
                 saved = logger.level
                 logger.setLevel(level)
                 try:
-                    with camera_module._quiet():
+                    with chooser_module.quiet():
                         self.assertEqual(
                             logger.isEnabledFor(logging.DEBUG), shown)
                         self.assertEqual(logger.level, level if shown
@@ -325,7 +326,7 @@ class TestOpenErrors(unittest.TestCase):
 
         def fake_open(key, camera_id, errors):
             errors.append((_BACKENDS[key].label, RuntimeError(f'why {key}')))
-        with patch('QVideo.interactive.camera._open', side_effect=fake_open):
+        with patch('QVideo.cameras.chooser.create_camera', side_effect=fake_open):
             with self.assertRaises(RuntimeError) as ctx:
                 proxy._ensure_open()
         message = str(ctx.exception)
@@ -341,20 +342,20 @@ class TestOpenErrors(unittest.TestCase):
                 errors.append(('Flir', RuntimeError('no producer')))
                 return None
             return noise
-        with patch('QVideo.interactive.camera._open', side_effect=fake_open):
-            with self.assertLogs('QVideo.interactive.camera', 'WARNING') as logs:
+        with patch('QVideo.cameras.chooser.create_camera', side_effect=fake_open):
+            with self.assertLogs('QVideo.cameras.chooser', 'WARNING') as logs:
                 proxy._ensure_open()
         self.assertIn('Flir: no producer', logs.output[0])
 
     def test_closed_camera_is_reported(self):
         proxy = _CameraProxy([('flir', 0)])
-        with patch('QVideo.interactive.camera._open',
+        with patch('QVideo.cameras.chooser.create_camera',
                    return_value=make_mock_noise_camera(open_ok=False)):
             with self.assertRaisesRegex(RuntimeError, 'Flir: device failed'):
                 proxy._ensure_open()
 
     def test_explicit_model_reports_import_failure(self):
-        with patch('QVideo.cameras.registry._probe', return_value=False), \
+        with patch('QVideo.cameras.chooser._probe', return_value=False), \
              patch('importlib.import_module',
                    side_effect=ImportError('pip install genicam harvesters')):
             with self.assertRaisesRegex(RuntimeError, 'pip install genicam'):
@@ -365,7 +366,7 @@ class TestCameraFactory(unittest.TestCase):
 
     def test_returns_camera_proxy(self):
         cam = make_mock_noise_camera()
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             result = Camera('noise')
         self.assertIsInstance(result, _CameraProxy)
 
@@ -374,7 +375,7 @@ class TestCameraFactory(unittest.TestCase):
         blocked = {_BACKENDS[k].module: None
                    for k in _BACKENDS if k != 'noise'}
         with patch.dict('sys.modules', blocked):
-            with patch('QVideo.interactive.camera._open', return_value=cam):
+            with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
                 result = Camera()
         self.assertIsInstance(result, _CameraProxy)
 
@@ -389,7 +390,7 @@ class TestCameraFactory(unittest.TestCase):
 
     def test_camera_id_forwarded(self):
         cam = make_mock_noise_camera()
-        with patch('QVideo.interactive.camera._open', return_value=cam) as mock_open:
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam) as mock_open:
             proxy = Camera('noise', cameraID=2)
             proxy._ensure_open()
         mock_open.assert_called_once_with('noise', 2, [])
@@ -407,7 +408,7 @@ class TestLiveView(unittest.TestCase):
 
     def _make_proxy(self):
         cam = make_mock_noise_camera()
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy = Camera('noise')
         return proxy, cam
 
@@ -419,7 +420,7 @@ class TestLiveView(unittest.TestCase):
             return MagicMock()
 
         proxy, cam = self._make_proxy()
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             with patch('ipywidgets.Image'):
                 with patch('QVideo.interactive.widgets._display'):
                     with patch('asyncio.ensure_future',
@@ -436,7 +437,7 @@ class TestLiveView(unittest.TestCase):
             loops.append(coro)
             return MagicMock()
 
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             with patch('ipywidgets.Image'):
                 with patch('QVideo.interactive.widgets._display'):
                     with patch('asyncio.ensure_future', side_effect=_keep):
@@ -460,7 +461,7 @@ class TestLiveView(unittest.TestCase):
             coro.close()
             return MagicMock()
 
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             with patch('ipywidgets.Image'):
                 with patch('QVideo.interactive.widgets._display'):
                     with patch('asyncio.ensure_future',
@@ -476,7 +477,7 @@ class TestLiveView(unittest.TestCase):
             return MagicMock()
 
         proxy, cam = self._make_proxy()
-        with patch('QVideo.interactive.camera._open', return_value=cam), \
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam), \
              patch('ipywidgets.Image'), \
              patch('QVideo.interactive.widgets._display'), \
              patch('asyncio.ensure_future', side_effect=_close_and_return):
@@ -492,7 +493,7 @@ class TestLiveView(unittest.TestCase):
             return mock_task
 
         proxy, cam = self._make_proxy()
-        with patch('QVideo.interactive.camera._open', return_value=cam), \
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam), \
              patch('ipywidgets.Image'), \
              patch('QVideo.interactive.widgets._display'), \
              patch('asyncio.ensure_future', side_effect=_close_and_return):
@@ -506,7 +507,7 @@ class TestLiveView(unittest.TestCase):
             return MagicMock()
 
         proxy, cam = self._make_proxy()
-        with patch('QVideo.interactive.camera._open', return_value=cam), \
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam), \
              patch('ipywidgets.Image'), \
              patch('QVideo.interactive.widgets._display'), \
              patch('asyncio.ensure_future', side_effect=_close_and_return):
@@ -538,7 +539,7 @@ class TestLiveView(unittest.TestCase):
         proxy, cam = self._make_proxy()
         notebook = MagicMock()
         with patch.object(camera_module, '_notebook', return_value=notebook), \
-             patch.object(camera_module, '_open', return_value=cam):
+             patch.object(chooser_module, 'create_camera', return_value=cam):
             controls = proxy.controls()
         notebook.CameraControls.assert_called_once_with(cam)
         self.assertIs(controls, notebook.CameraControls.return_value)
@@ -562,7 +563,7 @@ class TestLiveView(unittest.TestCase):
             encoded.append(f.copy())
             return original_imencode(ext, f)
 
-        with patch('QVideo.interactive.camera._open', return_value=cam), \
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam), \
              patch('ipywidgets.Image'), \
              patch('QVideo.interactive.widgets._display'), \
              patch('asyncio.ensure_future', side_effect=_close_and_return), \
@@ -591,7 +592,7 @@ class TestLiveView(unittest.TestCase):
             encoded.append(f.copy())
             return original_imencode(ext, f)
 
-        with patch('QVideo.interactive.camera._open', return_value=cam), \
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam), \
              patch('ipywidgets.Image'), \
              patch('QVideo.interactive.widgets._display'), \
              patch('asyncio.ensure_future', side_effect=_close_and_return), \
@@ -794,13 +795,13 @@ class TestHelpers(unittest.TestCase):
         fake = MagicMock()
         fake.instance.return_value = None
         with patch('qtpy.QtWidgets.QApplication', fake):
-            camera_module._ensure_qapp()
+            chooser_module.ensure_qapp()
         fake.assert_called_once_with([])
 
     def test_an_existing_qapplication_is_kept(self):
         fake = MagicMock()
         with patch('qtpy.QtWidgets.QApplication', fake):
-            camera_module._ensure_qapp()
+            chooser_module.ensure_qapp()
         fake.assert_not_called()
 
     def test_an_importable_backend_has_no_reason(self):
@@ -814,7 +815,7 @@ class TestHelpers(unittest.TestCase):
     def test_only_cameras_that_open_are_working(self):
         good, bad = make_mock_noise_camera(), make_mock_noise_camera(False)
         cameras = {'noise': good, 'opencv': bad, 'flir': None}
-        with patch.object(camera_module, '_open',
+        with patch.object(chooser_module, 'create_camera',
                           side_effect=lambda key, i: cameras[key]):
             working = camera_module._working_candidates(
                 [('noise', 0), ('opencv', 0), ('flir', 0)])
@@ -881,7 +882,7 @@ class TestAwait(unittest.TestCase):
                          return_value=in_ipython),
             patch.object(camera_module, '_working_candidates',
                          return_value=working),
-            patch('QVideo.interactive.camera._open', return_value=cam)]
+            patch('QVideo.cameras.chooser.create_camera', return_value=cam)]
         if choose is not None:
             patches.append(patch.object(camera_module, '_choose', choose))
         for p in patches:

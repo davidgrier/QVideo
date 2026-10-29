@@ -260,7 +260,7 @@ class TestCameraControls(unittest.TestCase):
         cam.isOpen.return_value = True
         cam._properties = self.camera._properties
         cam.name = 'Noise'
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy = Camera('noise')
             ctrl = proxy.controls()
         self.assertIsInstance(ctrl, CameraControls)
@@ -270,7 +270,7 @@ class TestCameraControls(unittest.TestCase):
         cam = MagicMock()
         cam.isOpen.return_value = True
         cam._properties = {}
-        with patch('QVideo.interactive.camera._open', return_value=cam):
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
             proxy = Camera('noise')
         with patch.dict('sys.modules', {'QVideo.interactive.widgets': None}):
             with self.assertRaises(ImportError):

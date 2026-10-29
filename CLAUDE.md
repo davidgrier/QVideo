@@ -103,9 +103,10 @@ Each top-level directory has a short `README.md` that says what it is for.
 subclass, and the machinery that they run on (`launch()`, `QSnapshot`); a
 finished widget that nobody subclasses belongs in `widgets/`.
 `cameras/`, `filters/`, `dvr/` and `overlays/` hold families of
-implementations (`cameras/` also has the registry and the command-line
-chooser), `demos/` the recipes, and `interactive/` the notebook and script
-front door (`Camera()`, `Filter()`).  Update a directory's README when its role or
+implementations (`cameras/` also has the table of backends, the code that
+opens a camera from it, and the command-line chooser, all in `chooser.py`), `demos/` the recipes, and
+`interactive/` the notebook and script front door (`Camera()`,
+`Filter()`).  Update a directory's README when its role or
 contents change.
 
 ### Core abstractions (`lib/`)
@@ -141,7 +142,7 @@ by name.  The notebook features (the chooser that `await Camera()` shows,
 that imports `ipywidgets`; `camera.py` reaches it through `_notebook()`,
 which imports it on first use, so `Camera()` needs no `ipywidgets`.  The
 table of backends that `Camera()` and the command-line chooser share is
-`cameras/registry.py`.
+in `cameras/chooser.py`.
 
 **`QVideoSource`** wraps a camera in a `QThread`, calling `camera.saferead()`
 in a loop and emitting `newFrame(ndarray)`. It is the standard way to drive a
@@ -172,11 +173,10 @@ from those imports must also be inside the `try` block (not after it).
 
 When adding a new backend, update all four of the following:
 
-1. `cameras/registry.py` — add an entry to `_BACKENDS` (module path, camera
+1. `cameras/chooser.py` — add an entry to `_BACKENDS` (module path, camera
    class name, tree class name, display label, command-line flag and its
-   help string; the chooser in `cameras/chooser.py` reads the flags from
-   here) and append the key to `_DISCOVERY_ORDER` at the appropriate
-   priority position.
+   help string) and append the key to `_DISCOVERY_ORDER` at the
+   appropriate priority position.
 2. `QCamcorder.py` — update the flag list in the module docstring.
 3. `demos/__init__.py` — update the flag list in the module docstring.
 4. `tests/test_conformance_<name>.py` — mix `CameraConformance`

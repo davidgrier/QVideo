@@ -3,7 +3,7 @@ import sys
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib._splash import say, splash
-from QVideo.cameras.chooser import make_tree, open_camera
+from QVideo.cameras import chooser
 
 
 __all__ = ['launch']
@@ -28,7 +28,7 @@ class _Opener(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            key, self.camera = open_camera()
+            key, self.camera = chooser.open_camera()
         except Exception as error:
             self.failed.emit(str(error))
             return
@@ -94,7 +94,7 @@ def launch(widget: type[QtWidgets.QWidget],
     def build(key: str, camera) -> None:
         say(screen, 'Building the interface...')
         try:
-            central = widget(make_tree(key, camera).start(), **kwargs)
+            central = widget(chooser.make_tree(key, camera).start(), **kwargs)
         except ImportError as error:
             fail(f'Error: {error}')
             return

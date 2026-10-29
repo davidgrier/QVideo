@@ -7,8 +7,8 @@ import numpy as np
 from qtpy import QtWidgets
 import QVideo.cameras.chooser as chooser_module
 from QVideo.cameras.chooser import (camera_parser, choose_camera, make_tree,
-                                    open_camera, _CAMERAS)
-from QVideo.cameras.registry import _BACKENDS, _BackendEntry
+                                    open_camera, _BACKENDS, _BackendEntry,
+                                    _CAMERAS)
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -357,7 +357,10 @@ class TestChooseCameraFallback(unittest.TestCase):
                                 {'QVideo.cameras.OpenCV': mock_module}):
                     camera = choose_camera()
         self.assertIsInstance(camera, QNoiseTree)
-        mock_logger.warning.assert_called_once()
+        messages = [call.args[0]
+                    for call in mock_logger.warning.call_args_list]
+        self.assertTrue(any('No camera could be opened' in m
+                            for m in messages), messages)
         camera.close()
 
 

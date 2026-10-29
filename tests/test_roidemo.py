@@ -4,7 +4,7 @@ import numpy as np
 from qtpy import QtWidgets
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.lib.videotypes import FrameInfo
-from QVideo.demos.ROIdemo import CropROI, ROIDemo
+from QVideo.demos.roidemo import CropROI, ROIDemo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

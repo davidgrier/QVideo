@@ -3,7 +3,7 @@
 
 Run directly::
 
-    python -m QVideo.demos.ROIdemo
+    python -m QVideo.demos.roidemo
 '''
 
 from qtpy import QtCore

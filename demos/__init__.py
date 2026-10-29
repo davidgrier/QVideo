@@ -53,7 +53,7 @@ combineddemo
     Filters, an overlay and composite recording together, as application
     code: a recipe for combining the ideas above.
 
-ROIdemo
+roidemo
     A :class:`~QVideo.QCamcorder.QCamcorder` with a draggable region of
     interest; only the pixels inside it are recorded.
 
@@ -67,7 +67,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.histogramdemo
     python -m QVideo.demos.uniformitydemo
     python -m QVideo.demos.circulardemo
-    python -m QVideo.demos.ROIdemo
+    python -m QVideo.demos.roidemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
     python -m QVideo.demos.compositedemo
@@ -105,7 +105,7 @@ from .filterrackdemo import FilterRackDemo
 from .histogramdemo import HistogramDemo
 from .uniformitydemo import UniformityDemo
 from .circulardemo import CircularDemo
-from .ROIdemo import CropROI, ROIDemo
+from .roidemo import CropROI, ROIDemo
 from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo
 from .compositedemo import CompositeDemo

@@ -24,7 +24,7 @@ Each demo can also be launched directly::
     python -m QVideo.demos.circulardemo
     python -m QVideo.demos.filterdemo
     python -m QVideo.demos.filterrackdemo
-    python -m QVideo.demos.ROIdemo
+    python -m QVideo.demos.roidemo
     python -m QVideo.demos.trackpydemo
     python -m QVideo.demos.yolodemo
     python -m QVideo.demos.compositedemo
@@ -121,7 +121,7 @@ The ladder
    * - :class:`~QVideo.demos.combineddemo.CombinedDemo`
      - ``FilterRackDemo``
      - Filters, an overlay and composite recording together.
-   * - :class:`~QVideo.demos.ROIdemo.ROIDemo`
+   * - :class:`~QVideo.demos.roidemo.ROIDemo`
      - ``QCamcorder``
      - Record only the region inside a draggable ROI.
 
@@ -259,15 +259,15 @@ rendered scene.  The module docstring shows the data flow.
 .. automodule:: QVideo.demos.combineddemo
    :members:
 
-ROIdemo
+ROIDemo
 -------
 
 A draggable rectangular region of interest.  While recording, only the pixels
 inside it are saved, which allows high-rate recording of a cropped region.
 
-.. literalinclude:: /../demos/ROIdemo.py
+.. literalinclude:: /../demos/roidemo.py
    :language: python
    :pyobject: ROIDemo._setupUi
 
-.. automodule:: QVideo.demos.ROIdemo
+.. automodule:: QVideo.demos.roidemo
    :members:

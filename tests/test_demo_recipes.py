@@ -20,7 +20,7 @@ RECIPES = [('QVideo.demos.histogramdemo', 'HistogramDemo'),
            ('QVideo.demos.filterrackdemo', 'FilterRackDemo'),
            ('QVideo.demos.compositedemo', 'CompositeDemo'),
            ('QVideo.demos.combineddemo', 'CombinedDemo'),
-           ('QVideo.demos.ROIdemo', 'ROIDemo')]
+           ('QVideo.demos.roidemo', 'ROIDemo')]
 
 
 def recipe(name: str, cls: str) -> type:

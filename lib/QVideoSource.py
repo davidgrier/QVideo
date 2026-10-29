@@ -246,15 +246,3 @@ class QVideoSource(QtCore.QThread):
     def isPaused(self) -> bool:
         '''Return ``True`` if the capture loop is currently paused.'''
         return self._paused
-
-    @classmethod
-    def example(cls: type['QVideoSource'], *args) -> None:  # pragma: no cover
-        '''Demonstrate basic operation of a threaded video source.'''
-        from pprint import pprint
-
-        source = cls(*args).start()
-        print(source.source.name)
-        pprint(source.source.settings)
-        source.stop()
-        source.quit()
-        source.wait()

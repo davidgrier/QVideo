@@ -11,6 +11,7 @@ from qtpy import QtWidgets
 from QVideo.dvr import formats
 from QVideo.dvr import QOpenCVWriter, QOpenCVReader, QPyAVWriter, QPyAVReader
 from QVideo.lib import QVideoReader, QVideoSource
+from QVideo.tests.fakes import EXAMPLE_VIDEO
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -102,14 +103,14 @@ class TestOpenVideo(unittest.TestCase):
             formats.openVideo(str(self.dir / 'movie.xyz'))
 
     def test_an_opened_video_is_the_reader_of_a_source(self):
-        video = formats.openVideo(QVideoReader.examplevideo())
+        video = formats.openVideo(EXAMPLE_VIDEO)
         source = QVideoSource(video)
         self.addCleanup(video.close)
         self.assertTrue(source.isOpen())
         self.assertGreater(source.fps, 0)
 
     def test_the_example_video_opens_as_a_reader(self):
-        video = formats.openVideo(QVideoReader.examplevideo())
+        video = formats.openVideo(EXAMPLE_VIDEO)
         self.addCleanup(video.close)
         self.assertIsInstance(video, QVideoReader)
         self.assertTrue(video.isOpen())

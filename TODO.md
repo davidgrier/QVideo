@@ -79,24 +79,19 @@ additions:
 
 ## Unified Camera Discovery and Selection
 
-QVideo has per-backend listing widgets (`QListCVCameras`, `QListFlirCameras`,
-etc.) but no single surface that enumerates all available cameras regardless
-of backend.
+`available_cameras()` lists the cameras of every installed backend that
+can be opened, and `QCameraChooser` (in `widgets/`) is a combo box over
+that list.  What remains:
 
-- **`QListCameras` unified API** — a single class (or factory function) that
-  queries every installed backend and returns a flat list of
-  `(backend, cameraID, display_name)` tuples.  Back-ends that are not
-  installed or whose hardware is absent should be silently skipped so the
-  caller never needs to guard against missing SDK imports.
-- **`QCameraChooser` widget** — a `QComboBox` (or tree view) populated from
-  the unified list.  Selecting an entry instantiates the matching
-  `Q<Backend>Camera` and `Q<Backend>Source` via the existing `chooser.py`
-  dispatch table, returning a ready-to-use source to the parent widget.
-  Should replace the current CLI flag approach (`-b/-c/-f/…`) with a
-  point-and-click workflow.
 - **Integration with `QCamcorder`** — replace the startup camera argument
   with an optional embedded `QCameraChooser` panel so the user can switch
-  cameras without restarting the application.
+  cameras without restarting the application.  Switching needs the camera
+  to be closed and opened again while the screen, the recorder and the
+  filters keep their connections, which is the same machinery as hot-plug
+  (see the next section).
+- **Point-and-click start** — `launch()` takes its camera from the command
+  line (`-b/-c/-f/…`).  A chooser shown before the window builds could
+  offer the cameras that `available_cameras()` finds.
 
 ---
 
@@ -176,8 +171,8 @@ trapped as a method on the camera proxy — you can only view what
 
 - **Factor it into a standalone `Screen(source)`** accepting any
   `QCamera`, `QVideoSource`, or `_CameraProxy` — anything with the
-  `newFrame`/`fps` duck type `QVideoScreen.source` already accepts
-  (see [[project_viewbox_range_bug]]). Lets you view a filtered
+  `newFrame`/`fps` duck type `QVideoScreen.source` already accepts.
+  Lets you view a filtered
   pipeline, DVR playback, or a composited overlay feed, not just a
   raw camera.
 - **Environment-dependent implementation**, mirroring the
@@ -229,8 +224,8 @@ them:
   `overlay=` can't work there without either (a) a second,
   numpy/`cv2`-based rendering path per overlay (e.g. `cv2.rectangle`
   for `QYoloOverlay`), or (b) reusing the existing
-  `QWidget.grab()`-based compositing machinery from
-  [[project_overlay_feature2]] (`QVideoScreen._renderComposite`) to
+  `QWidget.grab()`-based compositing machinery of
+  `QVideoScreen._renderComposite` to
   rasterize the live Qt screen + overlay into an image before
   streaming it to `ipywidgets.Image` — which still requires a real
   (if invisible) `QVideoScreen`/`QApplication` to exist even in the
@@ -259,8 +254,8 @@ Proposed fix: move detection into a filter stage — e.g.
 the image, emitting a results signal — so detection runs on the frame
 *as it exists at that point in the pipeline*, staying correctly
 aligned with what's actually displayed, and one inference pass can
-feed the overlay, the planned [[project_analysis_writer]]
-(`QAnalysisWriter`), and a live stats readout simultaneously instead
+feed the overlay, the planned
+`QAnalysisWriter`, and a live stats readout simultaneously instead
 of each running its own detector.
 
 - **No base-class change needed.** `QVideoFilter` widgets are
@@ -355,30 +350,13 @@ acquisition on the host and make the iPad a client in its browser.
   times faster, a time-lapse (decided 2026-10-27); transcode to change it.
 ---
 
-## PyQt6 Support  **Done** (v3.4.x)
+## Core dependency: OpenCV
 
-- ~~`conftest.py` direct `from PyQt5.QtWidgets import QApplication`~~ — replaced
-  with `from pyqtgraph.Qt import QtWidgets` so the test suite is binding-agnostic.
-- ~~`PyQt5` / `PyQt5-sip` hard core dependencies~~ — moved to an optional `pyqt5`
-  extra; `pyqt6 = ["PyQt6"]` extra added.  Users choose their binding at install
-  time; the package itself makes no assumption.
-- ~~DVR icons (`icons_rc_qt6.py`)~~ — the misnamed C file was removed; `icons_rc.py`
-  already imports through `pyqtgraph.Qt` and uses the version-3 resource format,
-  so it works with both bindings unchanged.
-- ~~Enum scoping~~ — the codebase already used fully-scoped enums throughout.
-- ~~CI matrix~~ — PyQt6 / Python 3.12 job added alongside the three PyQt5 jobs.
-
----
-
-## Reduce Core Dependencies  **Done**
-
-- ~~`pandas`~~ — already in the `overlays` optional group.
-- ~~`h5py`~~ — already in the `dvr` optional group.
-- ~~`PyQt5`/`PyQt5-sip`~~ — already optional (`pyqt5` / `pyqt6` extras).
-- **`opencv-python`** — too pervasive to make optional (camera backend,
-  DVR writer/reader, filters, resolution probing).  Accepting
-  `opencv-python-headless` as an alternative is not yet possible via
-  PEP 508; document as a note for headless deployments if requested.
+`opencv-python` stays a core dependency: it is too pervasive to make
+optional (camera backend, DVR writer and reader, filters, resolution
+probing).  Accepting `opencv-python-headless` as an alternative is not yet
+possible via PEP 508; document it as a note for headless deployments if
+requested.
 
 ---
 
@@ -436,20 +414,8 @@ image paths or GitHub-hosted raw URLs that require authentication.
 
 OpenCV 5 improves property setting (see the platform-specific capture
 backend selection added in `cameras/OpenCV/_camera.py`).  Findings from
-a full-codebase review (session 2026-07-10):
+a full-codebase review (2026-07-10):
 
-- ~~**Propagate the per-platform backend fix to all `VideoCapture`
-  call sites.**~~  **Done.**  `capture_backend()` in `_devices.py`
-  factors out the four-way `CAP_V4L2` / `CAP_MSMF` / `CAP_AVFOUNDATION`
-  / `CAP_ANY` platform match and is now reused by `_camera.py`,
-  `_devices.py::_probe_formats`, `_devices.py::_probe_cameras`, and
-  `QListCVCameras.py::_probe_cameras`.
-- ~~**`VideoCapture.get()` now returns `-1` for unsupported
-  properties**~~  **Done.**  `_camera.py::_probeProperties` now skips
-  a property without attempting `set()` when `get()` returns a
-  negative value, except `exposure`, which is exempted because V4L2
-  reports it on a log2 scale where legitimate values are themselves
-  negative.
 - **Lower priority / cosmetic**, no action needed yet:
   - Python bindings now accept keyword arguments broadly
     (`cv2.fn(threshold=0.5)`) — could clean up the more
@@ -467,7 +433,7 @@ a full-codebase review (session 2026-07-10):
     `cv2.dnn.ENGINE_AUTO`/`ENGINE_NEW`/`ENGINE_ORT`,
     `cv2.dnn.NMSBoxes` all present). A YOLOv8/v11 `.onnx` export now
     loads directly via `cv2.dnn.readNet(...)`, giving a genuinely
-    torch-free detection path — see [[project_opencv5_yolo_research]].
+    torch-free detection path.
     Not yet prototyped against QVideo's `_YoloWorker`; would need
     manual output decoding + `cv2.dnn.NMSBoxes` in place of
     `ultralytics`' built-in postprocessing.
@@ -486,8 +452,7 @@ OpenCV 5.0 (released 2026-06-04) rewrote the `cv2.dnn` engine and
 raised ONNX operator coverage from ~22% to ~80% (see "OpenCV 5
 Feature Adoption" above). The dev environment is confirmed on
 `cv2==5.0.0`. Survey of what this opens up for QVideo, roughly
-ordered by value vs. effort — see
-[[project_opencv5_yolo_research]] for the research behind this list:
+ordered by value vs. effort:
 
 - **Torch-free YOLO backend (test case — start here)** — see below.
 - **Face/landmark detection with zero extra dependencies** —
@@ -576,19 +541,3 @@ their own ONNX exports. Findings so far:
     opencv_zoo) has a permissively-licensed (Apache-2.0) general
     object-detection model suitable as a truly redistributable
     default, separate from anything YOLO/Ultralytics-derived.
-
----
-
-## Scale-aware scrolling of spinbox values  **Done**
-
-- ~~pyqtgraph implements the dec property for SpinBox, which scales
-  the step size according to the order of magnitude of the value.
-  This would be helpful for camera properties such as exposure time
-  that can range over several orders of magnitude. Consider how to
-  implement this feature.~~ `QCameraTree._updateStep` recomputes each
-  float parameter's step to ~10% of its current magnitude whenever
-  the value changes (tree edit, camera echo-back, or programmatic
-  `set()`), instead of `dec=True`'s coarse whole-power-of-ten jumps.
-  Applies to every float property in any `QCameraTree`, not just
-  GenICam — generalizes the adaptive-step precedent already used in
-  `QGenicamTree`.

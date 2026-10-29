@@ -389,20 +389,3 @@ class QVideoScreen(GraphicsLayoutWidget):
                 xRange=(0, shape.width()),
                 yRange=(0, shape.height()),
                 padding=0, update=True)
-
-    @classmethod
-    def example(cls: type['QVideoScreen']) -> None:  # pragma: no cover
-        '''Demonstrate the video screen with a noise source.'''
-        import pyqtgraph as pg
-        from QVideo.cameras.Noise import QNoiseSource
-
-        pg.mkQApp()
-        screen = cls()
-        source = QNoiseSource(blacklevel=48, whitelevel=128)
-        screen.source = source.start()
-        screen.show()
-        pg.exec()
-
-
-if __name__ == '__main__':  # pragma: no cover
-    QVideoScreen.example()

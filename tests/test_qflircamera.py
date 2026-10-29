@@ -73,7 +73,6 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 
 import os  # noqa: E402
 from QVideo.lib.errors import QDeviceError, QDriverError  # noqa: E402
-from QVideo.lib.errors import QDriverError  # noqa: E402
 from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.cameras.Flir._camera import QFlirCamera, QFlirSource
 

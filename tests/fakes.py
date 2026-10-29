@@ -1,11 +1,16 @@
 '''Stand-ins for sources, writers and readers, shared by the DVR tests.'''
 import threading
+from pathlib import Path
 import numpy as np
 from qtpy import QtCore, QtTest
 from QVideo.lib import QVideoReader
 from QVideo.lib.videotypes import FrameInfo
 
 _FRAME = np.zeros((4, 4), dtype=np.uint8)
+
+#: The sample video in the documentation (a source checkout has it).
+EXAMPLE_VIDEO = str(
+    Path(__file__).resolve().parent.parent / 'docs' / 'diatom3.avi')
 
 
 def until(condition, ms=5000):

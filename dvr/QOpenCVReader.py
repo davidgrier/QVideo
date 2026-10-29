@@ -90,7 +90,3 @@ class QOpenCVReader(QVideoReader):
     def height(self) -> int:
         '''Frame height in pixels.'''
         return int(self._reader.get(self.HEIGHT))
-
-
-if __name__ == '__main__':  # pragma: no cover
-    QOpenCVReader.example()

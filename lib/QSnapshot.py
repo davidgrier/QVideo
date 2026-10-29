@@ -133,22 +133,3 @@ class QSnapshot(QtCore.QObject):
             logger.warning(f'_save: failed to save {filename!r}')
         else:
             logger.info(f'Snapshot saved: {filename!r}')
-
-    @classmethod
-    def example(cls: type['QSnapshot']) -> None:  # pragma: no cover
-        '''Demonstrate QSnapshot with a noise source.'''
-        import pyqtgraph as pg
-        from QVideo.cameras.Noise import QNoiseSource
-
-        pg.mkQApp()
-        window = QtWidgets.QWidget()
-        snapshot = cls(window)
-        source = QNoiseSource()
-        source.newFrame.connect(snapshot.newFrame)
-        source.start()
-        window.show()
-        pg.exec()
-
-
-if __name__ == '__main__':  # pragma: no cover
-    QSnapshot.example()

@@ -6,8 +6,6 @@ from qtpy import QtCore
 from QVideo.lib._qabc import QABCMeta
 from QVideo.lib import QCamera
 from QVideo.lib.videotypes import Image
-import QVideo
-from pathlib import Path
 import logging
 
 
@@ -251,31 +249,3 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
     def rewind(self) -> None:
         '''Seek to the first frame.'''
         self.seek(0)
-
-    @staticmethod
-    def examplevideo() -> str:  # pragma: no cover
-        '''Return the path to the bundled example video file.'''
-        path = Path(QVideo.__file__).parent / 'docs' / 'diatom3.avi'
-        return str(path)
-
-    @classmethod
-    def example(cls: type['QVideoReader']) -> None:  # pragma: no cover
-        '''Print file metadata and read a few frames.'''
-        filename = cls.examplevideo()
-        video = cls(filename)
-        print(filename)
-        print(f'{video.length = } frames')
-        print(f'{video.width = } pixels')
-        print(f'{video.height = } pixels')
-        print(f'{video.fps = } fps')
-        video.close()
-        with video:
-            for _ in range(5):
-                ok, frame = video.read()
-                print(f'{video.framenumber} ', end='')
-            print('done')
-        with video:
-            for _ in range(5):
-                ok, frame = video.read()
-                print(f'{video.framenumber} ', end='')
-            print('done')

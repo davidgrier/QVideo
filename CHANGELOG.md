@@ -7,6 +7,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.11.1] — 2026-10-31
+
+### Fixed
+
+- `python QCamcorder.py -h`, and every other application that starts with
+  `launch`, stalled while it printed the help and crashed when it quit, and
+  a bad value on the command line (`-c abc`) left the splash screen waiting
+  for a camera that never came.  `launch` read the command line on the
+  thread that opens the camera, where the `SystemExit` of argparse ended
+  only the thread.  The command line is now read first, on the main thread:
+  `-h` prints the options and ends, and a bad value ends with a message.
+
+### Documentation
+
+- Known issues: a GenICam camera read through harvesters freezes the other
+  threads of the process, because the `genicam` binding does not release
+  the interpreter lock (genicam/harvesters issue 508), with the
+  measurements.  The plan to deal with it is in `TODO.md`.
+
+---
+
 ## [4.11.0] — 2026-10-29
 
 ### Upgrading from 4.10

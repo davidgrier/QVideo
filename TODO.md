@@ -4,6 +4,90 @@ Ideas for upgrades and extensions, in no particular order.
 
 ---
 
+## Capture that does not freeze the process (GenICam and the interpreter lock)
+
+**Active.**  The `genicam` binding that harvesters uses holds the Python
+interpreter lock while it waits for a frame and while it reads nodes, so a
+streaming Flir camera freezes every other thread of the process: in QHOT the
+traps respond with a median wait of 28 ms and 3 holograms a second, against
+5 ms and 10 a second with OpenCV.  The evidence, the upstream issue
+(genicam/harvesters #508) and what was ruled out are in
+`docs/compatibility.rst` (Known issues); the programs that measured it are in
+`devel/genicam_gil/`.  PySpin releases the lock, and has no such problem.
+
+The aim: wait for the next frame without holding anything that the rest of
+the program needs, so that a program can calculate and project holograms,
+and draw, while it waits.  Two ways, which do not exclude each other:
+
+1. **Capture in a separate process** (`QRemoteCamera`).  The camera and its
+   vendor library run in a child process with a lock of their own; the
+   parent has a `QCamera` proxy whose `read()` waits on an operating-system
+   semaphore, which releases the lock.  Frames travel in a ring of
+   `multiprocessing.shared_memory` slots (1280 x 1024 at 67 fps is 88 MB/s,
+   one copy in and one out); commands (`get`, `set`, `execute`, `settings`,
+   `states`, a `describe()` of the node tree) go over a pipe.  The rest of
+   QVideo (the source thread, `QFrameRelay`, the DVR, the filters, the
+   trees) is unchanged, because it sees a `QCamera`.  It fixes every GenICam
+   backend, not only Flir, and **the worker may run another Python than the
+   program**: the Spinnaker SDK ships PySpin for CPython 3.8, 3.9, 3.10 and
+   3.12 only, and pins `numpy<2`, which a program on 3.13 or 3.14 cannot
+   use in-process.
+2. **A Flir backend on PySpin** (`QSpinnakerCamera`).  PySpin was measured to
+   release the lock (a counter in the main thread ran at 100 % while another
+   thread waited in `GetNextImage`; an unrelated thread woke in 0.061 ms,
+   idle 0.063 ms) and `GetNDArray()` costs 0.46 ms a frame.  The least code,
+   but it needs Python 3.12 or older and NumPy 1.x in the program, it serves
+   Flir cameras only, and the tree, which reads GenApi nodes, has to be ported
+   to PySpin's nodes.  Whether the node reads (the tree's poll) also release
+   the lock has not been measured.
+
+Plan, with a gate before each large step:
+
+- [ ] **Spike, throwaway, about half a day**: a child process that runs
+      harvesters and writes frames to shared memory, and a stand-in camera in
+      the parent that reads them; measure in QHOT with the Flir
+      (`QHOT/devel/flirdiag.py`, local).  **Gate**: with traps being added,
+      event-loop median <= about 7 ms (OpenCV: 5.2), 99th percentile <= about
+      25 ms (OpenCV: 12.7), holograms >= 9 a second (OpenCV: 9.8), frames
+      >= 24 a second.  If it fails, stop: the lock is not the only cause, and
+      the fallback is below.
+- [ ] Audit what touches a camera: the trees (`QCameraTree`, `QGenicamTree`
+      call `settings`, `set`, `node`, `hasNode`, `states`, `properties`,
+      `name`, `model_name`, `isOpen`), the DVR, the sources, the filters.
+- [ ] `QRemoteCamera`, the worker, the protocol, the ring; lifecycle: start,
+      clean shutdown, death of the parent (the child exits and unlinks the
+      shared memory), crash of the child (`read()` fails, the source says so).
+- [ ] `describe()`: the node tree as plain data, for `QGenicamTree`, which now
+      calls `camera.node('Root')` and `camera.node(name)`, objects that cannot
+      cross a process.
+- [ ] A change of shape (region of interest, binning) reallocates the ring,
+      with a handshake.
+- [ ] Tests with the noise camera through the remote path, so that CI needs
+      no hardware: throughput, shape change, shutdown, crash, orphan cleanup.
+- [ ] Verify with the Flir; release QVideo; QHOT needs only the new
+      QVideo requirement.
+
+Cheaper, and worth doing whatever else is decided:
+
+- [ ] `QGenicamTree._pollCamera` runs on the GUI thread every 200 ms and
+      holds the lock for 17 to 18 ms a call (41 ms at most): stop it while
+      the tree is hidden, or run it in the capture thread between frames.
+- [ ] Add what we know to genicam/harvesters #508 (see
+      `docs/compatibility.rst`): that `_gentl.so` and `_genapi.so` import no
+      `PyEval_SaveThread`, that a longer wait is worse, and that the node
+      reads are affected too.
+
+Fallback if the spike fails: `sys.setswitchinterval(0.0005)` in the program
+took the Flir in QHOT to a median wait of 5.9 ms and 9.7 holograms a second
+(measured, 3 trials), and with the camera poll stopped, a 99th percentile of
+26 ms; it treats the symptom, and affects the whole process.
+
+*Care with the camera*: its frame rate (`AcquisitionFrameRate`,
+`AcquisitionFrameRateEnable`) is kept by the device after the program ends,
+so a measurement that changes it must put it back.  The programs in
+`devel/genicam_gil/` change nothing but the wait slice of harvesters, and
+put it back.
+
 ## Resolution and Region of Interest
 
 Camera resolution changes are a common pain point, especially for

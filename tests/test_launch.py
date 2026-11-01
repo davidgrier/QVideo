@@ -1,5 +1,8 @@
 '''Unit tests for launch() and the applications that call it.'''
+import os
 import runpy
+import subprocess
+import sys
 import threading
 import time
 import unittest
@@ -28,6 +31,12 @@ class _Talker(_Widget):
 
 
 class TestLaunch(unittest.TestCase):
+
+    def setUp(self):
+        # launch() reads the command line, which here is that of pytest
+        argv = patch.object(sys, 'argv', ['application'])
+        argv.start()
+        self.addCleanup(argv.stop)
 
     def windows(self):
         '''Main windows on screen, but not those of earlier tests.'''
@@ -184,6 +193,39 @@ APPLICATIONS = [('QVideo.demos.demo', 'Demo'),
                 ('QVideo.demos.trackpydemo', 'TrackpyDemo'),
                 ('QVideo.demos.combineddemo', 'CombinedDemo'),
                 ('QVideo.demos.yolodemo', 'YoloDemo')]
+
+
+class TestCommandLine(unittest.TestCase):
+
+    '''The command line is read on the main thread, before the interface.
+
+    argparse ends the program on -h or a bad value by raising SystemExit.
+    In the thread that opens the camera that only ended the thread, and the
+    splash screen waited for a camera that never came (and Qt crashed when
+    the program quit).
+    '''
+
+    def launch(self, *args: str) -> subprocess.CompletedProcess:
+        script = ('from QVideo.lib import launch\n'
+                  'from QVideo.QCamcorder import QCamcorder\n'
+                  'launch(QCamcorder, "QCamcorder")\n')
+        env = dict(os.environ, QT_QPA_PLATFORM='offscreen')
+        return subprocess.run([sys.executable, '-c', script, *args],
+                              capture_output=True,
+                              text=True,
+                              timeout=60,
+                              env=env)
+
+    def test_help_prints_and_ends(self):
+        done = self.launch('-h')
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('usage:', done.stdout)
+        self.assertNotIn('QBasicTimer', done.stderr)
+
+    def test_a_bad_value_ends_with_a_message(self):
+        done = self.launch('-c', 'abc')
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertIn('invalid int value', done.stderr)
 
 
 def run_as_script(name):

@@ -77,6 +77,10 @@ def launch(widget: type[QtWidgets.QWidget],
 
         launch(HistogramDemo, 'Histogram Demo')
     '''
+    # -h and a bad value end the program here, on the main thread: argparse
+    # exits by raising SystemExit, which would only end the opener's thread
+    # and leave the splash screen waiting for a camera.
+    chooser.camera_parser().parse_known_args()
     app = pg.mkQApp(title)
     window = QtWidgets.QMainWindow()
     window.setWindowTitle(title or '')

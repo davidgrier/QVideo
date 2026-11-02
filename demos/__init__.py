@@ -83,10 +83,12 @@ If no flag is given, a noise camera is used as a fallback.
     -b [cameraID]   Basler camera (requires pylon SDK)
     -c [cameraID]   OpenCV camera
     -f [cameraID]   FLIR camera (requires Spinnaker SDK)
+    -g [cameraID]   GenICam camera via viva-genicam (no vendor SDK)
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
     -v [cameraID]   Allied Vision VimbaX camera
+    -r              Run the camera in a process of its own
     -h              Show help and exit
 
 ``cameraID`` is an optional integer index (default ``0``) used when

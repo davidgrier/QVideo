@@ -11,6 +11,7 @@ imports without it.
 | `OpenCV` | webcams and video files |
 | `Genicam` | any GenICam camera, through Harvesters and a GenTL producer |
 | `Flir`, `Basler`, `IDS`, `MV`, `Vimbax` | `Genicam` with a vendor producer |
+| `Viva` | any GenICam camera, through viva-genicam: no producer, no SDK |
 | `Picamera` | Raspberry Pi camera modules, including the AI camera |
 
 `chooser.py` is where a camera is chosen: the table of backends (with the

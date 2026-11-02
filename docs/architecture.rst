@@ -75,6 +75,24 @@ thread immediately after the camera returns the frame; slots that need
 only the image may accept a single argument.  It is the standard way to
 drive a camera from the GUI thread.
 
+A camera in a process of its own — ``QVideo.lib.QRemoteCamera``
+----------------------------------------------------------------
+
+A vendor's library may hold the interpreter lock while it waits for a
+frame, and then every other thread of the program waits with it (see
+:doc:`compatibility`).  :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`
+puts the camera in a worker process, which has an interpreter and a lock of
+its own, and is itself a :class:`~QVideo.lib.QCamera.QCamera`: it has the
+properties and the methods of the camera in the worker, so a
+:class:`~QVideo.lib.QVideoSource.QVideoSource`, a
+:class:`~QVideo.lib.QCameraTree.QCameraTree` and everything that uses them
+work as they do with any camera.  Frames cross in a ring of shared memory;
+a request, such as setting a property, waits for the answer of the worker.
+``QCamcorder.py -r`` and every program that uses
+:func:`~QVideo.lib.launch` run the camera this way.  It also keeps the
+program alive when the vendor's library crashes, and lets the worker use
+another Python than the program.  It is available on macOS and Linux.
+
 Frame delivery
 --------------
 

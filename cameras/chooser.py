@@ -46,6 +46,9 @@ BACKENDS: dict[str, _BackendEntry] = {
     'vimbax': _BackendEntry(
         'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX',
         '-v', 'Allied Vision VimbaX camera'),
+    'viva': _BackendEntry(
+        'QVideo.cameras.Viva', 'QVivaCamera', 'QVivaTree', 'Viva',
+        '-g', 'GenICam camera via viva-genicam (no vendor SDK)'),
     'picamera': _BackendEntry(
         'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera',
         '-p', 'Raspberry Pi camera module'),
@@ -57,7 +60,8 @@ BACKENDS: dict[str, _BackendEntry] = {
 }
 
 _DISCOVERY_ORDER = [
-    'basler', 'flir', 'ids', 'mv', 'vimbax', 'picamera', 'opencv', 'noise']
+    'basler', 'flir', 'ids', 'mv', 'vimbax', 'viva', 'picamera', 'opencv',
+    'noise']
 
 
 def _probe(key: str) -> bool:
@@ -101,15 +105,20 @@ def ensure_qapp() -> None:
         _qapp = QApplication([])
 
 
-def create_camera(key: str, camera_id: int = 0, errors: list | None = None):
+def create_camera(key: str, camera_id: int = 0, errors: list | None = None,
+                  remote: bool = False):
     '''Import and instantiate the camera for *key*. Returns None on failure.
 
     If *errors* is given, a ``(label, exception)`` pair is appended to it
-    when the camera cannot be created.
+    when the camera cannot be created.  A *remote* camera runs in a process
+    of its own: see :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`.
     '''
     ensure_qapp()
     entry = BACKENDS[key]
     try:
+        if remote:
+            from QVideo.lib.QRemoteCamera import QRemoteCamera
+            return QRemoteCamera(key, cameraID=camera_id)
         module = importlib.import_module(entry.module)
         cls = getattr(module, entry.camera_cls)
         return cls(cameraID=camera_id)
@@ -143,7 +152,8 @@ def describe(errors: list) -> str:
     return '\n'.join(f'{label}: {reason}' for label, reason in errors)
 
 
-def open_first(candidates: list[tuple[str, int]]) -> tuple[str, object]:
+def open_first(candidates: list[tuple[str, int]],
+               remote: bool = False) -> tuple[str, object]:
     '''Open the first of *candidates* that works.
 
     Parameters
@@ -151,6 +161,8 @@ def open_first(candidates: list[tuple[str, int]]) -> tuple[str, object]:
     candidates : list of (str, int)
         Backend keys of :mod:`QVideo.cameras.chooser` and camera IDs, in
         the order to try them.
+    remote : bool
+        Open each camera in a process of its own.
 
     Returns
     -------
@@ -166,7 +178,7 @@ def open_first(candidates: list[tuple[str, int]]) -> tuple[str, object]:
     errors = []
     with quiet():
         for key, camera_id in candidates:
-            camera = create_camera(key, camera_id, errors)
+            camera = create_camera(key, camera_id, errors, remote)
             if camera is not None and camera.isOpen():
                 break
             if camera is not None:
@@ -273,6 +285,9 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
         for dest, entry in _CAMERAS.items():
             group.add_argument(entry.flag, dest=dest, help=entry.help,
                                action='store_true')
+    if parser.get_default('remote') is None:
+        parser.add_argument('-r', '--remote', action='store_true',
+                            help='run the camera in a process of its own')
     if parser.get_default('cameraID') is None:
         parser.add_argument('cameraID', nargs='?', type=int, default=0,
                             help='camera ID number (default: %(default)d)')
@@ -308,10 +323,10 @@ def open_camera(parser: ArgumentParser | None = None) -> tuple[str, QCamera]:
             break
 
     try:
-        return open_first(discover(model, args.cameraID))
+        return open_first(discover(model, args.cameraID), args.remote)
     except RuntimeError as ex:
         logger.warning(str(ex))
-        return open_first(discover('noise', args.cameraID))
+        return open_first(discover('noise', args.cameraID), args.remote)
 
 
 def make_tree(key: str, camera: QCamera) -> QCameraTree:

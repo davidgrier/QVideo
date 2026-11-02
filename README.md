@@ -81,6 +81,7 @@ Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
 | Backend | Extra | Notes |
 |---------|-------|-------|
 | GenICam cameras (Vimba, etc.) | `pip install QVideo[genicam]` | Requires a vendor-supplied `.cti` producer file |
+| GenICam cameras, no vendor SDK | `pip install QVideo[viva]` | Uses viva-genicam (experimental) |
 | Raspberry Pi camera | `pip install QVideo[picamera]` | Requires `picamera2` |
 | Camera names for USB cameras | `pip install QVideo[opencv]` | Uses `cv2-enumerate-cameras`; without it the cameras are listed as "Camera 0" and so on |
 | HDF5 recording (compressed without loss) | `pip install QVideo[dvr]` | Requires `h5py` and `hdf5plugin` |
@@ -141,6 +142,7 @@ details, including what to do if widgets show up as text.
 | `cameras/IDS` | `QIDSCamera` | IDS Imaging cameras via GenICam |
 | `cameras/MV` | `QMVCamera` | Any GenICam camera via MATRIX VISION mvGenTLProducer |
 | `cameras/Vimbax` | `QVimbaXCamera` | Allied Vision cameras via VimbaX GenTL producer |
+| `cameras/Viva` | `QVivaCamera` | Any GenICam camera via viva-genicam (no producer) |
 | `cameras/Picamera` | `QPicamera` | Raspberry Pi camera module |
 
 ## Compatibility

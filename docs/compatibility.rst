@@ -164,5 +164,12 @@ requires ``numpy>=1.21,<2.0``: with NumPy 2 installed the import fails.
 QVideo and QHOT need Python 3.11 or later and do not use anything that is
 new in NumPy 2, but they are tested only with NumPy 2.
 
+*Workaround.*  Run the camera in a process of its own, which has an
+interpreter lock of its own: ``QRemoteCamera('flir')``, or ``-r`` on the
+command line of a program (``python QCamcorder.py -fr``).  It is available
+on macOS and Linux.  With a stand-in camera that holds the lock the way the
+binding does, the interface of QHOT stays as responsive as with an OpenCV
+camera; it has not yet been measured with a Flir.
+
 The plan to deal with it is in ``TODO.md``, and the programs that measured
 it are in ``devel/genicam_gil/``.

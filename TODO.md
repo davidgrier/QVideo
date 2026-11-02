@@ -6,7 +6,9 @@ Ideas for upgrades and extensions, in no particular order.
 
 ## Capture that does not freeze the process (GenICam and the interpreter lock)
 
-**Active.**  The `genicam` binding that harvesters uses holds the Python
+**Active.**  `QRemoteCamera` (option 1 below) is written and in `lib/`; what
+remains is the Flir gate, the GenICam tree and Windows (see the checklist).
+The `genicam` binding that harvesters uses holds the Python
 interpreter lock while it waits for a frame and while it reads nodes, so a
 streaming Flir camera freezes every other thread of the process: in QHOT the
 traps respond with a median wait of 28 ms and 3 holograms a second, against
@@ -43,29 +45,93 @@ and draw, while it waits.  Two ways, which do not exclude each other:
 
 Plan, with a gate before each large step:
 
-- [ ] **Spike, throwaway, about half a day**: a child process that runs
-      harvesters and writes frames to shared memory, and a stand-in camera in
-      the parent that reads them; measure in QHOT with the Flir
-      (`QHOT/devel/flirdiag.py`, local).  **Gate**: with traps being added,
-      event-loop median <= about 7 ms (OpenCV: 5.2), 99th percentile <= about
-      25 ms (OpenCV: 12.7), holograms >= 9 a second (OpenCV: 9.8), frames
-      >= 24 a second.  If it fails, stop: the lock is not the only cause, and
-      the fallback is below.
+- [x] **Spike, throwaway, about half a day** (done, but not yet on the
+      Flir): a child process that runs harvesters and writes frames to shared
+      memory, and a stand-in camera in the parent that reads them; measure
+      in QHOT with the Flir (`QHOT/devel/flirdiag.py`, local).  **Gate**:
+      with traps being added, event-loop median <= about 7 ms (OpenCV: 5.2),
+      99th percentile <= about 25 ms (OpenCV: 12.7), holograms >= 9 a second
+      (OpenCV: 9.8), frames >= 24 a second.  If it fails, stop: the lock is
+      not the only cause, and the fallback is below.  *Result so far*: with
+      a stand-in that holds the lock the way the binding does
+      (`ctypes.PyDLL`, `QHOT/devel/gilcamera.py`) the 99th percentile stays
+      at 6 ms with the camera in a worker, against 21 to 36 ms in the
+      process, and frames and holograms do not change; the stand-in is milder
+      than the Flir (median 5.7 ms against 28 ms), so **the gate still has to
+      be run with the Flir** (it was not connected).
 - [ ] Audit what touches a camera: the trees (`QCameraTree`, `QGenicamTree`
       call `settings`, `set`, `node`, `hasNode`, `states`, `properties`,
       `name`, `model_name`, `isOpen`), the DVR, the sources, the filters.
-- [ ] `QRemoteCamera`, the worker, the protocol, the ring; lifecycle: start,
+- [x] `QRemoteCamera`, the worker, the protocol, the ring; lifecycle: start,
       clean shutdown, death of the parent (the child exits and unlinks the
       shared memory), crash of the child (`read()` fails, the source says so).
 - [ ] `describe()`: the node tree as plain data, for `QGenicamTree`, which now
       calls `camera.node('Root')` and `camera.node(name)`, objects that cannot
       cross a process.
-- [ ] A change of shape (region of interest, binning) reallocates the ring,
-      with a handshake.
-- [ ] Tests with the noise camera through the remote path, so that CI needs
-      no hardware: throughput, shape change, shutdown, crash, orphan cleanup.
+- [x] A change of shape (region of interest, binning) reallocates the ring,
+      with a handshake (a generation number in every announcement).  How the
+      change is announced is below.
+- [x] Tests with the noise camera through the remote path, so that CI needs
+      no hardware: `tests/test_qremotecamera.py` (shape change, shutdown,
+      crash, orphan cleanup, reopening) and `tests/test_conformance_remote.py`
+      (the whole contract of `tests/conformance.py`).
 - [ ] Verify with the Flir; release QVideo; QHOT needs only the new
       QVideo requirement.
+
+Before `QRemoteCamera` can be the default (see "Defaults" below); each of
+these is a reason not to make it the default today:
+
+- [ ] **A tree that does not block the interface.**  A request is a round
+      trip, and `QGenicamTree._pollCamera` asks for `states()` five times a
+      second, which takes 17 to 18 ms in the worker: the GUI thread would wait
+      for that, which is a stall of the event loop even though it is not a
+      lock.  The worker should read the states between frames and push them,
+      and the GUI should read the latest push.  Make every setting that the
+      interface sends asynchronous, or at least off the GUI thread, and say
+      what happens when the worker is in a long read (a setting waits for the
+      read: up to a frame period, a second at one frame a second).
+- [ ] **What the trees need**: `node`, `hasNode`, `states`, `isReadWrite`
+      (`describe()` above) and any other call that a backend's tree makes
+      beyond the registry of properties.  Audit `tests/test_vendor_trees.py`
+      and the tree of every backend.  Only plain values cross the process: a
+      backend that hands out callbacks or native objects needs a reply of
+      plain data.
+- [ ] **Announce a change of shape from the worker** when the camera changes
+      it, whoever asked, in the order of the frames; today it is announced
+      from the reply to a `set`, `settings` or `execute`, which misses a change
+      that the camera makes itself.
+- [ ] **Windows.**  There is no file descriptor to pass to a child.  Use
+      `multiprocessing.connection` (named pipes), shared memory by name, and
+      a second connection in place of the datagrams, so that the same code
+      runs on every platform; then remove the skips of the tests and the
+      error that `QRemoteCamera` raises.
+- [ ] **macOS camera permission** for a worker that a packaged application
+      starts: the permission belongs to the application that is responsible
+      for the process.  Try it from an application bundle; if it fails, say
+      what to do.  (From a terminal it works.)
+- [ ] **Errors and debugging.**  Forward the logging of the worker to the
+      logging of the program, with the traceback of an exception as text, and
+      keep a way to run the very same camera in the program for a debugger
+      (`--local`, below).  Say in the interface when the worker has died, not
+      only in the log.
+- [ ] **What it costs**, measured and written down: the start of the worker
+      (3.7 s for OpenCV), the copy of a frame in and out of the ring, the
+      latency of a frame and of a setting, and the highest rate at the largest
+      frame (a 6 MB color frame at 30 frames a second is cheap; a fast
+      camera at its full resolution may not be).
+- [ ] **Defaults.**  Give each backend in `BACKENDS` a default of its own:
+      GenICam cameras (Flir, Basler, IDS, MV, VimbaX) in a worker on macOS and
+      Linux, the rest in the program; `-r` forces a worker and `--local`
+      forces the program.  Say in the interface and in `docs` which one a
+      camera got (for example `QFlirCamera (own process)` in the title of the
+      tree).  Widen the default only after weeks of use.  When it is the
+      default for GenICam, QHOT can drop its stopgap (`SWITCH_INTERVAL`,
+      `readsGenicam` and `shareTheInterpreter` in `qhot.py`).
+- [ ] **Unknown options.**  `launch` reads the command line with
+      `parse_known_args`, so a flag that it does not know (`-r` before this
+      release, or a typo such as `-cx`) is ignored without a word, and a
+      program then runs a camera that the user did not ask for.  Stop on an
+      option that no part of the program claims, or at least warn.
 
 Cheaper, and worth doing whatever else is decided:
 
@@ -87,6 +153,46 @@ took the Flir in QHOT to a median wait of 5.9 ms and 9.7 holograms a second
 so a measurement that changes it must put it back.  The programs in
 `devel/genicam_gil/` change nothing but the wait slice of harvesters, and
 put it back.
+
+## Review the documentation of the camera in a process of its own
+
+Do this before the first release that has `QRemoteCamera`, and again when it
+becomes a default.
+
+- [ ] **Docstrings.**  Every public class, method and property of
+      `lib/QRemoteCamera.py` has a NumPy-style docstring that says what the
+      caller needs and nothing of the implementation; the private modules
+      `lib/_remote.py` and `lib/_remoteworker.py` say what each function
+      does.  Run the docstrings through the documentation build and read the
+      pages, not only the source.
+- [ ] **The protocol, in one place.**  Describe it once, in the docstring of
+      `lib/_remote.py` or in `docs/architecture.rst`: the two channels, the
+      layout of the ring and of an announcement, the requests and their
+      answers, the life of the worker (start, close, death of the parent,
+      death of the worker), what is guaranteed about frames and what is not.
+      A person who writes a backend or fixes a bug should not have to read the
+      code to learn it.
+- [ ] **Check every claim against what the code does**: the platforms, "any
+      backend", the numbers of the measurements, the statement in
+      `docs/compatibility.rst` that it avoids the lock of the `genicam`
+      binding (true only when measured with the Flir), and the text of
+      `docs/architecture.rst`.  Anything that has not been measured says so.
+      One behavior to state plainly: the proxy delivers the newest frame and
+      discards the rest if it falls behind, where an in-process camera hands
+      over the frames of its driver's queue, late.
+- [ ] **A page for the person who chooses**: when to run a camera in a
+      process of its own and when not (what it fixes, what it costs, what it
+      cannot do), how (`QRemoteCamera('flir')`, `-r`, `--local`), a short
+      example, and what to do when the worker does not start.
+- [ ] **The older documentation**: `QVideoSource` is called the standard way
+      to drive a camera, the quickstart, the READMEs of `lib/`, `cameras/` and
+      `tests/`, and the flag lists in `QCamcorder.py` and `demos/__init__.py`
+      should agree with the new framework, and `CLAUDE.md` should say how a
+      backend's tree and camera are kept compatible with it.
+- [ ] **The documentation builds without a warning**, the examples in the
+      docstrings run, and a reader who has never seen the code can follow the
+      page from the start.  Ask someone who does not know QVideo to try it.
+
 
 ## Resolution and Region of Interest
 
@@ -176,6 +282,26 @@ that list.  What remains:
 - **Point-and-click start** — `launch()` takes its camera from the command
   line (`-b/-c/-f/…`).  A chooser shown before the window builds could
   offer the cameras that `available_cameras()` finds.
+
+---
+
+## Dropped frames  **Planned; not urgent**
+
+`QCamera.read()` returns no frame number, and `QVideoSource` counts
+`FrameInfo.index` after the read, so a frame that the camera, its driver or a
+`QRemoteCamera` discards leaves no gap.  `QVideoSource`, which reads every
+camera, should detect and report this once for all of them:
+
+- [ ] Compare the interval between frames with the usual one.  Use
+      `hardwareTimestamp` when the camera has one (`QRemoteCamera` carries
+      it), and the arrival time otherwise.  A longer interval means that
+      frames were lost.
+- [ ] Warn, at a limited rate so that a stalled camera does not flood the
+      log, and keep a count that a recorder or a status bar can show.
+- [ ] Test with a camera that skips frames and with a slow consumer.
+
+`QCamera` needs no frame counter for this; add one only if a camera can
+report its own.
 
 ---
 

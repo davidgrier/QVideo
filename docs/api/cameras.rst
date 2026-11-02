@@ -56,6 +56,16 @@ Allied Vision VimbaX
 .. automodule:: QVideo.cameras.Vimbax
    :members:
 
+GenICam through viva-genicam
+----------------------------
+
+A GenICam backend without a GenTL producer or a vendor SDK.  It is
+experimental: install it with ``pip install QVideo[viva]`` and select it
+with ``-g``.
+
+.. automodule:: QVideo.cameras.Viva
+   :members:
+
 Raspberry Pi Camera
 -------------------
 

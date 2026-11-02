@@ -48,6 +48,8 @@ class QFlirTree(QGenicamTree):
         BlackLevelSelector='All',
         GammaEnable=True,
         AutoExposureControlPriority='Gain',
+        AutoAlgorithmSelector='Ae',
+        AutoExposureTargetGreyValueAuto='Off',
         ExposureAuto='Off',
         ExposureMode='Timed',
         ExposureTimeMode='Common',

@@ -514,6 +514,81 @@ class QGenicamCamera(QCamera):
                                   ptype=ptype,
                                   **meta)
 
+    def nodeTree(self) -> dict:
+        '''Return the node map as plain data, for a tree to build from.
+
+        Only plain values (numbers, strings, lists, dicts) are returned,
+        so the result crosses the process boundary of a
+        :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`.  Every entry has
+        ``name``, ``title`` and ``visibility`` (an integer);
+        a category adds ``type='group'`` and ``children``; a leaf adds
+        ``type``, ``value``, ``default`` and the limits of its type.  A
+        float adds ``unit`` and, if the node has an increment, ``step``.
+
+        Returns
+        -------
+        dict
+            The ``Root`` node, or an empty dict if there is no node map.
+        '''
+        root = self.node('Root')
+        if root is None:
+            return {}
+        with self._mutex:
+            return self._describeNode(root)
+
+    def _describeNode(self, feature: 'IValue') -> dict:
+        '''Return the description of *feature* and of what it contains.'''
+        this = dict(name=feature.node.name,
+                    title=feature.node.display_name,
+                    visibility=int(feature.node.visibility))
+        mode = feature.node.get_access_mode()
+        if mode == EAccessMode.NI:
+            return this
+        if isinstance(feature, ICategory):
+            this['type'] = 'group'
+            this['children'] = [self._describeNode(f)
+                                for f in feature.features]
+            return this
+        if isinstance(feature, ICommand):
+            this['type'] = 'action'
+            return this
+        if mode not in (EAccessMode.RW, EAccessMode.RO):
+            return this
+        if isinstance(feature, IEnumeration):
+            this['type'] = 'list'
+            this['value'] = this['default'] = feature.to_string()
+            this['limits'] = [v.symbolic for v in feature.entries]
+        elif isinstance(feature, IBoolean):
+            this['type'] = 'bool'
+            this['value'] = this['default'] = feature.value
+        elif isinstance(feature, IInteger):
+            this['type'] = 'int'
+            this['value'] = this['default'] = feature.value
+            this['min'] = feature.min
+            this['max'] = feature.max
+            this['step'] = feature.inc
+        elif isinstance(feature, IFloat):
+            this['type'] = 'float'
+            this['value'] = this['default'] = feature.value
+            this['min'] = feature.min
+            this['max'] = feature.max
+            this['unit'] = feature.unit
+            if feature.has_inc():
+                this['step'] = feature.inc
+        elif isinstance(feature, IString):
+            this['type'] = 'str'
+            this['value'] = this['default'] = feature.value
+        elif isinstance(feature, IRegister):
+            # A register is a raw block of the camera's memory: show its
+            # bytes as read-only text.
+            this['type'] = 'str'
+            this['value'] = this['default'] = registerText(feature)
+            this['readonly'] = True
+        else:
+            logger.debug(f'Unsupported node type: {feature.node.name}: '
+                         f'{type(feature)}')
+        return this
+
     def hasNode(self, name: str) -> bool:
         '''Return ``True`` if the named node exists in the node map.
 

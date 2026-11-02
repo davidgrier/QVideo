@@ -4,11 +4,7 @@ import math
 from qtpy import QtCore
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Genicam import QGenicamCamera
-from genicam.genapi import (IValue, EAccessMode, EVisibility,
-                            ICategory, ICommand, IEnumeration,
-                            IBoolean, IInteger, IFloat, IString,
-                            IRegister)
-from QVideo.cameras.Genicam._camera import registerText
+from genicam.genapi import EAccessMode, EVisibility
 import logging
 
 
@@ -61,6 +57,7 @@ class QGenicamTree(QCameraTree):
         self._pollCursor = 0
         self._scaleFactors: dict[str, float] = {}
         self._decParams: set[str] = set()
+        self._visibilities: dict[str, int] = {}
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
         self._visibility = visibility
@@ -85,84 +82,54 @@ class QGenicamTree(QCameraTree):
 
     def description(self,
                     camera: QGenicamCamera) -> list[dict]:
-        '''Return a list of dicts describing the node map'''
-        root = camera.node('Root')
-        if root is None:
-            return []
-        description = self.describe(root)
-        return description.get('children', [])
+        '''Return a list of dicts describing the node map.
 
-    def describe(self, feature: IValue) -> dict[str, Any]:
-        '''Return a dictionary describing a feature'''
-        this = dict(name=feature.node.name,
-                    title=feature.node.display_name,
-                    visibility=feature.node.visibility)
-        mode = feature.node.get_access_mode()
-        if mode == EAccessMode.NI:
-            return this
-        if isinstance(feature, ICategory):
-            this['type'] = 'group'
-            this['children'] = [self.describe(f)
-                                for f in feature.features]
-            return this
-        if isinstance(feature, ICommand):
-            this['type'] = 'action'
-            return this
-        if mode not in (EAccessMode.RW, EAccessMode.RO):
-            return this
-        if isinstance(feature, IEnumeration):
-            this['type'] = 'list'
-            this['value'] = this['default'] = feature.to_string()
-            this['limits'] = [v.symbolic for v in feature.entries]
-        elif isinstance(feature, IBoolean):
-            this['type'] = 'bool'
-            this['value'] = this['default'] = feature.value
-        elif isinstance(feature, IInteger):
-            this['type'] = 'int'
-            this['value'] = this['default'] = feature.value
-            this['min'] = feature.min
-            this['max'] = feature.max
-            this['step'] = feature.inc
-        elif isinstance(feature, IFloat):
-            this['type'] = 'float'
-            self._describeFloat(feature, this)
-        elif isinstance(feature, IString):
-            this['type'] = 'str'
-            this['value'] = this['default'] = feature.value
-        elif isinstance(feature, IRegister):
-            # A register is a raw block of the camera's memory: show its
-            # bytes as read-only text.
-            this['type'] = 'str'
-            this['value'] = this['default'] = registerText(feature)
-            this['readonly'] = True
-        else:
-            logger.debug(
-                f'Unsupported node type: {feature.node.name}: {type(feature)}')
+        The camera describes its nodes as plain data
+        (:meth:`~QVideo.cameras.Genicam.QGenicamCamera.nodeTree`), so the
+        same tree works for a camera in a process of its own.
+        '''
+        root = camera.nodeTree()
+        if not root:
+            return []
+        return self.describe(root).get('children', [])
+
+    def describe(self, node: dict[str, Any]) -> dict[str, Any]:
+        '''Return the description of *node* for the parameter tree.
+
+        Records the names and visibilities of the nodes, and the scale
+        and step of the floats.
+        '''
+        this = dict(node)
+        self._visibilities[node['name']] = node['visibility']
+        if 'children' in node:
+            this['children'] = [self.describe(c) for c in node['children']]
+        elif node.get('type') == 'float':
+            self._describeFloat(this)
         return this
 
-    def _describeFloat(self, feature: IFloat, this: dict[str, Any]) -> None:
-        '''Add the value, limits, units and step of a float *feature*.'''
-        unit = feature.unit
+    def _describeFloat(self, this: dict[str, Any]) -> None:
+        '''Apply units, scale and step to the float description *this*.'''
+        name = this['name']
+        unit = this.pop('unit', None)
+        step = this.pop('step', None)
         if unit in _MICROSECOND_UNITS:
             scale = 1e-6
-            self._scaleFactors[feature.node.name] = scale
+            self._scaleFactors[name] = scale
             this['siPrefix'] = True
             unit = 's'
         else:
             scale = 1.0
-        this['value'] = this['default'] = feature.value * scale
-        lo = feature.min * scale
-        hi = feature.max * scale
-        this['min'] = lo
-        this['max'] = hi
+        value = this['value'] * scale
+        this['value'] = this['default'] = value
+        lo = this['min'] = this['min'] * scale
+        hi = this['max'] = this['max'] * scale
         this['units'] = unit
-        if feature.has_inc():
-            this['step'] = feature.inc * scale
+        if step is not None:
+            this['step'] = step * scale
         if lo > 0 and hi / lo > 100:
-            self._decParams.add(feature.node.name)
-            v = feature.value * scale
-            if v > 0:
-                this['step'] = 10 ** (math.floor(math.log10(v)) - 1)
+            self._decParams.add(name)
+            if value > 0:
+                this['step'] = 10 ** (math.floor(math.log10(value)) - 1)
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
@@ -196,10 +163,9 @@ class QGenicamTree(QCameraTree):
         for item in self.listAllItems()[1:]:
             p = item.param
             name = p.opts['name']
-            node = self.camera.node(name)
             visible = controls is None or name in controls
-            p.opts['visibility'] = (node.node.visibility
-                                    if node is not None and visible
+            p.opts['visibility'] = (EVisibility(self._visibilities[name])
+                                    if visible and name in self._visibilities
                                     else EVisibility.Invisible)
         self._updateVisible()
 
@@ -249,7 +215,7 @@ class QGenicamTree(QCameraTree):
         pairs = ((item.param, item.param.opts.get('name'))
                  for item in self.listAllItems()[1:])
         return [(p, name) for p, name in pairs
-                if p.opts.get('visible', False) and self.camera.hasNode(name)]
+                if p.opts.get('visible', False) and name in self._visibilities]
 
     def _snapshot(self, params: list | None = None) -> tuple[list, dict]:
         '''Read the nodes of *params* together, under one lock.

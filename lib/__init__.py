@@ -12,6 +12,9 @@ QCameraError
     ``QDriverError`` and ``QDeviceError``).
 QVideoSource
     Thread that reads frames from a :class:`QCamera` and emits them.
+QRemoteCamera
+    A :class:`QCamera` that runs in a process of its own, so that the
+    library of a vendor cannot freeze the program.
 QCameraTree
     :class:`~pyqtgraph.parametertree.ParameterTree` widget auto-built
     from a camera's registered properties.
@@ -47,6 +50,7 @@ from .clickable import clickable
 from .QCamera import QCamera
 from .errors import QCameraError, QDriverError, QDeviceError
 from .QVideoSource import QVideoSource
+from .QRemoteCamera import QRemoteCamera
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
 from .QFilterRackWidget import QFilterRackWidget
@@ -65,6 +69,7 @@ __all__ = '''Image
            FrameInfo
 clickable launch
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
+QRemoteCamera
 QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
 QSnapshot

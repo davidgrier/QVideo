@@ -57,8 +57,9 @@ trackpy  = ["trackpy", "pandas", "numba"]
 yolo     = ["ultralytics"]
 overlays = ["QVideo[trackpy,yolo]"]
 genicam  = ["harvesters", "genicam"]
+viva     = ["viva-genicam"]
 picamera = ["picamera2"]
-test     = ["QVideo[av,circletransform,dvr,jupyter,trackpy]", "pytest", "pytest-cov"]
+test     = ["QVideo[av,circletransform,dvr,jupyter,trackpy,viva]", "pytest", "pytest-cov"]
 dev-pyqt5 = ["QVideo[test]", "PyQt5", "PyQt5-sip"]
 dev-pyqt6 = ["QVideo[test]", "PyQt6"]
 dev-pyside6 = ["QVideo[test]", "PySide6>=6.7"]
@@ -78,6 +79,7 @@ packages = [
     "QVideo.cameras.OpenCV",
     "QVideo.cameras.Picamera",
     "QVideo.cameras.Vimbax",
+    "QVideo.cameras.Viva",
     "QVideo.demos",
     "QVideo.dvr",
     "QVideo.filters",
@@ -102,6 +104,7 @@ packages = [
 "QVideo.cameras.OpenCV"     = "cameras/OpenCV"
 "QVideo.cameras.Picamera"   = "cameras/Picamera"
 "QVideo.cameras.Vimbax"     = "cameras/Vimbax"
+"QVideo.cameras.Viva"       = "cameras/Viva"
 "QVideo.demos"              = "demos"
 "QVideo.dvr"                = "dvr"
 "QVideo.filters"            = "filters"

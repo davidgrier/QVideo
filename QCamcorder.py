@@ -5,7 +5,7 @@ and DVR.
 
 Run directly to launch a full camcorder application with camera selection::
 
-    python -m QVideo.QCamcorder [-b|-c|-f|-i|-m|-p|-v] [cameraID]
+    python -m QVideo.QCamcorder [-b|-c|-f|-i|-m|-p|-v] [-r] [cameraID]
 
 Camera flags (mutually exclusive):
 
@@ -14,10 +14,12 @@ Camera flags (mutually exclusive):
     -b [cameraID]   Basler camera (requires pylon SDK)
     -c [cameraID]   OpenCV camera
     -f [cameraID]   FLIR camera (requires Spinnaker SDK)
+    -g [cameraID]   GenICam camera via viva-genicam (no vendor SDK)
     -i [cameraID]   IDS Imaging camera (requires IDS peak SDK)
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
     -v [cameraID]   Allied Vision VimbaX camera
+    -r              Run the camera in a process of its own
     -h              Show help and exit
 
 If no flag is given, a noise camera is used as a fallback.

@@ -7,6 +7,50 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`QVivaCamera`: GenICam cameras through viva-genicam (experimental).**
+  `viva-genicam <https://github.com/VitalyVorobyev/viva-genicam>`_ is a
+  GenICam stack in Rust that speaks USB3 Vision and GigE Vision itself,
+  so it needs no GenTL producer and no vendor SDK, and, unlike the
+  ``genicam`` binding of Harvesters, it releases the interpreter lock
+  while a thread waits for a frame.  `QVivaCamera`, `QVivaSource` and
+  `QVivaTree` are selected with `-g` and installed with
+  `pip install QVideo[viva]`.  The camera passes the conformance suite on
+  the fake USB3 Vision camera of the package; it has not yet run on
+  hardware.
+- **`QRemoteCamera`: a camera in a process of its own.**  A worker process
+  opens the camera and reads its frames into a ring of shared memory; the
+  proxy in the program is a `QCamera`, so sources, trees and widgets work
+  with it unchanged.  Any backend can run this way: `QRemoteCamera('opencv')`,
+  or `-r` on the command line of any program that uses `launch` or the
+  chooser (`python QCamcorder.py -cr`).  A vendor library that holds the
+  interpreter lock, such as the `genicam` binding under harvesters, can then
+  freeze only the worker.  It is available on macOS and Linux; on Windows it
+  raises `QCameraError`.
+
+### Changed
+
+- **`QGenicamTree` builds from plain data.**  `QGenicamCamera.nodeTree()`
+  describes the node map as numbers, strings, lists and dicts, and the tree
+  no longer touches genicam objects, so it works with a camera in a process
+  of its own (`python QCamcorder.py -fr`).  `QRemoteCamera` forwards
+  `nodeTree`, `hasNode` and `states`.
+- **Flir defaults for auto-exposure.**  The tree selects the `Ae` algorithm
+  and turns off `AutoExposureTargetGreyValueAuto`; with the defaults of the
+  camera, `ExposureAuto` `Once` changes nothing.  The Blackfly S leaves
+  `ExposureAuto` at `Once` after it converges (SpinView does the same), so
+  set it to `Off` to edit `ExposureTime` again.
+
+### Fixed
+
+- The worker of a remote camera closes its sockets on exit; Python no longer
+  reports an unclosed socket (`ResourceWarning`).
+
+---
+
 ## [4.11.1] — 2026-10-31
 
 ### Fixed

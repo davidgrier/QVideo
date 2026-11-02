@@ -105,15 +105,15 @@ _cam_module  = sys.modules['QVideo.cameras.Genicam._camera']
 _tree_module = sys.modules['QVideo.cameras.Genicam._tree']
 
 # Use the exact class objects that the loaded modules reference.
-_ICategory    = _tree_module.ICategory
-_ICommand     = _tree_module.ICommand
-_IEnumeration = _tree_module.IEnumeration
-_IBoolean     = _tree_module.IBoolean
-_IInteger     = _tree_module.IInteger
-_IFloat       = _tree_module.IFloat
-_IString      = _tree_module.IString
-_IRegister    = _tree_module.IRegister
-_EAccessMode  = _tree_module.EAccessMode
+_ICategory    = _cam_module.ICategory
+_ICommand     = _cam_module.ICommand
+_IEnumeration = _cam_module.IEnumeration
+_IBoolean     = _cam_module.IBoolean
+_IInteger     = _cam_module.IInteger
+_IFloat       = _cam_module.IFloat
+_IString      = _cam_module.IString
+_IRegister    = _cam_module.IRegister
+_EAccessMode  = _cam_module.EAccessMode
 _EVisibility  = _tree_module.EVisibility
 
 
@@ -270,17 +270,18 @@ class TestInit(unittest.TestCase):
 class TestDescribe(unittest.TestCase):
 
     def setUp(self):
-        self.tree, _, _ = make_tree()
+        self.cam, _ = make_camera()
+        self.tree = self.cam
 
     def test_describe_returns_name_and_title(self):
         f = _int_feature('Width')
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['name'], 'Width')
         self.assertEqual(d['title'], 'Width')
 
     def test_describe_integer(self):
         f = _int_feature('Width', value=640, min=64, max=1920, inc=4)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'int')
         self.assertEqual(d['value'], 640)
         self.assertEqual(d['default'], 640)
@@ -291,22 +292,21 @@ class TestDescribe(unittest.TestCase):
     def test_describe_float_with_inc(self):
         f = _float_feature('Gamma', value=1.0, min=0.1, max=4.0,
                            unit='dB', has_inc=True, inc=0.1)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'float')
         self.assertEqual(d['value'], 1.0)
-        self.assertEqual(d['units'], 'dB')
-        self.assertIn('step', d)
+        self.assertEqual(d['unit'], 'dB')
         self.assertAlmostEqual(d['step'], 0.1)
 
     def test_describe_float_without_inc(self):
         f = _float_feature('Gamma', has_inc=False)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'float')
         self.assertNotIn('step', d)
 
     def test_describe_boolean(self):
         f = _bool_feature('ReverseX', value=False)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'bool')
         self.assertEqual(d['value'], False)
         self.assertEqual(d['default'], False)
@@ -314,53 +314,92 @@ class TestDescribe(unittest.TestCase):
     def test_describe_enumeration(self):
         f = _enum_feature('PixelFormat', value='Mono8',
                           entries=('Mono8', 'RGB8'))
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'list')
         self.assertEqual(d['value'], 'Mono8')
         self.assertEqual(d['limits'], ['Mono8', 'RGB8'])
 
     def test_describe_string(self):
         f = _str_feature('DeviceUserID', value='cam0')
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'str')
         self.assertEqual(d['value'], 'cam0')
 
     def test_describe_register_is_read_only_text(self):
         f = _make_feature(_IRegister, 'UserData', length=2, address=0)
         f.get.return_value = b'\x01\x02'
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'str')
         self.assertEqual(d['value'], '01 02')
         self.assertTrue(d['readonly'])
 
     def test_describe_command(self):
         f = _cmd_feature('AcquisitionStop')
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'action')
         self.assertNotIn('value', d)
 
     def test_describe_category_creates_group(self):
         child = _int_feature('Width')
         f = _cat_feature('ImageFormat', features=[child])
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['type'], 'group')
         self.assertIn('children', d)
         self.assertEqual(len(d['children']), 1)
 
     def test_describe_ni_mode_omits_type(self):
         f = _int_feature('Width', mode=_EAccessMode.NI)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertNotIn('type', d)
 
     def test_describe_wo_mode_omits_type(self):
         f = _int_feature('Width', mode=_EAccessMode.WO)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertNotIn('type', d)
 
     def test_describe_stores_visibility_in_dict(self):
         f = _int_feature('Width', visibility=_EVisibility.Expert)
-        d = self.tree.describe(f)
+        d = self.cam._describeNode(f)
         self.assertEqual(d['visibility'], _EVisibility.Expert)
+
+
+class TestConvert(unittest.TestCase):
+    '''The tree turns the plain description of the camera into parameters.'''
+
+    def setUp(self):
+        self.tree, _, _ = make_tree()
+
+    def _float(self, **kw):
+        return dict(name='ExposureTime', title='ExposureTime', visibility=0,
+                    type='float', value=10000., default=10000., min=10.,
+                    max=1e6, unit='us', **kw)
+
+    def test_microseconds_become_seconds(self):
+        d = self.tree.describe(dict(self._float(step=1.), max=500.))
+        self.assertEqual(d['units'], 's')
+        self.assertTrue(d['siPrefix'])
+        self.assertAlmostEqual(d['value'], 0.01)
+        self.assertAlmostEqual(d['max'], 5e-4)
+        self.assertAlmostEqual(d['step'], 1e-6)
+        self.assertEqual(self.tree._scaleFactors['ExposureTime'], 1e-6)
+
+    def test_wide_range_is_stepped_by_decades(self):
+        d = self.tree.describe(self._float())
+        self.assertIn('ExposureTime', self.tree._decParams)
+        self.assertAlmostEqual(d['step'], 1e-3)
+
+    def test_float_without_step_has_none(self):
+        d = self.tree.describe(dict(self._float(), unit='dB', min=1., max=2.))
+        self.assertNotIn('step', d)
+        self.assertEqual(d['units'], 'dB')
+
+    def test_names_and_visibilities_are_recorded(self):
+        self.tree.describe(dict(name='G', title='G', visibility=1,
+                                type='group', children=[
+                                    dict(name='W', title='W', visibility=2,
+                                         type='int')]))
+        self.assertEqual(self.tree._visibilities['G'], 1)
+        self.assertEqual(self.tree._visibilities['W'], 2)
 
 
 # ---------------------------------------------------------------------------
@@ -428,20 +467,6 @@ class TestUpdateEnabled(unittest.TestCase):
             features=[_int_feature('Width', mode=_EAccessMode.RO)])
         self.assertFalse(tree._parameters['Width'].opts.get('enabled', True))
 
-    def test_unknown_node_does_not_log_warning(self):
-        # After construction, make has_node return False for Width
-        tree, cam, nm = make_tree(features=[_int_feature('Width')])
-        nm.has_node.side_effect = lambda n: False
-        import logging
-        with self.assertNoLogs('QVideo.cameras.Genicam._camera',
-                               level=logging.WARNING):
-            tree._updateEnabled()
-
-    def test_unknown_node_does_not_raise(self):
-        tree, cam, nm = make_tree(features=[_int_feature('Width')])
-        nm.has_node.side_effect = lambda n: False
-        tree._updateEnabled()  # must not raise
-
 
 # ---------------------------------------------------------------------------
 # TestUpdateLimits
@@ -498,19 +523,6 @@ class TestUpdateLimits(unittest.TestCase):
         tree._updateLimits()
         self.assertEqual(tree._parameters['PixelFormat'].opts['limits'],
                          ['BayerRG8'])
-
-    def test_unknown_node_does_not_log_warning(self):
-        tree, cam, nm = make_tree(features=[_int_feature('Width')])
-        nm.has_node.side_effect = lambda n: False
-        import logging
-        with self.assertNoLogs('QVideo.cameras.Genicam._camera',
-                               level=logging.WARNING):
-            tree._updateLimits()
-
-    def test_unknown_node_does_not_raise(self):
-        tree, cam, nm = make_tree(features=[_int_feature('Width')])
-        nm.has_node.side_effect = lambda n: False
-        tree._updateLimits()  # must not raise
 
 
 # ---------------------------------------------------------------------------
@@ -613,12 +625,6 @@ class TestUpdateValues(unittest.TestCase):
         nm.get_node('ResultFPS').value = 3.0
         tree._updateValues()
         self.assertAlmostEqual(tree._parameters['ResultFPS'].value(), 1.5)
-
-    def test_unknown_node_does_not_raise(self):
-        feat = _float_feature('ResultFPS', value=30.0, mode=_EAccessMode.RO)
-        tree, cam, nm = make_tree(features=[feat])
-        nm.has_node.side_effect = lambda n: False
-        tree._updateValues()  # must not raise
 
 
 # ---------------------------------------------------------------------------

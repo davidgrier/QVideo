@@ -13,6 +13,12 @@ QVideoSource
 .. automodule:: QVideo.lib.QVideoSource
    :members:
 
+QRemoteCamera
+-------------
+
+.. automodule:: QVideo.lib.QRemoteCamera
+   :members:
+
 Image operations
 ----------------
 

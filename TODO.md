@@ -81,7 +81,8 @@ Plan, with a gate before each large step:
 Before `QRemoteCamera` can be the default (see "Defaults" below); each of
 these is a reason not to make it the default today:
 
-- [ ] **A tree that does not block the interface.**  A request is a round
+- [~] **A tree that does not block the interface** (the polling is done:
+      the worker pushes the states; settings still wait for the frame).  Original item:  A request is a round
       trip, and `QGenicamTree._pollCamera` asks for `states()` five times a
       second, which takes 17 to 18 ms in the worker: the GUI thread would wait
       for that, which is a stall of the event loop even though it is not a

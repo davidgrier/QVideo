@@ -79,7 +79,9 @@ class QRemoteCamera(QCamera):
         self._ended = False
         self._closing = False
         self._opened = False
-        self._events = {'error': self._onError}
+        self._events = {'error': self._onError, 'states': self._onStates}
+        self._known: dict = {}      # the latest states that the worker pushed
+        self._knownLock = threading.Lock()
         self._ring: SharedMemory | None = None
         self._generation = -1
         self._capacity = 0
@@ -152,11 +154,13 @@ class QRemoteCamera(QCamera):
 
     def _setter(self, name: str):
         def setter(value):
+            self._stale()
             self._changed(self._call('set', name, value))
         return setter
 
     def _executor(self, name: str):
         def execute():
+            self._stale()
             self._call('execute', name)
             self._changed(self._call('shape'))
         return execute
@@ -262,6 +266,15 @@ class QRemoteCamera(QCamera):
         except Exception:
             logger.exception(f'Handling the event {kind} failed')
 
+    def _onStates(self, states: dict) -> None:
+        with self._knownLock:
+            self._known.update(states)
+
+    def _stale(self) -> None:
+        '''Forget the pushed states: a setting may have changed them.'''
+        with self._knownLock:
+            self._known.clear()
+
     def _onError(self, message: str) -> None:
         logger.error(f'{self._remoteName}: {message}')
 
@@ -306,6 +319,7 @@ class QRemoteCamera(QCamera):
 
     @settings.setter
     def settings(self, settings: QCamera.Settings) -> None:
+        self._stale()
         self._changed(self._call('apply', settings))
 
     def nodeTree(self) -> dict:
@@ -316,9 +330,33 @@ class QRemoteCamera(QCamera):
         '''Return ``True`` if the camera has the node *name*.'''
         return self._call('hasNode', name)
 
-    def states(self, names) -> dict:
-        '''Return snapshots of the nodes *names*, read in one request.'''
-        return self._call('states', list(names))
+    def watch(self, names) -> None:
+        '''Ask the worker to keep the states of the nodes *names* up to
+        date between frames; see :meth:`states`.'''
+        self._call('watch', list(names))
+
+    def states(self, names, cached: bool = False) -> dict:
+        '''Return snapshots of the nodes *names*.
+
+        Parameters
+        ----------
+        names : iterable of str
+            Node names.
+        cached : bool
+            If ``True``, return the latest states that the worker pushed
+            for the watched nodes (see :meth:`watch`) and wait for nothing;
+            nodes that it has not pushed yet are left out.  Otherwise, read
+            the nodes in one request, which waits for the frame in
+            progress.  A setting discards what the worker pushed before it.
+        '''
+        names = list(names)
+        if cached:
+            with self._knownLock:
+                return {n: self._known[n] for n in names if n in self._known}
+        states = self._call('states', names)
+        with self._knownLock:
+            self._known.update(states)
+        return states
 
     @property
     def actualFps(self) -> float:

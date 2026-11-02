@@ -592,6 +592,11 @@ class QGenicamCamera(QCamera):
     def hasNode(self, name: str) -> bool:
         '''Return ``True`` if the named node exists in the node map.
 
+        Like every access to the node map, this holds the camera lock: the
+        ``genicam`` binding keeps the interpreter lock while it waits for
+        the lock of the node map, so a thread that reads the map while
+        another writes it can deadlock with it.
+
         Unlike :meth:`node`, this never logs a warning for missing names.
         Use it to guard calls to :meth:`node` or :meth:`isReadWrite` in
         reactive code paths (e.g. UI update loops) where absent names are
@@ -607,7 +612,9 @@ class QGenicamCamera(QCamera):
         bool
             ``True`` if the node map is available and contains *name*.
         '''
-        return self._nodeMap is not None and self._nodeMap.has_node(name)
+        with self._mutex:
+            return (self._nodeMap is not None
+                    and self._nodeMap.has_node(name))
 
     def node(self, name: str = 'Root') -> 'IValue | None':
         '''Return the GenICam node with the given name.
@@ -622,10 +629,11 @@ class QGenicamCamera(QCamera):
         IValue or None
             The requested node, or ``None`` if it does not exist.
         '''
-        if self._nodeMap is None:
-            return None
-        if self._nodeMap.has_node(name):
-            return self._nodeMap.get_node(name)
+        with self._mutex:
+            if self._nodeMap is None:
+                return None
+            if self._nodeMap.has_node(name):
+                return self._nodeMap.get_node(name)
         logger.warning(f'node {name} is unknown')
         return None
 
@@ -674,7 +682,16 @@ class QGenicamCamera(QCamera):
         '''
         return self.states([name])[name]
 
-    def states(self, names: Iterable[str]) -> dict[str, dict[str, object]]:
+    def watch(self, names: Iterable[str]) -> None:
+        '''Say which nodes a tree will ask about; a local camera ignores it.
+
+        A :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera` reads the watched
+        nodes between frames and keeps the latest states for
+        :meth:`states` with ``cached=True``.
+        '''
+
+    def states(self, names: Iterable[str],
+               cached: bool = False) -> dict[str, dict[str, object]]:
         '''Return snapshots of the named nodes, read under one lock.
 
         Read the device through this method, not through :meth:`node`,
@@ -688,14 +705,17 @@ class QGenicamCamera(QCamera):
         ----------
         names : iterable of str
             GenICam node names.  Each must exist (see :meth:`hasNode`).
+        cached : bool
+            Accepted for the sake of a remote camera, which answers from
+            the states that it was sent; a local camera always reads.
 
         Returns
         -------
         dict
             The result of :meth:`state` for each name.
         '''
-        nodes = {name: self.node(name) for name in names}
         with self._mutex:
+            nodes = {name: self.node(name) for name in names}
             return {name: self._snapshot(name, node)
                     for name, node in nodes.items()}
 

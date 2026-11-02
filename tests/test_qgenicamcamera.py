@@ -654,6 +654,44 @@ class TestHasNode(unittest.TestCase):
             cam.hasNode('Nonexistent')
 
 
+class TestNodeMapUnderTheLock(unittest.TestCase):
+
+    '''The binding keeps the interpreter lock while it waits for the lock of
+    the node map, so a thread that reads the map while another writes it
+    deadlocks with it unless the camera lock covers every access.'''
+
+    def setUp(self):
+        self.cam, _, device = make_camera()
+        self.nodeMap = device.remote_device.node_map
+        self.held = []
+
+        def has_node(name):
+            self.held.append(self.cam._mutex._is_owned())
+            return True
+
+        def get_node(name):
+            self.held.append(self.cam._mutex._is_owned())
+            return None
+
+        self.nodeMap.has_node.side_effect = has_node
+        self.nodeMap.get_node.side_effect = get_node
+
+    def test_hasNode_holds_the_lock(self):
+        self.cam.hasNode('Width')
+        self.assertEqual(self.held, [True])
+
+    def test_node_holds_the_lock(self):
+        self.cam.node('Width')
+        self.assertTrue(self.held)
+        self.assertTrue(all(self.held))
+
+    def test_states_looks_up_its_nodes_under_the_lock(self):
+        with patch.object(self.cam, '_snapshot', return_value={}):
+            self.cam.states(['Width', 'Height'])
+        self.assertTrue(self.held)
+        self.assertTrue(all(self.held))
+
+
 # ---------------------------------------------------------------------------
 # TestRead
 # ---------------------------------------------------------------------------
@@ -1209,14 +1247,27 @@ class TestStates(unittest.TestCase):
         self.assertEqual(states['Height']['value'], 1)
 
     def test_the_lock_is_taken_once(self):
+        """A reader that queues for the lock once for every node is slow;
+        the nested entries of the thread that holds it do not queue."""
         cam = self.camera()
-        real = cam._mutex
-        mutex = MagicMock(wraps=real)
-        mutex.__enter__ = MagicMock(side_effect=real.__enter__)
-        mutex.__exit__ = MagicMock(side_effect=real.__exit__)
-        cam._mutex = mutex
+        real, depth, outermost = cam._mutex, [0], [0]
+
+        class Counting:
+            def __enter__(self):
+                if depth[0] == 0:
+                    outermost[0] += 1
+                depth[0] += 1
+                return real.__enter__()
+
+            def __exit__(self, *exc):
+                depth[0] -= 1
+                return real.__exit__(*exc)
+
+            _is_owned = staticmethod(real._is_owned)
+
+        cam._mutex = Counting()
         cam.states(['Width', 'Height'])
-        self.assertEqual(mutex.__enter__.call_count, 1)
+        self.assertEqual(outermost[0], 1)
 
     def test_a_node_is_writable_when_it_is_read_write(self):
         cam = self.camera()

@@ -30,6 +30,12 @@ EXIT_DEADLINE = 8.
 #: Seconds between reports of a read that fails over and over.
 ERROR_INTERVAL = 1.
 
+#: Seconds between the pushes of the states of the watched nodes, and the
+#: number of nodes in one push (a push reads them under one hold of the
+#: camera lock, so it should be short).
+PUSH_INTERVAL = 0.2
+PUSH_CHUNK = 32
+
 #: Seconds to wait after a failed read, so that a camera that fails at once
 #: does not keep the process busy.
 RETRY_DELAY = 0.01
@@ -66,6 +72,9 @@ class Worker:
         self.count = 0
         self.failures = 0
         self.reported = -ERROR_INTERVAL
+        self.watched: list[str] = []
+        self.cursor = 0
+        self.pushed = 0.
         self.writing = threading.Lock()
         self.thread = threading.Thread(target=self.capture, daemon=True)
 
@@ -147,6 +156,33 @@ class Worker:
                     self.publish(frame)
             except Exception as ex:
                 self.failed(ex)
+            self.push()
+
+    def watch(self, names) -> None:
+        '''Push the states of the nodes *names*, a few at a time, between
+        frames, so that the proxy need not ask for them.'''
+        self.watched = list(names)
+        self.cursor = 0
+
+    def push(self) -> None:
+        '''Send the states of the next few watched nodes, if it is time.
+
+        The capture thread calls it after a frame, so the interface never
+        waits for the camera to read the nodes.
+        '''
+        names = self.watched
+        now = time.monotonic()
+        if not names or now - self.pushed < PUSH_INTERVAL:
+            return
+        self.pushed = now
+        if self.cursor >= len(names):
+            self.cursor = 0
+        chunk = names[self.cursor:self.cursor + PUSH_CHUNK]
+        self.cursor += PUSH_CHUNK
+        try:
+            self.notify('states', self.camera.states(chunk))
+        except Exception:
+            logger.exception('reading the watched states failed')
 
     def failed(self, ex: Exception) -> None:
         '''Report a failure to read or to publish a frame.
@@ -204,6 +240,7 @@ class Worker:
             actualFps=lambda: camera.actualFps,
             shape=self.shape,
             ring=self.ringInfo,
+            watch=self.watch,
             execute=camera.execute)
         # What a tree of a GenICam camera asks for, as plain data.
         for name in ('nodeTree', 'hasNode', 'states'):

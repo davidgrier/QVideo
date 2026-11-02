@@ -4,11 +4,13 @@
 A worker opens them by name: ``'QVideo.tests.remotecameras:FailingCamera'``.
 This module creates no ``QApplication``, because the worker has none.
 '''
+import os
+
 import numpy as np
 
 from QVideo.cameras.Noise import QNoiseCamera
 
-__all__ = 'FailingCamera FloatCamera'.split()
+__all__ = 'FailingCamera FloatCamera StatesCamera'.split()
 
 
 class FailingCamera(QNoiseCamera):
@@ -25,3 +27,12 @@ class FloatCamera(QNoiseCamera):
 
     def read(self):
         return True, np.zeros((480, 640))
+
+
+class StatesCamera(QNoiseCamera):
+
+    '''A camera that answers for nodes the way a GenICam camera does.'''
+
+    def states(self, names):
+        return {name: dict(writable=True, kind='int', value=os.getpid())
+                for name in names}

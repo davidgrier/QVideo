@@ -25,6 +25,7 @@ app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 LOGGER = 'QVideo.lib.QRemoteCamera'
 FAILING = 'QVideo.tests.remotecameras:FailingCamera'
 FLOATING = 'QVideo.tests.remotecameras:FloatCamera'
+STATES = 'QVideo.tests.remotecameras:StatesCamera'
 
 # A camera in a process of its own needs file descriptors to pass to the
 # worker, which Windows does not have.
@@ -249,6 +250,53 @@ class TestTheChooser(unittest.TestCase):
 
 
 @not_on_windows
+@not_on_windows
+class TestStates(unittest.TestCase):
+
+    '''The worker pushes the states of watched nodes between frames.'''
+
+    def setUp(self):
+        self.camera = QRemoteCamera(STATES)
+        self.addCleanup(self.camera.close)
+
+    def test_nothing_is_cached_until_watched(self):
+        time.sleep(0.5)
+        self.assertEqual(self.camera.states(['a'], cached=True), {})
+
+    def test_a_watched_node_is_pushed(self):
+        self.camera.watch(['a', 'b'])
+        self.assertTrue(wait_for(
+            lambda: len(self.camera.states(['a', 'b'], cached=True)) == 2))
+        state = self.camera.states(['a'], cached=True)['a']
+        self.assertNotEqual(state['value'], os.getpid())    # the worker's
+
+    def test_more_nodes_than_a_push_are_all_pushed(self):
+        names = [f'n{i}' for i in range(80)]
+        self.camera.watch(names)
+        self.assertTrue(wait_for(
+            lambda: len(self.camera.states(names, cached=True)) == 80))
+
+    def test_cached_states_do_not_ask_the_worker(self):
+        with unittest.mock.patch.object(self.camera, '_call') as call:
+            self.camera.states(['a'], cached=True)
+        call.assert_not_called()
+
+    def test_a_request_reads_and_remembers(self):
+        states = self.camera.states(['a'])
+        self.assertIn('a', states)
+        self.assertEqual(self.camera.states(['a'], cached=True), states)
+
+    def test_a_setting_discards_what_was_pushed(self):
+        self.camera.states(['a'])
+        self.camera.set('fps', 10)
+        self.assertEqual(self.camera.states(['a'], cached=True), {})
+
+    def test_applying_settings_discards_it_too(self):
+        self.camera.states(['a'])
+        self.camera.settings = {'fps': 10}
+        self.assertEqual(self.camera.states(['a'], cached=True), {})
+
+
 class TestTheWorkerSpeaks(unittest.TestCase):
 
     def test_the_listener_sorts_answers_from_events(self):

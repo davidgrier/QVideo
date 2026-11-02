@@ -38,6 +38,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   no longer touches genicam objects, so it works with a camera in a process
   of its own (`python QCamcorder.py -fr`).  `QRemoteCamera` forwards
   `nodeTree`, `hasNode` and `states`.
+- **A tree does not wait for a remote camera.**  The worker of a
+  `QRemoteCamera` reads the nodes that the tree watches (`watch()`), a few
+  at a time between frames, and pushes their states; the five polls a second
+  of `QGenicamTree` read the latest push (`states(names, cached=True)`)
+  instead of making the interface wait for the frame in progress.  A setting
+  discards the pushed states, so what follows it is read afresh.
 - **Flir defaults for auto-exposure.**  The tree selects the `Ae` algorithm
   and turns off `AutoExposureTargetGreyValueAuto`; with the defaults of the
   camera, `ExposureAuto` `Once` changes nothing.  The Blackfly S leaves
@@ -46,6 +52,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **A deadlock in `QGenicamCamera`.**  `node()`, `hasNode()` and the lookup
+  of `states()` read the GenICam node map without the camera lock.  The
+  `genicam` binding keeps the interpreter lock while it waits for the lock
+  of the node map, so a thread that read the map while another wrote a
+  setting (the capture thread of a remote camera that pushes states, or the
+  interface that polls them) could deadlock with it: the process froze when
+  the frame rate was set at a low frame rate.  Every access to the node map
+  now holds the camera lock.
 - The worker of a remote camera closes its sockets on exit; Python no longer
   reports an unclosed socket (`ResourceWarning`).
 

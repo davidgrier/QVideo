@@ -199,6 +199,7 @@ class QGenicamTree(QCameraTree):
             for item in self.listAllItems()[1:]:
                 p = item.param
                 p.setOpts(visible=self.visible(p))
+        self.camera.watch([name for _, name in self._visibleParams()])
 
     def visible(self, param) -> bool:
         ptype = param.opts['type']
@@ -217,7 +218,8 @@ class QGenicamTree(QCameraTree):
         return [(p, name) for p, name in pairs
                 if p.opts.get('visible', False) and name in self._visibilities]
 
-    def _snapshot(self, params: list | None = None) -> tuple[list, dict]:
+    def _snapshot(self, params: list | None = None,
+                  cached: bool = False) -> tuple[list, dict]:
         '''Read the nodes of *params* together, under one lock.
 
         The camera thread holds the lock while it waits for a frame, so
@@ -225,7 +227,9 @@ class QGenicamTree(QCameraTree):
         '''
         if params is None:
             params = self._visibleParams()
-        return params, self.camera.states([name for _, name in params])
+        states = self.camera.states([name for _, name in params],
+                                    cached=cached)
+        return [(p, name) for p, name in params if name in states], states
 
     def _updateEnabled(self, params: list | None = None,
                        states: dict | None = None) -> None:
@@ -331,7 +335,7 @@ class QGenicamTree(QCameraTree):
             self._pollCursor = 0
         chunk = params[self._pollCursor:self._pollCursor + self._pollChunk]
         self._pollCursor += self._pollChunk
-        params, states = self._snapshot(chunk)
+        params, states = self._snapshot(chunk, cached=True)
         with self._syncIgnored():
             self._updateLimits(params, states)
             for p, name in params:

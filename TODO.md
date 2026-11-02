@@ -282,6 +282,42 @@ additions:
 
 ---
 
+## Video deeper than 8 bits (12 bit and up)
+
+`python qhot.py -g` (viva-genicam) starts fast and runs well, and it is
+not tied to Mono8 the way our other GenICam path is.  A scientific camera
+usually has Mono10, Mono12 and Mono16 as well.  Everything so far has been
+tested with Mono8 only.  Nothing below has been checked yet; the first item
+finds out what is true.
+
+- [ ] **Find out what the camera and `to_numpy()` give.**  Set
+  `PixelFormat` to Mono10, Mono12 and Mono16 on the Blackfly S and look at
+  the dtype, the shape, the range of the values and whether Mono12 comes
+  packed or in 16 bits.  Do the same through `QGenicamCamera`.
+- [ ] **Choose the format in the tree.**  `PixelFormat` is a GenICam
+  enumeration, so the tree may show it already; check that changing it
+  reallocates the ring of a `QRemoteCamera` and announces the new shape
+  and dtype, and that it is a `protected` feature.
+- [ ] **Decide what the frame is.**  Return the camera's counts as
+  `uint16` (left-justified, or right-justified as the camera sends them)
+  and say so in the docstring, or scale to a fixed range.  Record the bit
+  depth in the metadata of a recording, so that a reader can recover the
+  counts.
+- [ ] **Walk the pipeline.**  Each stage that assumes `uint8` needs a
+  look: `QVideoScreen` (the levels and the color map), the filters (most
+  of the OpenCV calls take `uint16`, but the lookup tables of
+  `GammaFilter` and `ExposureFilter` do not), the overlays, `QSnapshot`,
+  the DVR writers (HDF5 keeps any dtype; PyAV and OpenCV files are
+  8 bit), and the ring of `QRemoteCamera` (`CODES` lists the dtypes it
+  carries).
+- [ ] **QHOT.**  The hologram and the trap overlay assume the video that
+  the screen shows; check what the normalization of a hologram does with
+  16 bit input.
+- [ ] **Tests** with the fake camera of viva-genicam, if it can make
+  Mono12 or Mono16, and with the noise camera at `uint16`.
+
+---
+
 ## Unified Camera Discovery and Selection
 
 `available_cameras()` lists the cameras of every installed backend that

@@ -45,8 +45,8 @@ and draw, while it waits.  Two ways, which do not exclude each other:
 
 Plan, with a gate before each large step:
 
-- [x] **Spike, throwaway, about half a day** (done, but not yet on the
-      Flir): a child process that runs harvesters and writes frames to shared
+- [x] **Spike, throwaway, about half a day** (done; **the gate passed on the
+      Flir on 2026-11-02**, see the table below): a child process that runs harvesters and writes frames to shared
       memory, and a stand-in camera in the parent that reads them; measure
       in QHOT with the Flir (`QHOT/devel/flirdiag.py`, local).  **Gate**:
       with traps being added, event-loop median <= about 7 ms (OpenCV: 5.2),
@@ -57,8 +57,21 @@ Plan, with a gate before each large step:
       (`ctypes.PyDLL`, `QHOT/devel/gilcamera.py`) the 99th percentile stays
       at 6 ms with the camera in a worker, against 21 to 36 ms in the
       process, and frames and holograms do not change; the stand-in is milder
-      than the Flir (median 5.7 ms against 28 ms), so **the gate still has to
-      be run with the Flir** (it was not connected).
+      than the Flir (median 5.7 ms against 28 ms).
+
+      *Result with the Flir* (Blackfly S, 30 frames a second, `traps` mode of
+      `QHOT/devel/flirdiag.py`, median of 3 trials; the remote run uses the
+      real `QGenicamTree` through `make_tree`, as `qhot -fr` does):
+
+      | | frames/s | loop med ms | loop p99 ms | loop max ms | holo/s | cpu % |
+      |---|---|---|---|---|---|---|
+      | local, no stopgap | 17.8 | 23.5 | 70.2 | 123.8 | 5.2 | 68 |
+      | local, `swi0.5` (what QHOT ships) | 26.9 | 6.0 | 26.3 | 33.6 | 9.8 | 68 |
+      | **remote (`QRemoteCamera`)** | **30.1** | **4.6** | **8.2** | **10.2** | **9.9** | **43** |
+
+      The remote camera meets the gate without the switch-interval stopgap,
+      and beats OpenCV's figures above.  Interactive use of `qhot -fr` was
+      smooth at 170 Hz and at 5 Hz.
 - [ ] Audit what touches a camera: the trees (`QCameraTree`, `QGenicamTree`
       call `settings`, `set`, `node`, `hasNode`, `states`, `properties`,
       `name`, `model_name`, `isOpen`), the DVR, the sources, the filters.
@@ -75,8 +88,9 @@ Plan, with a gate before each large step:
       no hardware: `tests/test_qremotecamera.py` (shape change, shutdown,
       crash, orphan cleanup, reopening) and `tests/test_conformance_remote.py`
       (the whole contract of `tests/conformance.py`).
-- [ ] Verify with the Flir; release QVideo; QHOT needs only the new
-      QVideo requirement.
+- [x] Verify with the Flir (done, above).  [ ] Release QVideo; QHOT needs
+      only the new QVideo requirement, and can then drop `SWITCH_INTERVAL`
+      for a camera that runs in a worker.
 
 Before `QRemoteCamera` can be the default (see "Defaults" below); each of
 these is a reason not to make it the default today:

@@ -251,7 +251,6 @@ class TestTheChooser(unittest.TestCase):
 
 
 @not_on_windows
-@not_on_windows
 class TestStates(unittest.TestCase):
 
     '''The worker pushes the states of watched nodes between frames.'''
@@ -328,6 +327,7 @@ class TestTheCameraChangesTheShape(unittest.TestCase):
         self.assertEqual(announced, [])
 
 
+@not_on_windows
 class TestTheWorkerSpeaks(unittest.TestCase):
 
     def test_the_listener_sorts_answers_from_events(self):

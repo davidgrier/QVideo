@@ -44,6 +44,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   of `QGenicamTree` read the latest push (`states(names, cached=True)`)
   instead of making the interface wait for the frame in progress.  A setting
   discards the pushed states, so what follows it is read afresh.
+- **A remote camera announces every change of shape.**  The worker sends a
+  `shape` event ahead of the first frame of a new shape, whoever changed it:
+  a request, or the camera itself (binning that moves the width, a setting
+  that the camera adjusts).  Before, only the answer to a `set`, `settings`
+  or `execute` could announce one.
 - **Flir defaults for auto-exposure.**  The tree selects the `Ae` algorithm
   and turns off `AutoExposureTargetGreyValueAuto`; with the defaults of the
   camera, `ExposureAuto` `Once` changes nothing.  The Blackfly S leaves

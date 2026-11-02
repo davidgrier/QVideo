@@ -10,7 +10,7 @@ import numpy as np
 
 from QVideo.cameras.Noise import QNoiseCamera
 
-__all__ = 'FailingCamera FloatCamera StatesCamera'.split()
+__all__ = 'FailingCamera FloatCamera StatesCamera ShrinkingCamera'.split()
 
 
 class FailingCamera(QNoiseCamera):
@@ -36,3 +36,18 @@ class StatesCamera(QNoiseCamera):
     def states(self, names):
         return {name: dict(writable=True, kind='int', value=os.getpid())
                 for name in names}
+
+
+class ShrinkingCamera(QNoiseCamera):
+
+    '''A camera that makes its frames smaller on its own, after a while,
+    without anyone asking.'''
+
+    FRAMES = 30
+
+    def read(self):
+        self._frames = getattr(self, '_frames', 0) + 1
+        ok, frame = super().read()
+        if ok and self._frames > self.FRAMES:
+            frame = np.ascontiguousarray(frame[::2, ::2])
+        return ok, frame

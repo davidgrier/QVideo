@@ -72,6 +72,7 @@ class Worker:
         self.count = 0
         self.failures = 0
         self.reported = -ERROR_INTERVAL
+        self.announced = self.shape()
         self.watched: list[str] = []
         self.cursor = 0
         self.pushed = 0.
@@ -124,6 +125,12 @@ class Worker:
         nbytes = frame.nbytes
         if self.ring is None or slot_bytes(nbytes) > self.capacity:
             self.allocate(nbytes)
+        height, width = frame.shape[:2]
+        if (width, height) != self.announced:
+            # Whoever changed the shape, the proxy hears of it before the
+            # first frame of the new shape.
+            self.announced = (width, height)
+            self.notify('shape', self.announced)
         self.count += 1
         slot = self.count % SLOTS
         start = slot * self.capacity

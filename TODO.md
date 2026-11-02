@@ -97,10 +97,10 @@ these is a reason not to make it the default today:
       and the tree of every backend.  Only plain values cross the process: a
       backend that hands out callbacks or native objects needs a reply of
       plain data.
-- [ ] **Announce a change of shape from the worker** when the camera changes
-      it, whoever asked, in the order of the frames; today it is announced
-      from the reply to a `set`, `settings` or `execute`, which misses a change
-      that the camera makes itself.
+- [x] **Announce a change of shape from the worker**: done.  The worker
+      compares the shape of each frame with the last one that it announced
+      and sends a `shape` event ahead of the first frame of a new shape.
+      `tests/test_qremotecamera.py::TestTheCameraChangesTheShape`.
 - [ ] **Windows.**  There is no file descriptor to pass to a child.  Use
       `multiprocessing.connection` (named pipes), shared memory by name, and
       a second connection in place of the datagrams, so that the same code

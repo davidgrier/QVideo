@@ -79,9 +79,11 @@ class QRemoteCamera(QCamera):
         self._ended = False
         self._closing = False
         self._opened = False
-        self._events = {'error': self._onError, 'states': self._onStates}
+        self._events = {'error': self._onError, 'states': self._onStates,
+                        'shape': self._changed}
         self._known: dict = {}      # the latest states that the worker pushed
         self._knownLock = threading.Lock()
+        self._shapeLock = threading.Lock()
         self._ring: SharedMemory | None = None
         self._generation = -1
         self._capacity = 0
@@ -298,14 +300,19 @@ class QRemoteCamera(QCamera):
     def _changed(self, shape) -> None:
         '''Announce a shape that the worker reported, if it is new.
 
-        The answer of the worker is the authority.  The shape of a frame is
-        not: frames of the old shape are still on their way for a while
-        after a change.
+        The worker is the authority: it reports the shape in the answer to
+        a request and, whoever changed the shape (a request, or the camera
+        itself), in a ``shape`` event ahead of the first frame of the new
+        shape.  The shape of a frame that the proxy reads is not: frames of
+        the old shape are still on their way for a while after a change.
+        The listener thread and the caller of a request both come here.
         '''
         shape = tuple(shape)
-        if shape != self._shape:
+        with self._shapeLock:
+            if shape == self._shape:
+                return
             self._shape = shape
-            self.shapeChanged.emit(QtCore.QSize(*shape))
+        self.shapeChanged.emit(QtCore.QSize(*shape))
 
     @property
     def name(self) -> str:

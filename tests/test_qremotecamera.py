@@ -26,6 +26,7 @@ LOGGER = 'QVideo.lib.QRemoteCamera'
 FAILING = 'QVideo.tests.remotecameras:FailingCamera'
 FLOATING = 'QVideo.tests.remotecameras:FloatCamera'
 STATES = 'QVideo.tests.remotecameras:StatesCamera'
+SHRINKING = 'QVideo.tests.remotecameras:ShrinkingCamera'
 
 # A camera in a process of its own needs file descriptors to pass to the
 # worker, which Windows does not have.
@@ -295,6 +296,36 @@ class TestStates(unittest.TestCase):
         self.camera.states(['a'])
         self.camera.settings = {'fps': 10}
         self.assertEqual(self.camera.states(['a'], cached=True), {})
+
+
+@not_on_windows
+class TestTheCameraChangesTheShape(unittest.TestCase):
+
+    '''A shape that the camera changes by itself reaches the proxy.'''
+
+    def test_a_change_that_nobody_asked_for_is_announced(self):
+        camera = QRemoteCamera(SHRINKING)
+        self.addCleanup(camera.close)
+        announced = record(camera.shapeChanged)
+        self.assertTrue(wait_for(lambda: announced))
+        self.assertEqual((announced[0][0].width(), announced[0][0].height()),
+                         (320, 240))
+
+    def test_it_is_announced_once(self):
+        camera = QRemoteCamera(SHRINKING)
+        self.addCleanup(camera.close)
+        announced = record(camera.shapeChanged)
+        self.assertTrue(wait_for(lambda: announced))
+        time.sleep(0.5)
+        app.processEvents()
+        self.assertEqual(len(announced), 1)
+
+    def test_a_shape_that_the_proxy_has_is_not_announced_again(self):
+        camera = QRemoteCamera('noise')
+        self.addCleanup(camera.close)
+        announced = record(camera.shapeChanged)
+        camera._changed((640, 480))
+        self.assertEqual(announced, [])
 
 
 class TestTheWorkerSpeaks(unittest.TestCase):

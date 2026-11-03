@@ -183,12 +183,19 @@ Spinnaker) are soft dependencies: the import is wrapped in
 `try/except (ImportError, ModuleNotFoundError)`. Any module-level names derived
 from those imports must also be inside the `try` block (not after it).
 
+A backend whose library holds the interpreter lock (the Harvesters
+backends) has `worker=True` in its `BACKENDS` entry: `chooser.create_camera`
+then opens it in a `QRemoteCamera` on macOS and Linux, and there is no
+command-line flag for that.  The camera class itself stays an ordinary
+in-process `QCamera`.
+
 When adding a new backend, update all four of the following:
 
 1. `cameras/chooser.py` — add an entry to `BACKENDS` (module path, camera
    class name, tree class name, display label, command-line flag and its
-   help string) and append the key to `_DISCOVERY_ORDER` at the
-   appropriate priority position.
+   help string, and `worker=True` if its library holds the interpreter
+   lock) and append the key to `_DISCOVERY_ORDER` at the appropriate
+   priority position.
 2. `QCamcorder.py` — update the flag list in the module docstring.
 3. `demos/__init__.py` — update the flag list in the module docstring.
 4. `tests/test_conformance_<name>.py` — mix `CameraConformance`

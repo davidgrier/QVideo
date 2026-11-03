@@ -134,29 +134,27 @@ these is a reason not to make it the default today:
       latency of a frame and of a setting, and the highest rate at the largest
       frame (a 6 MB color frame at 30 frames a second is cheap; a fast
       camera at its full resolution may not be).
-- [ ] **Defaults.**  Give each backend in `BACKENDS` a default of its own:
-      GenICam cameras (Flir, Basler, IDS, MV, VimbaX) in a worker on macOS and
-      Linux, the rest in the program; `-r` forces a worker and `--local`
-      forces the program.  Say in the interface and in `docs` which one a
-      camera got (for example `QFlirCamera (own process)` in the title of the
-      tree).  Widen the default only after weeks of use.  When it is the
-      default for GenICam, QHOT can drop its stopgap (`SWITCH_INTERVAL`,
-      `readsGenicam` and `shareTheInterpreter` in `qhot.py`).
+- [x] **Defaults** (2026-11-03).  The `worker` field of each entry in
+      `BACKENDS` says whether a backend opens in a worker: the Harvesters
+      backends (Flir, Basler, IDS, MV, VimbaX) on macOS and Linux, the rest
+      in the program.  There is no `-r` and no `--local`; creating the class
+      (`QFlirCamera()`) keeps a camera in the program.  QHOT dropped its
+      stopgap (`SWITCH_INTERVAL`, `readsGenicam`, `shareTheInterpreter`);
+      it needs the QVideo release that has this.  [ ] Say in the interface
+      which one a camera got (for example `QFlirCamera (own process)` in the
+      title of the tree).  [ ] Windows.
 - [ ] **Unknown options.**  `launch` reads the command line with
-      `parse_known_args`, so a flag that it does not know (`-r` before this
-      release, or a typo such as `-cx`) is ignored without a word, and a
-      program then runs a camera that the user did not ask for.  Stop on an
-      option that no part of the program claims, or at least warn.
+      `parse_known_args`, so a flag that it does not know (a stale `-r`, or
+      a typo such as `-cx`) is ignored without a word, and a program then
+      runs a camera that the user did not ask for.  Stop on an option that
+      no part of the program claims, or at least warn.
 
-- [ ] **Decision, 2026-11-03: the worker is for Harvesters only.**  Viva is
-      the preferred GenICam interface (documented), so `-r` should become
-      automatic for the backends built on `QGenicamCamera` and leave the
-      help text of the others (`argparse.SUPPRESS`).  The class stays
-      generic, because the tests send the noise camera through it.  Open:
-      Windows has no worker, so the Harvesters backends would stay in the
-      program there and keep the defect; `--local` is needed to turn it
-      off; the title of the tree should say which one a camera got; QHOT
-      can drop its stopgap only when the worker is the default.
+- [x] **Decision, 2026-11-03: the worker is for Harvesters only.**  Viva is
+      the preferred GenICam interface (documented), so the worker is
+      automatic for the backends built on `QGenicamCamera` and `-r` is
+      gone.  The class stays generic, because the tests send the noise
+      camera through it.  Windows has no worker, so the Harvesters backends
+      stay in the program there and keep the defect.
 - [ ] **Retire the Harvesters backends that nobody has tested?**  Flir has
       run on hardware; Basler, IDS, MV and VimbaX have not (see
       `docs/compatibility.rst`).  Each is about 60 lines on top of
@@ -217,8 +215,8 @@ becomes a default.
       over the frames of its driver's queue, late.
 - [ ] **A page for the person who chooses**: when to run a camera in a
       process of its own and when not (what it fixes, what it costs, what it
-      cannot do), how (`QRemoteCamera('flir')`, `-r`, `--local`), a short
-      example, and what to do when the worker does not start.
+      cannot do), how (`QRemoteCamera('flir')`), a short example, and what to
+      do when the worker does not start.
 - [ ] **The older documentation**: `QVideoSource` is called the standard way
       to drive a camera, the quickstart, the READMEs of `lib/`, `cameras/` and
       `tests/`, and the flag lists in `QCamcorder.py` and `demos/__init__.py`

@@ -6,7 +6,9 @@ IDS, MATRIX VISION and Allied Vision only say which producer to load.
 
 For a GenICam camera, :class:`~QVideo.cameras.Viva.QVivaCamera` is the
 preferred interface.  This one needs a ``.cti`` file and its binding holds
-the interpreter lock, so run it in a process of its own (``-r``).
+the interpreter lock, so the chooser opens it in a process of its own
+(:class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`) on macOS and Linux;
+creating the class yourself keeps it in the program.
 
 The camera has four parts, in this order.
 

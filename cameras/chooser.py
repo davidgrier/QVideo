@@ -10,7 +10,9 @@ This module has four parts, in this order.
    imported, in :data:`_DISCOVERY_ORDER`.
 3. **Opening cameras**: :func:`create_camera` makes one camera,
    :func:`open_first` opens the first of several that works, and
-   :func:`available_cameras` lists every camera that opens.
+   :func:`available_cameras` lists every camera that opens.  A backend that
+   reads frames through a library that holds the interpreter lock opens in
+   a process of its own (:func:`uses_worker`).
 4. **The command line**: :func:`camera_parser` adds the camera flags to an
    argument parser, :func:`open_camera` opens the camera that the flags
    name, :func:`make_tree` builds its controls and :func:`choose_camera`
@@ -34,10 +36,20 @@ first, and ends with the noise camera if nothing else opens; ``Camera('flir')``
 has no fallback and raises ``RuntimeError`` if that camera does not open.  Read
 the log before you trust a measurement: a backend whose package is missing
 looks just like a working one that shows noise.
+
+**Cameras in a process of their own.**  The GenICam backends that use
+Harvesters (Basler, Flir, IDS, MV and VimbaX) read frames through a binding
+that holds the interpreter lock, which freezes the other threads of the
+program.  :func:`create_camera` therefore opens them in a worker process
+(:class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`) on macOS and Linux,
+whatever the caller, and there is no flag for it.  Creating the camera class
+yourself (``QFlirCamera()``) keeps it in the program.  On Windows, where the
+worker is not available, these backends open in the program.
 '''
 import contextlib
 import importlib
 import logging
+import sys
 from argparse import ArgumentParser
 from collections.abc import Iterator
 from typing import NamedTuple
@@ -79,6 +91,10 @@ class _BackendEntry(NamedTuple):
         camera, which is the default).
     help : str
         The help text of *flag*.
+    worker : bool
+        The backend reads frames through a library that holds the
+        interpreter lock (the ``genicam`` binding of Harvesters), so the
+        camera opens in a process of its own where that is available.
     '''
 
     module: str
@@ -87,6 +103,7 @@ class _BackendEntry(NamedTuple):
     label: str
     flag: str = ''
     help: str = ''
+    worker: bool = False
 
 
 #: The backends, by key.  The key is the lowercase name that ``Camera()``
@@ -94,19 +111,20 @@ class _BackendEntry(NamedTuple):
 BACKENDS: dict[str, _BackendEntry] = {
     'basler': _BackendEntry(
         'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler',
-        '-b', 'Basler pylon camera'),
+        '-b', 'Basler pylon camera', worker=True),
     'flir': _BackendEntry(
         'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir',
-        '-f', 'Flir camera'),
+        '-f', 'Flir camera', worker=True),
     'ids': _BackendEntry(
         'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS',
-        '-i', 'IDS Imaging camera'),
+        '-i', 'IDS Imaging camera', worker=True),
     'mv': _BackendEntry(
         'QVideo.cameras.MV', 'QMVCamera', 'QMVTree', 'MV',
-        '-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)'),
+        '-m', 'MATRIX VISION mvGenTLProducer (universal GenICam)',
+        worker=True),
     'vimbax': _BackendEntry(
         'QVideo.cameras.Vimbax', 'QVimbaXCamera', 'QVimbaXTree', 'VimbaX',
-        '-v', 'Allied Vision VimbaX camera'),
+        '-v', 'Allied Vision VimbaX camera', worker=True),
     'viva': _BackendEntry(
         'QVideo.cameras.Viva', 'QVivaCamera', 'QVivaTree', 'Viva',
         '-g', 'GenICam camera via viva-genicam (preferred; no vendor SDK)'),
@@ -201,9 +219,19 @@ def ensure_qapp() -> None:
         _qapp = QApplication([])
 
 
+def uses_worker(key: str) -> bool:
+    '''Return True if the camera of backend *key* opens in a process of its
+    own.
+
+    That is so for the backends whose library holds the interpreter lock
+    (the ``worker`` field of :data:`BACKENDS`), except on Windows, where the
+    worker is not available yet.
+    '''
+    return BACKENDS[key].worker and sys.platform != 'win32'
+
+
 def create_camera(key: str, camera_id: int = 0,
-                  errors: list[Failure] | None = None,
-                  remote: bool = False) -> QCamera | None:
+                  errors: list[Failure] | None = None) -> QCamera | None:
     '''Import and instantiate the camera of backend *key*.
 
     Parameters
@@ -215,21 +243,21 @@ def create_camera(key: str, camera_id: int = 0,
     errors : list, optional
         If given, a ``(label, exception)`` pair is appended to it when the
         camera cannot be created.
-    remote : bool
-        Run the camera in a process of its own: see
-        :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`.
 
     Returns
     -------
     QCamera or None
         The camera, or ``None`` if creating it raised an exception.  The
         exception is logged as a warning and is not raised again.  The
-        camera that comes back may not be open: ask ``isOpen()``.
+        camera that comes back may not be open: ask ``isOpen()``.  If
+        :func:`uses_worker` is true for *key* it is a
+        :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`, which looks like
+        the camera of the backend.
     '''
     ensure_qapp()
     entry = BACKENDS[key]
     try:
-        if remote:
+        if uses_worker(key):
             from QVideo.lib.QRemoteCamera import QRemoteCamera
             return QRemoteCamera(key, cameraID=camera_id)
         module = importlib.import_module(entry.module)
@@ -267,8 +295,7 @@ def describe(errors: list[Failure]) -> str:
     return '\n'.join(f'{label}: {reason}' for label, reason in errors)
 
 
-def open_first(candidates: list[Candidate],
-               remote: bool = False) -> tuple[str, QCamera]:
+def open_first(candidates: list[Candidate]) -> tuple[str, QCamera]:
     '''Open the first of *candidates* that works.
 
     Each candidate is created and asked whether it is open.  A candidate
@@ -282,8 +309,6 @@ def open_first(candidates: list[Candidate],
     candidates : list of (str, int)
         Backend keys of :mod:`QVideo.cameras.chooser` and camera IDs, in
         the order to try them.
-    remote : bool
-        Open each camera in a process of its own.
 
     Returns
     -------
@@ -300,7 +325,7 @@ def open_first(candidates: list[Candidate],
     opened = None
     with quiet():
         for key, camera_id in candidates:
-            camera = create_camera(key, camera_id, errors, remote)
+            camera = create_camera(key, camera_id, errors)
             if camera is not None and camera.isOpen():
                 opened = (key, camera)
                 break
@@ -385,9 +410,9 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
 
     Adds, to *parser* or to a new one, a group of mutually exclusive
     camera flags (one for every backend of :data:`BACKENDS` that has a
-    flag: ``python QCamcorder.py --help`` lists them), the flag
-    ``-r``/``--remote`` and an optional positional ``cameraID``.  An
-    option that the parser has already is left as it is.
+    flag: ``python QCamcorder.py --help`` lists them) and an optional
+    positional ``cameraID``.  An option that the parser has already is left
+    as it is.
 
     Parameters
     ----------
@@ -402,8 +427,6 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
         one flag for each backend that has one
             Selects the backend (the flags are in :data:`BACKENDS`); at
             most one.
-        ``-r``, ``--remote``
-            Run the camera in a process of its own.
         ``cameraID``
             Which camera of the backend (default 0).
     '''
@@ -414,9 +437,6 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
         for dest, entry in _CAMERAS.items():
             group.add_argument(entry.flag, dest=dest, help=entry.help,
                                action='store_true')
-    if parser.get_default('remote') is None:
-        parser.add_argument('-r', '--remote', action='store_true',
-                            help='run the camera in a process of its own')
     if parser.get_default('cameraID') is None:
         parser.add_argument('cameraID', nargs='?', type=int, default=0,
                             help='camera ID number (default: %(default)d)')
@@ -456,10 +476,10 @@ def open_camera(parser: ArgumentParser | None = None
             break
 
     try:
-        return open_first(discover(model, args.cameraID), args.remote)
+        return open_first(discover(model, args.cameraID))
     except RuntimeError as ex:
         logger.warning(str(ex))
-        return open_first(discover('noise', args.cameraID), args.remote)
+        return open_first(discover('noise', args.cameraID))
 
 
 def make_tree(key: str, camera: QCamera) -> QCameraTree:

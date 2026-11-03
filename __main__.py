@@ -5,7 +5,7 @@ application with video screen, camera controls, and DVR.
 
 Usage::
 
-    python -m QVideo [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
+    python -m QVideo [-b|-c|-f|-g|-i|-m|-p|-v] [cameraID]
 
 See :mod:`QVideo.QCamcorder` for the full list of camera flags.
 '''

@@ -24,8 +24,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   measurements next to those of the Harvesters backends, and the README, the
   quickstart, the help text of `-g` and the docstrings point to it.  The
   Harvesters backends remain for cameras that need a vendor's producer; they
-  need the `.cti` file and hold the interpreter lock, so they should run
-  with `-r`.
+  need the `.cti` file and hold the interpreter lock, so QVideo runs them in
+  a process of their own (next entry).
+- **The Harvesters backends open in a process of their own, and the `-r`
+  flag is gone.**  Basler, Flir, IDS, MV and VimbaX read frames through a
+  binding that holds the interpreter lock and freezes the other threads of
+  the program.  On macOS and Linux the chooser now opens them in a worker
+  process (`QRemoteCamera`) whatever the program: every application that
+  uses `launch`, `Camera()` and `available_cameras()`.  Each entry of
+  `BACKENDS` has a `worker` field, `uses_worker(key)` says whether a backend
+  uses it, and the `remote` parameter of `create_camera` and `open_first` is
+  gone.  On Windows, where there is no worker yet, these backends still open
+  in the program.  Creating the class yourself (`QFlirCamera()`) keeps the
+  camera in the program, and `QRemoteCamera` itself is unchanged.  A `-r`
+  left on a command line is ignored, like any argument that no part of the
+  program claims, so `python QCamcorder.py -fr` still selects the Flir.
 - **`pip install QVideo[genicam]` installs viva-genicam** with harvesters,
   on the platforms for which viva-genicam publishes wheels (macOS on Apple
   silicon, Linux on x86-64, 64-bit Windows); `QVideo[viva]` installs it

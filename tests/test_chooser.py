@@ -1,4 +1,5 @@
 '''Unit tests for chooser.py.'''
+import sys
 import threading
 import unittest
 from argparse import ArgumentParser
@@ -173,6 +174,73 @@ class TestCameraParser(unittest.TestCase):
         self.assertEqual(args.cameraID, 2)
 
 
+class TestTheWorker(unittest.TestCase):
+
+    '''The backends whose library holds the interpreter lock open in a
+    process of their own, and nothing asks for it.'''
+
+    def test_the_harvesters_backends_use_the_worker(self):
+        self.assertEqual(
+            sorted(key for key, entry in BACKENDS.items() if entry.worker),
+            ['basler', 'flir', 'ids', 'mv', 'vimbax'])
+
+    def test_the_others_do_not(self):
+        for key in ('viva', 'opencv', 'picamera', 'noise'):
+            with self.subTest(key):
+                self.assertFalse(chooser_module.uses_worker(key))
+
+    def test_the_harvesters_backends_use_it_on_macos_and_linux(self):
+        for platform in ('darwin', 'linux'):
+            with self.subTest(platform), \
+                    patch.object(chooser_module.sys, 'platform', platform):
+                self.assertTrue(chooser_module.uses_worker('flir'))
+
+    def test_not_on_windows_where_there_is_no_worker(self):
+        with patch.object(chooser_module.sys, 'platform', 'win32'):
+            self.assertFalse(chooser_module.uses_worker('flir'))
+
+    def test_a_camera_that_uses_it_is_made_by_the_worker(self):
+        proxy = MagicMock()
+        with patch.object(chooser_module, 'uses_worker', return_value=True), \
+                patch('QVideo.lib.QRemoteCamera.QRemoteCamera',
+                      return_value=proxy) as remote:
+            camera = chooser_module.create_camera('flir', 2)
+        self.assertIs(camera, proxy)
+        remote.assert_called_once_with('flir', cameraID=2)
+
+    def test_any_other_camera_is_made_in_the_program(self):
+        module = MagicMock()
+        with patch.object(chooser_module, 'uses_worker', return_value=False), \
+                patch('importlib.import_module', return_value=module), \
+                patch('QVideo.lib.QRemoteCamera.QRemoteCamera') as remote:
+            camera = chooser_module.create_camera('flir', 1)
+        remote.assert_not_called()
+        module.QFlirCamera.assert_called_once_with(cameraID=1)
+        self.assertIs(camera, module.QFlirCamera.return_value)
+
+    @unittest.skipIf(sys.platform == 'win32', 'there is no worker on Windows')
+    def test_the_worker_delivers_frames_through_the_chooser(self):
+        # The noise camera stands in for a Harvesters backend: the chooser
+        # opens it in a worker process of its own, which makes real frames.
+        from QVideo.lib.QRemoteCamera import QRemoteCamera
+        entry = BACKENDS['noise']._replace(worker=True)
+        with patch.dict(BACKENDS, {'noise': entry}):
+            camera = chooser_module.create_camera('noise')
+        self.addCleanup(camera.close)
+        self.assertIsInstance(camera, QRemoteCamera)
+        self.assertTrue(camera.isOpen())
+        ok, frame = camera.saferead()
+        self.assertTrue(ok)
+        self.assertEqual(frame.ndim, 2)
+
+    def test_there_is_no_flag_for_it(self):
+        parser = camera_parser()
+        self.assertNotIn('-r', parser._option_string_actions)
+        args, unknown = parser.parse_known_args(['-r'])
+        self.assertIn('-r', unknown)
+        self.assertFalse(hasattr(args, 'remote'))
+
+
 class TestChooseCameraDefault(unittest.TestCase):
 
     def test_defaults_to_noise_camera(self):
@@ -265,6 +333,18 @@ class TestChooseCameraOpenCV(unittest.TestCase):
 
 
 class TestChooseCameraFallback(unittest.TestCase):
+
+    '''A backend that fails to open falls back to the noise camera.
+
+    The backends are mocked as modules in the program: with the worker they
+    would open a process of their own, and a camera on this machine.
+    '''
+
+    def setUp(self):
+        patcher = patch.object(chooser_module, 'uses_worker',
+                               return_value=False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_driver_error_reason_is_logged_before_fallback(self):
         from QVideo.cameras.Noise import QNoiseTree

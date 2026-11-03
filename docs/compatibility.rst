@@ -95,7 +95,8 @@ remain.  GenICam through Harvesters is the standard implementation, and a
 vendor's producer can reach cameras that Viva cannot: Viva speaks USB3
 Vision and GigE Vision, and a producer can offer other transports.  The
 Harvesters backends need the producer file and they hold the interpreter
-lock, so they should run in a process of their own (see *Known issues*).
+lock, so QVideo runs them in a process of their own on macOS and Linux
+(see *Known issues*).
 
 USB 3 cameras
 -------------
@@ -202,11 +203,13 @@ new in NumPy 2, but they are tested only with NumPy 2.
 counter in the main thread ran at 97 to 99 % of its free-running speed while
 Viva streamed a Blackfly S at 170 frames a second.
 
-For a backend that uses Harvesters, run the camera in a process of its own,
-which has an interpreter lock of its own: ``QRemoteCamera('flir')``, or
-``-r`` on the command line of a program (``python QCamcorder.py -fr``).  It
-is available on macOS and Linux.  It is meant for these backends; the Viva,
-OpenCV and Raspberry Pi backends do not need it.
+For a backend that uses Harvesters, QVideo runs the camera in a process of
+its own, which has an interpreter lock of its own, whenever the chooser opens
+it (every application, ``Camera()``, ``python QCamcorder.py -f``).  There is
+no flag.  It is available on macOS and Linux; on Windows these backends
+still run in the program and have the defect.  The Viva, OpenCV and
+Raspberry Pi backends do not need it.  Creating the class yourself, as in
+``QFlirCamera()``, keeps the camera in the program.
 
 Measured in QHOT with the Blackfly S and a trap added every 100 ms (the
 median of three runs; QHOT needs a median of the event loop of about 7 ms
@@ -232,7 +235,7 @@ or less, a 99th percentile of 25 ms or less, and 9 holograms a second):
      - 6.0
      - 26.3
      - 9.8
-   * - Harvesters, in a process of its own (``-r``)
+   * - Harvesters, in a process of its own (the default)
      - 30.1
      - 4.6
      - 8.2

@@ -302,6 +302,14 @@ class TestApplication(unittest.TestCase):
 
 class TestOpenErrors(unittest.TestCase):
 
+    def setUp(self):
+        # These tests are about importing the backend: the Flir camera
+        # would otherwise open in a worker, and on this machine for real.
+        patcher = patch.object(chooser_module, 'uses_worker',
+                               return_value=False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_open_records_exception(self):
         errors = []
         boom = RuntimeError('GENICAM_GENTL64_PATH is not set')
@@ -337,7 +345,7 @@ class TestOpenErrors(unittest.TestCase):
     def test_ensure_open_error_lists_reason_per_backend(self):
         proxy = _CameraProxy([('flir', 0), ('basler', 0)])
 
-        def fake_open(key, camera_id, errors, remote):
+        def fake_open(key, camera_id, errors):
             errors.append((BACKENDS[key].label, RuntimeError(f'why {key}')))
         with patch('QVideo.cameras.chooser.create_camera', side_effect=fake_open):
             with self.assertRaises(RuntimeError) as ctx:
@@ -350,7 +358,7 @@ class TestOpenErrors(unittest.TestCase):
         proxy = _CameraProxy([('flir', 0), ('noise', 0)])
         noise = make_mock_noise_camera()
 
-        def fake_open(key, camera_id, errors, remote):
+        def fake_open(key, camera_id, errors):
             if key == 'flir':
                 errors.append(('Flir', RuntimeError('no producer')))
                 return None
@@ -406,7 +414,7 @@ class TestCameraFactory(unittest.TestCase):
         with patch('QVideo.cameras.chooser.create_camera', return_value=cam) as mock_open:
             proxy = Camera('noise', cameraID=2)
             proxy._ensure_open()
-        mock_open.assert_called_once_with('noise', 2, [], False)
+        mock_open.assert_called_once_with('noise', 2, [])
 
     def test_top_level_export(self):
         import QVideo

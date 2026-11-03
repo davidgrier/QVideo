@@ -5,7 +5,7 @@ and DVR.
 
 Run directly to launch a full camcorder application with camera selection::
 
-    python -m QVideo.QCamcorder [-b|-c|-f|-g|-i|-m|-p|-v] [-r] [cameraID]
+    python -m QVideo.QCamcorder [-b|-c|-f|-g|-i|-m|-p|-v] [cameraID]
 
 Camera flags (mutually exclusive):
 
@@ -19,7 +19,6 @@ Camera flags (mutually exclusive):
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
     -v [cameraID]   Allied Vision VimbaX camera
-    -r              Run the camera in a process of its own
     -h              Show help and exit
 
 If no flag is given, a noise camera is used as a fallback.

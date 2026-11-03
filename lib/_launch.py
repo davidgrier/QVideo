@@ -182,18 +182,17 @@ def launch(widget: type[QtWidgets.QWidget],
     '''Show *widget* for a camera chosen on the command line, and run it.
 
     The camera backend comes from the command-line flags added by
-    :func:`~QVideo.cameras.chooser.camera_parser` (a noise camera if there
-    are none; ``-r`` runs the camera in a process of its own).  A splash
-    screen appears at once and says what is happening; the camera opens on
-    a thread of its own, so that a slow camera never freezes it.  The
-    widget then becomes the central widget of the
+    :func:`~QVideo.cameras.chooser.camera_parser` (a noise camera if there are
+    none).  A splash screen appears at once and says what is happening; the
+    camera opens on a thread of its own, so that a slow camera never freezes
+    it.  The widget then becomes the central widget of the
     :class:`~qtpy.QtWidgets.QMainWindow`, which is how applications embed
     QVideo components, so that sizing and shutdown are exercised in that
-    setting.  The window has a status bar that shows the messages of a
-    widget with a ``message(str)`` signal, and it closes on Ctrl+Q.  A
-    widget that needs an optional package that is not installed ends the
-    program with the error message.  Quitting stops every thread that the
-    components own (see :ref:`shutting-down`).
+    setting.  The window has a status bar that shows the messages of a widget
+    with a ``message(str)`` signal, and it closes on Ctrl+Q.  A widget that
+    needs an optional package that is not installed ends the program with the
+    error message.  Quitting stops every thread that the components own (see
+    :ref:`shutting-down`).
 
     Parameters
     ----------

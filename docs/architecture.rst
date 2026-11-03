@@ -88,13 +88,13 @@ properties and the methods of the camera in the worker, so a
 :class:`~QVideo.lib.QCameraTree.QCameraTree` and everything that uses them
 work as they do with any camera.  Frames cross in a ring of shared memory;
 a request, such as setting a property, waits for the answer of the worker.
-``QCamcorder.py -r`` and every program that uses
-:func:`~QVideo.lib.launch` run the camera this way.  It also keeps the
-program alive when the vendor's library crashes, and lets the worker use
-another Python than the program.  It is available on macOS and Linux.
-Use it for a camera whose library holds the lock, which means the GenICam
-backends that use Harvesters; the Viva and OpenCV backends wait without
-holding it and need no worker.
+The chooser opens the GenICam backends that use Harvesters this way, in
+every program that uses :func:`~QVideo.lib.launch` and in ``Camera()``;
+there is no flag.  It also keeps the program alive when the vendor's
+library crashes, and lets the worker use another Python than the program.
+It is available on macOS and Linux; on Windows these backends open in the
+program.  The Viva and OpenCV backends wait without holding the lock and
+need no worker.
 
 Frame delivery
 --------------

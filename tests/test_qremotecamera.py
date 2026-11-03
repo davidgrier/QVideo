@@ -227,12 +227,20 @@ class TestWithTheSourceAndTheTree(unittest.TestCase):
 @not_on_windows
 class TestTheChooser(unittest.TestCase):
 
-    def test_flag_opens_the_camera_in_a_process_of_its_own(self):
+    '''The chooser opens a backend that needs the worker in one, unasked.'''
+
+    def open(self, worker: bool):
         from argparse import ArgumentParser
-        from QVideo.cameras.chooser import camera_parser, open_camera
+        from QVideo.cameras import chooser
+        from QVideo.cameras.chooser import BACKENDS, camera_parser
+        entry = BACKENDS['noise']._replace(worker=worker)
         parser = camera_parser(ArgumentParser())
-        with unittest.mock.patch.object(sys, 'argv', ['x', '-r']):
-            key, camera = open_camera(parser)
+        with unittest.mock.patch.object(sys, 'argv', ['x']), \
+                unittest.mock.patch.dict(BACKENDS, {'noise': entry}):
+            return chooser.open_camera(parser)
+
+    def test_a_backend_that_needs_the_worker_opens_in_it(self):
+        key, camera = self.open(worker=True)
         try:
             self.assertEqual(key, 'noise')
             self.assertIsInstance(camera, QRemoteCamera)
@@ -240,12 +248,8 @@ class TestTheChooser(unittest.TestCase):
         finally:
             camera.close()
 
-    def test_without_the_flag_the_camera_is_in_this_process(self):
-        from argparse import ArgumentParser
-        from QVideo.cameras.chooser import camera_parser, open_camera
-        parser = camera_parser(ArgumentParser())
-        with unittest.mock.patch.object(sys, 'argv', ['x']):
-            key, camera = open_camera(parser)
+    def test_any_other_backend_is_in_this_process(self):
+        key, camera = self.open(worker=False)
         self.assertNotIsInstance(camera, QRemoteCamera)
         camera.close()
 

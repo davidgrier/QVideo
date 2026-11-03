@@ -333,6 +333,17 @@ that list.  What remains:
 - **Point-and-click start** — `launch()` takes its camera from the command
   line (`-b/-c/-f/…`).  A chooser shown before the window builds could
   offer the cameras that `available_cameras()` finds.
+- **Refactor `cameras/chooser.py`** (cleaned and documented, 2026-11-02;
+  it is readable now, but the design is unchanged).  It does five jobs:
+  the table of backends, importing and probing, creating and opening
+  cameras, the command line, and building trees.  If it grows again, split
+  it along those lines.  Decide first: which functions are public API
+  (`__all__` lists five names, other modules import more), whether a
+  camera that does not open should fall back to the noise camera (it did
+  so silently and misled two measurements), and one default for the command
+  line and `Camera()` (today the command line opens noise and `Camera()`
+  opens the first real camera).  `_names` hard-codes OpenCV, and `_probe`
+  imports a whole backend to ask if it exists.
 
 ---
 

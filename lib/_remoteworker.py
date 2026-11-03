@@ -224,7 +224,7 @@ class Worker:
                                     writable=spec['setter'] is not None,
                                     meta=meta)
         return dict(name=camera.name,
-                    modelName=camera.model_name,
+                    modelName=camera.modelName,
                     properties=properties,
                     methods=camera.methods,
                     aliases=dict(camera.aliases))

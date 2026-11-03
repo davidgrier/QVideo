@@ -1,21 +1,26 @@
 '''Abstract base class for all QVideo camera backends.'''
+import logging
+import threading
 from abc import abstractmethod
 from collections.abc import Callable
 from functools import wraps
 from types import TracebackType
+
 from qtpy import QtCore
+
 from QVideo.lib._qabc import QABCMeta
 from QVideo.lib.videotypes import Image
-import logging
-import threading
 
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['QCamera']
 
+
 class _Auto:
+
     '''Sentinel: auto-generate getter/setter from the ``_name`` convention.'''
+
 
 _AUTO = _Auto()
 
@@ -67,21 +72,24 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         Common type for scalar camera property values.
     Settings : dict[str, PropertyValue]
         Mapping of property name to value, as returned by :meth:`settings`.
-    Image : NDArray[np.uint8]
-        A single camera frame.
     CameraData : tuple[bool, Image | None]
-        Return type of :meth:`read`.
+        Return type of :meth:`read`; an ``Image`` is the array of one frame
+        (see :mod:`QVideo.lib.videotypes`).
 
     Notes
     -----
-    One reentrant lock serializes all access to the device.  Every
-    registered getter, setter and method, and :meth:`saferead`, runs
-    holding it, so no property is read or written while a frame is
-    being read, and a multi-step change (stop acquisition, set, restart)
-    is never interleaved with anything else.  Backends need no locking of
-    their own, and may freely call one another's properties.  Pause and
-    resume control is the responsibility of the enclosing
-    :class:`QVideoSource`.
+    One reentrant lock serializes access to the device.  Every registered
+    getter, setter and method, and :meth:`saferead`, runs holding it, so no
+    property is read or written while a frame is being read, and a
+    multi-step change (stop acquisition, set, restart) is never interleaved
+    with anything else.  Backends need no locking of their own, and may
+    freely call one another's properties.
+
+    :meth:`open` and :meth:`close` are *not* serialized with reads: stop
+    reading before closing the camera from another thread.  A
+    :class:`QVideoSource` does so, because it opens the camera when its
+    thread starts and closes it when the thread ends.  Pause and resume
+    control is the responsibility of the enclosing :class:`QVideoSource`.
     '''
 
     PropertyValue = bool | int | float | str
@@ -154,10 +162,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def __setattr__(self, name: str, value) -> None:
         '''Delegate attribute assignment to registered property setters.
 
-        Routes ``camera.fps = 30`` through :meth:`set` (serialized with reads,
-        type-coerced) for any name in ``properties`` or ``aliases``.  All
-        other names, including internal backing attributes and Qt object
-        attributes, fall through to ``super().__setattr__``.
+        Routes ``camera.fps = 30`` through :meth:`set` (serialized with
+        reads) for any name in ``properties`` or ``aliases``.  All other
+        names, including internal backing attributes and Qt object
+        attributes, fall through to ``super().__setattr__``.  Whether the
+        value is coerced to the type of the property is up to its setter.
 
         The ``'properties' in self.__dict__`` guard ensures that writes
         during ``__init__`` (before ``properties`` is created) are always
@@ -215,9 +224,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             drop-down.
         '''
         if getter is _AUTO:
-            def getter(): return getattr(self, f'_{name}')
+            def getter():
+                return getattr(self, f'_{name}')
         if setter is _AUTO:
-            def setter(v): return setattr(self, f'_{name}', ptype(v))
+            def setter(value):
+                setattr(self, f'_{name}', ptype(value))
         self.properties[name] = dict(
             getter=self._serialized(getter),
             setter=self._serialized(setter),
@@ -277,7 +288,10 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def close(self) -> None:
         '''Close the camera device.
 
-        Safe to call on an already-closed device.
+        Safe to call on an already-closed device.  If :meth:`_deinitialize`
+        raises, the exception propagates and the camera stays marked open,
+        so that closing can be tried again.  Not serialized with reads (see
+        the notes of the class).
         '''
         if self._isOpen:
             self._deinitialize()
@@ -320,21 +334,15 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def settings(self) -> Settings:
         '''All registered property values as a name→value dict.
 
-        Uses registered getters directly to avoid emitting
-        :attr:`propertyValue` for each property.
+        Reading uses the registered getters directly, to avoid emitting
+        :attr:`propertyValue` for each property.  Assigning a dict applies
+        each name→value pair through :meth:`set`, in the order of the dict.
         '''
         return {name: spec['getter']()
                 for name, spec in self.properties.items()}
 
     @settings.setter
     def settings(self, settings: Settings) -> None:
-        '''Apply a dict of property name→value pairs via :meth:`set`.
-
-        Parameters
-        ----------
-        settings : Settings
-            Properties to apply.
-        '''
         for key, value in settings.items():
             self.set(key, value)
 
@@ -437,7 +445,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         return type(self).__name__
 
     @property
-    def model_name(self) -> str | None:
+    def modelName(self) -> str | None:
         '''Hardware-reported camera model name.
 
         Set by subclasses during :meth:`_initialize` when the device
@@ -448,19 +456,25 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         '''
         return self._modelName
 
+    #: The older spelling of :attr:`modelName`.
+    model_name = modelName
+
     @property
     def shape(self) -> QtCore.QSize:
         '''Image dimensions as ``QSize(width, height)``.
 
-        Returns ``QSize(0, 0)`` if ``width`` or ``height`` are not
-        registered.
+        Returns ``QSize(0, 0)`` if ``width`` or ``height`` is not registered
+        or cannot be read at the moment (a getter answers ``None`` for a
+        feature that the camera does not allow to read just now).
         '''
         try:
-            w = self.properties[self._canonical('width')]['getter']()
-            h = self.properties[self._canonical('height')]['getter']()
+            width = self.properties[self._canonical('width')]['getter']()
+            height = self.properties[self._canonical('height')]['getter']()
         except KeyError:
             return QtCore.QSize(0, 0)
-        return QtCore.QSize(int(w), int(h))
+        if width is None or height is None:
+            return QtCore.QSize(0, 0)
+        return QtCore.QSize(int(width), int(height))
 
     # ------------------------------------------------------------------
     # Example

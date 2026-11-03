@@ -72,6 +72,13 @@ class TestInit(unittest.TestCase):
         cam._modelName = 'MyCamera'
         self.assertEqual(cam.model_name, 'MyCamera')
 
+    def test_modelName_is_the_same_name_in_camel_case(self):
+        cam = make_camera()
+        self.assertIsNone(cam.modelName)
+        cam._modelName = 'MyCamera'
+        self.assertEqual(cam.modelName, 'MyCamera')
+        self.assertEqual(cam.modelName, cam.model_name)
+
     def test_initially_closed(self):
         cam = make_camera()
         self.assertFalse(cam.isOpen())
@@ -153,6 +160,18 @@ class TestClose(unittest.TestCase):
             cam.close()
         except Exception as e:
             self.fail(f'close() on unopened camera raised {e}')
+
+    def test_a_close_that_raises_leaves_the_camera_open_to_try_again(self):
+        cam = make_camera()
+        cam.open()
+        with patch.object(cam, '_deinitialize',
+                          side_effect=RuntimeError('driver says no')):
+            with self.assertRaises(RuntimeError):
+                cam.close()
+        self.assertTrue(cam.isOpen())
+        cam.close()                     # the driver is willing this time
+        self.assertFalse(cam.isOpen())
+        self.assertEqual(cam._deinitialize_called, 1)
 
 
 class TestContextManager(unittest.TestCase):
@@ -350,6 +369,15 @@ class TestShape(unittest.TestCase):
         cam = make_camera()
         cam.properties.clear()
         self.assertEqual(cam.shape, QtCore.QSize(0, 0))
+
+    def test_shape_returns_zero_size_when_a_value_cannot_be_read_now(self):
+        # A GenICam getter answers None for a feature that the camera does
+        # not allow to read at the moment.
+        for name in ('width', 'height'):
+            with self.subTest(name):
+                cam = make_camera()
+                cam.registerProperty(name, getter=lambda: None, ptype=int)
+                self.assertEqual(cam.shape, QtCore.QSize(0, 0))
 
 
 class _StandardCamera(_FakeCamera):

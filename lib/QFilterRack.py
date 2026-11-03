@@ -1,7 +1,13 @@
 '''A filter rack that runs its filters on a worker thread.'''
+from typing import TYPE_CHECKING
+
 from qtpy import QtWidgets
+
 from QVideo.lib.QFilterRackWidget import QFilterRackWidget
 from QVideo.lib.QFilterPipeline import QFilterPipeline
+
+if TYPE_CHECKING:
+    from QVideo.lib.QVideoSource import QVideoSource
 
 
 __all__ = ['QFilterRack']
@@ -48,19 +54,19 @@ class QFilterRack(QFilterRackWidget):
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
                  editable: bool = True,
-                 source=None,
+                 source: 'QVideoSource | None' = None,
                  depth: int = 1) -> None:
         super().__init__(parent, editable)
         self.pipeline = QFilterPipeline(source, rack=self, depth=depth)
         self.destroyed.connect(self.pipeline.stop)
 
     @property
-    def source(self):
+    def source(self) -> 'QVideoSource | None':
         '''The source whose frames are filtered.'''
         return self.pipeline.source
 
     @source.setter
-    def source(self, source) -> None:
+    def source(self, source: 'QVideoSource | None') -> None:
         self.pipeline.source = source
 
 

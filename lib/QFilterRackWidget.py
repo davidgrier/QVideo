@@ -1,10 +1,12 @@
 '''Dynamic, reorderable pipeline of QVideoFilter widgets.'''
 from collections.abc import Iterator
+
 from qtpy import QtCore, QtWidgets, QtGui
+import pyqtgraph as pg
+
 from QVideo.lib.QVideoFilter import (
     QVideoFilter, VideoFilter, renderPipeline)
 from QVideo.lib.videotypes import Image
-import pyqtgraph as pg
 
 
 __all__ = ['QFilterRackWidget']
@@ -267,10 +269,14 @@ class QFilterRackWidget(QtWidgets.QWidget):
         Returns
         -------
         Image or None
-            Frame after all enabled filters have been applied.
+            Frame after all enabled filters have been applied, or
+            ``None`` if a filter has no result yet (a sample-and-hold
+            before its first sample); the filters after it are not called.
         '''
         for slot in self._iterSlots():
             image = slot.widget(image)
+            if image is None:
+                return None
         return image
 
     def __iter__(self) -> Iterator[QVideoFilter]:

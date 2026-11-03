@@ -207,6 +207,33 @@ class TestQFilterRackWidgetCall(unittest.TestCase):
         self.assertEqual(log, [])
 
 
+class TestQFilterRackWidgetNoResult(unittest.TestCase):
+    '''A filter with no result yet ends the frame, as in the pipeline.'''
+
+    def setUp(self):
+        self.rack = make_rack()
+        self.seen = []
+        seen = self.seen
+
+        class Nothing(VideoFilter):
+            def get(self):
+                return None
+
+        class Recorder(VideoFilter):
+            def add(self, data):
+                seen.append(data)
+                self.data = data
+
+        for video_filter in (Nothing(), Recorder()):
+            widget = QVideoFilter(None, 'x', video_filter)
+            widget.setChecked(True)
+            self.rack.add(widget)
+
+    def test_the_next_filter_is_not_given_nothing(self):
+        self.assertIsNone(self.rack(_FRAME))
+        self.assertEqual(self.seen, [])
+
+
 class TestQFilterRackWidgetRemove(unittest.TestCase):
 
     def test_remove_slot_removes_filter(self):

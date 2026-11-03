@@ -1,10 +1,12 @@
 '''Auto-building pyqtgraph parameter tree for QCamera property inspection.'''
+import contextlib
+import logging
+import math
+
 from qtpy import QtCore, QtGui, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
+
 from QVideo.lib import QCamera, QVideoSource
-import contextlib
-import math
-import logging
 
 
 __all__ = ['QCameraTree']
@@ -14,7 +16,6 @@ _MIN_HEIGHT = 120
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 Source = QCamera | QVideoSource
@@ -69,6 +70,11 @@ class QCameraTree(ParameterTree):
 
     @staticmethod
     def _defaultDescription(camera: QCamera) -> Description:
+        '''Describe the properties of *camera* that it can read now.
+
+        A read-only property is disabled, a hidden one is not visible and a
+        string with limits is a list.
+        '''
         entries = []
         for name, spec in camera.properties.items():
             value = spec['getter']()
@@ -91,9 +97,9 @@ class QCameraTree(ParameterTree):
                  source: Source,
                  description: Description | None = None,
                  *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        if not source.isOpen():
+        if not source.isOpen():     # before there is a widget to discard
             raise RuntimeError('Video source is not open')
+        super().__init__(*args, **kwargs)
         if isinstance(source, QCamera):
             self._source = QVideoSource(source)
         else:
@@ -109,13 +115,14 @@ class QCameraTree(ParameterTree):
         super().closeEvent(event)
 
     def _createTree(self, description: Description | None) -> None:
+        '''Make the parameter tree from *description*, or from the camera.'''
         if description is None:
             description = self._defaultDescription(self.camera)
         logger.debug(description)
         self._tree = Parameter.create(
             name=self.camera.modelName or self.camera.name,
-                                      type='group',
-                                      children=description)
+            type='group',
+            children=description)
         self.setParameters(self._tree)
         self._parameters = self._getParameters(self._tree)
         for param in self._parameters.values():
@@ -162,7 +169,7 @@ class QCameraTree(ParameterTree):
             value = float(param.value())
         except (TypeError, ValueError):
             return
-        if value == 0:
+        if value == 0 or not math.isfinite(value):
             return
         step = 10 ** (math.floor(math.log10(abs(value))) - 1)
         param.setOpts(step=step)
@@ -184,17 +191,29 @@ class QCameraTree(ParameterTree):
 
     @QtCore.Slot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:
+        '''Send the changes made in the tree to the camera, then show it.
+
+        The camera may change more than it was asked to (a longer exposure
+        slows the frame rate), so the tree reads back the properties that
+        it shows, and only those: a camera has many more properties than a
+        tree has controls.  A property that cannot be read at the moment
+        keeps its value in the tree.
+        '''
         if self._ignoreSync:
             return
         for param, change, value in changes:
-            if (change == 'value'):
+            if change == 'value':
                 key = param.name()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
                 self._updateStep(param)
+        properties = self.camera.properties
         with self._syncIgnored():
-            for key, value in self.camera.settings.items():
-                self.set(key, value)
+            for key in self._parameters:
+                if key in properties:
+                    value = properties[key]['getter']()
+                    if value is not None:
+                        self.set(key, value)
 
     @QtCore.Slot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:

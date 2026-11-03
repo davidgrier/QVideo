@@ -47,6 +47,40 @@ Things noticed, not changed:
 
 ---
 
+## Limit the work of the filter pipeline  **Idea; not sure how**
+
+The pipeline runs its filters on every frame that the camera delivers, even
+when the screen can show fewer.  Measured with the Noise camera (500 fps,
+248 delivered), a trivial filter and an offscreen screen that shows 81 a
+second: 67 % of the filter calls were never shown; at 116 delivered, 30 %.
+With a blur in OpenCV the whole process used 291 % of a CPU and, with 30
+frames a second let through, 109 %.  The display was not jerky without a
+limit (the gaps between displayed frames had a standard deviation of 1 to
+2 ms), and the heartbeat of the GUI did not improve with one.  A limiter
+that picked frames by arrival time inside the worker made the cadence
+worse (4 to 7 ms).  So the gain is CPU, heat and the GIL, not speed: with
+`depth=1` a saturated pipeline already takes the newest frame, and its
+output rate is one over the time per frame.
+
+- [ ] Find out whether the display gets smoother, which has not been
+      tested: (1) filters about as slow as the camera period, where the
+      pipeline picks frames unevenly in capture time; (2) a filter in pure
+      Python in a busy application such as QHOT, where the pipeline thread
+      competes with the GUI for the interpreter lock.
+- [ ] A recorder that takes the filtered stream needs every frame, and a
+      limit would cut its rate; the file would also declare the rate of the
+      camera and play too fast.  So the limit must be off while such a
+      recording runs, and `fps` of the pipeline must follow the limit.
+- [ ] The mechanism, if it is built.  Passing every Nth frame by
+      `FrameInfo.index`, as `nskip` does for the recorder, is exact and needs
+      no clock.  Other candidates: a `maxFps` on the pipeline checked where
+      frames arrive; a filter that returns `None` (the pipeline drops such
+      frames, but a filter cannot change `fps`); consumers that say what rate
+      they need.  The limit of the pipeline and `framerate` of the screen
+      should be equal, or only one of them set, so that they do not beat.
+
+---
+
 ## Capture that does not freeze the process (GenICam and the interpreter lock)
 
 **Active.**  `QRemoteCamera` (option 1 below) is written and in `lib/`; what

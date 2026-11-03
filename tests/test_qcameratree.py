@@ -189,6 +189,72 @@ class TestQCameraTreeSync(unittest.TestCase):
         tree._parameters['width'].setValue(320)
 
 
+class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
+    '''After a change the tree reads back its own properties only.
+
+    A camera has many more properties than a tree has controls (viva-genicam
+    on a Blackfly S: about 2000 and 15); reading them all took a register
+    read each and logged a warning for each that the tree does not show.
+    '''
+
+    def camera_with_hidden_property(self):
+        cam = make_camera()
+        unseen = MagicMock(return_value=1.)
+        cam.registerProperty('unseen', getter=unseen, setter=None,
+                             ptype=float)
+        return cam, unseen
+
+    def test_a_property_that_the_tree_does_not_show_is_not_read(self):
+        cam, unseen = self.camera_with_hidden_property()
+        desc = [{'name': 'width', 'type': 'int', 'value': 640,
+                 'default': 640}]
+        tree = QCameraTree(make_source(cam), description=desc)
+        unseen.reset_mock()
+        tree._parameters['width'].setValue(320)
+        unseen.assert_not_called()
+
+    def test_it_logs_no_warning_for_a_property_that_it_does_not_show(self):
+        cam, _ = self.camera_with_hidden_property()
+        desc = [{'name': 'width', 'type': 'int', 'value': 640,
+                 'default': 640}]
+        tree = QCameraTree(make_source(cam), description=desc)
+        with self.assertNoLogs('QVideo.lib.QCameraTree', 'WARNING'):
+            tree._parameters['width'].setValue(320)
+
+    def test_an_entry_that_is_not_a_camera_property_does_no_harm(self):
+        desc = [{'name': 'width', 'type': 'int', 'value': 640,
+                 'default': 640},
+                {'name': 'note', 'type': 'str', 'value': 'x'}]
+        tree = QCameraTree(make_source(), description=desc)
+        tree._parameters['width'].setValue(320)
+        self.assertEqual(tree.get('note'), 'x')
+
+    def test_a_value_that_cannot_be_read_now_stays_in_the_tree(self):
+        cam = make_camera()
+        tree = make_tree(source=make_source(cam))
+        tree._parameters['height'].setValue(300)
+        cam.properties['height']['getter'] = lambda: None
+        tree._parameters['width'].setValue(320)       # triggers the readback
+        self.assertEqual(tree.get('height'), 300)
+
+    def test_the_tree_shows_what_the_camera_did_beyond_the_request(self):
+        cam = make_camera()
+        tree = make_tree(source=make_source(cam))
+        cam._height = 100                              # the camera did this
+        tree._parameters['width'].setValue(320)
+        self.assertEqual(tree.get('height'), 100)
+
+
+class TestQCameraTreeLogging(unittest.TestCase):
+
+    def test_the_logger_leaves_its_level_to_the_application(self):
+        # A level of its own would hide the debug messages of this module
+        # when an application asks for those of QVideo.
+        import logging
+        self.assertEqual(logging.getLogger('QVideo.lib.QCameraTree').level,
+                         logging.NOTSET)
+
+
 class TestSyncIgnored(unittest.TestCase):
     '''The tree stops listening while the camera sets its parameters.'''
 
@@ -315,6 +381,15 @@ class TestQCameraTreeStartStop(unittest.TestCase):
 
 class TestQCameraTreeUpdateStepUnit(unittest.TestCase):
     '''Direct unit tests for the static _updateStep helper.'''
+
+    def test_skips_a_value_that_is_not_a_finite_number(self):
+        for value in (float('nan'), float('inf'), -float('inf')):
+            with self.subTest(value=value):
+                param = MagicMock()
+                param.opts = {'type': 'float'}
+                param.value.return_value = value
+                QCameraTree._updateStep(param)
+                param.setOpts.assert_not_called()
 
     def test_skips_non_float_type(self):
         param = MagicMock()

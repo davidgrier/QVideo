@@ -20,11 +20,15 @@ lock of the node map, so a thread that touches the map without the camera
 lock can deadlock with a thread that holds the map and calls back into
 Python.  A new method that reads or writes a node must take the lock.
 
-**Four places that know the types of nodes.**  ``_featureSpec``,
-``_setFeature``, ``_describeNode`` and ``_snapshot`` each walk the same
-chain of node types (enumeration, boolean, integer, float, string,
-register).  Teach all four about a new type.  In Spinnaker's binding an
-enumeration is also an integer, so every chain tests for an enumeration first.
+**Where the types of nodes matter.**  Several methods walk the same chain
+of node types (enumeration, boolean, integer, float, string, register):
+``_featureSpec`` (the Python type and limits), ``_setFeature`` (how to
+write), ``_describeNode`` (plain data for a tree), ``_snapshot`` (the live
+state), ``_makeGetter`` (how to read), ``_registerFeatures`` (what gets a
+setter) and ``_scanModes``.  Teach all of them about a new type; the tree
+of ``_tree.py`` and the table of kinds of the Viva backend know the types
+too.  In Spinnaker's binding an enumeration is also an integer, so every
+chain tests for an enumeration first.
 '''
 import logging
 import os

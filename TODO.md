@@ -282,6 +282,28 @@ additions:
 
 ---
 
+## One place that knows the types of GenICam nodes
+
+Seven methods of `cameras/Genicam/_camera.py` walk the same chain of node
+types (`_featureSpec`, `_setFeature`, `_describeNode`, `_snapshot`,
+`_makeGetter`, `_registerFeatures`, `_scanModes`), and `Genicam/_tree.py`
+and the `_KINDS` table of `cameras/Viva` hold the same knowledge again.
+They already disagree in small ways: `_describeNode` sets `step` for an
+integer without asking `has_inc()`, `_snapshot` calls a boolean or a string
+`'other'` where `_describeNode` says `'bool'` or `'str'`, and a node that
+is neither readable nor writable is skipped by `_registerFeatures` but
+listed bare by `_describeNode`.  Documented in the module docstring
+(2026-11-02); not merged.
+
+- [ ] **Do it when a node type is added or a disagreement causes a bug**,
+  not before.  Classify each node once into a few kinds and keep one table
+  of what each kind does (spec, write, describe, state).  The tests inject
+  mock `genicam` classes, so the classification must work with them, and
+  every change reaches code that talks to hardware, which only the Blackfly
+  can check.
+
+---
+
 ## Video deeper than 8 bits (12 bit and up)
 
 `python qhot.py -g` (viva-genicam) starts fast and runs well, and it is

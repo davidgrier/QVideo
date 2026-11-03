@@ -158,33 +158,39 @@ class QOpenCVCamera(QCamera):
         resolutions = [(w, h) for w, h, *_ in self._formats] or None
         configure(self._device, self._configWidth, self._configHeight,
                   self._configFps, resolutions=resolutions)
-        for _ in range(5):
-            if (ready := self._device.read()[0]):
-                break
-        if ready:
-            if self._formatLabels:
-                self.registerProperty(
-                    'resolution',
-                    getter=self._getResolution,
-                    setter=self._setResolution,
-                    ptype=str,
-                    limits=list(self._formatLabels.keys()),
-                )
-            self.registerProperty('width', getter=self._getWidth,
-                                  setter=self._setWidth, ptype=int)
-            self.registerProperty('height', getter=self._getHeight,
-                                  setter=self._setHeight, ptype=int)
-            self.registerProperty('color', getter=self._getColor,
-                                  setter=self._setColor, ptype=bool)
-            self._probeProperties()
-            if 'resolution' in self.properties:
-                for name in ('width', 'height', 'fps'):
-                    if name in self.properties:
-                        self.properties[name]['hidden'] = True
-            self.shapeChanged.emit(self.shape)
-        else:
+        # A camera that has just started may fail its first frames.
+        if not any(self._device.read()[0] for _ in range(5)):
             self._device.release()
-        return ready
+            return False
+        self._registerProperties()
+        self.shapeChanged.emit(self.shape)
+        return True
+
+    def _registerProperties(self) -> None:
+        '''Register the properties of the open device.
+
+        ``resolution`` (if the formats are known), ``width``, ``height``
+        and ``color``, then the properties that the device supports.  With
+        a ``resolution`` the tree hides ``width``, ``height`` and ``fps``,
+        which it changes together.
+        '''
+        if self._formatLabels:
+            self.registerProperty('resolution',
+                                  getter=self._getResolution,
+                                  setter=self._setResolution,
+                                  ptype=str,
+                                  limits=list(self._formatLabels))
+        self.registerProperty('width', getter=self._getWidth,
+                              setter=self._setWidth, ptype=int)
+        self.registerProperty('height', getter=self._getHeight,
+                              setter=self._setHeight, ptype=int)
+        self.registerProperty('color', getter=self._getColor,
+                              setter=self._setColor, ptype=bool)
+        self._probeProperties()
+        if 'resolution' in self.properties:
+            for name in ('width', 'height', 'fps'):
+                if name in self.properties:
+                    self.properties[name]['hidden'] = True
 
     def _probeProperties(self) -> None:
         '''Register device properties that the camera actually supports.
@@ -234,7 +240,7 @@ class QOpenCVCamera(QCamera):
         def distance(label: str) -> int:
             return sum(abs(a - b) for a, b in
                        zip(self._formatLabels[label][:2], size,
-                                strict=True))
+                           strict=True))
 
         return min(self._formatLabels, key=distance)
 
@@ -280,15 +286,11 @@ class QOpenCVCamera(QCamera):
         self._device.set(self.FPS, self._configFps)
 
     def _getColor(self) -> bool:
-        '''Return color mode
-            ``True`` if frames are delivered in color
-            ``False`` for grayscale.'''
+        '''Return True if frames are delivered in color, False if in gray.'''
         return not self._gray
 
     def _setColor(self, value: bool) -> None:
-        '''Set color mode.
-            ``False`` converts frames to grayscale
-            ``True`` restores color.'''
+        '''Convert frames to gray (False) or restore color (True).'''
         self._gray = not bool(value)
 
     def read(self) -> QCamera.CameraData:
@@ -302,13 +304,12 @@ class QOpenCVCamera(QCamera):
         tuple[bool, ndarray or None]
             ``(True, frame)`` on success, ``(False, None)`` when closed.
         '''
-        if self.isOpen():
-            try:
-                ready, image = self._device.read()
-            except Exception as e:
-                logger.warning(f'Frame read failed: {e}')
-                return False, None
-        else:
+        if not self.isOpen():
+            return False, None
+        try:
+            ready, image = self._device.read()
+        except Exception as ex:
+            logger.warning(f'Frame read failed: {ex}')
             return False, None
         if ready:
             if image.ndim == 3:

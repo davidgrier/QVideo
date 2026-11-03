@@ -33,6 +33,18 @@ def capture_backend() -> int:
             return cv2.CAP_ANY
 
 
+def _size(device: cv2.VideoCapture) -> tuple[int, int]:
+    '''Return the width and the height that *device* reports.'''
+    return (int(device.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            int(device.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+
+
+def _resize(device: cv2.VideoCapture, width: int, height: int) -> None:
+    '''Ask *device* for a width and a height.'''
+    device.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    device.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+
 COMMON_RESOLUTIONS: list[tuple[int, int]] = [
     (160, 120),
     (320, 240),
@@ -62,18 +74,13 @@ def probe_resolutions(device: cv2.VideoCapture) -> list[tuple[int, int]]:
     list[tuple[int, int]]
         Sorted list of ``(width, height)`` pairs accepted by the device.
     '''
-    original = (int(device.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                int(device.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    original = _size(device)
     original_fps = device.get(cv2.CAP_PROP_FPS)
     supported: set[tuple[int, int]] = set()
     for w, h in COMMON_RESOLUTIONS:
-        device.set(cv2.CAP_PROP_FRAME_WIDTH, w)
-        device.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
-        actual = (int(device.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                  int(device.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        supported.add(actual)
-    device.set(cv2.CAP_PROP_FRAME_WIDTH, original[0])
-    device.set(cv2.CAP_PROP_FRAME_HEIGHT, original[1])
+        _resize(device, w, h)
+        supported.add(_size(device))
+    _resize(device, *original)
     device.set(cv2.CAP_PROP_FPS, original_fps)
     return sorted(supported)
 
@@ -104,28 +111,22 @@ def probe_formats(device: cv2.VideoCapture,
     '''
     if resolutions is None:
         resolutions = COMMON_RESOLUTIONS
-    original_w = int(device.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_h = int(device.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    original = _size(device)
     original_fps = device.get(cv2.CAP_PROP_FPS)
-    seen: set[tuple[int, int]] = set()
-    results: list[tuple[int, int, float, float]] = []
+    formats: dict[tuple[int, int], tuple[int, int, float, float]] = {}
     for w, h in resolutions:
-        device.set(cv2.CAP_PROP_FRAME_WIDTH, w)
-        device.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
-        actual_w = int(device.get(cv2.CAP_PROP_FRAME_WIDTH))
-        actual_h = int(device.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        if (actual_w, actual_h) in seen:
+        _resize(device, w, h)
+        actual = _size(device)
+        if actual in formats:
             continue
-        seen.add((actual_w, actual_h))
         device.set(cv2.CAP_PROP_FPS, 120.)
         max_fps = device.get(cv2.CAP_PROP_FPS)
         if max_fps <= 0:
             max_fps = original_fps if original_fps > 0 else 30.
-        results.append((actual_w, actual_h, 1., max_fps))
-    device.set(cv2.CAP_PROP_FRAME_WIDTH, original_w)
-    device.set(cv2.CAP_PROP_FRAME_HEIGHT, original_h)
+        formats[actual] = (*actual, 1., max_fps)
+    _resize(device, *original)
     device.set(cv2.CAP_PROP_FPS, original_fps)
-    return sorted(results)
+    return sorted(formats.values())
 
 
 def configure(device: cv2.VideoCapture,
@@ -164,8 +165,7 @@ def configure(device: cv2.VideoCapture,
         :func:`probe_resolutions`.  ``None`` (default) triggers probing.
     '''
     if width is not None and height is not None:
-        device.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        device.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        _resize(device, width, height)
         if fps is not None:
             device.set(cv2.CAP_PROP_FPS, fps)
         return
@@ -177,17 +177,14 @@ def configure(device: cv2.VideoCapture,
 
     if fps is None:
         # performance mode: smallest resolution, driver-maximum frame rate
-        w, h = resolutions[0]
-        device.set(cv2.CAP_PROP_FRAME_WIDTH, w)
-        device.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+        _resize(device, *resolutions[0])
         return
 
     # quality mode: largest resolution that achieves the target frame rate.
     # Iterate from largest to smallest; stop at the first resolution where
     # the driver confirms it can deliver at least 90 % of the target fps.
     for w, h in reversed(resolutions):
-        device.set(cv2.CAP_PROP_FRAME_WIDTH, w)
-        device.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+        _resize(device, w, h)
         device.set(cv2.CAP_PROP_FPS, fps)
         if device.get(cv2.CAP_PROP_FPS) >= fps * 0.9:
             return
@@ -346,11 +343,11 @@ class QOpenCVDevices:
         found = []
         for i in range(10):
             cap = cv2.VideoCapture(i, capture_backend())
-            if not cap.isOpened():
-                cap.release()
+            opened = cap.isOpened()
+            cap.release()
+            if not opened:
                 break
             found.append((i, f'Camera {i}'))
-            cap.release()
         return found
 
     @staticmethod
@@ -374,9 +371,7 @@ class QOpenCVDevices:
             ``(width, height, 1.0, max_fps)`` for each accepted resolution.
         '''
         cap = cv2.VideoCapture(cameraID, capture_backend())
-        if not cap.isOpened():
+        try:
+            return probe_formats(cap, resolutions) if cap.isOpened() else []
+        finally:
             cap.release()
-            return []
-        result = probe_formats(cap, resolutions)
-        cap.release()
-        return result

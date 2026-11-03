@@ -342,6 +342,23 @@ class TestProbeFormats(unittest.TestCase):
                 QOpenCVDevices._probe_formats(0, res)
         mock_pf.assert_called_once_with(cap, res)
 
+    def test_the_device_is_released_when_probing_fails(self):
+        cap = MagicMock()
+        cap.isOpened.return_value = True
+        with patch('cv2.VideoCapture', return_value=cap):
+            with patch('QVideo.cameras.OpenCV._devices.probe_formats',
+                       side_effect=RuntimeError('driver error')):
+                with self.assertRaises(RuntimeError):
+                    QOpenCVDevices._probe_formats(0)
+        cap.release.assert_called_once_with()
+
+    def test_the_device_is_released_when_it_would_not_open(self):
+        cap = MagicMock()
+        cap.isOpened.return_value = False
+        with patch('cv2.VideoCapture', return_value=cap):
+            self.assertEqual(QOpenCVDevices._probe_formats(0), [])
+        cap.release.assert_called_once_with()
+
 
 if __name__ == '__main__':
     unittest.main()

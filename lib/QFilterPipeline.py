@@ -1,10 +1,18 @@
 '''Worker thread that runs a pipeline of video filters.'''
 from collections import deque
+from collections.abc import Iterable
 import logging
+from typing import TYPE_CHECKING
+
 import numpy as np
 from qtpy import QtCore
+
 from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.videotypes import Image, FrameInfo
+
+if TYPE_CHECKING:
+    from QVideo.lib.QFilterRackWidget import QFilterRackWidget
+    from QVideo.lib.QVideoSource import QVideoSource
 
 
 logger = logging.getLogger(__name__)
@@ -95,10 +103,10 @@ class QFilterPipeline(QtCore.QThread):
     filterFailed = QtCore.Signal(object, object)
 
     def __init__(self,
-                 source,
-                 filters=(),
+                 source: 'QVideoSource',
+                 filters: Iterable[VideoFilter] = (),
                  depth: int = 1,
-                 rack=None) -> None:
+                 rack: 'QFilterRackWidget | None' = None) -> None:
         super().__init__()
         self._mutex = QtCore.QMutex()
         self._wait = QtCore.QWaitCondition()
@@ -106,8 +114,8 @@ class QFilterPipeline(QtCore.QThread):
         self._dropped = 0
         self._running = True
         self._filters = tuple(filters)
-        self._source = None
-        self._rack = None
+        self._source: 'QVideoSource | None' = None
+        self._rack: 'QFilterRackWidget | None' = None
         self.source = source
         self.rack = rack
         self.start()
@@ -116,12 +124,12 @@ class QFilterPipeline(QtCore.QThread):
             app.aboutToQuit.connect(self.stop)
 
     @property
-    def source(self):
+    def source(self) -> 'QVideoSource | None':
         '''The source whose frames are filtered.'''
         return self._source
 
     @source.setter
-    def source(self, source) -> None:
+    def source(self, source: 'QVideoSource | None') -> None:
         if self._source is not None:
             self._source.newFrame.disconnect(self._deliver)
             self._source.shapeChanged.disconnect(self.shapeChanged)
@@ -132,12 +140,12 @@ class QFilterPipeline(QtCore.QThread):
         source.shapeChanged.connect(self.shapeChanged)
 
     @property
-    def rack(self):
+    def rack(self) -> 'QFilterRackWidget | None':
         '''The rack whose filters the pipeline runs, or ``None``.'''
         return self._rack
 
     @rack.setter
-    def rack(self, rack) -> None:
+    def rack(self, rack: 'QFilterRackWidget | None') -> None:
         if self._rack is not None:
             self._rack.filtersChanged.disconnect(self._syncRack)
             self.filterFailed.disconnect(self._rack.switchOff)
@@ -149,6 +157,7 @@ class QFilterPipeline(QtCore.QThread):
 
     @QtCore.Slot()
     def _syncRack(self) -> None:
+        '''Run the filters that the rack has switched on.'''
         self.filters = self._rack.activeFilters()
 
     @property
@@ -157,7 +166,7 @@ class QFilterPipeline(QtCore.QThread):
         return self._filters
 
     @filters.setter
-    def filters(self, filters) -> None:
+    def filters(self, filters: Iterable[VideoFilter]) -> None:
         with QtCore.QMutexLocker(self._mutex):
             self._filters = tuple(filters)
 

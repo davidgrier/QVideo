@@ -77,11 +77,11 @@ class TestInit(unittest.TestCase):
 
     def test_has_mutex(self):
         vs = make_vs()
-        self.assertIsInstance(vs.mutex, QtCore.QMutex)
+        self.assertIsInstance(vs._mutex, QtCore.QMutex)
 
-    def test_has_waitcondition(self):
+    def test_has_wait_condition(self):
         vs = make_vs()
-        self.assertIsInstance(vs.waitcondition, QtCore.QWaitCondition)
+        self.assertIsInstance(vs._waitCondition, QtCore.QWaitCondition)
 
     def test_initially_not_paused(self):
         vs = make_vs()
@@ -154,7 +154,7 @@ class TestStop(unittest.TestCase):
 
     def test_stop_wakes_waitcondition(self):
         vs = make_vs()
-        with patch.object(vs.waitcondition, 'wakeAll') as mock_wake:
+        with patch.object(vs._waitCondition, 'wakeAll') as mock_wake:
             vs.stop()
         mock_wake.assert_called_once()
 
@@ -174,7 +174,7 @@ class TestPauseResume(unittest.TestCase):
 
     def test_resume_wakes_waitcondition(self):
         vs = make_vs()
-        with patch.object(vs.waitcondition, 'wakeAll') as mock_wake:
+        with patch.object(vs._waitCondition, 'wakeAll') as mock_wake:
             vs.resume()
         mock_wake.assert_called_once()
 
@@ -217,7 +217,7 @@ class TestSeek(unittest.TestCase):
 
     def test_seek_records_the_target_and_wakes_the_loop(self):
         vs = make_vs()
-        with patch.object(vs.waitcondition, 'wakeAll') as mock_wake:
+        with patch.object(vs._waitCondition, 'wakeAll') as mock_wake:
             vs.seek(7)
         self.assertEqual(vs._seek, 7)
         mock_wake.assert_called_once()
@@ -387,7 +387,7 @@ class TestRun(unittest.TestCase):
             vs._paused = False
             vs._running = False
 
-        with patch.object(vs.waitcondition, 'wait', side_effect=mock_wait):
+        with patch.object(vs._waitCondition, 'wait', side_effect=mock_wait):
             vs.run()
 
         self.assertFalse(vs._running)

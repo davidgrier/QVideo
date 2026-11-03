@@ -147,9 +147,12 @@ class TestCompactControls(unittest.TestCase):
                         layout = central.controls.layout()
                         widgets = [layout.itemAt(i).widget()
                                    for i in range(layout.count())]
+                        # The macOS style lays a group box out one pixel
+                        # into its neighbor so that the frames abut; a
+                        # widget drawn over another is more than that.
                         for above, below in zip(widgets, widgets[1:]):
-                            self.assertLess(above.geometry().bottom(),
-                                            below.geometry().top())
+                            self.assertLessEqual(above.geometry().bottom(),
+                                                 below.geometry().top())
 
 
 class TestFirstShow(unittest.TestCase):

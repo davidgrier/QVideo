@@ -230,6 +230,20 @@ def uses_worker(key: str) -> bool:
     return BACKENDS[key].worker and sys.platform != 'win32'
 
 
+def _precheck(entry: _BackendEntry) -> None:
+    '''Let a camera class refuse in this process what a worker would refuse.
+
+    A camera class may define a classmethod ``precheck()`` that raises when
+    the camera cannot possibly open (for the GenICam cameras, no GenTL
+    producer).  Starting a worker only to be told so takes a fifth of a
+    second and prints the traceback of the worker.
+    '''
+    cls = getattr(importlib.import_module(entry.module), entry.camera_cls)
+    check = getattr(cls, 'precheck', None)
+    if check is not None:
+        check()
+
+
 def create_camera(key: str, camera_id: int = 0,
                   errors: list[Failure] | None = None) -> QCamera | None:
     '''Import and instantiate the camera of backend *key*.
@@ -259,6 +273,7 @@ def create_camera(key: str, camera_id: int = 0,
     try:
         if uses_worker(key):
             from QVideo.lib.QRemoteCamera import QRemoteCamera
+            _precheck(entry)
             return QRemoteCamera(key, cameraID=camera_id)
         module = importlib.import_module(entry.module)
         cls = getattr(module, entry.camera_cls)

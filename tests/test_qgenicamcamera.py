@@ -262,6 +262,30 @@ class TestInit(unittest.TestCase):
         self.assertIn('missing.cti not found', str(ctx.exception))
         self.assertIn('/no/dir', str(ctx.exception))
 
+    def test_precheck_passes_when_the_producer_is_known(self):
+        class _Known(QGenicamCamera):
+            producer = PRODUCER
+        self.assertIsNone(_Known.precheck())
+
+    def test_precheck_raises_what_opening_would_raise(self):
+        class _Lazy(QGenicamCamera):
+            producer = None
+            _producerFilenames = ('missing.cti',)
+        for env, message in (({}, 'is not set'),
+                             ({'GENICAM_GENTL64_PATH': '/no/dir'},
+                              'missing.cti not found')):
+            with self.subTest(message), \
+                    patch.dict(os.environ, env, clear=True):
+                with self.assertRaisesRegex(QDriverError, message):
+                    _Lazy.precheck()
+
+    def test_precheck_does_not_open_anything(self):
+        class _Known(QGenicamCamera):
+            producer = PRODUCER
+        with patch.object(_Known, '__init__') as init:
+            _Known.precheck()
+        init.assert_not_called()
+
     def test_camera_id_default_zero(self):
         cam, _, _ = make_camera()
         self.assertEqual(cam._cameraID, 0)

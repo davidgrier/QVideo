@@ -225,6 +225,51 @@ class TestWithTheSourceAndTheTree(unittest.TestCase):
 
 
 @not_on_windows
+class TestTheWorkerOpening(unittest.TestCase):
+
+    '''A camera that cannot open is reported; only a bug is logged.
+
+    The proxy reports the message of the worker.  A traceback on the
+    terminal for a camera that says what is wrong would show for every
+    backend that Camera() tries.
+    '''
+
+    REFUSING = 'QVideo.tests.remotecameras:RefusingCamera'
+
+    def run_worker(self, key: str):
+        '''Run the worker for *key* here; return its exit code and reply.'''
+        from QVideo.lib import _remoteworker
+        rpc, theirRpc = socket.socketpair()
+        frames, theirFrames = socket.socketpair(socket.AF_UNIX,
+                                                socket.SOCK_DGRAM)
+        for end in (rpc, theirRpc, frames, theirFrames):
+            self.addCleanup(end.close)
+        code = _remoteworker.main([key, '0',
+                                   str(os.dup(theirRpc.fileno())),
+                                   str(os.dup(theirFrames.fileno()))])
+        reply = Connection(os.dup(rpc.fileno())).recv()
+        return code, reply
+
+    def test_a_camera_that_says_why_is_reported_without_a_traceback(self):
+        with self.assertNoLogs('QVideo.remote.worker', 'DEBUG'):
+            code, reply = self.run_worker(self.REFUSING)
+        self.assertEqual(code, 1)
+        self.assertEqual(reply[:2], (REPLY, False))
+        self.assertIn('QDriverError: no producer here', reply[2])
+
+    def test_any_other_failure_keeps_its_traceback(self):
+        with self.assertLogs('QVideo.remote.worker', 'ERROR') as logs:
+            code, reply = self.run_worker('nothing')
+        self.assertEqual(code, 1)
+        self.assertFalse(reply[1])
+        self.assertIsNotNone(logs.records[0].exc_info)
+
+    def test_the_proxy_reports_the_message(self):
+        with self.assertRaisesRegex(QCameraError, 'no producer here'):
+            QRemoteCamera(self.REFUSING)
+
+
+@not_on_windows
 class TestTheChooser(unittest.TestCase):
 
     '''The chooser opens a backend that needs the worker in one, unasked.'''

@@ -9,8 +9,18 @@ import os
 import numpy as np
 
 from QVideo.cameras.Noise import QNoiseCamera
+from QVideo.lib.errors import QDriverError
 
-__all__ = 'FailingCamera FloatCamera StatesCamera ShrinkingCamera'.split()
+__all__ = ('FailingCamera FloatCamera StatesCamera ShrinkingCamera '
+           'RefusingCamera').split()
+
+
+class RefusingCamera(QNoiseCamera):
+
+    '''A camera that cannot open, and says why, as one without a producer.'''
+
+    def _initialize(self):
+        raise QDriverError('no producer here')
 
 
 class FailingCamera(QNoiseCamera):

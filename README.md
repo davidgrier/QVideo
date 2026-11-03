@@ -80,7 +80,7 @@ Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
 
 | Backend | Extra | Notes |
 |---------|-------|-------|
-| GenICam cameras | `pip install QVideo[genicam]` | Installs viva-genicam (preferred, `-g`: no vendor SDK or `.cti` file, and it does not hold the interpreter lock) where it has wheels, and harvesters for vendor producers (Vimba, etc.), which need a `.cti` file and hold the interpreter lock (see the compatibility page) |
+| GenICam cameras | `pip install QVideo[genicam]` | Installs viva-genicam (preferred, `-g`: no vendor SDK or `.cti` file, and it does not hold the interpreter lock) where it has wheels, and harvesters for vendor producers (Vimba, etc.), which need a `.cti` file and hold the interpreter lock, so QVideo opens them in a process of their own on macOS and Linux (see the compatibility page) |
 | GenICam cameras, viva-genicam only | `pip install QVideo[viva]` | The preferred interface alone, without harvesters |
 | Raspberry Pi camera | `pip install QVideo[picamera]` | Requires `picamera2` |
 | Camera names for USB cameras | `pip install QVideo[opencv]` | Uses `cv2-enumerate-cameras`; without it the cameras are listed as "Camera 0" and so on |

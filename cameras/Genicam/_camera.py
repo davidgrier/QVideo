@@ -381,6 +381,23 @@ class QGenicamCamera(QCamera):
                     self.aliases[alias] = node
                     break
 
+    @classmethod
+    def precheck(cls) -> None:
+        '''Raise now if the camera cannot open for want of a producer.
+
+        The chooser calls this before it starts a worker process for the
+        camera, so that a machine without the producer fails in a
+        millisecond, in this process, with the message that opening the
+        camera would give, and not after the start of a process.
+
+        Raises
+        ------
+        QDriverError
+            If no producer is configured, ``GENICAM_GENTL64_PATH`` is
+            unset, or the producer file is not on that path.
+        '''
+        cls._locateProducer()
+
     def _cleanup(self) -> None:
         '''Release partially initialized resources after a failed _initialize.
 

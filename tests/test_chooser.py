@@ -3,10 +3,12 @@ import sys
 import threading
 import unittest
 from argparse import ArgumentParser
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import numpy as np
 from qtpy import QtWidgets
 import QVideo.cameras.chooser as chooser_module
+from QVideo.lib.errors import QDriverError
 from QVideo.cameras.chooser import (camera_parser, choose_camera, make_tree,
                                     open_camera, BACKENDS, _BackendEntry,
                                     _CAMERAS)
@@ -202,21 +204,37 @@ class TestTheWorker(unittest.TestCase):
     def test_a_camera_that_uses_it_is_made_by_the_worker(self):
         proxy = MagicMock()
         with patch.object(chooser_module, 'uses_worker', return_value=True), \
+                patch.object(chooser_module, '_precheck') as check, \
                 patch('QVideo.lib.QRemoteCamera.QRemoteCamera',
                       return_value=proxy) as remote:
             camera = chooser_module.create_camera('flir', 2)
         self.assertIs(camera, proxy)
+        check.assert_called_once_with(BACKENDS['flir'])
         remote.assert_called_once_with('flir', cameraID=2)
 
-    def test_any_other_camera_is_made_in_the_program(self):
-        module = MagicMock()
-        with patch.object(chooser_module, 'uses_worker', return_value=False), \
-                patch('importlib.import_module', return_value=module), \
+    def test_the_class_may_refuse_before_a_worker_starts(self):
+        # No producer: say so here, in milliseconds, not after a process.
+        refusal = QDriverError('no producer')
+        errors = []
+        with patch.object(chooser_module, 'uses_worker', return_value=True), \
+                patch.object(chooser_module, '_precheck',
+                             side_effect=refusal), \
                 patch('QVideo.lib.QRemoteCamera.QRemoteCamera') as remote:
-            camera = chooser_module.create_camera('flir', 1)
+            camera = chooser_module.create_camera('flir', 0, errors)
+        self.assertIsNone(camera)
         remote.assert_not_called()
-        module.QFlirCamera.assert_called_once_with(cameraID=1)
-        self.assertIs(camera, module.QFlirCamera.return_value)
+        self.assertEqual(errors, [('Flir', refusal)])
+
+    def test_the_check_asks_the_camera_class(self):
+        module = MagicMock()
+        with patch('importlib.import_module', return_value=module):
+            chooser_module._precheck(BACKENDS['flir'])
+        module.QFlirCamera.precheck.assert_called_once_with()
+
+    def test_a_class_without_a_check_is_let_through(self):
+        module = SimpleNamespace(QFlirCamera=type('Camera', (), {}))
+        with patch('importlib.import_module', return_value=module):
+            chooser_module._precheck(BACKENDS['flir'])    # raises nothing
 
     @unittest.skipIf(sys.platform == 'win32', 'there is no worker on Windows')
     def test_the_worker_delivers_frames_through_the_chooser(self):

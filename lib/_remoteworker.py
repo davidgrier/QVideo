@@ -21,6 +21,7 @@ import numpy as np
 
 from QVideo.lib._remote import (CODES, EVENT, HEADER, NOTICE, REPLY, SLOTS,
                                 slot_bytes)
+from QVideo.lib.errors import QCameraError
 
 logger = logging.getLogger('QVideo.remote.worker')
 
@@ -318,8 +319,15 @@ def main(argv: list[str]) -> int:
         if not camera.isOpen():
             raise RuntimeError(f'{classname} did not open')
     except Exception as ex:
-        logger.exception('cannot open the camera')
+        # A QCameraError says what is wrong (no producer, no camera) and the
+        # proxy reports its message, so a traceback on the terminal of the
+        # program would be noise: it appears for every backend that
+        # Camera() tries.  Anything else is a bug, and keeps its traceback.
+        if not isinstance(ex, QCameraError):
+            logger.exception('cannot open the camera')
         rpc.send((REPLY, False, f'{type(ex).__name__}: {ex}'))
+        frames.close()
+        rpc.close()
         return 1
     worker = Worker(camera, rpc, frames)
     worker.reply(True, None)

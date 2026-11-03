@@ -61,7 +61,7 @@ Plan, with a gate before each large step:
 
       *Result with the Flir* (Blackfly S, 30 frames a second, `traps` mode of
       `QHOT/devel/flirdiag.py`, median of 3 trials; the remote run uses the
-      real `QGenicamTree` through `make_tree`, as `qhot -fr` does):
+      real `QGenicamTree` through `make_tree`, as `qhot -f` does now):
 
       | | frames/s | loop med ms | loop p99 ms | loop max ms | holo/s | cpu % |
       |---|---|---|---|---|---|---|
@@ -70,7 +70,8 @@ Plan, with a gate before each large step:
       | **remote (`QRemoteCamera`)** | **30.1** | **4.6** | **8.2** | **10.2** | **9.9** | **43** |
 
       The remote camera meets the gate without the switch-interval stopgap,
-      and beats OpenCV's figures above.  Interactive use of `qhot -fr` was
+      and beats OpenCV's figures above.  Interactive use of `qhot -fr` (the
+      `-r` is gone now) was
       smooth at 170 Hz and at 5 Hz.
 - [ ] Audit what touches a camera: the trees (`QCameraTree`, `QGenicamTree`
       call `settings`, `set`, `node`, `hasNode`, `states`, `properties`,
@@ -127,8 +128,8 @@ these is a reason not to make it the default today:
 - [ ] **Errors and debugging.**  Forward the logging of the worker to the
       logging of the program, with the traceback of an exception as text, and
       keep a way to run the very same camera in the program for a debugger
-      (`--local`, below).  Say in the interface when the worker has died, not
-      only in the log.
+      (done: create the class, `QFlirCamera()`).  Say in the interface when
+      the worker has died, not only in the log.
 - [ ] **What it costs**, measured and written down: the start of the worker
       (3.7 s for OpenCV), the copy of a frame in and out of the ring, the
       latency of a frame and of a setting, and the highest rate at the largest

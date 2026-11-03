@@ -292,12 +292,35 @@ class TestProperties(unittest.TestCase):
         cam.set('width', 1280)
         cam._device.set.assert_any_call(QOpenCVCamera.WIDTH, 1280)
 
-    def test_width_setter_emits_shape_changed(self):
-        from qtpy import QtTest
+    def tracking(self, cam):
+        '''Make the mock device report what it was last asked for.'''
+        values = {QOpenCVCamera.WIDTH: 640, QOpenCVCamera.HEIGHT: 480}
+        cam._device.get.side_effect = lambda prop: values.get(prop, 0)
+        cam._device.set.side_effect = \
+            lambda prop, value: values.__setitem__(prop, value)
+
+    def test_a_new_width_announces_the_new_shape(self):
         cam = make_camera()
+        self.tracking(cam)
         spy = record(cam.shapeChanged)
         cam.set('width', 1280)
-        self.assertEqual(len(spy), 1)
+        self.assertEqual(spy, [(QtCore.QSize(1280, 480),)])
+
+    def test_the_same_width_announces_nothing(self):
+        cam = make_camera()
+        self.tracking(cam)
+        spy = record(cam.shapeChanged)
+        cam.set('width', 640)
+        self.assertEqual(spy, [])
+
+    def test_a_new_resolution_announces_the_new_shape_once(self):
+        cam = make_camera(formats=[(640, 480, 1., 30.), (1280, 720, 1., 30.)])
+        self.tracking(cam)
+        spy = record(cam.shapeChanged)
+        label = [name for name, (w, h, _) in cam._formatLabels.items()
+                 if (w, h) == (1280, 720)][0]
+        cam.set('resolution', label)
+        self.assertEqual(spy, [(QtCore.QSize(1280, 720),)])
 
     def test_height_setter_updates_config(self):
         cam = make_camera()
@@ -310,12 +333,12 @@ class TestProperties(unittest.TestCase):
         cam.set('height', 720)
         cam._device.set.assert_any_call(QOpenCVCamera.HEIGHT, 720)
 
-    def test_height_setter_emits_shape_changed(self):
-        from qtpy import QtTest
+    def test_a_new_height_announces_the_new_shape(self):
         cam = make_camera()
+        self.tracking(cam)
         spy = record(cam.shapeChanged)
         cam.set('height', 720)
-        self.assertEqual(len(spy), 1)
+        self.assertEqual(spy, [(QtCore.QSize(640, 720),)])
 
     def test_fps_setter_calls_device_set(self):
         cam = make_camera()

@@ -107,6 +107,9 @@ class QOpenCVCamera(QCamera):
     BGR2RGB = cv2.COLOR_BGR2RGB
     BGR2GRAY = cv2.COLOR_BGR2GRAY
 
+    #: ``resolution`` sets the width and the height together.
+    shapeProperties = ('width', 'height', 'resolution')
+
     def __init__(self, *args,
                  cameraID: int = 0,
                  mirrored: bool = False,
@@ -254,7 +257,6 @@ class QOpenCVCamera(QCamera):
         '''
         self._configWidth = int(value)
         self._device.set(self.WIDTH, self._configWidth)
-        self.shapeChanged.emit(self.shape)
 
     def _getHeight(self) -> int:
         return int(self._device.get(self.HEIGHT))
@@ -266,7 +268,6 @@ class QOpenCVCamera(QCamera):
         '''
         self._configHeight = int(value)
         self._device.set(self.HEIGHT, self._configHeight)
-        self.shapeChanged.emit(self.shape)
 
     def _setFps(self, value: float) -> None:
         '''Store the requested frame rate and apply it to the open device.

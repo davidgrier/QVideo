@@ -853,16 +853,17 @@ class TestSet(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Width',
                                 min=64, max=1920, inc=4)
         # Mode changes: RW before start → RO after start (protected),
-        # then RO during registration.  The setter also checks access mode
-        # at runtime (4th call) but proceeds because Width is protected.
-        # The width getter is then called via self.shape inside _shape_setter
-        # (5th call).
+        # then RO during registration.  QCamera.set reads the shape before
+        # the setter (4th call) and after it (6th call), because Width is a
+        # shape property; the setter also checks access mode at runtime (5th
+        # call) but proceeds because Width is protected.
         feature.node.get_access_mode.side_effect = [
             _EAccessMode.RW,  # _scanModes pre-start
             _EAccessMode.RO,  # _scanModes post-start → protected
             _EAccessMode.RO,  # _registerFeatures
+            _EAccessMode.RO,  # the width getter, for the shape before
             _EAccessMode.RO,  # setter runtime check
-            _EAccessMode.RW,  # getter called via self.shape in _shape_setter
+            _EAccessMode.RO,  # the width getter, for the shape after
         ]
         device = _make_device()
         root = MagicMock(spec=_ICategory)
@@ -1122,19 +1123,35 @@ class TestWidthHeight(unittest.TestCase):
         cam, _, _ = make_camera_with_node(feature)
         self.assertEqual(cam.height, 480)
 
-    def test_width_setter_emits_shape_changed(self):
-        feature = self._make_dim_feature('Width', 640)
-        cam, _, _ = make_camera_with_node(feature)
+    def _camera_with_both(self):
+        '''A camera with a Width of 640 and a Height of 480.'''
+        features = [self._make_dim_feature('Width', 640),
+                    self._make_dim_feature('Height', 480)]
+        device = _make_device()
+        root = MagicMock(spec=_ICategory)
+        root.features = features
+        device.remote_device.node_map.get_node.return_value = root
+        cam, _, _ = make_camera(device=device)
+        return cam
+
+    def test_a_new_width_announces_the_new_shape(self):
+        cam = self._camera_with_both()
+        spy = record(cam.shapeChanged)
+        cam.set('Width', 800)
+        self.assertEqual(spy, [(QtCore.QSize(800, 480),)])
+
+    def test_a_new_height_announces_the_new_shape(self):
+        cam = self._camera_with_both()
+        spy = record(cam.shapeChanged)
+        cam.set('Height', 600)
+        self.assertEqual(spy, [(QtCore.QSize(640, 600),)])
+
+    def test_the_same_size_announces_nothing(self):
+        cam = self._camera_with_both()
         spy = record(cam.shapeChanged)
         cam.set('Width', 640)
-        self.assertEqual(len(spy), 1)
-
-    def test_height_setter_emits_shape_changed(self):
-        feature = self._make_dim_feature('Height', 480)
-        cam, _, _ = make_camera_with_node(feature)
-        spy = record(cam.shapeChanged)
         cam.set('Height', 480)
-        self.assertEqual(len(spy), 1)
+        self.assertEqual(spy, [])
 
 
 class TestAliases(unittest.TestCase):
@@ -1180,9 +1197,9 @@ class TestAliases(unittest.TestCase):
     def test_setting_an_alias_signals_the_shape_like_its_node(self):
         cam = self.camera('Width', 'Height')
         spy = record(cam.shapeChanged)
-        cam.set('width', 7)
-        cam.set('height', 7)
-        self.assertEqual(len(spy), 2)
+        cam.set('width', 8)
+        cam.set('height', 9)
+        self.assertEqual(spy, [(QtCore.QSize(8, 7),), (QtCore.QSize(8, 9),)])
 
     def test_another_property_does_not_signal_the_shape(self):
         cam = self.camera('Width', 'Gain')

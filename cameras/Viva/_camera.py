@@ -213,11 +213,6 @@ class QVivaCamera(QCamera):
                     self.aliases[alias] = node
                     break
 
-    def set(self, key: str, value: QCamera.PropertyValue) -> None:
-        super().set(key, value)
-        if self._canonical(key) in ('Width', 'Height'):
-            self.shapeChanged.emit(self.shape)
-
     @property
     def actualFps(self) -> float:
         '''Frame rate that the camera reports it delivers.

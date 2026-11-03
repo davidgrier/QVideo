@@ -374,6 +374,8 @@ class QPicamera(QCamera):
     def _setColor(self, value: bool) -> None:
         self._gray = not bool(value)
         self._reconfigure()
+        # The size is the same, the frames are not (one channel or three):
+        # set() cannot see that, so announce it here.
         self.shapeChanged.emit(self.shape)
 
     def _getHflip(self) -> bool:

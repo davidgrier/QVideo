@@ -142,7 +142,10 @@ backend whose properties have the names of a standard (GenICam's `Width`)
 lists the shared lowercase names (`width`, `height`, `fps`) in
 `camera.aliases`; an alias works as an attribute and in `get`, `set` and
 `shape`, but it is not a property, so `settings` and `properties` have the
-same names on every backend.
+same names on every backend.  `set()` announces a changed shape: for a
+property in `shapeProperties` (by default `width` and `height`) it reads
+`shape` before and after the setter and emits `shapeChanged` if it differs,
+so a setter does not emit the signal.
 
 **`Camera()`** (`interactive/camera.py`) is the headless front door: it
 discovers a backend, creates a `QApplication` if there is none (and keeps

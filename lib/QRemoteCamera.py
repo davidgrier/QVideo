@@ -60,6 +60,10 @@ class QRemoteCamera(QCamera):
     #: How long to wait for the listener to end after the worker [s].
     LISTENING = 2.
 
+    #: None: the worker is the authority on the shape and announces it
+    #: (:meth:`_changed`), and reading the shape here would take round trips.
+    shapeProperties = ()
+
     def __init__(self, key: str, *args,
                  cameraID: int = 0,
                  python: str | None = None,

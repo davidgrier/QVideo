@@ -3,7 +3,7 @@ import threading
 import time
 import unittest
 import numpy as np
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 from qtpy import QtCore, QtWidgets
 from QVideo.tests.signals import record
 from QVideo.lib.QCamera import QCamera
@@ -24,16 +24,9 @@ class _FakeCamera(QCamera):
         self._deinitialize_called = 0
         self._method_called = False
 
-        def _set_width(v):
-            self._width = int(v)
-            self.shapeChanged.emit(self.shape)
-
-        def _set_height(v):
-            self._height = int(v)
-            self.shapeChanged.emit(self.shape)
-
-        self.registerProperty('width', setter=_set_width, ptype=int)
-        self.registerProperty('height', setter=_set_height, ptype=int)
+        # The setters store the value: set() announces the new shape.
+        self.registerProperty('width', ptype=int)
+        self.registerProperty('height', ptype=int)
         self.registerProperty('fps', ptype=float)
         self.registerProperty('color', getter=lambda: False, setter=None, ptype=bool)
         self.registerMethod('calibrate', self.calibrate)
@@ -378,6 +371,107 @@ class TestShape(unittest.TestCase):
                 cam = make_camera()
                 cam.registerProperty(name, getter=lambda: None, ptype=int)
                 self.assertEqual(cam.shape, QtCore.QSize(0, 0))
+
+
+class _ResolutionCamera(_FakeCamera):
+    '''A camera with a ``resolution`` that sets the width and the height.'''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.registerProperty('resolution', getter=lambda: '320x240',
+                              setter=self._setResolution, ptype=str)
+
+    def _setResolution(self, label: str) -> None:
+        width, height = (int(n) for n in label.split('x'))
+        self._width, self._height = width, height
+
+
+class TestShapeChanged(unittest.TestCase):
+    '''set() announces the new shape, once, if the shape is different.'''
+
+    def test_a_new_width_announces_the_new_shape_once(self):
+        cam = make_camera()
+        spy = record(cam.shapeChanged)
+        cam.set('width', 320)
+        self.assertEqual(spy, [(QtCore.QSize(320, 480),)])
+
+    def test_a_new_height_announces_the_new_shape_once(self):
+        cam = make_camera()
+        spy = record(cam.shapeChanged)
+        cam.set('height', 240)
+        self.assertEqual(spy, [(QtCore.QSize(640, 240),)])
+
+    def test_the_same_value_announces_nothing(self):
+        cam = make_camera()
+        spy = record(cam.shapeChanged)
+        cam.set('width', 640)
+        cam.set('height', 480)
+        self.assertEqual(spy, [])
+
+    def test_assigning_the_attribute_announces_too(self):
+        cam = make_camera()
+        spy = record(cam.shapeChanged)
+        cam.width = 320
+        self.assertEqual(spy, [(QtCore.QSize(320, 480),)])
+
+    def test_an_alias_announces_like_its_property(self):
+        cam = _StandardCamera()
+        spy = record(cam.shapeChanged)
+        cam.set('width', 320)
+        cam.set('Height', 240)
+        self.assertEqual(spy, [(QtCore.QSize(320, 480),),
+                               (QtCore.QSize(320, 240),)])
+
+    def test_another_property_does_not_even_read_the_shape(self):
+        cam = make_camera()
+        spy = record(cam.shapeChanged)
+        with patch.object(QCamera, 'shape',
+                          new_callable=PropertyMock) as shape:
+            cam.set('fps', 60.)
+        shape.assert_not_called()
+        self.assertEqual(spy, [])
+
+    def test_the_signal_comes_after_the_setter_has_finished(self):
+        cam = make_camera()
+        seen = []
+        cam.shapeChanged.connect(lambda shape: seen.append(
+            (shape, cam._width, cam._height)))
+        cam.set('width', 320)
+        self.assertEqual(seen, [(QtCore.QSize(320, 480), 320, 480)])
+
+    def test_a_setter_that_raises_announces_nothing(self):
+        cam = make_camera()
+        spy = record(cam.shapeChanged)
+
+        def refuse(value):
+            raise RuntimeError('the camera says no')
+        cam.registerProperty('width', setter=refuse, ptype=int)
+        with self.assertRaises(RuntimeError):
+            cam.set('width', 320)
+        self.assertEqual(spy, [])
+
+    def test_a_property_that_sets_both_is_listed_to_be_announced(self):
+        class Listed(_ResolutionCamera):
+            shapeProperties = ('width', 'height', 'resolution')
+        cam = Listed()
+        spy = record(cam.shapeChanged)
+        cam.set('resolution', '320x240')
+        self.assertEqual(spy, [(QtCore.QSize(320, 240),)])
+
+    def test_a_property_that_is_not_listed_announces_nothing(self):
+        cam = _ResolutionCamera()
+        spy = record(cam.shapeChanged)
+        cam.set('resolution', '320x240')
+        self.assertEqual(cam.shape, QtCore.QSize(320, 240))
+        self.assertEqual(spy, [])
+
+    def test_a_camera_that_announces_its_own_shape_lists_none(self):
+        class Proxy(_FakeCamera):
+            shapeProperties = ()
+        cam = Proxy()
+        spy = record(cam.shapeChanged)
+        cam.set('width', 320)
+        self.assertEqual(spy, [])
 
 
 class _StandardCamera(_FakeCamera):

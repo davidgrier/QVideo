@@ -9,9 +9,10 @@ A backend adopts the suite by mixing :class:`CameraConformance` into a
 
 The checks state the contract that the rest of QVideo relies on: the
 lifecycle can be repeated, frames are independent arrays that agree with
-the reported shape, properties are typed and survive a round trip, the
-device lock lets frames and settings interleave, and a source can stream
-the camera and stop.  They need no hardware when ``makeCamera`` returns a
+the reported shape, a change of the shape is announced once with the new
+shape, properties are typed and survive a round trip, the device lock lets
+frames and settings interleave, and a source can stream the camera and
+stop.  They need no hardware when ``makeCamera`` returns a
 simulated device.
 '''
 import threading
@@ -96,6 +97,25 @@ class CameraConformance:
         for frame in readFrames(self.camera, 5):
             self.assertEqual(frame.shape[:2], (shape.height(), shape.width()))
         self.assertEqual(self.camera.shape, shape)
+
+    def test_a_change_of_shape_is_announced_once_with_the_new_shape(self):
+        camera = self.camera
+        name = camera._canonical('width')
+        spec = camera.properties.get(name)
+        if spec is None or spec['setter'] is None:
+            self.skipTest('the width cannot be set')
+        before = camera.shape
+        step = spec.get('step') or 1
+        smaller = max(spec.get('minimum', 1),
+                      before.width() // 2 // step * step)
+        if smaller >= before.width():
+            self.skipTest('the width cannot be made smaller')
+        spy = record(camera.shapeChanged)
+        camera.set('width', smaller)
+        after = camera.shape
+        # The camera may refuse or adjust the width: then the shape that it
+        # reports is what is announced, and nothing if it did not change.
+        self.assertEqual(spy, [(after,)] if after != before else [])
 
     def test_frames_do_not_share_memory(self):
         first, second = readFrames(self.camera, 2)

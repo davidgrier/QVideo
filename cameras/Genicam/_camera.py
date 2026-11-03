@@ -478,12 +478,6 @@ class QGenicamCamera(QCamera):
     # Properties: what the camera offers and how to read and write it
     # ------------------------------------------------------------------
 
-    def set(self, key: str, value: QCamera.PropertyValue) -> None:
-        '''Set a property; announce the new shape if it changed.'''
-        super().set(key, value)
-        if self._canonical(key) in ('Width', 'Height'):
-            self.shapeChanged.emit(self.shape)
-
     def _registerFeatures(self, feature: IValue) -> None:
         '''Recurse the node tree to register properties and methods.'''
         if isinstance(feature, ICategory):

@@ -19,6 +19,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QCamera.set()` announces a change of shape, in one place.**  It reads
+  `shape` before and after the setter of a property in `shapeProperties`
+  (by default `width` and `height`; OpenCV adds `resolution`) and emits
+  `shapeChanged`, once, if the shape is different.  The backends no longer
+  emit it from their setters (Noise, OpenCV) or from a `set()` override
+  (Genicam, Viva); a proxy that is told the shape by its worker lists none.
+  A setting that leaves the size as it was announces nothing, `resolution`
+  in OpenCV announces once and not once for the width and once for the
+  height, and the conformance suite checks it for every backend.  Picamera
+  still announces a change of color itself, because the size is the same.
 - **The Viva backend (`-g`) is the preferred interface to GenICam
   cameras.**  The compatibility page says when to use it, shows the
   measurements next to those of the Harvesters backends, and the README, the

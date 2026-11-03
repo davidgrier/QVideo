@@ -62,7 +62,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     Signals
     -------
     shapeChanged(QSize)
-        Emitted by subclasses when the image dimensions change.
+        Emitted with the new shape when setting a property changes the
+        image dimensions (see :attr:`shapeProperties`), and by a subclass
+        that changes them in some other way.
     propertyValue(str, object)
         Emitted by :meth:`get` with the property name and current value.
 
@@ -96,7 +98,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     Settings = dict[str, PropertyValue]
     CameraData = tuple[bool, Image | None]
 
-    #: Emitted by subclasses when the image dimensions change.
+    #: Emitted with the new shape when the image dimensions change.
     shapeChanged = QtCore.Signal(QtCore.QSize)
     #: Emitted by :meth:`get` with the property name and current value.
     propertyValue = QtCore.Signal(str, object)
@@ -106,6 +108,15 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     #: subclass sets it in :meth:`read`; the source copies it into the
     #: :class:`~QVideo.lib.videotypes.FrameInfo` of the frame.
     hardwareTimestamp: float | None = None
+
+    #: The properties whose setting can change the shape of the frames.
+    #: :meth:`set` reads :attr:`shape` before and after the setter of one of
+    #: these and emits :attr:`shapeChanged` if it differs, so a backend does
+    #: not emit the signal for them.  Aliases resolve (``'width'`` stands for
+    #: ``'Width'`` on a GenICam camera).  A backend whose shape depends on
+    #: more (a ``resolution`` that sets both) lists it too; a proxy for a
+    #: camera that announces its own shape lists none.
+    shapeProperties: tuple[str, ...] = ('width', 'height')
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -350,6 +361,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def set(self, key: str, value: PropertyValue) -> None:
         '''Set a registered property to the given value.
 
+        If the property is one of :attr:`shapeProperties` and the shape of
+        the frames is different afterwards, :attr:`shapeChanged` is emitted
+        with the new shape (once, after the setter has finished).  Setting a
+        value that leaves the shape as it was emits nothing.
+
         Parameters
         ----------
         key : str
@@ -364,9 +380,22 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         setter = self.properties[key]['setter']
         if setter is None:
             logger.warning(f'Property {key!r} is read-only')
-        else:
-            logger.debug(f'Setting {key}: {value}')
+            return
+        logger.debug(f'Setting {key}: {value}')
+        if not self._affectsShape(key):
             setter(value)
+            return
+        with self._mutex:
+            before = self.shape
+            setter(value)
+            after = self.shape
+        if after != before:
+            self.shapeChanged.emit(after)
+
+    def _affectsShape(self, key: str) -> bool:
+        '''Return whether setting the property *key* can change the shape.'''
+        return any(self._canonical(name) == key
+                   for name in self.shapeProperties)
 
     @QtCore.Slot(str)
     def get(self, key: str) -> PropertyValue | None:

@@ -46,23 +46,13 @@ class QNoiseCamera(QCamera):
         self._whitelevel = int(np.clip(whitelevel, 1, 255))
 
         register = self.registerProperty
-        register('width', setter=self._setWidth, ptype=int)
-        register('height', setter=self._setHeight, ptype=int)
+        register('width', ptype=int)
+        register('height', ptype=int)
         register('fps', ptype=float)
         register('color', getter=lambda: False, setter=None, ptype=bool)
         register('blacklevel', setter=self._setBlacklevel, ptype=int)
         register('whitelevel', setter=self._setWhitelevel, ptype=int)
         self.open()
-
-    def _setWidth(self, value: int) -> None:
-        '''Set frame width and emit :attr:`shapeChanged`.'''
-        self._width = int(value)
-        self.shapeChanged.emit(self.shape)
-
-    def _setHeight(self, value: int) -> None:
-        '''Set frame height and emit :attr:`shapeChanged`.'''
-        self._height = int(value)
-        self.shapeChanged.emit(self.shape)
 
     def _setBlacklevel(self, value: int) -> None:
         '''Set black level, clamped to [0, 254].

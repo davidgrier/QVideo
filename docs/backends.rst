@@ -113,8 +113,12 @@ and in the notebook interface, with no further work:
 
 Register ``width`` and ``height`` (``int``) and ``fps`` (``float``).  The
 base class derives ``camera.shape`` from the first two, and the display,
-the recorder and the notebook interface depend on it.  If your hardware
-changes its frame size, emit ``shapeChanged`` after the change.
+the recorder and the notebook interface depend on it.  Setting either
+announces the new shape: ``set()`` emits ``shapeChanged`` when the shape
+differs after the setter has run, so your setters do not emit it.  If
+another property changes the size (a ``resolution`` that sets both), list
+its name in ``shapeProperties``.  If the size changes in some other way,
+such as a reconfiguration, emit ``shapeChanged`` yourself after the change.
 
 If your hardware names its features after a standard, as GenICam does
 (``Width``, ``Height``, ``AcquisitionFrameRate``), register them under

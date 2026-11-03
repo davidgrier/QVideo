@@ -67,6 +67,40 @@ class LockingCamera(FakeCamera):
         return Locking(super()._connect())
 
 
+class Readonly:
+
+    '''A device that reports the features in *names* as read-only, as a
+    camera does for the exposure time while the exposure is automatic.'''
+
+    def __init__(self, device, names=()):
+        self._device = device
+        self.names = set(names)
+
+    def __getattr__(self, name):
+        return getattr(self._device, name)
+
+    def feature_state(self, name):
+        state = self._device.feature_state(name)
+        if name not in self.names:
+            return state
+
+        class Locked:
+            access = 'RO'
+
+            def __getattr__(self, attribute):
+                return getattr(state, attribute)
+        return Locked()
+
+
+class AccessCamera(FakeCamera):
+
+    #: The features that the device reports as read-only at first.
+    readonly = ()
+
+    def _connect(self):
+        return Readonly(super()._connect(), self.readonly)
+
+
 def device_info(speed: str | None, transport: str = 'u3v') -> MagicMock:
     info = MagicMock()
     info.transport, info.speed, info.model = transport, speed, 'Blackfly'
@@ -219,6 +253,68 @@ class TestTree(unittest.TestCase):
         source = QVivaSource(camera)
         self.assertIs(source.source, camera)
         camera.close()
+
+
+
+@unittest.skipIf(vg is None, 'viva-genicam is not installed')
+class TestAccess(unittest.TestCase):
+
+    '''A feature is writable exactly when it has a setter.'''
+
+    def test_a_feature_that_becomes_read_only_loses_its_setter(self):
+        with AccessCamera() as camera:
+            self.assertIsNotNone(camera.properties['Height']['setter'])
+            camera._device.names.add('Height')
+            camera.updateAccess()
+            self.assertIsNone(camera.properties['Height']['setter'])
+
+    def test_a_feature_that_becomes_writable_gets_a_setter(self):
+        class Locked(AccessCamera):
+            readonly = ('Height',)
+
+        with Locked() as camera:
+            self.assertIsNone(camera.properties['Height']['setter'])
+            camera._device.names.clear()
+            camera.updateAccess()
+            self.assertIsNotNone(camera.properties['Height']['setter'])
+            camera.set('Height', 240)  # and it works
+            self.assertEqual(camera.height, 240)
+
+    def test_a_feature_locked_by_the_stream_keeps_its_setter(self):
+        with AccessCamera() as camera:
+            camera._streamLocked.add('Height')
+            camera._device.names.add('Height')
+            camera.updateAccess()
+            self.assertIsNotNone(camera.properties['Height']['setter'])
+
+    def test_the_tree_follows_the_camera(self):
+        with AccessCamera() as camera:
+            tree = QVivaTree(camera=camera, controls=['Height', 'Width'])
+            try:
+                self.assertTrue(tree._parameters['Height'].opts['enabled'])
+                camera._device.names.add('Height')
+                tree._sync(None, [])
+                self.assertFalse(tree._parameters['Height'].opts['enabled'])
+                self.assertTrue(tree._parameters['Width'].opts['enabled'])
+                camera._device.names.clear()
+                tree._sync(None, [])
+                self.assertTrue(tree._parameters['Height'].opts['enabled'])
+            finally:
+                tree.stop()
+
+    def test_a_tree_opened_on_a_locked_control_enables_it_later(self):
+        class Locked(AccessCamera):
+            readonly = ('Height',)
+
+        with Locked() as camera:
+            tree = QVivaTree(camera=camera, controls=['Height', 'Width'])
+            try:
+                self.assertFalse(tree._parameters['Height'].opts['enabled'])
+                camera._device.names.clear()
+                tree._sync(None, [])
+                self.assertTrue(tree._parameters['Height'].opts['enabled'])
+            finally:
+                tree.stop()
 
 
 if __name__ == '__main__':  # pragma: no cover

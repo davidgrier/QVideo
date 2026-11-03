@@ -77,6 +77,8 @@ class QVivaCamera(QCamera):
         self._cameraID = cameraID
         self._device: 'vg.Camera | None' = None
         self._stream: 'vg.FrameStream | None' = None
+        self._kinds: dict[str, str] = {}
+        self._streamLocked: set[str] = set()
         self.open()
 
     def _initialize(self) -> bool:
@@ -90,6 +92,7 @@ class QVivaCamera(QCamera):
             with suppress(Exception):  # maps frame times to the host clock
                 self._device.time_calibrate()
             self._startStream()
+            self._findStreamLocked()
         except Exception:
             self._cleanup()  # a camera that is half open stays claimed
             raise
@@ -151,6 +154,7 @@ class QVivaCamera(QCamera):
             return
         if state.access not in ('RO', 'RW') or not state.is_available:
             return
+        self._kinds[name] = kind
         meta = {}
         if state.range is not None:
             meta.update(minimum=ptype(state.range.min),
@@ -160,9 +164,40 @@ class QVivaCamera(QCamera):
         if state.enum_entries:
             meta['limits'] = list(state.enum_entries)
         setter = (self._setter(name, call, ptype)
-                  if state.access == 'RW' else None)
+                  if self._isWritable(state, name) else None)
         self.registerProperty(name, getter=self._getter(name, call),
                               setter=setter, ptype=ptype, **meta)
+
+    def _isWritable(self, state: 'vg.FeatureState', name: str) -> bool:
+        '''Whether a feature with *state* accepts a value now.
+
+        A feature that the stream locks reads as read-only while it runs,
+        but it is written with the stream stopped.
+        '''
+        return state.access == 'RW' or name in self._streamLocked
+
+    def _findStreamLocked(self) -> None:
+        '''Find the features that the stream locks: those that were
+        writable before it started and are not now.'''
+        self._streamLocked = {
+            name for name, spec in self.properties.items()
+            if spec['setter'] is not None
+            and self._device.feature_state(name).access != 'RW'}
+
+    def updateAccess(self) -> None:
+        '''Give a setter to the features that are writable now, and take
+        it from those that are not.
+
+        A camera changes what can be written as its settings change: the
+        exposure time is read-only while the exposure is automatic.  Call
+        this after a change, and each property is writable exactly when
+        it has a setter.
+        '''
+        for name, kind in self._kinds.items():
+            state = self._device.feature_state(name)
+            writable = self._isWritable(state, name)
+            if writable != (self.properties[name]['setter'] is not None):
+                self._registerFeature(name, kind)
 
     def _getter(self, name: str, call: str):
         '''Return a reader of feature *name*, ``None`` when it is not

@@ -9,6 +9,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **The examples import `qtpy` or QVideo before `pyqtgraph`.**  With both
+  PyQt5 and PyQt6 installed, `pyqtgraph` imported first chooses its own
+  binding and `QT_API` is ignored.  The README and the quickstart now show
+  the safe order, `QHistogramWidget` imports `qtpy` like the other modules,
+  and a test (`tests/test_import_order.py`) keeps the order.
+
 ### Changed
 
 - **The Viva backend (`-g`) is the preferred interface to GenICam

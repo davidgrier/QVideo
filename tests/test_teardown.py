@@ -18,8 +18,8 @@ except ImportError:  # pragma: no cover
 
 SCRIPT = '''
 import sys
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
+import pyqtgraph as pg
 from QVideo.cameras.Noise import QNoiseTree
 from QVideo.demos.trackpydemo import TrackpyDemo
 

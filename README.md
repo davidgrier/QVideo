@@ -90,9 +90,9 @@ Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
 ## Quick start
 
 ```python
-import pyqtgraph as pg
 from QVideo.cameras.Noise import QNoiseSource
 from QVideo.lib import QVideoScreen
+import pyqtgraph as pg   # after QVideo: QVideo selects the Qt binding
 
 pg.mkQApp()
 

@@ -58,9 +58,9 @@ The minimal wiring is a source connected to a display widget:
 
 .. code-block:: python
 
-   import pyqtgraph as pg
    from QVideo.cameras.Noise import QNoiseSource
    from QVideo.lib import QVideoScreen
+   import pyqtgraph as pg   # after QVideo: QVideo selects the Qt binding
 
    app = pg.mkQApp()
 
@@ -95,10 +95,10 @@ camera and provides the source to display:
 
 .. code-block:: python
 
-   import pyqtgraph as pg
    from QVideo.cameras.Noise import QNoiseTree
    from QVideo.lib import QVideoScreen
    from qtpy.QtWidgets import QHBoxLayout, QWidget
+   import pyqtgraph as pg   # after QVideo and qtpy: they select the binding
 
    app = pg.mkQApp()
 

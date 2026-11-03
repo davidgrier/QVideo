@@ -96,6 +96,13 @@ defining their own metaclass, and `__setattr__` overrides on `QObject`
 subclasses must use `super().__setattr__` (`object.__setattr__` is rejected
 by Python 3.12 and earlier under PySide6).
 
+**Import order.**  Import `qtpy` (or QVideo, which imports it first) before
+`pyqtgraph` in every module, script and example.  `qtpy` honors `QT_API`;
+`pyqtgraph` chooses a binding of its own when it is imported first, and `qtpy`
+then follows it, so `QT_API` is ignored.  A script in a string runs in an
+interpreter of its own and needs the same order.  `tests/test_import_order.py`
+checks it.
+
 ### Layout
 
 Each top-level directory has a short `README.md` that says what it is for.

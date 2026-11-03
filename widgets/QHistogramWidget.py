@@ -1,6 +1,7 @@
 '''Live pixel-intensity histogram widget.'''
 from __future__ import annotations
 from typing import TYPE_CHECKING
+import qtpy  # noqa: F401  (selects the Qt binding; before pyqtgraph)
 import pyqtgraph as pg
 
 if TYPE_CHECKING:

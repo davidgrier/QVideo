@@ -13,7 +13,9 @@ is used.
 '''
 import importlib
 import logging
+from types import ModuleType
 from typing import TYPE_CHECKING
+
 from QVideo.cameras import chooser
 from QVideo.cameras.chooser import BACKENDS, available_cameras, discover
 
@@ -30,7 +32,7 @@ def _unavailable(model: str) -> str:
     '''Return the reason the backend for *model* cannot be imported.'''
     try:
         importlib.import_module(BACKENDS[model.lower()].module)
-    except (ImportError, ModuleNotFoundError) as ex:
+    except ImportError as ex:
         return f':\n{ex}'
     return ''
 
@@ -40,10 +42,10 @@ def _report(working: list[tuple[str, int]]) -> None:
     labels = [BACKENDS[k].label for k, _ in working]
     if len(labels) == 1:
         print(f'Camera: {labels[0]}')
-    else:
-        opts = ', '.join(f"Camera('{l}')" for l in labels[1:])
-        print(f'Available cameras: {", ".join(labels)}')
-        print(f'Using {labels[0]}. To select a different one: {opts}')
+        return
+    others = ', '.join(f'Camera({label!r})' for label in labels[1:])
+    print(f'Available cameras: {", ".join(labels)}')
+    print(f'Using {labels[0]}. To select a different one: {others}')
 
 
 async def _choose(working: list[tuple[str, int]]) -> tuple[str, int]:
@@ -62,15 +64,15 @@ async def _choose(working: list[tuple[str, int]]) -> tuple[str, int]:
     if len(real) == 1:
         _report(real)
         return real[0]
+    options = [(BACKENDS[k].label, (k, cid)) for k, cid in working]
     try:
-        options = [(BACKENDS[k].label, (k, cid)) for k, cid in working]
         choose = _notebook('the camera chooser').choose
     except ImportError:
         _report(working)
         return working[0]
     print('Choose a camera and press Open.  If you see HBox(...) instead of '
           'a drop-down,\nthis Jupyter cannot show widgets: use '
-          f"Camera('{options[0][0]}') instead.")
+          f'Camera({options[0][0]!r}) instead.')
     return await choose(options)
 
 
@@ -83,7 +85,7 @@ def _in_ipython() -> bool:
     return get_ipython() is not None
 
 
-def _notebook(feature: str):
+def _notebook(feature: str) -> ModuleType:
     '''Return the Jupyter front end, which needs ipywidgets.'''
     try:
         return importlib.import_module('QVideo.interactive.widgets')
@@ -156,10 +158,10 @@ class _CameraProxy:
         object.__setattr__(self, '_filters', list(filters))
 
     def _ensure_open(self) -> None:
+        '''Open the first candidate that works, unless one is open.'''
         if self._camera is not None:
             return
-        candidates = self._candidates
-        key, camera = chooser.open_first(candidates)
+        key, camera = chooser.open_first(self._candidates)
         object.__setattr__(self, '_selected_key', key)
         object.__setattr__(self, '_camera', camera)
 
@@ -176,7 +178,10 @@ class _CameraProxy:
                 return frame
 
     def __getattr__(self, name: str):
-        if name.startswith('__'):  # copy and pickle probe for these
+        # IPython probes a displayed object for names such as
+        # ``_repr_html_``, and copy and pickle for dunder names: none of
+        # those may open the camera.  A property of a camera is public.
+        if name.startswith('_'):
             raise AttributeError(name)
         self._ensure_open()
         return getattr(self._camera, name)
@@ -230,15 +235,6 @@ class _CameraProxy:
 
             live = camera.live_view()
             live.stop()
-
-        Examples
-        --------
-        ::
-
-            camera = await Camera()
-            camera.live_view()
-            # ...
-            camera.stop_live_view()
         '''
         jupyter = _notebook('live_view()')
         self._ensure_open()
@@ -302,6 +298,7 @@ class _CameraProxy:
         return self._select().__await__()
 
     async def _select(self) -> '_CameraProxy':
+        '''Probe the candidates, let a notebook choose, and open one.'''
         candidates = self._candidates
         if len(candidates) > 1 and _in_ipython():
             working = chooser.working(candidates)

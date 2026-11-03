@@ -83,7 +83,7 @@ class LiveView:
     loop.
     '''
 
-    def __init__(self, task) -> None:
+    def __init__(self, task: asyncio.Future) -> None:
         self._task = task
 
     def stop(self) -> None:
@@ -232,7 +232,7 @@ class CameraControls:
 
     def _build(self) -> widgets.VBox:
         '''Build and return the full widget panel.'''
-        label_layout  = widgets.Layout(width='140px', min_width='140px')
+        label_layout = widgets.Layout(width='140px', min_width='140px')
         widget_layout = widgets.Layout(flex='1 1 auto', min_width='150px')
 
         rows = []
@@ -262,7 +262,7 @@ class CameraControls:
                 align_items='center', margin='0 0 6px 0'))
 
         return widgets.VBox(
-            [header] + rows,
+            [header, *rows],
             layout=widgets.Layout(padding='8px', width='100%'))
 
     # ------------------------------------------------------------------

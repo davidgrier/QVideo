@@ -184,6 +184,17 @@ class TestCameraProxy(unittest.TestCase):
         with self.assertRaises(AttributeError):
             proxy.__wrapped__
 
+    def test_a_notebook_probing_a_private_name_does_not_open_the_camera(self):
+        # IPython looks for these when it displays an object.
+        proxy = _CameraProxy([('noise', 0)])
+        with patch('QVideo.cameras.chooser.create_camera') as create:
+            for name in ('_repr_html_', '_repr_mimebundle_',
+                         '_ipython_canary_method_should_not_exist_'):
+                with self.subTest(name):
+                    self.assertFalse(hasattr(proxy, name))
+        create.assert_not_called()
+        self.assertEqual(repr(proxy), '<Camera: uninitialized>')
+
 
 class TestCameraFilters(unittest.TestCase):
 

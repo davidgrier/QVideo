@@ -71,8 +71,13 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         a source at its own frame rate plays back *nskip* times
         faster than the scene happened (a time-lapse); HDF5 files
         also store each frame's capture time.
-    nframes : int
-        The maximum number of frames to write.
+    target : int
+        The maximum number of frames to write (the *nframes* argument).
+    framenumber : int
+        The number of frames received so far, written or not.
+    blank : bool
+        If ``True``, write black frames of the same shape and type in
+        place of the frames received.  Default: ``False``.
     received : FrameInfo or None
         Capture metadata of the newest frame handed to :meth:`write`, or
         ``None`` before the first.  Compared with the newest frame the
@@ -152,14 +157,14 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
 
         Opens the file on the first call, writes every :attr:`nskip`-th
         frame received (starting with the first), and emits
-        :attr:`finished` when :attr:`nframes` have been written.
+        :attr:`finished` when :attr:`target` frames have been written.
         :attr:`framenumber` counts frames received, written or not.
 
-        The writer stops, with :attr:`finished` saying why (``''`` when all is
-        well), when the file
-        cannot be opened, when a frame has a size or type other than that
-        of the first (unless :attr:`fixedSize` is ``False``), and when
-        writing raises an exception.  It then ignores every frame.
+        The writer stops, with :attr:`finished` saying why (``''`` when all
+        is well), when the file cannot be opened, when a frame has a size or
+        type other than that of the first (unless :attr:`fixedSize` is
+        ``False``), and when writing raises an exception.  It then ignores
+        every frame.
 
         Parameters
         ----------
@@ -216,12 +221,12 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
 
     @abstractmethod
     def _write(self, frame: Image, info: FrameInfo) -> None:
-        pass
+        '''Write *frame*, which is open for writing, to the file.'''
 
     @QtCore.Slot()
     @abstractmethod
     def close(self) -> None:
-        pass
+        '''Close the video file.'''
 
     @QtCore.Slot()
     def shutdown(self) -> None:

@@ -28,7 +28,7 @@ class QVimbaXCamera(QGenicamCamera):
         Index of the Allied Vision camera to open.  Default: ``0``.
     '''
 
-    _producer_filenames = ('VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
+    _producerFilenames = ('VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
     _producerHint = ('Install VimbaX and set GENICAM_GENTL64_PATH to the '
                      'directory containing VimbaUSBTL.cti.')
 

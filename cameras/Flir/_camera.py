@@ -32,7 +32,7 @@ class QFlirCamera(QGenicamCamera):
         Index of the FLIR camera to open.  Default: ``0``.
     '''
 
-    _producer_filenames = ('Spinnaker_GenTL.cti',)
+    _producerFilenames = ('Spinnaker_GenTL.cti',)
     _producerHint = ('Install the Spinnaker SDK and set GENICAM_GENTL64_PATH '
                      'to the directory containing Spinnaker_GenTL.cti '
                      '(on Linux, typically '

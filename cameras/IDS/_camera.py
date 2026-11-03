@@ -26,7 +26,7 @@ class QIDSCamera(QGenicamCamera):
         Index of the IDS camera to open.  Default: ``0``.
     '''
 
-    _producer_filenames = ('ids_u3vgentl.cti', 'ids_gevgentl.cti')
+    _producerFilenames = ('ids_u3vgentl.cti', 'ids_gevgentl.cti')
     _producerHint = (
         'Install IDS peak and set GENICAM_GENTL64_PATH to the '
         'directory containing ids_u3vgentl.cti or ids_gevgentl.cti.')

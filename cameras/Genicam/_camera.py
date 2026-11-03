@@ -1,14 +1,43 @@
-'''GenICam cameras and sources, driven through Harvesters.'''
-from collections.abc import Callable, Iterable
-from contextlib import suppress
-from typing import TYPE_CHECKING
-from QVideo.lib import QCamera, QVideoSource
-from QVideo.cameras import gentl
-from QVideo.lib.errors import QDeviceError, QDriverError
-import numpy as np
+'''GenICam cameras and sources, driven through Harvesters.
+
+:class:`QGenicamCamera` is the base of every GenICam backend that needs a
+GenTL producer (a vendor's ``.cti`` file); the backends of Basler, Flir,
+IDS, MATRIX VISION and Allied Vision only say which producer to load.  The
+camera has four parts, in this order.
+
+1. **Opening and closing**: load the producer, open the device, start the
+   acquisition and find the features that acquisition makes read-only.
+2. **Reading frames**: one frame per :meth:`~QGenicamCamera.read`.
+3. **Properties**: every readable node becomes a registered property with
+   the type and limits of the node, and every command becomes a method.
+4. **The node map**: the nodes themselves, as plain data
+   (:meth:`~QGenicamCamera.nodeTree`) for a tree to build from and as
+   snapshots (:meth:`~QGenicamCamera.states`) for a tree that polls.
+
+**The camera lock.**  Every access to the node map holds ``camera._mutex``.
+The ``genicam`` binding keeps the interpreter lock while it waits for the
+lock of the node map, so a thread that touches the map without the camera
+lock can deadlock with a thread that holds the map and calls back into
+Python.  A new method that reads or writes a node must take the lock.
+
+**Four places that know the types of nodes.**  ``_featureSpec``,
+``_setFeature``, ``_describeNode`` and ``_snapshot`` each walk the same
+chain of node types (enumeration, boolean, integer, float, string,
+register).  Teach all four about a new type.  In Spinnaker's binding an
+enumeration is also an integer, so every chain tests for an enumeration first.
+'''
 import logging
 import os
+from collections.abc import Callable, Iterable
+from contextlib import suppress
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib.errors import QDeviceError, QDriverError
+from QVideo.cameras import gentl
 
 if TYPE_CHECKING:
     from harvesters.core import ImageAcquirer
@@ -20,9 +49,11 @@ try:
                                 IEnumeration, IBoolean, IInteger, IFloat,
                                 IString, IRegister)
     from genicam.gentl import TimeoutException
+    #: Node types that hold a value that a tree can show and set.
     IProperty = (IEnumeration, IBoolean, IInteger, IFloat, IString)
+    #: Node types that can be read: the above and raw registers.
     IReadable = (*IProperty, IRegister)
-except (ImportError, ModuleNotFoundError) as exc:
+except ImportError as exc:
     raise ImportError(
         f"QGenicamCamera could not import 'genicam': {exc}\n"
         '\tInstall it with: pip install genicam harvesters\n'
@@ -67,6 +98,9 @@ class QGenicamCamera(QCamera):
     instantiate :class:`QGenicamCamera` directly raises
     :exc:`~QVideo.lib.errors.QDriverError`.
 
+    Every access to the node map holds the camera lock, which
+    serializes it with the reads of frames (see the module docstring).
+
     Requires the ``genicam`` and ``harvesters`` packages
     (``pip install genicam harvesters``).
 
@@ -87,7 +121,11 @@ class QGenicamCamera(QCamera):
     '''
 
     producer: str | Path | None = None
-    _producer_filenames: tuple[str, ...] = ()
+    #: File names of the producer to look for on the GenTL path, in
+    #: order of preference; a subclass that sets no ``producer`` sets this.
+    _producerFilenames: tuple[str, ...] = ()
+    #: Text added to the error when the producer is not found: where to
+    #: get it, or how to point the GenTL path at it.
     _producerHint: str = ''
     #: SFNC nodes behind the lowercase names that every camera shares, in
     #: order of preference.
@@ -111,6 +149,10 @@ class QGenicamCamera(QCamera):
         self._protected: set[str] = set()
         self.open()
 
+    # ------------------------------------------------------------------
+    # Opening and closing the device
+    # ------------------------------------------------------------------
+
     def _initialize(self) -> bool:
         '''Open the GenICam device and register available properties.
 
@@ -124,7 +166,7 @@ class QGenicamCamera(QCamera):
             self._connectNodeMap()
             root = self.node()
             self._protected = self._startAcquisition(root)
-            self._register_features(root)
+            self._registerFeatures(root)
             with suppress(Exception):
                 self._modelName = str(self._nodeMap.DeviceModelName.value)
             self._registerAliases()
@@ -164,11 +206,108 @@ class QGenicamCamera(QCamera):
             return
         logger.debug('harvesters node map unconnected; '
                      'loading manually from device port')
-        self._nodeMap = self._load_node_map(self._device)
+        self._nodeMap = self._loadNodeMap(self._device)
         if self._nodeMap is None:
             raise QDeviceError(
                 f'{type(self).__name__}: cannot read the GenICam '
                 'node map from the camera')
+
+    @staticmethod
+    def _loadNodeMap(device: 'ImageAcquirer') -> 'NodeMap | None':
+        '''Reload the node map by re-running harvesters' own loading logic.
+
+        Called when harvesters' automatic node map loading fails due to a
+        timing race: if the Spinnaker GenTL producer's port URL list is not
+        yet populated at ``h.create()`` time, harvesters silently returns an
+        unconnected ``NodeMap``.  Calling ``_create_node_map`` again once the
+        port has settled produces a connected map, which is then patched back
+        onto the device so that ``device.start()`` also uses it.
+
+        .. warning::
+            Accesses ``device.remote_device._create_node_map``, a private
+            harvesters API.  Validated against harvesters 1.x; may break
+            if harvesters internals change.
+
+        Parameters
+        ----------
+        device : ImageAcquirer
+            The device whose remote port will be queried.
+
+        Returns
+        -------
+        NodeMap or None
+            A connected node map, or ``None`` if loading failed.
+        '''
+        try:
+            port = device.remote_device.module.remote_port
+            nm = device.remote_device._create_node_map(port=port)
+            device.remote_device._node_map = nm
+            return nm
+        except Exception as exc:
+            logger.warning(f'manual node map load failed: {exc}')
+            return None
+
+    @staticmethod
+    def _isConnected(nodeMap: 'NodeMap') -> bool:
+        '''Return whether harvesters connected *nodeMap* to the camera.
+
+        A node map that is not connected has no ``Root``.  Older versions of
+        ``genicam`` answer ``False`` for it, and version 1.6 raises
+        ``AccessException`` ("reference not valid") instead; both mean that
+        the map must be loaded by hand.
+        '''
+        try:
+            return nodeMap.has_node('Root')
+        except Exception:
+            return False
+
+    @classmethod
+    def _locateProducer(cls) -> str:
+        '''Return the path to the GenTL producer, or explain why not.
+
+        Raises
+        ------
+        QDriverError
+            If no producer is configured, ``GENICAM_GENTL64_PATH`` is
+            unset, or the producer file is not on that path.
+        '''
+        if cls.producer:
+            return str(cls.producer)
+        name = cls.__name__
+        if not cls._producerFilenames:
+            raise QDriverError(f'{name}: no GenTL producer configured')
+        wanted = ' or '.join(cls._producerFilenames)
+        hint = f'\n{cls._producerHint}' if cls._producerHint else ''
+        if not gentl.gentlPaths():
+            raise QDriverError(
+                f'{name}: {gentl.ENV} is not set, so {wanted} cannot be '
+                f'located.{hint}')
+        found = cls._findProducer(*cls._producerFilenames)
+        if found is None:
+            searched = os.pathsep.join(gentl.gentlPaths())
+            raise QDriverError(
+                f'{name}: {wanted} not found in {gentl.ENV} '
+                f'({searched}).{hint}')
+        return found
+
+    @staticmethod
+    def _findProducer(*filenames: str) -> 'str | None':
+        '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
+
+        See :func:`QVideo.cameras.gentl.findProducer`.
+
+        Parameters
+        ----------
+        *filenames : str
+            Producer ``.cti`` filenames to search for, in priority order.
+
+        Returns
+        -------
+        str or None
+            Absolute path to the first ``.cti`` file found, or ``None`` if
+            none of the requested producers exist on the path.
+        '''
+        return gentl.findProducer(*filenames)
 
     def _startAcquisition(self, root: IValue) -> set[str]:
         '''Start acquisition and return the features that it makes read-only.
@@ -176,12 +315,23 @@ class QGenicamCamera(QCamera):
         These are the features whose access mode differs before and after
         the start, so that writing them requires stopping acquisition.
         '''
-        before = self._scan_modes(root)
+        before = self._scanModes(root)
         self._device.start()
         self._keepNewestFrames()
-        after = self._scan_modes(root)
+        after = self._scanModes(root)
         return {name for name, mode in before.items()
                 if name in after and after[name] != mode}
+
+    @staticmethod
+    def _scanModes(feature: IValue) -> dict[str, object]:
+        '''Return a dict mapping property node names to their access modes.'''
+        modes = {}
+        if isinstance(feature, ICategory):
+            for f in feature.features:
+                modes.update(QGenicamCamera._scanModes(f))
+        elif isinstance(feature, IProperty):
+            modes[feature.node.name] = feature.node.get_access_mode()
+        return modes
 
     def _keepNewestFrames(self) -> None:
         '''Ask the producer to deliver the newest frame, not the oldest.
@@ -220,35 +370,6 @@ class QGenicamCamera(QCamera):
                     self.aliases[alias] = node
                     break
 
-    @classmethod
-    def _locateProducer(cls) -> str:
-        '''Return the path to the GenTL producer, or explain why not.
-
-        Raises
-        ------
-        QDriverError
-            If no producer is configured, ``GENICAM_GENTL64_PATH`` is
-            unset, or the producer file is not on that path.
-        '''
-        if cls.producer:
-            return str(cls.producer)
-        name = cls.__name__
-        if not cls._producer_filenames:
-            raise QDriverError(f'{name}: no GenTL producer configured')
-        wanted = ' or '.join(cls._producer_filenames)
-        hint = f'\n{cls._producerHint}' if cls._producerHint else ''
-        if not gentl.gentlPaths():
-            raise QDriverError(
-                f'{name}: {gentl.ENV} is not set, so {wanted} cannot be '
-                f'located.{hint}')
-        found = cls._findProducer(*cls._producer_filenames)
-        if found is None:
-            searched = os.pathsep.join(gentl.gentlPaths())
-            raise QDriverError(
-                f'{name}: {wanted} not found in {gentl.ENV} '
-                f'({searched}).{hint}')
-        return found
-
     def _cleanup(self) -> None:
         '''Release partially initialized resources after a failed _initialize.
 
@@ -270,6 +391,10 @@ class QGenicamCamera(QCamera):
     def _deinitialize(self) -> None:
         '''Stop acquisition and release the GenICam device.'''
         self._cleanup()
+
+    # ------------------------------------------------------------------
+    # Reading frames
+    # ------------------------------------------------------------------
 
     def read(self) -> QCamera.CameraData:
         '''Read one frame from the camera.
@@ -321,92 +446,60 @@ class QGenicamCamera(QCamera):
                     return value
         return self.fps
 
+    # ------------------------------------------------------------------
+    # Properties: what the camera offers and how to read and write it
+    # ------------------------------------------------------------------
+
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
+        '''Set a property; announce the new shape if it changed.'''
         super().set(key, value)
         if self._canonical(key) in ('Width', 'Height'):
             self.shapeChanged.emit(self.shape)
 
-    @staticmethod
-    def _findProducer(*filenames: str) -> 'str | None':
-        '''Search GENICAM_GENTL64_PATH for a matching GenTL producer.
-
-        See :func:`QVideo.cameras.gentl.findProducer`.
-
-        Parameters
-        ----------
-        *filenames : str
-            Producer ``.cti`` filenames to search for, in priority order.
-
-        Returns
-        -------
-        str or None
-            Absolute path to the first ``.cti`` file found, or ``None`` if
-            none of the requested producers exist on the path.
-        '''
-        return gentl.findProducer(*filenames)
-
-    @staticmethod
-    def _isConnected(nodeMap: 'NodeMap') -> bool:
-        '''Return whether harvesters connected *nodeMap* to the camera.
-
-        A node map that is not connected has no ``Root``.  Older versions of
-        ``genicam`` answer ``False`` for it, and version 1.6 raises
-        ``AccessException`` ("reference not valid") instead; both mean that
-        the map must be loaded by hand.
-        '''
-        try:
-            return nodeMap.has_node('Root')
-        except Exception:
-            return False
-
-    @staticmethod
-    def _load_node_map(device: 'ImageAcquirer') -> 'NodeMap | None':
-        '''Reload the node map by re-running harvesters' own loading logic.
-
-        Called when harvesters' automatic node map loading fails due to a
-        timing race: if the Spinnaker GenTL producer's port URL list is not
-        yet populated at ``h.create()`` time, harvesters silently returns an
-        unconnected ``NodeMap``.  Calling ``_create_node_map`` again once the
-        port has settled produces a connected map, which is then patched back
-        onto the device so that ``device.start()`` also uses it.
-
-        .. warning::
-            Accesses ``device.remote_device._create_node_map``, a private
-            harvesters API.  Validated against harvesters 1.x; may break
-            if harvesters internals change.
-
-        Parameters
-        ----------
-        device : ImageAcquirer
-            The device whose remote port will be queried.
-
-        Returns
-        -------
-        NodeMap or None
-            A connected node map, or ``None`` if loading failed.
-        '''
-        try:
-            port = device.remote_device.module.remote_port
-            nm = device.remote_device._create_node_map(port=port)
-            device.remote_device._node_map = nm
-            return nm
-        except Exception as exc:
-            logger.warning(f'manual node map load failed: {exc}')
-            return None
-
-    @staticmethod
-    def _scan_modes(feature: IValue) -> dict[str, object]:
-        '''Return a dict mapping property node names to their access modes.'''
-        modes = {}
+    def _registerFeatures(self, feature: IValue) -> None:
+        '''Recurse the node tree to register properties and methods.'''
         if isinstance(feature, ICategory):
             for f in feature.features:
-                modes.update(QGenicamCamera._scan_modes(f))
-        elif isinstance(feature, IProperty):
-            modes[feature.node.name] = feature.node.get_access_mode()
-        return modes
+                self._registerFeatures(f)
+        elif isinstance(feature, ICommand):
+            self.registerMethod(feature.node.name, feature.execute)
+        elif isinstance(feature, IReadable):
+            mode = feature.node.get_access_mode()
+            if mode not in (EAccessMode.RO, EAccessMode.RW):
+                return
+            name = feature.node.name
+            ptype, meta = self._featureSpec(feature)
+            setter = (None if isinstance(feature, IRegister)
+                      else self._makeSetter(feature, name))
+            self.registerProperty(name,
+                                  getter=self._makeGetter(feature),
+                                  setter=setter,
+                                  ptype=ptype,
+                                  **meta)
 
     @staticmethod
-    def _make_getter(feature: IValue) -> Callable[[], object]:
+    def _featureSpec(feature: IValue) -> tuple[type, dict[str, object]]:
+        '''Return the Python type and registerProperty metadata for a feature.
+
+        IEnumeration must be checked before IInteger: in Spinnaker's SDK
+        IEnumeration inherits from IInteger, so the order is significant.
+        '''
+        if isinstance(feature, IEnumeration):
+            return str, {'limits': [v.symbolic for v in feature.entries]}
+        if isinstance(feature, IBoolean):
+            return bool, {}
+        if isinstance(feature, IInteger):
+            return int, {'minimum': feature.min, 'maximum': feature.max,
+                         'step': feature.inc}
+        if isinstance(feature, IFloat):
+            meta = {'minimum': feature.min, 'maximum': feature.max}
+            if feature.has_inc():
+                meta['step'] = feature.inc
+            return float, meta
+        return str, {}
+
+    @staticmethod
+    def _makeGetter(feature: IValue) -> Callable[[], object]:
         '''Return a zero-argument callable that reads the feature value.
 
         The returned callable checks the current access mode before reading,
@@ -426,7 +519,7 @@ class QGenicamCamera(QCamera):
             return feature.to_string() if is_enum else feature.value
         return getter
 
-    def _make_setter(self,
+    def _makeSetter(self,
                      feature: IValue,
                      name: str) -> Callable[[QCamera.PropertyValue], None]:
         '''Return a setter that checks current access mode before writing.
@@ -445,13 +538,13 @@ class QGenicamCamera(QCamera):
             restart = name in self._protected and self._device.is_acquiring()
             if restart:
                 self._device.stop()
-            QGenicamCamera._set_feature(feature, value)
+            QGenicamCamera._setFeature(feature, value)
             if restart:
                 self._device.start()
         return setter
 
     @staticmethod
-    def _set_feature(feature: IValue,
+    def _setFeature(feature: IValue,
                      value: QCamera.PropertyValue) -> None:
         '''Set the value of a feature node.'''
         logger.debug(f'Setting {feature.node.name}: {value}')
@@ -472,47 +565,78 @@ class QGenicamCamera(QCamera):
         elif isinstance(feature, IString):
             feature.value = str(value)
 
-    @staticmethod
-    def _feature_spec(feature: IValue) -> tuple[type, dict[str, object]]:
-        '''Return the Python type and registerProperty metadata for a feature.
+    # ------------------------------------------------------------------
+    # The node map
+    # ------------------------------------------------------------------
 
-        IEnumeration must be checked before IInteger: in Spinnaker's SDK
-        IEnumeration inherits from IInteger, so the order is significant.
+    def hasNode(self, name: str) -> bool:
+        '''Return ``True`` if the named node exists in the node map.
+
+        Like every access to the node map, this holds the camera lock: the
+        ``genicam`` binding keeps the interpreter lock while it waits for
+        the lock of the node map, so a thread that reads the map while
+        another writes it can deadlock with it.
+
+        Unlike :meth:`node`, this never logs a warning for missing names.
+        Use it to guard calls to :meth:`node` or :meth:`isReadWrite` in
+        reactive code paths (e.g. UI update loops) where absent names are
+        expected and not an error.
+
+        Parameters
+        ----------
+        name : str
+            GenICam node name to look up.
+
+        Returns
+        -------
+        bool
+            ``True`` if the node map is available and contains *name*.
         '''
-        if isinstance(feature, IEnumeration):
-            return str, {'limits': [v.symbolic for v in feature.entries]}
-        if isinstance(feature, IBoolean):
-            return bool, {}
-        if isinstance(feature, IInteger):
-            return int, {'minimum': feature.min, 'maximum': feature.max,
-                         'step': feature.inc}
-        if isinstance(feature, IFloat):
-            meta = {'minimum': feature.min, 'maximum': feature.max}
-            if feature.has_inc():
-                meta['step'] = feature.inc
-            return float, meta
-        return str, {}
+        with self._mutex:
+            return (self._nodeMap is not None
+                    and self._nodeMap.has_node(name))
 
-    def _register_features(self, feature: IValue) -> None:
-        '''Recurse the node tree to register properties and methods.'''
-        if isinstance(feature, ICategory):
-            for f in feature.features:
-                self._register_features(f)
-        elif isinstance(feature, ICommand):
-            self.registerMethod(feature.node.name, feature.execute)
-        elif isinstance(feature, IReadable):
-            mode = feature.node.get_access_mode()
-            if mode not in (EAccessMode.RO, EAccessMode.RW):
-                return
-            name = feature.node.name
-            ptype, meta = self._feature_spec(feature)
-            setter = (None if isinstance(feature, IRegister)
-                      else self._make_setter(feature, name))
-            self.registerProperty(name,
-                                  getter=self._make_getter(feature),
-                                  setter=setter,
-                                  ptype=ptype,
-                                  **meta)
+    def node(self, name: str = 'Root') -> 'IValue | None':
+        '''Return the GenICam node with the given name.
+
+        Parameters
+        ----------
+        name : str
+            Node name to look up.  Default: ``'Root'``.
+
+        Returns
+        -------
+        IValue or None
+            The requested node, or ``None`` if it does not exist.
+        '''
+        with self._mutex:
+            if self._nodeMap is None:
+                return None
+            if self._nodeMap.has_node(name):
+                return self._nodeMap.get_node(name)
+        logger.warning(f'node {name} is unknown')
+        return None
+
+    def isReadWrite(self, feature: str) -> bool:
+        '''Return ``True`` if the named feature is currently writable.
+
+        Parameters
+        ----------
+        feature : str
+            GenICam node name.
+
+        Returns
+        -------
+        bool
+            ``True`` if the feature is writable, or protected (writable
+            after stopping acquisition).
+        '''
+        node = self.node(feature)
+        if node is None:
+            return False
+        with self._mutex:
+            mode = node.node.get_access_mode()
+        return (mode == EAccessMode.RW) or (feature in self._protected)
 
     def nodeTree(self) -> dict:
         '''Return the node map as plain data, for a tree to build from.
@@ -589,74 +713,9 @@ class QGenicamCamera(QCamera):
                          f'{type(feature)}')
         return this
 
-    def hasNode(self, name: str) -> bool:
-        '''Return ``True`` if the named node exists in the node map.
-
-        Like every access to the node map, this holds the camera lock: the
-        ``genicam`` binding keeps the interpreter lock while it waits for
-        the lock of the node map, so a thread that reads the map while
-        another writes it can deadlock with it.
-
-        Unlike :meth:`node`, this never logs a warning for missing names.
-        Use it to guard calls to :meth:`node` or :meth:`isReadWrite` in
-        reactive code paths (e.g. UI update loops) where absent names are
-        expected and not an error.
-
-        Parameters
-        ----------
-        name : str
-            GenICam node name to look up.
-
-        Returns
-        -------
-        bool
-            ``True`` if the node map is available and contains *name*.
-        '''
-        with self._mutex:
-            return (self._nodeMap is not None
-                    and self._nodeMap.has_node(name))
-
-    def node(self, name: str = 'Root') -> 'IValue | None':
-        '''Return the GenICam node with the given name.
-
-        Parameters
-        ----------
-        name : str
-            Node name to look up.  Default: ``'Root'``.
-
-        Returns
-        -------
-        IValue or None
-            The requested node, or ``None`` if it does not exist.
-        '''
-        with self._mutex:
-            if self._nodeMap is None:
-                return None
-            if self._nodeMap.has_node(name):
-                return self._nodeMap.get_node(name)
-        logger.warning(f'node {name} is unknown')
-        return None
-
-    def isReadWrite(self, feature: str) -> bool:
-        '''Return ``True`` if the named feature is currently writable.
-
-        Parameters
-        ----------
-        feature : str
-            GenICam node name.
-
-        Returns
-        -------
-        bool
-            ``True`` if the feature is writable, or protected (writable
-            after stopping acquisition).
-        '''
-        node = self.node(feature)
-        if node is None:
-            return False
-        with self._mutex:
-            mode = node.node.get_access_mode()
-        return (mode == EAccessMode.RW) or (feature in self._protected)
+    # ------------------------------------------------------------------
+    # Snapshots of the nodes, for a tree that polls
+    # ------------------------------------------------------------------
 
     def state(self, name: str) -> dict[str, object]:
         '''Return a snapshot of the named node, read under the device lock.
@@ -724,7 +783,7 @@ class QGenicamCamera(QCamera):
         mode = node.node.get_access_mode()
         state = {'access': mode, 'kind': 'other',
                  'writable': mode == EAccessMode.RW or name in self._protected}
-        ptype, meta = self._feature_spec(node)
+        ptype, meta = self._featureSpec(node)
         if 'limits' in meta:
             state.update(kind='enum', entries=meta['limits'])
         elif ptype in (int, float):
@@ -734,7 +793,7 @@ class QGenicamCamera(QCamera):
             state.update(kind='register', length=node.length,
                          address=node.address)
         if isinstance(node, IReadable):
-            value = self._make_getter(node)()
+            value = self._makeGetter(node)()
             if value is not None:
                 state['value'] = value
         return state

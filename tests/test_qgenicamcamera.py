@@ -218,11 +218,11 @@ class TestInit(unittest.TestCase):
         with self.assertRaisesRegex(QDriverError, 'no GenTL producer'):
             _NullProducer()
 
-    def test_producer_filenames_resolved_lazily(self):
-        '''producer=None + _producer_filenames resolves at _initialize time.'''
+    def test_producerFilenames_resolved_lazily(self):
+        '''producer=None + _producerFilenames resolves at _initialize time.'''
         class _LazyProducer(QGenicamCamera):
             producer = None
-            _producer_filenames = ('fake.cti',)
+            _producerFilenames = ('fake.cti',)
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': '/gentl'}):
             with patch.object(QGenicamCamera, '_findProducer',
                               return_value=PRODUCER) as mock_find:
@@ -234,7 +234,7 @@ class TestInit(unittest.TestCase):
     def test_raises_when_env_var_unset(self):
         class _LazyProducer(QGenicamCamera):
             producer = None
-            _producer_filenames = ('missing.cti',)
+            _producerFilenames = ('missing.cti',)
             _producerHint = 'Install the SDK.'
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(QDriverError) as ctx:
@@ -247,7 +247,7 @@ class TestInit(unittest.TestCase):
     def test_raises_when_env_var_empty(self):
         class _LazyProducer(QGenicamCamera):
             producer = None
-            _producer_filenames = ('missing.cti',)
+            _producerFilenames = ('missing.cti',)
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': ''}):
             with self.assertRaisesRegex(QDriverError, 'is not set'):
                 _LazyProducer()
@@ -255,7 +255,7 @@ class TestInit(unittest.TestCase):
     def test_raises_when_filenames_not_found(self):
         class _LazyProducer(QGenicamCamera):
             producer = None
-            _producer_filenames = ('missing.cti',)
+            _producerFilenames = ('missing.cti',)
         with patch.dict(os.environ, {'GENICAM_GENTL64_PATH': '/no/dir'}):
             with self.assertRaises(QDriverError) as ctx:
                 _LazyProducer()
@@ -392,12 +392,12 @@ class TestInitialize(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 _ConcreteCamera()
 
-    def test_exception_propagates_when_register_features_raises(self):
+    def test_exception_propagates_when_registerFeatures_raises(self):
         device = _make_device()
         harvester = MagicMock()
         harvester.create.return_value = device
         with patch.object(_cam_module, 'Harvester', return_value=harvester):
-            with patch.object(QGenicamCamera, '_register_features',
+            with patch.object(QGenicamCamera, '_registerFeatures',
                               side_effect=RuntimeError('node error')):
                 with self.assertRaises(RuntimeError):
                     _ConcreteCamera()
@@ -415,9 +415,9 @@ class TestInitialize(unittest.TestCase):
     def test_protected_set_populated(self):
         feature = _make_feature(_IInteger, name='Width')
         feature.node.get_access_mode.side_effect = [
-            _EAccessMode.RW,  # _scan_modes before device.start()
-            _EAccessMode.RO,  # _scan_modes after  device.start() → protected
-            _EAccessMode.RO,  # _register_features (current mode after start)
+            _EAccessMode.RW,  # _scanModes before device.start()
+            _EAccessMode.RO,  # _scanModes after  device.start() → protected
+            _EAccessMode.RO,  # _registerFeatures (current mode after start)
         ]
         cam, _, _ = make_camera_with_node(feature)
         self.assertIn('Width', cam._protected)
@@ -499,7 +499,7 @@ class TestUnconnectedNodeMap(unittest.TestCase):
         node_map = _make_node_map()
         node_map.has_node.configure_mock(**has_node)
         connected = _make_node_map()
-        with patch.object(_ConcreteCamera, '_load_node_map',
+        with patch.object(_ConcreteCamera, '_loadNodeMap',
                           return_value=connected) as load:
             with self.assertLogs('QVideo.cameras.Genicam._camera',
                                  level='DEBUG') as logs:
@@ -522,7 +522,7 @@ class TestUnconnectedNodeMap(unittest.TestCase):
         self.assertTrue(cam.isOpen())
 
     def test_a_connected_map_is_used_as_it_is(self):
-        with patch.object(_ConcreteCamera, '_load_node_map') as load:
+        with patch.object(_ConcreteCamera, '_loadNodeMap') as load:
             cam, _, device = make_camera()
         load.assert_not_called()
         self.assertIs(cam._nodeMap, device.remote_device.node_map)
@@ -530,7 +530,7 @@ class TestUnconnectedNodeMap(unittest.TestCase):
     def test_a_map_that_cannot_be_loaded_is_reported(self):
         node_map = _make_node_map()
         node_map.has_node.side_effect = RuntimeError('Feature not present')
-        with patch.object(_ConcreteCamera, '_load_node_map',
+        with patch.object(_ConcreteCamera, '_loadNodeMap',
                           return_value=None):
             with self.assertLogs('QVideo.cameras.Genicam._camera',
                                  level='DEBUG'):
@@ -604,7 +604,7 @@ class TestLoadNodeMap(unittest.TestCase):
         device = MagicMock()
         node_map = _make_node_map()
         device.remote_device._create_node_map.return_value = node_map
-        result = _ConcreteCamera._load_node_map(device)
+        result = _ConcreteCamera._loadNodeMap(device)
         self.assertIs(result, node_map)
         device.remote_device._create_node_map.assert_called_once_with(
             port=device.remote_device.module.remote_port)
@@ -613,7 +613,7 @@ class TestLoadNodeMap(unittest.TestCase):
         device = MagicMock()
         node_map = _make_node_map()
         device.remote_device._create_node_map.return_value = node_map
-        _ConcreteCamera._load_node_map(device)
+        _ConcreteCamera._loadNodeMap(device)
         self.assertIs(device.remote_device._node_map, node_map)
 
     def test_a_failure_returns_none_and_is_logged(self):
@@ -622,7 +622,7 @@ class TestLoadNodeMap(unittest.TestCase):
             'port not ready')
         with self.assertLogs('QVideo.cameras.Genicam._camera',
                              level='WARNING'):
-            self.assertIsNone(_ConcreteCamera._load_node_map(device))
+            self.assertIsNone(_ConcreteCamera._loadNodeMap(device))
 
 
 # ---------------------------------------------------------------------------
@@ -834,9 +834,9 @@ class TestSet(unittest.TestCase):
         # The width getter is then called via self.shape inside _shape_setter
         # (5th call).
         feature.node.get_access_mode.side_effect = [
-            _EAccessMode.RW,  # _scan_modes pre-start
-            _EAccessMode.RO,  # _scan_modes post-start → protected
-            _EAccessMode.RO,  # _register_features
+            _EAccessMode.RW,  # _scanModes pre-start
+            _EAccessMode.RO,  # _scanModes post-start → protected
+            _EAccessMode.RO,  # _registerFeatures
             _EAccessMode.RO,  # setter runtime check
             _EAccessMode.RW,  # getter called via self.shape in _shape_setter
         ]
@@ -855,9 +855,9 @@ class TestSet(unittest.TestCase):
         feature = _make_feature(_IInteger, name='Gamma', min=0, max=4, inc=1)
         # RW at registration, then RO at runtime (e.g. auto-mode enabled).
         feature.node.get_access_mode.side_effect = [
-            _EAccessMode.RW,  # _scan_modes pre-start
-            _EAccessMode.RW,  # _scan_modes post-start (not protected)
-            _EAccessMode.RW,  # _register_features
+            _EAccessMode.RW,  # _scanModes pre-start
+            _EAccessMode.RW,  # _scanModes post-start (not protected)
+            _EAccessMode.RW,  # _registerFeatures
             _EAccessMode.RO,  # setter runtime check → should warn and skip
         ]
         cam, _, _ = make_camera_with_node(feature)

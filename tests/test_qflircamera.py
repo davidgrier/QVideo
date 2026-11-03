@@ -137,7 +137,7 @@ class TestProducer(unittest.TestCase):
 
     def test_raises_without_producer(self):
         with patch.object(QFlirCamera, 'producer', None), \
-             patch.object(QFlirCamera, '_producer_filenames', ()):
+             patch.object(QFlirCamera, '_producerFilenames', ()):
             with self.assertRaises(QDriverError):
                 QFlirCamera()
 

@@ -27,7 +27,7 @@ class QBaslerCamera(QGenicamCamera):
         Index of the Basler camera to open.  Default: ``0``.
     '''
 
-    _producer_filenames = ('ProducerU3V.cti', 'ProducerGEV.cti')
+    _producerFilenames = ('ProducerU3V.cti', 'ProducerGEV.cti')
     _producerHint = (
         'Install pylon and set GENICAM_GENTL64_PATH to the '
         'directory containing ProducerU3V.cti or ProducerGEV.cti.')

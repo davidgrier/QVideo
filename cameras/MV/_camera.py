@@ -33,7 +33,7 @@ class QMVCamera(QGenicamCamera):
         Index of the camera to open.  Default: ``0``.
     '''
 
-    _producer_filenames = ('mvGenTLProducer.cti',)
+    _producerFilenames = ('mvGenTLProducer.cti',)
     _producerHint = (
         'Install the mvIMPACT SDK and set GENICAM_GENTL64_PATH to the '
         'directory containing mvGenTLProducer.cti.')

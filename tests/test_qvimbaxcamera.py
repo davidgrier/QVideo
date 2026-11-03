@@ -199,13 +199,13 @@ class TestQVimbaXCamera(unittest.TestCase):
     def test_is_genicam_camera_subclass(self):
         self.assertTrue(issubclass(QVimbaXCamera, QGenicamCamera))
 
-    def test_producer_filenames_is_class_attribute(self):
-        self.assertIn('_producer_filenames', QVimbaXCamera.__dict__)
-        self.assertTrue(len(QVimbaXCamera._producer_filenames) > 0)
+    def test_producerFilenames_is_class_attribute(self):
+        self.assertIn('_producerFilenames', QVimbaXCamera.__dict__)
+        self.assertTrue(len(QVimbaXCamera._producerFilenames) > 0)
 
     def test_raises_when_producer_is_none(self):
         with patch.object(QVimbaXCamera, 'producer', None), \
-             patch.object(QVimbaXCamera, '_producer_filenames', ()):
+             patch.object(QVimbaXCamera, '_producerFilenames', ()):
             with self.assertRaises(QDriverError):
                 QVimbaXCamera()
 

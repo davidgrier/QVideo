@@ -47,6 +47,25 @@ Things noticed, not changed:
 
 ---
 
+## The tree shows what the camera did on its own  **Open; found 2026-11-03**
+
+`QCameraTree` reads the camera back only after a change made in the tree.
+A camera that changes by itself is not followed:
+
+- `ExposureAuto = Once` resets to `Off` within a second, but the tree
+  keeps showing `Once`.  Choosing `Once` again then does nothing (no
+  change, no signal) until `Off` is chosen first.
+- `Once` takes several frames to settle, so the tree may show the exposure
+  time from before the camera converged.  A report of the value reverting
+  after `Off` is not explained: the measurement
+  (`vivatree.py`, steady scene) showed the tree and the camera agreeing,
+  but the exposure did not change in that run.
+
+Idea: refresh the displayed values about once a second, with the same
+read-back that `_sync` does (the Genicam tree already polls), in the base
+class so that every backend follows.  Measure first with a scene that
+changes during `Once`.
+
 ## Limit the work of the filter pipeline  **Idea; not sure how**
 
 The pipeline runs its filters on every frame that the camera delivers, even

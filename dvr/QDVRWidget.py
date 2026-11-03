@@ -1,15 +1,17 @@
 '''Composite DVR widget for recording and playing back video streams.'''
+import contextlib
 import functools
+import logging
 import os
-from qtpy import QtCore, QtGui, QtWidgets
 from pathlib import Path
+
 import numpy as np
+from qtpy import QtCore, QtGui, QtWidgets
+
 from QVideo.lib import clickable, QVideoSource
 from . import formats
 from .QRecorder import QRecorder
 from .QPlayer import QPlayer
-
-import logging
 
 
 __all__ = ['QDVRWidget']
@@ -38,14 +40,12 @@ class QDVRWidget(QtWidgets.QFrame):
     stop, rewind, frame step, play/pause and a position slider.
 
     The controls of a :class:`~QVideo.dvr.QRecorder.QRecorder`
-    (:attr:`recorder`), which
-    captures the frames of a
+    (:attr:`recorder`), which captures the frames of a
     :class:`~QVideo.lib.QVideoSource.QVideoSource` to a file, and of a
     :class:`~QVideo.dvr.QPlayer.QPlayer` (:attr:`playback`), which plays
-    recorded files.
-    The widget asks the user for file names and confirms what could do
-    harm; the recorder and the player do the work, and are available to
-    applications without a window.  Supported formats are those of
+    recorded files.  The widget asks the user for file names and confirms
+    what could do harm; the recorder and the player do the work, and are
+    available to applications without a window.  Supported formats are those of
     :mod:`~QVideo.dvr.formats`: AVI (``.avi``), MKV (``.mkv``), and MP4
     (``.mp4``) by PyAV if it is installed and by OpenCV if not; HDF5
     (``.h5``) when ``h5py`` is installed.  Requesting an unsupported
@@ -129,8 +129,7 @@ class QDVRWidget(QtWidgets.QFrame):
         self._setupUi()
         self._connectSignals()
         self.source = source
-        self.filename = filename if filename else str(
-            Path.home() / self.FILENAME)
+        self.filename = filename or str(Path.home() / self.FILENAME)
 
     def _button(self,
                 tip: str,
@@ -406,7 +405,7 @@ class QDVRWidget(QtWidgets.QFrame):
         '''
         if not (self.filename or self.getFileName()):
             return False
-        suffix = Path(self.filename).suffix
+        suffix = Path(self.filename).suffix.lower()
         if suffix not in table:
             logger.error(f'Unsupported file format: {suffix!r}')
         return suffix in table
@@ -432,10 +431,8 @@ class QDVRWidget(QtWidgets.QFrame):
                        'to play.')
             return
         logger.debug(f'Starting Playback: {self.filename}')
-        try:
+        with contextlib.suppress(OSError):  # the reader has said why
             self.playback.start(self.filename)
-        except OSError:
-            pass  # the reader has said why
 
     @QtCore.Slot()
     def pause(self) -> None:

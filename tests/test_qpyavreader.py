@@ -3,6 +3,7 @@ import importlib.util
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 import numpy as np
 from qtpy import QtWidgets
@@ -68,6 +69,13 @@ class TestQPyAVReader(unittest.TestCase):
                 self.assertEqual(reader.length, self.N)
                 self.assertEqual(reader.fps, 30.)
                 self.assertEqual((reader.width, reader.height), (64, 48))
+
+    def test_a_stream_that_cannot_tell_its_rate_has_the_default_rate(self):
+        # PyAV answers None for such a stream; the delay divides by the rate.
+        reader = self.video()
+        stream = type('Stream', (), {'guessed_rate': None})()
+        with unittest.mock.patch.object(reader, '_stream', stream):
+            self.assertEqual(reader.fps, QPyAVReader.DEFAULT_FPS)
 
     def test_shape_is_width_by_height(self):
         shape = self.video().shape

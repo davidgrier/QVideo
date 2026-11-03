@@ -77,8 +77,11 @@ class QPyAVReader(QVideoReader):
 
     @property
     def fps(self) -> float:
-        '''Frame rate of the video file [fps].'''
-        return float(self._stream.guessed_rate)
+        '''Frame rate of the video file [fps].
+
+        :attr:`DEFAULT_FPS` if PyAV cannot tell what it is.
+        '''
+        return float(self._stream.guessed_rate or self.DEFAULT_FPS)
 
     @property
     def length(self) -> int:

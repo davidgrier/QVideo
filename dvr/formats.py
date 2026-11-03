@@ -49,7 +49,7 @@ if h5py_available:
 
 
 def _lookup(table: dict[str, type], filename: str) -> type:
-    suffix = Path(filename).suffix
+    suffix = Path(filename).suffix.lower()
     if suffix not in table:
         raise ValueError(f'Unsupported file format {suffix!r}: '
                          f'use one of {", ".join(sorted(table))}')

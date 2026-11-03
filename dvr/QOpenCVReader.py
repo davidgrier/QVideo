@@ -68,8 +68,11 @@ class QOpenCVReader(QVideoReader):
 
     @property
     def fps(self) -> float:
-        '''Frame rate reported by the video file [fps].'''
-        return self._reader.get(self.FPS)
+        '''Frame rate reported by the video file [fps].
+
+        :attr:`DEFAULT_FPS` if the file reports none (OpenCV answers 0).
+        '''
+        return self._reader.get(self.FPS) or self.DEFAULT_FPS
 
     @property
     def length(self) -> int:

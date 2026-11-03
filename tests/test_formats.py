@@ -72,6 +72,12 @@ class TestLookup(unittest.TestCase):
         self.assertIs(formats.readerClass('dir/run.avi'),
                       formats.Reader['.avi'])
 
+    def test_the_case_of_an_extension_does_not_matter(self):
+        # Phones and cameras write IMG_0001.MP4.
+        self.assertIs(formats.writerClass('IMG_0001.MKV'),
+                      formats.Writer['.mkv'])
+        self.assertIs(formats.readerClass('Clip.AVI'), formats.Reader['.avi'])
+
     def test_an_unsupported_extension_says_what_is_supported(self):
         with self.assertRaisesRegex(ValueError, r"'\.xyz'.*\.avi"):
             formats.writerClass('run.xyz')

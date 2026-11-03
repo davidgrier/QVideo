@@ -57,6 +57,12 @@ class TestQOpenCVReaderInit(unittest.TestCase):
         reader = make_reader(fps=25.)
         self.assertAlmostEqual(reader.fps, 25.)
 
+    def test_a_file_with_no_stored_rate_has_the_default_rate(self):
+        # OpenCV answers 0; the delay and a clock divide by the rate.
+        reader = make_reader(fps=0.)
+        self.assertEqual(reader.fps, QOpenCVReader.DEFAULT_FPS)
+        self.assertEqual(reader.delay, int(1000. / QOpenCVReader.DEFAULT_FPS))
+
     def test_length(self):
         reader = make_reader(length=200)
         self.assertEqual(reader.length, 200)

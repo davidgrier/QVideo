@@ -183,6 +183,14 @@ class TestQDVRWidgetRecord(WidgetCase):
         widget.record()
         self.assertFalse(widget.isRecording())
 
+    def test_an_extension_in_capitals_is_accepted(self):
+        from QVideo.dvr import formats
+        widget, _ = self.withSource()
+        widget.filename = 'RUN.MKV'
+        with self.assertNoLogs('QVideo.dvr.QDVRWidget', level='ERROR'):
+            self.assertTrue(widget._accepts(formats.Writer))
+            self.assertTrue(widget._accepts(formats.Reader))
+
     def test_record_rejects_unsupported_extension(self):
         widget, _ = self.withSource()
         widget.filename = 'test.xyz'

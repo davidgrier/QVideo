@@ -48,6 +48,9 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
     #: Emitted when the file is opened and the frame dimensions are known.
     shapeChanged = QtCore.Signal(QtCore.QSize)
 
+    #: The frame rate of a file that does not store one [frames per second].
+    DEFAULT_FPS = 30.
+
     def __init__(self, filename: str) -> None:
         '''Initialize and open the video reader.
 
@@ -146,7 +149,11 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
     @property
     @abstractmethod
     def fps(self) -> float:
-        '''Frame rate of the video file [frames per second].'''
+        '''Frame rate of the video file [frames per second].
+
+        A file that does not store a rate has :attr:`DEFAULT_FPS`, so that
+        :attr:`delay` and the clock of a player never divide by zero.
+        '''
 
     @property
     def actualFps(self) -> float:

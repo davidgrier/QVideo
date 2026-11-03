@@ -129,14 +129,14 @@ class QHDF5Reader(QVideoReader):
         '''Frame rate derived from the recorded timestamps [fps].
 
         Computed as ``(n_frames - 1) / total_duration``.  Falls back to
-        30 fps when fewer than two frames are present or the timestamps
-        span zero time.
+        :attr:`DEFAULT_FPS` when fewer than two frames are present or the
+        timestamps span zero time.
         '''
         if self._length < 2:
-            return 30.
+            return self.DEFAULT_FPS
         elapsed = self._times[-1] - self._times[0]
         if elapsed <= 0.:
-            return 30.
+            return self.DEFAULT_FPS
         return (self._length - 1) / elapsed
 
     @property

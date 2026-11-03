@@ -13,8 +13,7 @@ together, and decide whether CI should enforce a modest set of them (`SIM`,
 `PERF`, `RUF012`, `PLW2901`, complexity at most 12):
 
 - [ ] `try`/`except`/`pass` that is `contextlib.suppress` (SIM105):
-      `dvr/QDVRWidget.py`, `lib/QRemoteCamera.py` (twice),
-      `lib/_remoteworker.py`.
+      `lib/QRemoteCamera.py` (twice), `lib/_remoteworker.py`.
 - [ ] Class-level lists and dicts that are constants (RUF012): the
       `_DEFAULT_CONTROLS` and `_DEFAULT_SETTINGS` of the vendor trees, the
       `_ALIAS_NODES` of Genicam and Viva, the writers of `dvr/`.  Make them

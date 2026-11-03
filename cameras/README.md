@@ -9,9 +9,9 @@ imports without it.
 |-----------|---------|
 | `Noise` | none: random frames, the reference for writing a backend |
 | `OpenCV` | webcams and video files |
-| `Genicam` | any GenICam camera, through Harvesters and a GenTL producer |
+| `Genicam` | any GenICam camera, through Harvesters and a producer |
 | `Flir`, `Basler`, `IDS`, `MV`, `Vimbax` | `Genicam` with a vendor producer |
-| `Viva` | any GenICam camera, through viva-genicam: no producer, no SDK |
+| `Viva` | any GenICam camera, no producer, no SDK: preferred |
 | `Picamera` | Raspberry Pi camera modules, including the AI camera |
 
 `chooser.py` is where a camera is chosen: the table of backends (with the

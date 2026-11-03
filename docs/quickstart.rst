@@ -40,6 +40,7 @@ camcorder.  Use the flag for your camera type:
 .. code-block:: bash
 
    python -m QVideo -c          # USB webcam via OpenCV
+   python -m QVideo -g          # GenICam camera (preferred; no vendor SDK)
    python -m QVideo -b          # Basler camera
    python -m QVideo -f          # FLIR camera
    python -m QVideo -i          # IDS camera

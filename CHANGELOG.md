@@ -11,6 +11,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The Viva backend (`-g`) is the preferred interface to GenICam
+  cameras.**  The compatibility page says when to use it, shows the
+  measurements next to those of the Harvesters backends, and the README, the
+  quickstart, the help text of `-g` and the docstrings point to it.  The
+  Harvesters backends remain for cameras that need a vendor's producer; they
+  need the `.cti` file and hold the interpreter lock, so they should run
+  with `-r`.
+- **`pip install QVideo[genicam]` installs viva-genicam** with harvesters,
+  on the platforms for which viva-genicam publishes wheels (macOS on Apple
+  silicon, Linux on x86-64, 64-bit Windows); `QVideo[viva]` installs it
+  alone.
 - **`QVivaCamera` has run on hardware.**  On a FLIR Blackfly S (USB3
   Vision), the camera opens in half a second, delivers 170 frames a
   second to a program, holds no interpreter lock, and passes the

@@ -109,7 +109,7 @@ BACKENDS: dict[str, _BackendEntry] = {
         '-v', 'Allied Vision VimbaX camera'),
     'viva': _BackendEntry(
         'QVideo.cameras.Viva', 'QVivaCamera', 'QVivaTree', 'Viva',
-        '-g', 'GenICam camera via viva-genicam (no vendor SDK)'),
+        '-g', 'GenICam camera via viva-genicam (preferred; no vendor SDK)'),
     'picamera': _BackendEntry(
         'QVideo.cameras.Picamera', 'QPicamera', 'QPicameraTree', 'Picamera',
         '-p', 'Raspberry Pi camera module'),

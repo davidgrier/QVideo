@@ -56,7 +56,14 @@ circletransform = ["scipy"]
 trackpy  = ["trackpy", "pandas", "numba"]
 yolo     = ["ultralytics"]
 overlays = ["QVideo[trackpy,yolo]"]
-genicam  = ["harvesters", "genicam"]
+# viva-genicam publishes wheels for these platforms only; elsewhere (a
+# Raspberry Pi, an Intel Mac) pip would have to build it from source with a
+# Rust toolchain, so the genicam extra skips it there.
+genicam  = [
+    "viva-genicam; (sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'win32' and platform_machine == 'AMD64')",
+    "harvesters",
+    "genicam",
+]
 viva     = ["viva-genicam"]
 picamera = ["picamera2"]
 test     = ["QVideo[av,circletransform,dvr,jupyter,trackpy,viva]", "pytest", "pytest-cov"]

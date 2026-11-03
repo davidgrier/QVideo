@@ -148,6 +148,26 @@ these is a reason not to make it the default today:
       program then runs a camera that the user did not ask for.  Stop on an
       option that no part of the program claims, or at least warn.
 
+- [ ] **Decision, 2026-11-03: the worker is for Harvesters only.**  Viva is
+      the preferred GenICam interface (documented), so `-r` should become
+      automatic for the backends built on `QGenicamCamera` and leave the
+      help text of the others (`argparse.SUPPRESS`).  The class stays
+      generic, because the tests send the noise camera through it.  Open:
+      Windows has no worker, so the Harvesters backends would stay in the
+      program there and keep the defect; `--local` is needed to turn it
+      off; the title of the tree should say which one a camera got; QHOT
+      can drop its stopgap only when the worker is the default.
+- [ ] **Retire the Harvesters backends that nobody has tested?**  Flir has
+      run on hardware; Basler, IDS, MV and VimbaX have not (see
+      `docs/compatibility.rst`).  Each is about 60 lines on top of
+      `QGenicamCamera`, which stays: it is the standard implementation and
+      Flir needs it.  Keeping them costs little; removing them strands
+      anyone whose camera needs a producer for a transport that Viva does
+      not speak.  Suggested path: wait until Viva has run on a camera of
+      another maker; mark the four as unverified in the help and the
+      documentation; warn when one is instantiated for one minor release;
+      remove them in the next major version if nobody has reported use.
+
 Cheaper, and worth doing whatever else is decided:
 
 - [ ] `QGenicamTree._pollCamera` runs on the GUI thread every 200 ms and

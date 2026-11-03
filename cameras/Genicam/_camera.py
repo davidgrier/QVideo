@@ -2,8 +2,13 @@
 
 :class:`QGenicamCamera` is the base of every GenICam backend that needs a
 GenTL producer (a vendor's ``.cti`` file); the backends of Basler, Flir,
-IDS, MATRIX VISION and Allied Vision only say which producer to load.  The
-camera has four parts, in this order.
+IDS, MATRIX VISION and Allied Vision only say which producer to load.
+
+For a GenICam camera, :class:`~QVideo.cameras.Viva.QVivaCamera` is the
+preferred interface.  This one needs a ``.cti`` file and its binding holds
+the interpreter lock, so run it in a process of its own (``-r``).
+
+The camera has four parts, in this order.
 
 1. **Opening and closing**: load the producer, open the device, start the
    acquisition and find the features that acquisition makes read-only.

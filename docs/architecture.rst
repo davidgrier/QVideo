@@ -92,6 +92,9 @@ a request, such as setting a property, waits for the answer of the worker.
 :func:`~QVideo.lib.launch` run the camera this way.  It also keeps the
 program alive when the vendor's library crashes, and lets the worker use
 another Python than the program.  It is available on macOS and Linux.
+Use it for a camera whose library holds the lock, which means the GenICam
+backends that use Harvesters; the Viva and OpenCV backends wait without
+holding it and need no worker.
 
 Frame delivery
 --------------
@@ -297,7 +300,9 @@ Hardware-specific packages are soft dependencies: the import is wrapped in
 GenICam cameras (:mod:`~QVideo.cameras.Genicam`,
 :mod:`~QVideo.cameras.Flir`, :mod:`~QVideo.cameras.Vimbax`) discover their
 GenTL producer ``.cti`` file at runtime via the ``GENICAM_GENTL64_PATH``
-environment variable set by the manufacturer's SDK installer.
+environment variable set by the manufacturer's SDK installer.  The Viva
+backend (:mod:`~QVideo.cameras.Viva`) needs no producer and is the preferred
+interface to GenICam cameras; see :doc:`compatibility`.
 
 :mod:`~QVideo.cameras.Noise` is the reference implementation — no hardware
 required, used as a model for tests and for verifying the framework.

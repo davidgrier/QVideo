@@ -3,7 +3,8 @@
 `viva-genicam <https://github.com/VitalyVorobyev/viva-genicam>`_ is a
 GenICam stack written in Rust that speaks USB3 Vision and GigE Vision
 itself.  It needs no vendor SDK and no ``.cti`` file, and it releases the
-interpreter lock while it waits for a frame.
+interpreter lock while it waits for a frame.  It is the preferred interface
+to GenICam cameras (see the compatibility page of the documentation).
 
 Requires the ``viva-genicam`` package::
 

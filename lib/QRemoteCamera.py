@@ -101,6 +101,8 @@ class QRemoteCamera(QCamera):
     # ------------------------------------------------------------------
 
     def _initialize(self) -> bool:
+        '''Start the worker, wait for it to open the camera and copy its
+        properties and methods.'''
         if sys.platform == 'win32':
             raise QCameraError('A camera in a process of its own is not '
                                'available on Windows yet')
@@ -408,8 +410,17 @@ class QRemoteCamera(QCamera):
 
     def _copy(self, number, generation, slot, h, w, channels, code,
               stamp) -> QCamera.CameraData:
+        '''Copy the frame that a notice announces out of the ring.
+
+        Returns ``(False, None)`` if the worker has gone, or has
+        overwritten the frame before the copy was done.
+        '''
         if generation != self._generation:
-            name, self._capacity, self._generation = self._call('ring')
+            try:
+                name, self._capacity, self._generation = self._call('ring')
+            except QCameraError as ex:      # the worker has gone
+                logger.warning(f'No ring for the frame: {ex}')
+                return False, None
             if self._ring is not None:
                 self._ring.close()
             self._ring = _attach(name)

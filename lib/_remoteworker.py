@@ -61,7 +61,8 @@ class Worker:
         Datagram socket on which the frames are announced.
     '''
 
-    def __init__(self, camera, rpc: Connection, frames: socket.socket):
+    def __init__(self, camera, rpc: Connection,
+                 frames: socket.socket) -> None:
         self.camera = camera
         self.rpc = rpc
         self.frames = frames
@@ -141,10 +142,9 @@ class Worker:
                             start + HEADER)
         pixels[...] = frame
         header[0] = self.count
-        h, w = frame.shape[:2]
         channels = frame.shape[2] if frame.ndim == 3 else 0
         stamp = getattr(self.camera, 'hardwareTimestamp', None)
-        notice = NOTICE.pack(self.count, self.generation, slot, h, w,
+        notice = NOTICE.pack(self.count, self.generation, slot, height, width,
                              channels, CODES[frame.dtype],
                              float('nan') if stamp is None else stamp)
         try:

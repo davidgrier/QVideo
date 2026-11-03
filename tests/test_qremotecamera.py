@@ -160,6 +160,19 @@ class TestRemoteCamera(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(wait_for(lambda: self.camera._lost))
 
+    def test_a_worker_that_goes_while_a_frame_arrives_is_a_failed_read(self):
+        # The announcement of a frame of a new ring is read, and the worker
+        # is gone before it can say where the ring is.
+        self.camera._generation = -1
+        ok, frame = self.camera.saferead()      # the ring is found at once
+        self.assertTrue(ok)
+        self.camera._generation = -1
+        self.camera._process.kill()
+        self.camera._process.wait()
+        self.assertTrue(wait_for(lambda: self.camera._ended))
+        notice = (1, 99, 0, 480, 640, 0, 0, float('nan'))
+        self.assertEqual(self.camera._copy(*notice), (False, None))
+
 
 @unittest.skipUnless(os.environ.get('QVIDEO_TEST_HARDWARE'),
                      'set QVIDEO_TEST_HARDWARE=1 to use the laptop camera')

@@ -413,10 +413,13 @@ class TestRenderComposite(unittest.TestCase):
 
 class TestFitToVideo(unittest.TestCase):
 
-    def _make_mock_window(self, win_w, win_h, sh_w=None, sh_h=None):
+    def _make_mock_window(self, win_w, win_h, sh_w=None, sh_h=None,
+                          title_bar=0):
         mock_win = MagicMock()
         mock_win.width.return_value = win_w
         mock_win.height.return_value = win_h
+        mock_win.frameGeometry.return_value = QtCore.QRect(
+            0, 0, win_w, win_h + title_bar)
         mock_win.pos.return_value = QtCore.QPoint(0, 0)
         mock_win.sizeHint.return_value = QtCore.QSize(
             sh_w if sh_w is not None else win_w,
@@ -531,6 +534,22 @@ class TestFitToVideo(unittest.TestCase):
              self._mock_screen():
             screen._fitToVideo()
         mock_win.resize.assert_called_once()
+
+    def test_the_title_bar_counts_against_the_screen(self):
+        # A window whose frame is taller than the screen is shrunk by the
+        # window manager, and the video then has bars.
+        sizes = {}
+        for title_bar in (0, 23):
+            screen = make_screen()
+            screen._videoShape = QtCore.QSize(1280, 1024)
+            mock_win = self._make_mock_window(640, 480, sh_w=1280, sh_h=1024,
+                                              title_bar=title_bar)
+            with patch.object(screen, 'window', return_value=mock_win), \
+                 self._mock_screen(screen_w=1600, screen_h=1000):
+                screen._fitToVideo()
+            sizes[title_bar] = mock_win.resize.call_args.args
+        self.assertEqual(sizes[0], (1250, 1000))
+        self.assertEqual(sizes[23], (1221, 977))   # the aspect ratio holds
 
     def test_fit_to_video_sets_range_when_no_resize_needed(self):
         # When window is already the right size, setRange is called directly
@@ -882,6 +901,15 @@ class TestColormap(unittest.TestCase):
                    side_effect=KeyError('no such colormap')):
             with self.assertRaises(KeyError):
                 screen.colormap = 'nonexistent_map'
+
+    def test_a_colormap_that_cannot_be_made_leaves_the_old_one(self):
+        screen = make_screen()
+        screen.colormap = 'viridis'
+        with patch('pyqtgraph.colormap.get',
+                   side_effect=KeyError('no such colormap')):
+            with self.assertRaises(KeyError):
+                screen.colormap = 'nonexistent_map'
+        self.assertEqual(screen.colormap, 'viridis')
 
 
 class TestComposite(unittest.TestCase):

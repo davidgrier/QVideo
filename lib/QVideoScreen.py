@@ -1,13 +1,14 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
-from qtpy import QtCore, QtGui, QtWidgets
-from QVideo.lib.QVideoSource import QVideoSource
-from QVideo.lib.QFrameRelay import QFrameRelay
-from QVideo.lib.videotypes import FrameInfo
-from QVideo.lib.videotypes import Image
+import logging
+
 import numpy as np
+from qtpy import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from pyqtgraph import GraphicsLayoutWidget, ImageItem
-import logging
+
+from QVideo.lib.QVideoSource import QVideoSource
+from QVideo.lib.QFrameRelay import QFrameRelay
+from QVideo.lib.videotypes import FrameInfo, Image
 
 
 logger = logging.getLogger(__name__)
@@ -51,8 +52,8 @@ class QVideoScreen(GraphicsLayoutWidget):
     composite : bool
         Controls what :attr:`newFrame` emits.  When ``False`` (default),
         :attr:`newFrame` carries the displayed video frame.  When ``True``,
-        it carries the rendered ViewBox scene (video + overlays) as an
-        ``(H, W, 4)`` RGBA uint8 array.
+        it carries the rendered scene (video + overlays) as an
+        ``(H, W, 3)`` RGB uint8 array.
     colormap : str | None
         Colormap name for false-color display of grayscale frames.
         Accepts any matplotlib colormap name (e.g. ``'inferno'``,
@@ -86,22 +87,21 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._composite = False
         self._videoShape: QtCore.QSize | None = None
         self._source: QVideoSource | None = None
+        self._relay: QFrameRelay | None = None
         self._timer = QtCore.QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._setready)
         self._setupUi()
 
     def _setupUi(self) -> None:
+        '''Make the view, which keeps the aspect ratio, and the image.'''
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.view = self.addViewBox(enableMenu=False,
                                     enableMouse=False)
         self.view.invertY(True)
         self.view.setAspectLocked(True)
         self.view.setDefaultPadding(0)
-        sz = self.size()
-        self.view.setRange(xRange=(0, sz.width()),
-                           yRange=(0, sz.height()),
-                           padding=0, update=True)
+        self._showAll(self.width(), self.height())
         self.image = ImageItem(axisOrder='row-major')
         self.view.addItem(self.image)
 
@@ -118,9 +118,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._relay = None
         if source is None:
             return
-        if source.shape is not None:
-            self.updateShape(source.shape)
-        self._source.shapeChanged.connect(self.updateShape)
+        self.updateShape(source.shape)
+        source.shapeChanged.connect(self.updateShape)
         self._relay = QFrameRelay(source)
         self._relay.newFrame.connect(self.setImage)
 
@@ -152,17 +151,18 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     @colormap.setter
     def colormap(self, name: str | None) -> None:
-        self._colormap = name
         if name is None:
             self.image.setLookupTable(None)
-            return
-        try:
-            cm = pg.colormap.get(name, source='matplotlib')
-        except (KeyError, FileNotFoundError, ImportError):
-            cm = pg.colormap.get(name)
-        self.image.setColorMap(cm)
+        else:
+            try:
+                colormap = pg.colormap.get(name, source='matplotlib')
+            except (KeyError, FileNotFoundError, ImportError):
+                colormap = pg.colormap.get(name)
+            self.image.setColorMap(colormap)
+        self._colormap = name       # only once the colormap is in use
 
     def _setready(self) -> None:
+        '''Allow the next frame, and show the one that waited.'''
         self._ready = True
         if self._pending is not None:
             self.setImage(*self._pending)
@@ -335,9 +335,11 @@ class QVideoScreen(GraphicsLayoutWidget):
     def _fitToVideo(self) -> None:
         '''Resize the containing window to fit the video at native resolution.
 
-        Caps at the full available area of whichever screen the window is on,
-        so the result is the same whether the window has been shown or not.
-        Width and height are adjusted to preserve the video aspect ratio.
+        Caps at the available area of whichever screen the window is on,
+        less its title bar and borders, which count against the screen: a
+        window whose frame is too large is shrunk by the window manager, and
+        the video then has bars.  Width and height are adjusted to preserve
+        the video aspect ratio.
         '''
         if not self.hasHeightForWidth():
             return
@@ -346,26 +348,26 @@ class QVideoScreen(GraphicsLayoutWidget):
         screen = (QtWidgets.QApplication.screenAt(window.pos())
                   or QtWidgets.QApplication.primaryScreen())
         available = screen.availableGeometry()
+        frame = window.frameGeometry()
         sh = window.sizeHint()
-        w_extra = sh.width() - shape.width()
-        h_extra = sh.height() - shape.height()
+        w_extra = sh.width() - shape.width() + frame.width() - window.width()
+        h_extra = (sh.height() - shape.height()
+                   + frame.height() - window.height())
         ideal_w = min(shape.width(), available.width() - w_extra)
         ideal_h = min(shape.height(), available.height() - h_extra)
         if ideal_w * shape.height() > ideal_h * shape.width():
             ideal_w = ideal_h * shape.width() // shape.height()
         else:
             ideal_h = ideal_w * shape.height() // shape.width()
-        new_w = max(1, ideal_w) + w_extra
-        new_h = max(1, ideal_h) + h_extra
+        new_w = max(1, ideal_w) + sh.width() - shape.width()
+        new_h = max(1, ideal_h) + sh.height() - shape.height()
         self.setMinimumSize(min(shape.width() // 2, ideal_w),
                             min(shape.height() // 2, ideal_h))
         if (new_w, new_h) != (window.width(), window.height()):
             window.resize(new_w, new_h)
         # A window that cannot take the new size does not resize, so the
         # range is not left to resizeEvent.
-        self.view.setRange(xRange=(0, shape.width()),
-                           yRange=(0, shape.height()),
-                           padding=0, update=True)
+        self._showAll(shape.width(), shape.height())
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         '''Fit a window that nobody has sized to the video.
@@ -377,15 +379,20 @@ class QVideoScreen(GraphicsLayoutWidget):
         by the user or by an earlier fit, is left alone.
         '''
         super().showEvent(event)
-        if not self.window().testAttribute(QtCore.Qt.WA_Resized):
+        if not self.window().testAttribute(
+                QtCore.Qt.WidgetAttribute.WA_Resized):
             self._fitToVideo()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         '''Update the ViewBox range to match the video after a resize.'''
         super().resizeEvent(event)
+        # The first resize arrives while the base class is built, before
+        # there is a shape.
         shape = getattr(self, '_videoShape', None)
         if shape is not None:
-            self.view.setRange(
-                xRange=(0, shape.width()),
-                yRange=(0, shape.height()),
-                padding=0, update=True)
+            self._showAll(shape.width(), shape.height())
+
+    def _showAll(self, width: int, height: int) -> None:
+        '''Make the view show the region of *width* by *height* pixels.'''
+        self.view.setRange(xRange=(0, width), yRange=(0, height),
+                           padding=0, update=True)

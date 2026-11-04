@@ -1,7 +1,8 @@
 '''Canny edge-detection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
+from QVideo.lib.QVideoFilter import (VideoFilter, QVideoFilter, FilterCode,
+                                       GRAY_LINES)
 from QVideo.lib.videotypes import Image
 import cv2
 import logging
@@ -85,12 +86,9 @@ class EdgeFilter(VideoFilter):
 
     def to_code(self) -> FilterCode:
         return FilterCode(
-            imports=frozenset({'import cv2'}),
-            lines=[
-                'if image.ndim == 3:',
-                '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
-                f'image = cv2.Canny(image, {self._low}, {self._high})',
-            ],
+            imports={'import cv2'},
+            lines=[*GRAY_LINES,
+                   f'image = cv2.Canny(image, {self._low}, {self._high})'],
             comment=f'Canny edges, low={self._low}, high={self._high}',
         )
 

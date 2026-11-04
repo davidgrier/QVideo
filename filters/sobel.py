@@ -1,7 +1,8 @@
 '''Sobel gradient edge-detection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
+from QVideo.lib.QVideoFilter import (VideoFilter, QVideoFilter, FilterCode,
+                                       GRAY_LINES)
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -33,6 +34,10 @@ class SobelFilter(VideoFilter):
 
     DIRECTIONS = ('Horizontal', 'Vertical', 'Magnitude')
 
+    #: The order of the derivative in x and in y, for the directions
+    #: that take one derivative.
+    _ORDERS = {'Horizontal': (1, 0), 'Vertical': (0, 1)}
+
     def __init__(self,
                  direction: str = 'Magnitude',
                  ksize: int = 3) -> None:
@@ -62,38 +67,25 @@ class SobelFilter(VideoFilter):
         self._ksize = value + (1 - value % 2)
 
     def to_code(self) -> FilterCode:
-        _GRAY = [
-            'if image.ndim == 3:',
-            '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
-        ]
-        imports = frozenset({'import cv2', 'import numpy as np'})
         k = self._ksize
-        if self._direction == 'Horizontal':
-            return FilterCode(
-                imports=imports,
-                lines=_GRAY + [
-                    'image = cv2.convertScaleAbs(cv2.Sobel('
-                    f'image, cv2.CV_32F, 1, 0, ksize={k}))',
-                ],
-                comment=f'Sobel horizontal, k={k}',
-            )
-        if self._direction == 'Vertical':
-            return FilterCode(
-                imports=imports,
-                lines=_GRAY + [
-                    'image = cv2.convertScaleAbs(cv2.Sobel('
-                    f'image, cv2.CV_32F, 0, 1, ksize={k}))',
-                ],
-                comment=f'Sobel vertical, k={k}',
-            )
-        return FilterCode(
-            imports=imports,
-            lines=_GRAY + [
+        imports = {'import cv2'}
+        if self._direction == 'Magnitude':
+            imports.add('import numpy as np')
+            steps = [
                 f'_gx = cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize={k})',
                 f'_gy = cv2.Sobel(image, cv2.CV_32F, 0, 1, ksize={k})',
                 'image = np.clip(np.hypot(_gx, _gy), 0, 255).astype(np.uint8)',
-            ],
-            comment=f'Sobel magnitude, k={k}',
+            ]
+        else:
+            dx, dy = self._ORDERS[self._direction]
+            steps = [
+                'image = cv2.convertScaleAbs(cv2.Sobel('
+                f'image, cv2.CV_32F, {dx}, {dy}, ksize={k}))',
+            ]
+        return FilterCode(
+            imports=imports,
+            lines=[*GRAY_LINES, *steps],
+            comment=f'Sobel {self._direction.lower()}, k={k}',
         )
 
     def get(self) -> Image | None:
@@ -107,15 +99,15 @@ class SobelFilter(VideoFilter):
         if self.data is None:
             return None
         gray = grayscale(self.data)
-        if self._direction == 'Horizontal':
-            result = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=self._ksize)
-            return cv2.convertScaleAbs(result)
-        if self._direction == 'Vertical':
-            result = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=self._ksize)
-            return cv2.convertScaleAbs(result)
-        gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=self._ksize)
-        gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=self._ksize)
-        return np.clip(np.hypot(gx, gy), 0, 255).astype(np.uint8)
+        k = self._ksize
+        if self._direction == 'Magnitude':
+            gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=k)
+            gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=k)
+            return np.clip(np.hypot(gx, gy), 0, 255).astype(np.uint8)
+        dx, dy = self._ORDERS[self._direction]
+        return cv2.convertScaleAbs(
+            cv2.Sobel(gray, cv2.CV_32F, dx, dy, ksize=k))
+
 
 
 class QSobelFilter(QVideoFilter):

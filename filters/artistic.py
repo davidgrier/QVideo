@@ -10,6 +10,11 @@ __all__ = ['PencilSketchFilter', 'QPencilSketchFilter',
            'CartoonFilter', 'QCartoonFilter']
 
 
+#: The lines of a :class:`FilterCode` that make ``image`` three channels.
+_BGR_LINES = ('if image.ndim == 2:',
+              '    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)')
+
+
 def _ensure_bgr(image: Image) -> Image:
     if image.ndim == 2:
         return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
@@ -74,28 +79,16 @@ class PencilSketchFilter(VideoFilter):
         return gray_out if self.gray else color_out
 
     def to_code(self) -> FilterCode:
-        ss = self.sigma_s
-        sr = self.sigma_r
-        sf = self.shade_factor
-        preamble = [
-            'if image.ndim == 2:',
-            '    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)',
-        ]
-        if self.gray:
-            body = [
-                f'image, _ = cv2.pencilSketch(image,'
-                f' sigma_s={ss}, sigma_r={sr}, shade_factor={sf})',
-            ]
-        else:
-            body = [
-                f'_, image = cv2.pencilSketch(image,'
-                f' sigma_s={ss}, sigma_r={sr}, shade_factor={sf})',
-            ]
+        ss, sr, sf = self.sigma_s, self.sigma_r, self.shade_factor
+        target = 'image, _' if self.gray else '_, image'
         return FilterCode(
-            imports=frozenset({'import cv2'}),
-            lines=preamble + body,
+            imports={'import cv2'},
+            lines=[*_BGR_LINES,
+                   f'{target} = cv2.pencilSketch(image, sigma_s={ss}, '
+                   f'sigma_r={sr}, shade_factor={sf})'],
             comment=f'pencil sketch, σ_s={ss}, σ_r={sr}, shade={sf}',
         )
+
 
 
 class CartoonFilter(VideoFilter):
@@ -141,17 +134,15 @@ class CartoonFilter(VideoFilter):
         return cv2.stylization(bgr, sigma_s=self.sigma_s, sigma_r=self.sigma_r)
 
     def to_code(self) -> FilterCode:
-        ss = self.sigma_s
-        sr = self.sigma_r
+        ss, sr = self.sigma_s, self.sigma_r
         return FilterCode(
-            imports=frozenset({'import cv2'}),
-            lines=[
-                'if image.ndim == 2:',
-                '    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)',
-                f'image = cv2.stylization(image, sigma_s={ss}, sigma_r={sr})',
-            ],
+            imports={'import cv2'},
+            lines=[*_BGR_LINES,
+                   f'image = cv2.stylization(image, sigma_s={ss}, '
+                   f'sigma_r={sr})'],
             comment=f'cartoon stylization, σ_s={ss}, σ_r={sr}',
         )
+
 
 
 class QPencilSketchFilter(QVideoFilter):

@@ -268,14 +268,16 @@ custom filter participate in export.
 with three fields:
 
 ``imports``
-  A :class:`frozenset` of complete import lines required by the generated
-  code, e.g. ``frozenset({'import cv2', 'import numpy as np'})``.
+  The complete import lines required by the generated code, e.g.
+  ``{'import cv2', 'import numpy as np'}`` (any collection; ``()`` for
+  none).  Import only what the lines use.
 
 ``lines``
   A :class:`list` of source lines (no leading indentation).  The variable
   ``image`` holds the current frame on entry and must hold the result on exit.
   Temporary variables should use a leading underscore to avoid collisions
-  with the surrounding function scope.
+  with the surrounding function scope.  A filter that works on a gray
+  image starts with :data:`~QVideo.lib.QVideoFilter.GRAY_LINES`.
 
 ``comment``
   An optional one-line description included as a ``# comment`` above the
@@ -287,7 +289,6 @@ with three fields:
 
    from QVideo.lib.QVideoFilter import VideoFilter, FilterCode, QVideoFilter
    from QVideo.lib.videotypes import Image
-   import numpy as np
 
 
    class InvertFilter(VideoFilter):
@@ -298,7 +299,7 @@ with three fields:
 
        def to_code(self) -> FilterCode:
            return FilterCode(
-               imports=frozenset({'import numpy as np'}),
+               imports=(),
                lines=['image = 255 - image'],
                comment='invert pixel values',
            )
@@ -320,7 +321,7 @@ the generated source so the exported function is self-contained:
 
        def to_code(self) -> FilterCode:
            return FilterCode(
-               imports=frozenset({'import numpy as np'}),
+               imports={'import numpy as np'},
                lines=[
                    f'image = np.clip(image * {self.gain}, 0, 255).astype(image.dtype)',
                ],

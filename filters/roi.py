@@ -56,7 +56,7 @@ class ROIFilter(VideoFilter):
     def to_code(self) -> FilterCode:
         x, y, w, h = int(self._x), int(self._y), int(self._w), int(self._h)
         return FilterCode(
-            imports=frozenset(),
+            imports=(),
             lines=[f'image = image[{y}:{y + h}, {x}:{x + w}]'],
             comment=f'ROI crop: x={x}, y={y}, w={w}, h={h}',
         )

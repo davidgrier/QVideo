@@ -64,13 +64,13 @@ class GammaFilter(VideoFilter):
 
     def to_code(self) -> FilterCode:
         return FilterCode(
-            imports=frozenset({'import numpy as np'}),
-            lines=[
-                f'image = np.clip(np.power(image.astype(np.float32) / 255.0,'
-                f' {self._gamma}) * 255.0, 0, 255).astype(np.uint8)',
-            ],
+            imports={'import numpy as np'},
+            lines=[f'image = np.clip(np.power(image.astype(np.float32) / '
+                   f'255.0, {self._gamma}) * 255.0, 0, 255)'
+                   '.astype(np.uint8)'],
             comment=f'gamma correction, γ={self._gamma}',
         )
+
 
 
 class QGammaFilter(QVideoFilter):

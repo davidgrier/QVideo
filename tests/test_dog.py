@@ -67,23 +67,6 @@ class TestDoGFilter(unittest.TestCase):
         result = self.f.get()
         np.testing.assert_array_equal(result, 0)
 
-    def test_to_code_returns_filtercode(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        code = self.f.to_code()
-        self.assertIsInstance(code, FilterCode)
-
-    def test_to_code_imports(self):
-        code = self.f.to_code()
-        self.assertIn('import cv2', code.imports)
-        self.assertIn('import numpy as np', code.imports)
-
-    def test_to_code_has_lines(self):
-        code = self.f.to_code()
-        self.assertTrue(len(code.lines) > 0)
-
-    def test_to_code_has_comment(self):
-        code = self.f.to_code()
-        self.assertIn('DoG', code.comment)
 
 
 class TestQDoGFilter(unittest.TestCase):

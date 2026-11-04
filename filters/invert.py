@@ -31,10 +31,11 @@ class InvertFilter(VideoFilter):
 
     def to_code(self) -> FilterCode:
         return FilterCode(
-            imports=frozenset({'import cv2'}),
+            imports={'import cv2'},
             lines=['image = cv2.bitwise_not(image)'],
             comment='intensity inversion',
         )
+
 
 
 class QInvertFilter(QVideoFilter):

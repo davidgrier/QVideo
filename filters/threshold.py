@@ -1,7 +1,8 @@
 '''Binary threshold filter with global, Otsu, and adaptive methods.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
+from QVideo.lib.QVideoFilter import (VideoFilter, QVideoFilter, FilterCode,
+                                       GRAY_LINES)
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -41,6 +42,10 @@ class ThresholdFilter(VideoFilter):
     '''
 
     METHODS = ('Global', 'Otsu', 'Adaptive Mean', 'Adaptive Gaussian')
+
+    #: The OpenCV adaptive method (ADAPTIVE_THRESH_<name>_C) of each
+    #: adaptive method.
+    _ADAPTIVE = {'Adaptive Mean': 'MEAN', 'Adaptive Gaussian': 'GAUSSIAN'}
 
     def __init__(self,
                  threshold: int = 127,
@@ -93,49 +98,30 @@ class ThresholdFilter(VideoFilter):
         self._C = int(value)
 
     def to_code(self) -> FilterCode:
-        _GRAY = [
-            'if image.ndim == 3:',
-            '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
-        ]
-        imports = frozenset({'import cv2', 'import numpy as np'})
-        if self._method == 'Global':
-            return FilterCode(
-                imports=imports,
-                lines=_GRAY + [
-                    f'_, image = cv2.threshold(image, {self._threshold}, '
-                    '255, cv2.THRESH_BINARY)',
-                ],
-                comment=f'global threshold, level={self._threshold}',
-            )
-        if self._method == 'Otsu':
-            return FilterCode(
-                imports=imports,
-                lines=_GRAY + [
-                    'image = cv2.threshold(image, 0, 255, '
-                    'cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]',
-                ],
-                comment='Otsu threshold',
-            )
-        if self._method == 'Adaptive Mean':
-            return FilterCode(
-                imports=imports,
-                lines=_GRAY + [
-                    'image = cv2.adaptiveThreshold(image, 255, '
-                    'cv2.ADAPTIVE_THRESH_MEAN_C, '
-                    f'cv2.THRESH_BINARY, {self._block_size}, {self._C})',
-                ],
-                comment=('adaptive mean threshold, '
-                         f'block={self._block_size}, C={self._C}'),
-            )
+        t, block, C = self._threshold, self._block_size, self._C
+        steps = {
+            'Global': (
+                f'image = cv2.threshold(image, {t}, 255, '
+                'cv2.THRESH_BINARY)[1]',
+                f'global threshold, level={t}'),
+            'Otsu': (
+                'image = cv2.threshold(image, 0, 255, '
+                'cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]',
+                'Otsu threshold'),
+        }
+        if self._method in steps:
+            line, comment = steps[self._method]
+        else:
+            kind = self._ADAPTIVE[self._method]
+            line = (f'image = cv2.adaptiveThreshold(image, 255, '
+                    f'cv2.ADAPTIVE_THRESH_{kind}_C, '
+                    f'cv2.THRESH_BINARY, {block}, {C})')
+            comment = (f'{self._method.lower()} threshold, '
+                       f'block={block}, C={C}')
         return FilterCode(
-            imports=imports,
-            lines=_GRAY + [
-                'image = cv2.adaptiveThreshold(image, 255, '
-                'cv2.ADAPTIVE_THRESH_GAUSSIAN_C, '
-                f'cv2.THRESH_BINARY, {self._block_size}, {self._C})',
-            ],
-            comment=('adaptive Gaussian threshold, '
-                     f'block={self._block_size}, C={self._C}'),
+            imports={'import cv2'},
+            lines=[*GRAY_LINES, line],
+            comment=comment,
         )
 
     def get(self) -> Image | None:
@@ -150,20 +136,16 @@ class ThresholdFilter(VideoFilter):
             return None
         gray = grayscale(self.data)
         if self._method == 'Global':
-            _, result = cv2.threshold(
-                gray, self._threshold, 255, cv2.THRESH_BINARY)
-        elif self._method == 'Otsu':
-            _, result = cv2.threshold(
-                gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        elif self._method == 'Adaptive Mean':
-            result = cv2.adaptiveThreshold(
-                gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                cv2.THRESH_BINARY, self._block_size, self._C)
-        else:
-            result = cv2.adaptiveThreshold(
-                gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY, self._block_size, self._C)
-        return result
+            return cv2.threshold(
+                gray, self._threshold, 255, cv2.THRESH_BINARY)[1]
+        if self._method == 'Otsu':
+            return cv2.threshold(
+                gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+        kind = self._ADAPTIVE[self._method]
+        method = getattr(cv2, f'ADAPTIVE_THRESH_{kind}_C')
+        return cv2.adaptiveThreshold(
+            gray, 255, method, cv2.THRESH_BINARY, self._block_size, self._C)
+
 
 
 class QThresholdFilter(QVideoFilter):

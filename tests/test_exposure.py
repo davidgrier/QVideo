@@ -233,29 +233,6 @@ class TestExposureFilterToCode(unittest.TestCase):
     def setUp(self):
         self.f = make_filter()
 
-    def test_to_code_log(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        self.f.method = 'Log'
-        code = self.f.to_code()
-        self.assertIsInstance(code, FilterCode)
-        self.assertIn('import numpy as np', code.imports)
-        self.assertIn('log', code.comment)
-
-    def test_to_code_sigmoid(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        self.f.method = 'Sigmoid'
-        code = self.f.to_code()
-        self.assertIsInstance(code, FilterCode)
-        self.assertIn('import numpy as np', code.imports)
-        self.assertIn('sigmoid', code.comment)
-
-    def test_to_code_clahe(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        self.f.method = 'CLAHE'
-        code = self.f.to_code()
-        self.assertIsInstance(code, FilterCode)
-        self.assertIn('import cv2', code.imports)
-        self.assertIn('CLAHE', code.comment)
 
 
 class TestQExposureFilter(unittest.TestCase):

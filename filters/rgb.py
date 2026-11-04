@@ -37,15 +37,12 @@ class RGBFilter(VideoFilter):
         self._channel = channel
 
     def to_code(self) -> FilterCode:
-        names = {0: 'Red', 1: 'Green', 2: 'Blue'}
-        ch = self._channel
+        name = ('Red', 'Green', 'Blue')[self._channel]
         return FilterCode(
-            imports=frozenset(),
-            lines=[
-                f'image = image[:, :, {ch}] if image.ndim == 3 '
-                f'else image  # {names[ch]}',
-            ],
-            comment=f'{names[ch]} channel',
+            imports=(),
+            lines=[f'image = image[:, :, {self._channel}] '
+                   f'if image.ndim == 3 else image  # {name}'],
+            comment=f'{name} channel',
         )
 
     def add(self, image: Image) -> None:

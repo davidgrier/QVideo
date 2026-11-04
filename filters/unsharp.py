@@ -76,7 +76,7 @@ class UnsharpFilter(VideoFilter):
 
     def to_code(self) -> FilterCode:
         return FilterCode(
-            imports=frozenset({'import cv2'}),
+            imports={'import cv2'},
             lines=[
                 f'_blurred = cv2.GaussianBlur(image, (0, 0), {self._radius})',
                 f'image = cv2.addWeighted(image, {1 + self._amount:.4g}, '
@@ -84,6 +84,7 @@ class UnsharpFilter(VideoFilter):
             ],
             comment=f'unsharp mask, σ={self._radius}, amount={self._amount}',
         )
+
 
 
 class QUnsharpFilter(QVideoFilter):

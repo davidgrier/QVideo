@@ -164,7 +164,7 @@ class ExposureFilter(VideoFilter):
     def to_code(self) -> FilterCode:
         if self._method == 'Log':
             return FilterCode(
-                imports=frozenset({'import numpy as np'}),
+                imports={'import numpy as np'},
                 lines=[
                     '_f = image.astype(np.float32)',
                     'image = np.clip('
@@ -176,7 +176,7 @@ class ExposureFilter(VideoFilter):
         if self._method == 'Sigmoid':
             c = self._cutoff / 255
             return FilterCode(
-                imports=frozenset({'import numpy as np'}),
+                imports={'import numpy as np'},
                 lines=[
                     '_f = image.astype(np.float32)',
                     f'image = np.clip('
@@ -188,7 +188,7 @@ class ExposureFilter(VideoFilter):
                          f'gain={self._gain}'),
             )
         return FilterCode(
-            imports=frozenset({'import cv2'}),
+            imports={'import cv2'},
             lines=[
                 f'_clahe = cv2.createCLAHE('
                 f'clipLimit={self._clip_limit}, '

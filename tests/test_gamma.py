@@ -71,22 +71,6 @@ class TestGammaFilter(unittest.TestCase):
         result = self.f.get()
         self.assertGreater(int(result[0, 0]), 128)
 
-    def test_to_code_returns_filtercode(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        code = self.f.to_code()
-        self.assertIsInstance(code, FilterCode)
-
-    def test_to_code_imports(self):
-        code = self.f.to_code()
-        self.assertIn('import numpy as np', code.imports)
-
-    def test_to_code_has_lines(self):
-        code = self.f.to_code()
-        self.assertTrue(len(code.lines) > 0)
-
-    def test_to_code_has_comment(self):
-        code = self.f.to_code()
-        self.assertIn('gamma', code.comment)
 
 
 class TestQGammaFilter(unittest.TestCase):

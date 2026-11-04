@@ -2,7 +2,8 @@
 import logging
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
+from QVideo.lib.QVideoFilter import (VideoFilter, QVideoFilter, FilterCode,
+                                       GRAY_LINES)
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
@@ -98,10 +99,9 @@ class DoGFilter(VideoFilter):
 
     def to_code(self) -> FilterCode:
         return FilterCode(
-            imports=frozenset({'import cv2', 'import numpy as np'}),
+            imports={'import cv2', 'import numpy as np'},
             lines=[
-                'if image.ndim == 3:',
-                '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
+                *GRAY_LINES,
                 'image = image.astype(np.float32)',
                 f'_lo = cv2.GaussianBlur(image, (0, 0), {self._low_sigma})',
                 f'_hi = cv2.GaussianBlur(image, (0, 0), {self._high_sigma})',
@@ -110,6 +110,7 @@ class DoGFilter(VideoFilter):
             comment=(f'DoG bandpass, σ_low={self._low_sigma}, '
                      f'σ_high={self._high_sigma}'),
         )
+
 
 
 class QDoGFilter(QVideoFilter):

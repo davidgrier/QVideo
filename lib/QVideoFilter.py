@@ -9,7 +9,8 @@ import pyqtgraph as pg
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['FilterCode', 'renderPipeline', 'VideoFilter', 'QVideoFilter']
+__all__ = ['FilterCode', 'GRAY_LINES', 'renderPipeline', 'VideoFilter',
+           'QVideoFilter']
 
 
 @dataclasses.dataclass
@@ -20,6 +21,7 @@ class FilterCode:
     ----------
     imports : frozenset[str]
         Complete import lines required by *lines*, e.g. ``'import cv2'``.
+        Any collection of lines will do; it becomes a frozenset.
     lines : list[str]
         Source lines (no leading indentation) that implement one filter
         step.  The variable ``image`` holds the current frame on entry
@@ -32,6 +34,14 @@ class FilterCode:
     imports: frozenset[str]
     lines: list[str]
     comment: str = ''
+
+    def __post_init__(self) -> None:
+        self.imports = frozenset(self.imports)
+
+
+#: The lines of a :class:`FilterCode` that make ``image`` gray.
+GRAY_LINES = ('if image.ndim == 3:',
+              '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)')
 
 
 def renderPipeline(fragments: list[FilterCode], skipped: list[str]) -> str:

@@ -1,7 +1,8 @@
 '''Laplacian edge-detection filter and companion Qt widget.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
-from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
+from QVideo.lib.QVideoFilter import (VideoFilter, QVideoFilter, FilterCode,
+                                       GRAY_LINES)
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import cv2
@@ -58,21 +59,17 @@ class LaplacianFilter(VideoFilter):
         self._sigma = max(0.0, float(value))
 
     def to_code(self) -> FilterCode:
-        lines = [
-            'if image.ndim == 3:',
-            '    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)',
-        ]
-        imports = frozenset({'import cv2', 'import numpy as np'})
+        lines = [*GRAY_LINES]
+        suffix = ''
         if self._sigma > 0:
             lines.append(
                 f'image = cv2.GaussianBlur(image, (0, 0), {self._sigma})')
+            suffix = f', σ={self._sigma}'
         lines.append(
             'image = cv2.convertScaleAbs(cv2.Laplacian('
-            f'image, cv2.CV_32F, ksize={self._ksize}))'
-        )
-        suffix = f', σ={self._sigma}' if self._sigma > 0 else ''
+            f'image, cv2.CV_32F, ksize={self._ksize}))')
         return FilterCode(
-            imports=imports,
+            imports={'import cv2'},
             lines=lines,
             comment=f'Laplacian edges, k={self._ksize}{suffix}',
         )

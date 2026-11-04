@@ -21,6 +21,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Exported filter code.**  A test now runs the code that every
+  filter exports and compares it with what the filter does, on gray and
+  color frames, instead of looking for strings in it.  `FilterCode` takes
+  any collection of import lines and `GRAY_LINES` is the conversion to
+  gray that six filters repeated.  The exported code of the horizontal
+  and vertical Sobel filters no longer imports NumPy, which it did not
+  use.
 - **A backend is a camera and a tree.**  The vendor trees of Basler, FLIR,
   IDS, MV and VimbaX share their code in `QGenicamTree`: a subclass names
   its camera class, its default controls and its default settings.  The

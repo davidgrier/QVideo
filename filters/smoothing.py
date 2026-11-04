@@ -62,22 +62,16 @@ class SmoothingFilter(VideoFilter):
 
     def to_code(self) -> FilterCode:
         k = self._width
-        if self._method == 'box':
-            return FilterCode(
-                imports=frozenset({'import cv2'}),
-                lines=[f'image = cv2.blur(image, ({k}, {k}))'],
-                comment=f'box smoothing, k={k}',
-            )
-        if self._method == 'median':
-            return FilterCode(
-                imports=frozenset({'import cv2'}),
-                lines=[f'image = cv2.medianBlur(image, {k})'],
-                comment=f'median smoothing, k={k}',
-            )
+        call, name = {
+            'box': (f'cv2.blur(image, ({k}, {k}))', 'box'),
+            'median': (f'cv2.medianBlur(image, {k})', 'median'),
+            'gaussian': (f'cv2.GaussianBlur(image, ({k}, {k}), 0)',
+                         'Gaussian'),
+        }[self._method]
         return FilterCode(
-            imports=frozenset({'import cv2'}),
-            lines=[f'image = cv2.GaussianBlur(image, ({k}, {k}), 0)'],
-            comment=f'Gaussian smoothing, k={k}',
+            imports={'import cv2'},
+            lines=[f'image = {call}'],
+            comment=f'{name} smoothing, k={k}',
         )
 
     def process(self, image: Image) -> Image:

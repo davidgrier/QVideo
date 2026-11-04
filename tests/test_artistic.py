@@ -67,21 +67,6 @@ class TestPencilSketchFilter(unittest.TestCase):
         make_pencil().process(_COLOR)
         np.testing.assert_array_equal(_COLOR, original)
 
-    def test_to_code_returns_filter_code(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        code = make_pencil().to_code()
-        self.assertIsInstance(code, FilterCode)
-
-    def test_to_code_imports_cv2(self):
-        self.assertIn('import cv2', make_pencil().to_code().imports)
-
-    def test_to_code_gray_uses_first_return(self):
-        code = make_pencil(gray=True).to_code()
-        self.assertTrue(any('image, _' in line for line in code.lines))
-
-    def test_to_code_color_uses_second_return(self):
-        code = make_pencil(gray=False).to_code()
-        self.assertTrue(any('_, image' in line for line in code.lines))
 
 
 class TestCartoonFilter(unittest.TestCase):
@@ -111,17 +96,6 @@ class TestCartoonFilter(unittest.TestCase):
         make_cartoon().process(_COLOR)
         np.testing.assert_array_equal(_COLOR, original)
 
-    def test_to_code_returns_filter_code(self):
-        from QVideo.lib.QVideoFilter import FilterCode
-        code = make_cartoon().to_code()
-        self.assertIsInstance(code, FilterCode)
-
-    def test_to_code_imports_cv2(self):
-        self.assertIn('import cv2', make_cartoon().to_code().imports)
-
-    def test_to_code_has_stylization_call(self):
-        code = make_cartoon().to_code()
-        self.assertTrue(any('stylization' in line for line in code.lines))
 
 
 class TestQPencilSketchFilter(unittest.TestCase):

@@ -5,6 +5,7 @@ import numpy as np
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image, FrameInfo
 import logging
+from typing import ClassVar
 
 
 __all__ = ['QPyAVWriter']
@@ -48,7 +49,7 @@ class QPyAVWriter(QVideoWriter):
         options.
     '''
 
-    CODEC_MAP: dict[str, tuple[str, dict[str, str]]] = {
+    CODEC_MAP: ClassVar[dict[str, tuple[str, dict[str, str]]]] = {
         '.avi': ('ffv1', {}),
         '.mkv': ('ffv1', {}),
         '.mp4': ('libx264', {'crf': '18', 'preset': 'veryfast'}),

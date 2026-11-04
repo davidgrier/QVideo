@@ -33,10 +33,10 @@ class QHistogramWidget(pg.HistogramLUTWidget):
     '''
 
     def __init__(self,
-                 screen: 'QVideoScreen | None' = None,
+                 screen: QVideoScreen | None = None,
                  parent=None) -> None:
         super().__init__(parent=parent, background='w')
-        self._screen: 'QVideoScreen | None' = None
+        self._screen: QVideoScreen | None = None
         self.item.plot.setPen(pg.mkPen('k', width=1))
         self.item.axis.setPen(pg.mkPen('k'))
         self.item.axis.setTextPen(pg.mkPen('k'))
@@ -49,12 +49,12 @@ class QHistogramWidget(pg.HistogramLUTWidget):
             self.screen = screen
 
     @property
-    def screen(self) -> 'QVideoScreen | None':
+    def screen(self) -> QVideoScreen | None:
         '''The connected :class:`~QVideo.lib.QVideoScreen.QVideoScreen`.'''
         return self._screen
 
     @screen.setter
-    def screen(self, screen: 'QVideoScreen') -> None:
+    def screen(self, screen: QVideoScreen) -> None:
         self._screen = screen
         self.setImageItem(screen.image)
         self.setLevels(0, 255)

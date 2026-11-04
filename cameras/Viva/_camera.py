@@ -4,6 +4,7 @@ from functools import partial
 import logging
 from QVideo.lib import QCamera
 from QVideo.lib.errors import QDeviceError
+from typing import ClassVar
 
 try:
     import viva_genicam as vg
@@ -61,7 +62,7 @@ class QVivaCamera(QCamera):
 
     #: SFNC nodes behind the lowercase names that every camera shares, in
     #: order of preference.
-    _ALIAS_NODES = {'width': ('Width',),
+    _ALIAS_NODES: ClassVar[dict[str, tuple[str, ...]]] = {'width': ('Width',),
                     'height': ('Height',),
                     'fps': ('AcquisitionFrameRate',
                             'AcquisitionFrameRateAbs')}
@@ -75,8 +76,8 @@ class QVivaCamera(QCamera):
     def __init__(self, *args, cameraID: int = 0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._cameraID = cameraID
-        self._device: 'vg.Camera | None' = None
-        self._stream: 'vg.FrameStream | None' = None
+        self._device: vg.Camera | None = None
+        self._stream: vg.FrameStream | None = None
         self._kinds: dict[str, str] = {}
         self._streamLocked: set[str] = set()
         self.open()

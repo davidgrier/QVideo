@@ -303,7 +303,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
             self.setToolTip('')
 
     @classmethod
-    def example(cls: type['QVideoFilter']) -> None:  # pragma: no cover
+    def example(cls: type[QVideoFilter]) -> None:  # pragma: no cover
         '''Demonstrate the filter widget.
 
         Intended to be called on a concrete subclass that supplies its

@@ -1,6 +1,7 @@
 '''Camera property tree for FLIR cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.Flir import QFlirCamera
+from typing import ClassVar
 
 
 __all__ = ['QFlirTree']
@@ -17,7 +18,7 @@ class QFlirTree(QGenicamTree):
 
     _cameraClass = QFlirCamera
     _DEFAULT_CONTROLS = QGenicamTree.STANDARD_CONTROLS
-    _DEFAULT_SETTINGS = dict(
+    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
         AcquisitionFrameRateEnable=True,
         BlackLevelSelector='All',
         GammaEnable=True,

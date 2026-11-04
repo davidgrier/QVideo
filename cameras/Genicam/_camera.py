@@ -42,7 +42,7 @@ import os
 from collections.abc import Callable, Iterable
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
@@ -140,7 +140,7 @@ class QGenicamCamera(QCamera):
     _producerHint: str = ''
     #: SFNC nodes behind the lowercase names that every camera shares, in
     #: order of preference.
-    _ALIAS_NODES = {'width': ('Width',),
+    _ALIAS_NODES: ClassVar[dict[str, tuple[str, ...]]] = {'width': ('Width',),
                     'height': ('Height',),
                     'fps': ('AcquisitionFrameRate',
                             'AcquisitionFrameRateAbs')}
@@ -155,8 +155,8 @@ class QGenicamCamera(QCamera):
         super().__init__(*args, **kwargs)
         self._cameraID = cameraID
         self._harvester: Harvester | None = None
-        self._device: 'ImageAcquirer | None' = None
-        self._nodeMap: 'NodeMap | None' = None
+        self._device: ImageAcquirer | None = None
+        self._nodeMap: NodeMap | None = None
         self._protected: set[str] = set()
         self.open()
 

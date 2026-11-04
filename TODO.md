@@ -9,27 +9,23 @@ Ideas for upgrades and extensions, in no particular order.
 The review kept to what the CI checks (`ruff` with pyflakes, bugbear and the
 line length).  A stricter pass (`ruff --isolated --select
 E,W,F,B,SIM,C4,C901,PIE,RET,UP,PERF,PLR,RUF,PLW`) finds these; fix them
-together, and decide whether CI should enforce a modest set of them (`SIM`,
-`PERF`, `RUF012`, `PLW2901`, complexity at most 12):
+together.  CI now enforces `SIM` (but `SIM905`), `PERF`, `PIE`, `RUF012`,
+`PLW2901` and `UP037` for the package, not for the tests:
 
-- [ ] `try`/`except`/`pass` that is `contextlib.suppress` (SIM105):
-      `lib/remote/camera.py` (twice), `lib/remote/worker.py`.
-- [ ] Class-level lists and dicts that are constants (RUF012): the
-      `_DEFAULT_CONTROLS` and `_DEFAULT_SETTINGS` of the vendor trees, the
-      `_ALIAS_NODES` of Genicam and Viva, the writers of `dvr/`.  Make them
-      tuples, or `ClassVar`.
-- [ ] Loop variables that are overwritten (`Genicam/_tree.py`), two
-      `.get(x, None)` in `Picamera`, a wrapping `lambda` in
-      `dvr/QCircularDVRWidget.py`, `None` not last in a union in
-      `lib/QCamera.py`, and 15 quoted annotations (some are needed).
+- [x] Done 2026-11-04: `contextlib.suppress`, constants as tuples or
+      `ClassVar`, overwritten loop variables, `.get(x, None)`, `None` last
+      in a union, quoted annotations that did not need quotes, the
+      docstrings that no base class supplies (what is left is `to_code`
+      and `run` overrides, which inherit theirs).  The `lambda: saver.wait()`
+      in `dvr/QCircularDVRWidget.py` stays: `destroyed` passes the object,
+      which `wait` must not receive.
 - [ ] Wide signatures: `QRemoteCamera.__init__` (8 arguments),
       `QOpenCVCamera` (7), `QPicamera` (6), the trackpy overlay (6).
 - [ ] `QVideoFilter.filter` shadows the builtin.  It is public API, so leave
       it unless the name is changed on purpose.
-- [ ] 105 of 483 public functions have no docstring, mostly in `filters/`,
-      `Genicam/_tree.py`, `QFilterRackWidget` and `QVideoScreen` (some are
-      slots and overrides that need none).  32 strings use double quotes
-      (some are right), and a few attributes of filters are snake_case.
+- [ ] `QVideoWriter.framenumber` is not camelCase, but the writer has a
+      signal `frameNumber`; renaming needs a decision about both.  A few
+      attributes of filters are snake_case.
 
 Things noticed, not changed:
 
@@ -37,8 +33,6 @@ Things noticed, not changed:
       notebook, so the kernel waits for every frame.  Read in an executor.
 - [ ] `ensure_qapp` is in `cameras/chooser.py` and `interactive/filter.py`
       imports it from there; it belongs in `lib`.
-- [ ] `QVideoWriter.blank` is set by nothing but tests; remove it or use it.
-      `framenumber` is not camelCase.
 - [ ] The Genicam and Viva cameras repeat the alias tables, the USB speed
       check and the registration of aliases.
 - [ ] One refactor at a time, each its own change: the design of

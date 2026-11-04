@@ -4,6 +4,7 @@ from QVideo.lib.videotypes import Image, FrameInfo
 from pathlib import Path
 import cv2
 import logging
+from typing import ClassVar
 
 
 __all__ = ['QOpenCVWriter']
@@ -49,12 +50,12 @@ class QOpenCVWriter(QVideoWriter):
         The same for color frames, where an extension is missing.
     '''
 
-    CODEC_MAP: dict[str, tuple[str, ...]] = {
+    CODEC_MAP: ClassVar[dict[str, tuple[str, ...]]] = {
         '.avi': ('FFV1',),
         '.mkv': ('FFV1',),
         '.mp4': ('avc1', 'mp4v'),
     }
-    COLOR_CODEC_MAP: dict[str, tuple[str, ...]] = {
+    COLOR_CODEC_MAP: ClassVar[dict[str, tuple[str, ...]]] = {
         '.avi': ('HFYU', 'FFV1'),
         '.mkv': ('HFYU', 'FFV1'),
     }

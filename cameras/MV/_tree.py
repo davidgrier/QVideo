@@ -1,6 +1,7 @@
 '''Camera property tree for MATRIX VISION cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.MV import QMVCamera
+from typing import ClassVar
 
 
 __all__ = ['QMVTree']
@@ -17,7 +18,7 @@ class QMVTree(QGenicamTree):
 
     _cameraClass = QMVCamera
     _DEFAULT_CONTROLS = QGenicamTree.STANDARD_CONTROLS
-    _DEFAULT_SETTINGS = dict(
+    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
         ExposureAuto='Off',
         GainAuto='Off',
     )

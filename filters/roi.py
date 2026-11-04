@@ -49,6 +49,7 @@ class ROIFilter(VideoFilter):
         self._h = min(self._h, rows - self._y)
 
     def add(self, image: Image) -> None:
+        '''Store *image*, after fitting the region to its size.'''
         if self.data is None or image.shape[:2] != self.data.shape[:2]:
             self._clamp(image.shape)
         super().add(image)

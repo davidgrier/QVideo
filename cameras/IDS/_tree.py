@@ -1,6 +1,7 @@
 '''Camera property tree for IDS Imaging cameras.'''
 from QVideo.cameras.Genicam import QGenicamTree
 from QVideo.cameras.IDS import QIDSCamera
+from typing import ClassVar
 
 
 __all__ = ['QIDSTree']
@@ -17,7 +18,7 @@ class QIDSTree(QGenicamTree):
 
     _cameraClass = QIDSCamera
     _DEFAULT_CONTROLS = QGenicamTree.STANDARD_CONTROLS
-    _DEFAULT_SETTINGS = dict(
+    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
         AcquisitionFrameRateEnable=True,
         ExposureAuto='Off',
         GainAuto='Off',

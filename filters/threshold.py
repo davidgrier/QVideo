@@ -7,6 +7,7 @@ from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
 import cv2
+from typing import ClassVar
 
 __all__ = ['ThresholdFilter', 'QThresholdFilter']
 
@@ -45,7 +46,8 @@ class ThresholdFilter(VideoFilter):
 
     #: The OpenCV adaptive method (ADAPTIVE_THRESH_<name>_C) of each
     #: adaptive method.
-    _ADAPTIVE = {'Adaptive Mean': 'MEAN', 'Adaptive Gaussian': 'GAUSSIAN'}
+    _ADAPTIVE: ClassVar[dict[str, str]] = {
+        'Adaptive Mean': 'MEAN', 'Adaptive Gaussian': 'GAUSSIAN'}
 
     def __init__(self,
                  threshold: int = 127,

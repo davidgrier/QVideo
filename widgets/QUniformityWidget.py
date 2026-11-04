@@ -36,11 +36,11 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
     '''
 
     def __init__(self,
-                 screen: 'QVideoScreen | None' = None,
+                 screen: QVideoScreen | None = None,
                  parent=None) -> None:
         super().__init__(parent=parent)
         self.setBackground('w')
-        self._screen: 'QVideoScreen | None' = None
+        self._screen: QVideoScreen | None = None
         self._setupUi()
         if screen is not None:
             self.screen = screen
@@ -66,12 +66,12 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
                 plot.getAxis(axis).setTextPen(dark)
 
     @property
-    def screen(self) -> 'QVideoScreen | None':
+    def screen(self) -> QVideoScreen | None:
         '''The connected :class:`~QVideo.lib.QVideoScreen.QVideoScreen`.'''
         return self._screen
 
     @screen.setter
-    def screen(self, screen: 'QVideoScreen') -> None:
+    def screen(self, screen: QVideoScreen) -> None:
         if self._screen is not None:
             self._screen.newFrame.disconnect(self.setFrame)
         self._screen = screen

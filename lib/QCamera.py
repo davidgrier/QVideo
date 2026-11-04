@@ -201,7 +201,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
                          name: str,
                          getter: Callable[[], PropertyValue] | _Auto = _AUTO,
                          setter: (Callable[[PropertyValue], None]
-                                  | None | _Auto) = _AUTO,
+                                  | _Auto | None) = _AUTO,
                          ptype: type[PropertyValue] = float,
                          **meta) -> None:
         '''Register a named camera property.

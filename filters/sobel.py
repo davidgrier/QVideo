@@ -7,6 +7,7 @@ from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
 import numpy as np
 import cv2
+from typing import ClassVar
 
 __all__ = ['SobelFilter', 'QSobelFilter']
 
@@ -36,7 +37,8 @@ class SobelFilter(VideoFilter):
 
     #: The order of the derivative in x and in y, for the directions
     #: that take one derivative.
-    _ORDERS = {'Horizontal': (1, 0), 'Vertical': (0, 1)}
+    _ORDERS: ClassVar[dict[str, tuple[int, int]]] = {
+        'Horizontal': (1, 0), 'Vertical': (0, 1)}
 
     def __init__(self,
                  direction: str = 'Magnitude',

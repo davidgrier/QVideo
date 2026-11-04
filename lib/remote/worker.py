@@ -6,6 +6,7 @@ memory, and answers the requests of the proxy.  It never creates a
 ``QApplication``.  When the proxy goes away (the connection closes), it
 closes the camera and exits.
 '''
+import contextlib
 import errno
 import importlib
 import logging
@@ -98,10 +99,8 @@ class Worker:
 
         The proxy may be gone already, which is then nobody's concern.
         '''
-        try:
+        with contextlib.suppress(EOFError, OSError):
             self.send((EVENT, kind, payload))
-        except (EOFError, OSError):
-            pass
 
     # ------------------------------------------------------------------
     # The ring

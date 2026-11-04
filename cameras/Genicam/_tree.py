@@ -1,6 +1,7 @@
 '''Camera property tree for GenICam cameras.'''
-from typing import Any
+from typing import Any, ClassVar
 import math
+from collections.abc import Sequence
 from qtpy import QtCore
 from QVideo.lib import QCameraTree
 from QVideo.cameras.Genicam import QGenicamCamera
@@ -52,7 +53,7 @@ class QGenicamTree(QCameraTree):
     '''
 
     #: The controls that most cameras offer, by their SFNC names.
-    STANDARD_CONTROLS = [
+    STANDARD_CONTROLS = (
         'ReverseX',
         'ReverseY',
         'AcquisitionFrameRate',
@@ -67,18 +68,18 @@ class QGenicamTree(QCameraTree):
         'Height',
         'OffsetX',
         'OffsetY',
-    ]
+    )
 
     #: The camera class of a tree for one vendor; its subclass sets it.
     _cameraClass: type[QGenicamCamera] | None = None
 
     #: The controls to show when the caller names none, or ``None`` for
     #: all of them.
-    _DEFAULT_CONTROLS: list[str] | None = None
+    _DEFAULT_CONTROLS: tuple[str, ...] | None = None
 
     #: Settings that the tree applies to the camera, those that the camera
     #: has, so that the controls start in a known state.
-    _DEFAULT_SETTINGS: dict[str, object] = {}
+    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = {}
 
     #: Parameters that one poll of the camera reads.
     _pollChunk = 32
@@ -87,7 +88,7 @@ class QGenicamTree(QCameraTree):
                  camera: QGenicamCamera | None = None,
                  cameraID: int = 0,
                  visibility: EVisibility = EVisibility.Guru,
-                 controls: list[str] | None = None,
+                 controls: Sequence[str] | None = None,
                  **kwargs) -> None:
         if camera is None:
             camera = self._cameraClass(cameraID=cameraID)
@@ -187,21 +188,21 @@ class QGenicamTree(QCameraTree):
         for param, change, value in changes:
             if change == 'value':
                 key = param.name()
-                if key in self._scaleFactors:
-                    value = value / self._scaleFactors[key]  # type: ignore
-                self.camera.set(key, value)
+                scale = self._scaleFactors.get(key)
+                sent = value if scale is None else value / scale
+                self.camera.set(key, sent)
         with self._syncIgnored():
             for key, value in self.camera.settings.items():
-                if key in self._scaleFactors:
-                    value = value * self._scaleFactors[key]  # type: ignore
-                self.set(key, value)
+                scale = self._scaleFactors.get(key)
+                self.set(key, value if scale is None else value * scale)
 
     @property
-    def controls(self) -> list[str] | None:
+    def controls(self) -> Sequence[str] | None:
+        '''Names of the nodes to show, or ``None`` to show all of them.'''
         return self._controls
 
     @controls.setter
-    def controls(self, controls: list[str] | None) -> None:
+    def controls(self, controls: Sequence[str] | None) -> None:
         self._controls = controls
         for item in self.listAllItems()[1:]:
             p = item.param
@@ -214,6 +215,7 @@ class QGenicamTree(QCameraTree):
 
     @property
     def visibility(self) -> EVisibility:
+        '''The highest GenICam visibility level that the tree shows.'''
         return self._visibility
 
     @visibility.setter
@@ -245,6 +247,9 @@ class QGenicamTree(QCameraTree):
         self.camera.watch([name for _, name in self._visibleParams()])
 
     def visible(self, param) -> bool:
+        '''Return whether *param* is shown: it is not an action, its
+        visibility does not exceed :attr:`visibility`, and a group has a
+        child that is shown.'''
         ptype = param.opts['type']
         if ptype in ('action', None):
             return False

@@ -106,7 +106,7 @@ class QPicamera(QCamera):
         # Distinct from self._isOpen so that _setControl can cache values
         # between a stop/restart cycle (e.g. when fps changes while closed).
         self._deviceOpen: bool = False
-        self._device: 'Picamera2 | None' = None
+        self._device: Picamera2 | None = None
         self.open()
 
     def _createDevice(self) -> 'Picamera2 | None':
@@ -261,7 +261,7 @@ class QPicamera(QCamera):
         if 'FrameDurationLimits' not in self._device.camera_controls:
             return
         lo, hi, default = self._device.camera_controls['FrameDurationLimits']
-        duration = metadata.get('FrameDuration', None)
+        duration = metadata.get('FrameDuration')
         if duration is None:
             duration = default[0] if isinstance(default, tuple) else lo
         self._controlValues['FrameDurationLimits'] = (duration, duration)
@@ -317,7 +317,7 @@ class QPicamera(QCamera):
         if 'ColourGains' not in self._device.camera_controls:
             return
         lo, hi, _ = self._device.camera_controls['ColourGains']
-        current = metadata.get('ColourGains', None)
+        current = metadata.get('ColourGains')
         if not isinstance(current, (tuple, list)) or len(current) < 2:
             current = (1.0, 1.0)
         self._controlValues['ColourGains'] = (

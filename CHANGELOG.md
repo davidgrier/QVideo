@@ -9,6 +9,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Removed
+
+- **`QVideoWriter.blank`**, which made a writer write black frames.
+  Nothing in QVideo set it.
+
+### Changed
+
+- The class-level tables and lists of the backends, filters and writers
+  (default controls and settings, codec maps, alias nodes) are tuples or
+  annotated `ClassVar`; `QGenicamTree.STANDARD_CONTROLS` is a tuple, and
+  `controls` takes any sequence of names.
+
 ---
 
 ## [4.14.0] — 2026-11-04

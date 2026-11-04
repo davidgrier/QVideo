@@ -114,8 +114,8 @@ class QFilterPipeline(QtCore.QThread):
         self._dropped = 0
         self._running = True
         self._filters = tuple(filters)
-        self._source: 'QVideoSource | None' = None
-        self._rack: 'QFilterRackWidget | None' = None
+        self._source: QVideoSource | None = None
+        self._rack: QFilterRackWidget | None = None
         self.source = source
         self.rack = rack
         self.start()

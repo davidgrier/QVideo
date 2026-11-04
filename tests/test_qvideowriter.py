@@ -200,10 +200,6 @@ class TestQVideoWriterInit(unittest.TestCase):
         w = _ConcreteWriter('out.avi', nframes=50)
         self.assertEqual(w.target, 50)
 
-    def test_blank_false_initially(self):
-        w = _ConcreteWriter('out.avi')
-        self.assertFalse(w.blank)
-
 
 class TestQVideoWriterWriteOpen(unittest.TestCase):
     '''Tests for the open-on-first-write path.'''
@@ -311,13 +307,7 @@ class TestQVideoWriterWriteFrame(unittest.TestCase):
         self.assertEqual(self._feed(w, 20), [0, 3])
         self.assertGreater(len(spy), 0)
 
-    def test_blank_mode_writes_zeros(self):
-        w = _ConcreteWriter('out.avi')
-        w.blank = True
-        w.write(np.ones_like(_FRAME))
-        np.testing.assert_array_equal(w._written[0], np.zeros_like(_FRAME))
-
-    def test_non_blank_mode_writes_original_frame(self):
+    def test_the_frame_is_written_as_it_is(self):
         w = _ConcreteWriter('out.avi')
         frame = np.ones((480, 640), dtype=np.uint8) * 128
         w.write(frame)

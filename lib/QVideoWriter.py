@@ -75,9 +75,6 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         The maximum number of frames to write (the *nframes* argument).
     framenumber : int
         The number of frames received so far, written or not.
-    blank : bool
-        If ``True``, write black frames of the same shape and type in
-        place of the frames received.  Default: ``False``.
     received : FrameInfo or None
         Capture metadata of the newest frame handed to :meth:`write`, or
         ``None`` before the first.  Compared with the newest frame the
@@ -123,7 +120,6 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         self.framenumber = 0
         self.nskip = nskip
         self.target = nframes
-        self.blank = False
         self.received: FrameInfo | None = None
         self._frameType: tuple[tuple[int, ...], np.dtype] | None = None
         self._stopped = False
@@ -195,8 +191,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
             return
         if self.framenumber % self.nskip == 0:
             try:
-                self._write(np.zeros_like(frame) if self.blank else frame,
-                            info)
+                self._write(frame, info)
             except Exception as error:
                 logger.exception(f'Could not write to {self.filename}')
                 self._stop(f'{type(error).__name__}: {error}')

@@ -1,4 +1,5 @@
 '''A camera that runs in a process of its own.'''
+import contextlib
 import logging
 import queue
 import socket
@@ -175,10 +176,8 @@ class QRemoteCamera(QCamera):
 
     def _deinitialize(self) -> None:
         self._closing = True            # the end of the worker is expected
-        try:
+        with contextlib.suppress(QCameraError, EOFError, OSError):
             self._call('close')
-        except (QCameraError, EOFError, OSError):
-            pass
         process = self._process
         if process is not None:
             try:
@@ -435,10 +434,8 @@ class QRemoteCamera(QCamera):
         return True, frame
 
     def __del__(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.close()
-        except Exception:
-            pass
 
 
 def _attach(name: str) -> SharedMemory:

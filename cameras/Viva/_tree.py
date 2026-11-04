@@ -30,7 +30,7 @@ class QVivaTree(QCameraTree):
         all.
     '''
 
-    _DEFAULT_CONTROLS = [
+    _DEFAULT_CONTROLS = (
         'ReverseX',
         'ReverseY',
         'AcquisitionFrameRate',
@@ -46,7 +46,7 @@ class QVivaTree(QCameraTree):
         'Height',
         'OffsetX',
         'OffsetY',
-    ]
+    )
 
     def __init__(self, *args,
                  camera: Source | None = None,

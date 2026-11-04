@@ -1070,6 +1070,38 @@ class TestState(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestNodeKind
+# ---------------------------------------------------------------------------
+
+class TestNodeKind(unittest.TestCase):
+    '''One place decides what kind of node a feature is.'''
+
+    def kind(self, ftype):
+        return _cam_module._nodeKind(_make_feature(ftype))
+
+    def test_each_type_of_node_has_its_kind(self):
+        kinds = {_ICategory: 'group', _ICommand: 'action',
+                 _IEnumeration: 'enum', _IBoolean: 'bool',
+                 _IInteger: 'int', _IFloat: 'float', _IString: 'str',
+                 _IRegister: 'register', _IValue: 'other'}
+        for ftype, kind in kinds.items():
+            with self.subTest(ftype=ftype.__name__):
+                self.assertEqual(self.kind(ftype), kind)
+
+    def test_an_enumeration_that_is_also_an_integer_is_an_enumeration(self):
+        # In Spinnaker's binding IEnumeration inherits from IInteger.
+        class SpinnakerEnumeration(_IEnumeration, _IInteger):
+            pass
+
+        self.assertEqual(self.kind(SpinnakerEnumeration), 'enum')
+
+    def test_every_value_kind_has_a_python_type(self):
+        self.assertEqual(_cam_module._PTYPES,
+                         {'enum': str, 'bool': bool, 'int': int,
+                          'float': float, 'str': str, 'register': str})
+
+
+# ---------------------------------------------------------------------------
 # TestWidthHeight
 # ---------------------------------------------------------------------------
 

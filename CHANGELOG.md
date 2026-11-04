@@ -23,6 +23,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QGenicamCamera` classifies a node once.**  Seven methods each walked
+  the same chain of node types; `_nodeKind` now does, and `_limits` says
+  what bounds a node, for the properties, the plain-data tree and the
+  live snapshots.  Nothing visible changes.
 - The class-level tables and lists of the backends, filters and writers
   (default controls and settings, codec maps, alias nodes) are tuples or
   annotated `ClassVar`; `QGenicamTree.STANDARD_CONTROLS` is a tuple, and

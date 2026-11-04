@@ -33,11 +33,11 @@ Things noticed, not changed:
       notebook, so the kernel waits for every frame.  Read in an executor.
 - [ ] `ensure_qapp` is in `cameras/chooser.py` and `interactive/filter.py`
       imports it from there; it belongs in `lib`.
-- [ ] The Genicam and Viva cameras repeat the alias tables, the USB speed
-      check and the registration of aliases.
+- [x] The Genicam and Viva cameras repeat the alias tables, the USB speed
+      check and the registration of aliases.  Decided 2026-11-04 to leave it:
+      they are complementary backends, and one may be dropped.
 - [ ] One refactor at a time, each its own change: the design of
-      `cameras/chooser.py`, and merging the node-type chains of
-      `Genicam/_camera.py` (both below under their own headings).
+      `cameras/chooser.py` (below under its own heading).
 
 ---
 
@@ -391,25 +391,17 @@ additions:
 
 ---
 
-## One place that knows the types of GenICam nodes
+## One place that knows the types of GenICam nodes  **Done for the camera**
 
-Seven methods of `cameras/Genicam/_camera.py` walk the same chain of node
-types (`_featureSpec`, `_setFeature`, `_describeNode`, `_snapshot`,
-`_makeGetter`, `_registerFeatures`, `_scanModes`), and `Genicam/_tree.py`
-and the `_KINDS` table of `cameras/Viva` hold the same knowledge again.
-They already disagree in small ways: `_describeNode` sets `step` for an
-integer without asking `has_inc()`, `_snapshot` calls a boolean or a string
-`'other'` where `_describeNode` says `'bool'` or `'str'`, and a node that
-is neither readable nor writable is skipped by `_registerFeatures` but
-listed bare by `_describeNode`.  Documented in the module docstring
-(2026-11-02); not merged.
+Done 2026-11-04 in `cameras/Genicam/_camera.py`: `_nodeKind` classifies a
+node once and `_limits` says what bounds it; the properties, the plain-data
+description and the snapshots are built on them.  The disagreements listed
+here are gone, except that a snapshot still calls a boolean or a string
+`'other'`, because the tree depends on that.
 
-- [ ] **Do it when a node type is added or a disagreement causes a bug**,
-  not before.  Classify each node once into a few kinds and keep one table
-  of what each kind does (spec, write, describe, state).  The tests inject
-  mock `genicam` classes, so the classification must work with them, and
-  every change reaches code that talks to hardware, which only the Blackfly
-  can check.
+- [ ] `Genicam/_tree.py` and the `_KINDS` table of `cameras/Viva` hold the
+  same knowledge again.  They stay separate (the backends are
+  complementary); do it for the Genicam tree only if a node type is added.
 
 ---
 

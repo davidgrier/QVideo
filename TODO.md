@@ -69,6 +69,37 @@ worse (4 to 7 ms).  So the gain is CPU, heat and the GIL, not speed: with
 `depth=1` a saturated pipeline already takes the newest frame, and its
 output rate is one over the time per frame.
 
+**Measured on a camera, 2026-11-04** (Flir Blackfly S, 1280x1024 Mono8, the
+chain of `QCamcorder -f`; frames counted by a slot in the GUI thread, six
+seconds a stage, two runs).  At 66 frames a second, a dark scene, nothing
+could be told from the noise (the same configuration varied by 6).  At about
+145 frames a second, a lit scene, the chain loses frames and the loss
+repeats:
+
+| Stage | Run 1 | Run 2 |
+|-------|-------|-------|
+| source only | 144.7 | 147.2 |
+| source and display | 129.2 | 135.7 |
+| tree, polling | 125.7 | 127.5 |
+| tree, polling stopped | 135.7 | 136.3 |
+| tree and display | 110.8 | 114.3 |
+
+The display costs 8 to 10 %, the polling of the tree 7 %, and a tree with
+the polling stopped another 7 % that nothing explains yet.  The program
+receives fewer frames, so this is more than a lower displayed rate.
+`QVideoScreen(framerate=30)` gave back the cost of the display (144 against
+133 frames a second); `framerate=60` did not measurably (135), and with the
+tree present neither helped (114).  The scatter between runs is about 5.
+Watching 201 nodes instead of the 17 of the Flir tree cost 11 % at 66
+frames a second, and 40 nodes 1.5 %, so the cost is not simply the number of
+nodes.  The window of `QCamcorder` alone was too noisy to use (120 and 138).
+
+- [ ] Find where the other 7 % goes when a tree exists and nothing polls:
+      the settings that `QFlirTree` applies to the camera, the widget, or
+      the capture thread's competition for the interpreter lock.
+- [ ] Measure again with a steady scene and a fixed exposure, so that the
+      camera's own rate does not move, and with more runs.
+
 - [ ] Find out whether the display gets smoother, which has not been
       tested: (1) filters about as slow as the camera period, where the
       pipeline picks frames unevenly in capture time; (2) a filter in pure
@@ -403,14 +434,50 @@ here are gone, except that a snapshot still calls a boolean or a string
 
 `python qhot.py -g` (viva-genicam) starts fast and runs well, and it is
 not tied to Mono8 the way our other GenICam path is.  A scientific camera
-usually has Mono10, Mono12 and Mono16 as well.  Everything so far has been
-tested with Mono8 only.  Nothing below has been checked yet; the first item
-finds out what is true.
+usually has Mono10, Mono12 and Mono16 as well.  Everything was tested with
+Mono8 only until 2026-11-04; the first item below was then measured, and the
+rest has not been checked.
 
-- [ ] **Find out what the camera and `to_numpy()` give.**  Set
-  `PixelFormat` to Mono10, Mono12 and Mono16 on the Blackfly S and look at
-  the dtype, the shape, the range of the values and whether Mono12 comes
-  packed or in 16 bits.  Do the same through `QGenicamCamera`.
+**Measured on a camera, 2026-11-04** (Flir Blackfly S, 12 bit ADC, a lit
+scene; `viva` and `QGenicamCamera` through the worker agree):
+
+| Format | dtype | max | meaning |
+|--------|-------|-----|---------|
+| Mono8 | uint8 | 255 | the top 8 bits of the 12 |
+| Mono10p, Mono10Packed | uint16 | 1023 | 10 bit counts, right-justified |
+| Mono12p, Mono12Packed | uint16 | 4095 | 12 bit counts, right-justified |
+| Mono16 | uint16 | 65530 | the whole 16 bit range, all low bits used |
+
+The means agree: Mono8 144.7, Mono10 579, Mono12 2317, Mono16 37066, which
+are the 12 bit mean divided by 16 and by 4 and multiplied by 16.  The shape
+of every frame is `(1024, 1280)`.  The rate does not depend on the format
+(exposure limits it), except that Mono16 is about 7 % lower, as twice the
+bytes over USB3 would make it.  Found on the way:
+
+- `QGenicamCamera` cannot read `Mono10Packed`: Harvesters does not unpack it
+  (1.25 bytes a pixel) and `read()` fails with "cannot reshape array of size
+  1638400 into shape (546133,3)", then times out.  The one frame that
+  arrives after the switch holds the previous format.  `viva` reads it
+  correctly.  Not worth a fix while `viva` is the preferred path.
+- A change to a format with another dtype announces nothing: `shapeChanged`
+  carries only the width and height, so a consumer learns of the new dtype
+  from the frame.
+- The first frames after a change of format may be in the old format.
+- The screen maps the whole range of the dtype: a 12 bit frame shows 16
+  times too dark (a ramp to 4095 shows 2 to 14 of 255); Mono16 shows
+  correctly.
+- Of 16 filters on a `uint16` frame, 4 raise (Canny, Gamma, median
+  smoothing, Log exposure: 8 bit lookup tables and OpenCV calls), 5 return
+  `uint8` (Laplacian, Sobel, DoG, Pencil sketch, Cartoon, which gives zeros)
+  and 7 keep the dtype, though the thresholds are still on a scale of 255.
+
+The convention to choose: a frame at full scale in 16 bits (the screen then
+works unchanged and Mono16 already is one; the packed formats shift left),
+with the bit depth in the metadata of a recording, or counts as the camera
+sends them.  The first suits the screen and the second the filters.
+
+- [x] **Find out what the camera and `to_numpy()` give.**  Done 2026-11-04
+  (the table above), through `viva` and through `QGenicamCamera`.
 - [ ] **Choose the format in the tree.**  `PixelFormat` is a GenICam
   enumeration, so the tree may show it already; check that changing it
   reallocates the ring of a `QRemoteCamera` and announces the new shape

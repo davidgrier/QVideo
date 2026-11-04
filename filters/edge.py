@@ -124,11 +124,11 @@ class QEdgeFilter(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._lowSpinbox = SpinBox(self, prefix='low: ',
-                                   value=self.filter.low, int=True)
+                                   value=self.videoFilter.low, int=True)
         self._lowSpinbox.setMinimum(1)
         self._layout.addWidget(self._lowSpinbox)
         self._highSpinbox = SpinBox(self, prefix='high: ',
-                                    value=self.filter.high, int=True)
+                                    value=self.videoFilter.high, int=True)
         self._highSpinbox.setMinimum(2)
         self._layout.addWidget(self._highSpinbox)
 
@@ -150,9 +150,9 @@ class QEdgeFilter(QVideoFilter):
         low : int
             New lower threshold.
         '''
-        self.filter.low = low
+        self.videoFilter.low = low
         with QtCore.QSignalBlocker(self._lowSpinbox):
-            self._lowSpinbox.setValue(self.filter.low)
+            self._lowSpinbox.setValue(self.videoFilter.low)
 
     @QtCore.Slot(object)
     def _setHigh(self, high: int) -> None:
@@ -167,9 +167,9 @@ class QEdgeFilter(QVideoFilter):
         high : int
             New upper threshold.
         '''
-        self.filter.high = high
+        self.videoFilter.high = high
         with QtCore.QSignalBlocker(self._highSpinbox):
-            self._highSpinbox.setValue(self.filter.high)
+            self._highSpinbox.setValue(self.videoFilter.high)
 
 
 if __name__ == '__main__':  # pragma: no cover

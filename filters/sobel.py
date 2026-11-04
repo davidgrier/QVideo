@@ -133,9 +133,9 @@ class QSobelFilter(QVideoFilter):
         super()._setupUi()
         self._dirBox = QtWidgets.QComboBox()
         self._dirBox.addItems(SobelFilter.DIRECTIONS)
-        self._dirBox.setCurrentText(self.filter.direction)
+        self._dirBox.setCurrentText(self.videoFilter.direction)
         self._layout.addWidget(self._dirBox)
-        self._ksizeBox = SpinBox(value=self.filter.ksize,
+        self._ksizeBox = SpinBox(value=self.videoFilter.ksize,
                                  bounds=(1, 7), step=2, int=True,
                                  prefix='k ')
         self._layout.addWidget(self._ksizeBox)
@@ -147,13 +147,13 @@ class QSobelFilter(QVideoFilter):
 
     @QtCore.Slot(str)
     def _setDirection(self, direction: str) -> None:
-        self.filter.direction = direction
+        self.videoFilter.direction = direction
 
     @QtCore.Slot(object)
     def _setKsize(self, value: int) -> None:
-        self.filter.ksize = value
+        self.videoFilter.ksize = value
         with QtCore.QSignalBlocker(self._ksizeBox):
-            self._ksizeBox.setValue(self.filter.ksize)
+            self._ksizeBox.setValue(self.videoFilter.ksize)
 
 
 if __name__ == '__main__':  # pragma: no cover

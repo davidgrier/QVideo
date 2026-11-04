@@ -136,7 +136,7 @@ class TestMoMeanCall(unittest.TestCase):
 class TestQMoMean(unittest.TestCase):
 
     def test_filter_is_momean(self):
-        self.assertIsInstance(make_widget().filter, MoMean)
+        self.assertIsInstance(make_widget().videoFilter, MoMean)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Running Mean')
@@ -150,7 +150,7 @@ class TestQMoMean(unittest.TestCase):
     def test_set_alpha_updates_filter(self):
         w = make_widget()
         w._setAlpha(0.3)
-        self.assertAlmostEqual(w.filter.alpha, 0.3)
+        self.assertAlmostEqual(w.videoFilter.alpha, 0.3)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
         w = make_widget()

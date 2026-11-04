@@ -84,7 +84,7 @@ class QRGBFilter(QVideoFilter):
             button.toggled.connect(lambda checked, n=n:
                                    self.setChannel(checked, n))
             self._layout.addWidget(button)
-        self._buttons[self.filter.channel].setChecked(True)
+        self._buttons[self.videoFilter.channel].setChecked(True)
 
     @QtCore.Slot(bool, int)
     def setChannel(self, checked: bool, channel: int) -> None:
@@ -103,7 +103,7 @@ class QRGBFilter(QVideoFilter):
             Channel index corresponding to the toggled button.
         '''
         if checked:
-            self.filter.channel = channel
+            self.videoFilter.channel = channel
 
 
 if __name__ == '__main__':  # pragma: no cover

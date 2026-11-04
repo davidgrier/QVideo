@@ -62,7 +62,7 @@ class TestQInvertFilter(unittest.TestCase):
 
     def test_filter_instance(self):
         from QVideo.filters.invert import InvertFilter
-        self.assertIsInstance(self.w.filter, InvertFilter)
+        self.assertIsInstance(self.w.videoFilter, InvertFilter)
 
     def test_title(self):
         self.assertEqual(self.w.title(), 'Invert')

@@ -23,6 +23,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QVideoFilter.filter` is now `QVideoFilter.videoFilter`** (breaking).
+  The attribute is the `VideoFilter` that a widget wraps; the old name
+  shadowed a builtin.  A filter widget that subclasses `QVideoFilter` reads
+  `self.videoFilter`.
 - **The chooser.**  `Camera()` tries the backends in the order of the table
   `BACKENDS`; there is no separate `_DISCOVERY_ORDER` to keep in step.  A
   camera class answers `precheck()` and `deviceNames()` (new hooks of

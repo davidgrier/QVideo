@@ -163,7 +163,7 @@ class QPencilSketchFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        f = self.filter
+        f = self.videoFilter
         self._sigmaS = SpinBox(value=f.sigma_s,
                                bounds=(1., 200.), step=5.,
                                prefix='σ_s ')
@@ -187,19 +187,19 @@ class QPencilSketchFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setSigmaS(self, value: float) -> None:
-        self.filter.sigma_s = float(value)
+        self.videoFilter.sigma_s = float(value)
 
     @QtCore.Slot(object)
     def _setSigmaR(self, value: float) -> None:
-        self.filter.sigma_r = float(value)
+        self.videoFilter.sigma_r = float(value)
 
     @QtCore.Slot(object)
     def _setShade(self, value: float) -> None:
-        self.filter.shade_factor = float(value)
+        self.videoFilter.shade_factor = float(value)
 
     @QtCore.Slot(bool)
     def _setGray(self, checked: bool) -> None:
-        self.filter.gray = checked
+        self.videoFilter.gray = checked
 
 
 class QCartoonFilter(QVideoFilter):
@@ -220,7 +220,7 @@ class QCartoonFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        f = self.filter
+        f = self.videoFilter
         self._sigmaS = SpinBox(value=f.sigma_s,
                                bounds=(1., 200.), step=5.,
                                prefix='σ_s ')
@@ -237,11 +237,11 @@ class QCartoonFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setSigmaS(self, value: float) -> None:
-        self.filter.sigma_s = float(value)
+        self.videoFilter.sigma_s = float(value)
 
     @QtCore.Slot(object)
     def _setSigmaR(self, value: float) -> None:
-        self.filter.sigma_r = float(value)
+        self.videoFilter.sigma_r = float(value)
 
 
 if __name__ == '__main__':  # pragma: no cover

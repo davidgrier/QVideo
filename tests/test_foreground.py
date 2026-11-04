@@ -204,7 +204,7 @@ class TestQForegroundEstimator(unittest.TestCase):
 
     def test_filter_is_foreground_estimator(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, ForegroundEstimator)
+        self.assertIsInstance(widget.videoFilter, ForegroundEstimator)
 
     def test_title(self):
         widget = make_widget()
@@ -222,7 +222,7 @@ class TestQForegroundEstimator(unittest.TestCase):
         with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()):
             widget = make_widget()
             widget._setHistory(200)
-        self.assertEqual(widget.filter.history, 200)
+        self.assertEqual(widget.videoFilter.history, 200)
 
     def test_set_history_snaps_spinbox(self):
         with patch('cv2.createBackgroundSubtractorMOG2', return_value=_mock_bgs()):
@@ -233,7 +233,7 @@ class TestQForegroundEstimator(unittest.TestCase):
     def test_set_threshold_updates_filter(self):
         widget = make_widget()
         widget._setThreshold(32.0)
-        self.assertAlmostEqual(widget.filter.varThreshold, 32.0)
+        self.assertAlmostEqual(widget.videoFilter.varThreshold, 32.0)
 
     def test_history_spinbox_minimum_is_one(self):
         widget = make_widget()

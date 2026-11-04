@@ -179,14 +179,14 @@ class QThresholdFilter(QVideoFilter):
         self._methodBox = QtWidgets.QComboBox()
         self._methodBox.addItems(ThresholdFilter.METHODS)
         self._layout.addWidget(self._methodBox)
-        self._levelBox = SpinBox(value=self.filter.threshold,
+        self._levelBox = SpinBox(value=self.videoFilter.threshold,
                                  bounds=(0, 255), int=True, prefix='level ')
         self._layout.addWidget(self._levelBox)
-        self._blockBox = SpinBox(value=self.filter.block_size,
+        self._blockBox = SpinBox(value=self.videoFilter.block_size,
                                  bounds=(3, None), step=2, int=True,
                                  prefix='block ')
         self._layout.addWidget(self._blockBox)
-        self._cBox = SpinBox(value=self.filter.C, int=True, prefix='C ')
+        self._cBox = SpinBox(value=self.videoFilter.C, int=True, prefix='C ')
         self._layout.addWidget(self._cBox)
         self._blockBox.setVisible(False)
         self._cBox.setVisible(False)
@@ -200,7 +200,7 @@ class QThresholdFilter(QVideoFilter):
 
     @QtCore.Slot(str)
     def _setMethod(self, method: str) -> None:
-        self.filter.method = method
+        self.videoFilter.method = method
         is_global = method == 'Global'
         is_adaptive = method.startswith('Adaptive')
         self._levelBox.setVisible(is_global)
@@ -209,19 +209,19 @@ class QThresholdFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setLevel(self, value: int) -> None:
-        self.filter.threshold = value
+        self.videoFilter.threshold = value
         with QtCore.QSignalBlocker(self._levelBox):
-            self._levelBox.setValue(self.filter.threshold)
+            self._levelBox.setValue(self.videoFilter.threshold)
 
     @QtCore.Slot(object)
     def _setBlockSize(self, value: int) -> None:
-        self.filter.block_size = value
+        self.videoFilter.block_size = value
         with QtCore.QSignalBlocker(self._blockBox):
-            self._blockBox.setValue(self.filter.block_size)
+            self._blockBox.setValue(self.videoFilter.block_size)
 
     @QtCore.Slot(object)
     def _setC(self, value: int) -> None:
-        self.filter.C = value
+        self.videoFilter.C = value
 
 
 if __name__ == '__main__':  # pragma: no cover

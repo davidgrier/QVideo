@@ -228,23 +228,23 @@ class QExposureFilter(QVideoFilter):
         for m in ExposureFilter.METHODS:
             self._methodBox.addItem(m)
         self._layout.addWidget(self._methodBox)
-        self._cutoffBox = SpinBox(value=self.filter.cutoff,
+        self._cutoffBox = SpinBox(value=self.videoFilter.cutoff,
                                   bounds=(0.0, 255.0), step=1.0,
                                   prefix='cutoff ')
         self._layout.addWidget(self._cutoffBox)
-        self._gainBox = SpinBox(value=self.filter.gain,
+        self._gainBox = SpinBox(value=self.videoFilter.gain,
                                 bounds=(0.1, 50.0), step=0.5,
                                 prefix='gain ')
         self._layout.addWidget(self._gainBox)
-        self._clipBox = SpinBox(value=self.filter.clip_limit,
+        self._clipBox = SpinBox(value=self.videoFilter.clip_limit,
                                 bounds=(0.1, 40.0), step=0.5,
                                 prefix='clip ')
         self._layout.addWidget(self._clipBox)
-        self._tileBox = SpinBox(value=self.filter.tile_size,
+        self._tileBox = SpinBox(value=self.videoFilter.tile_size,
                                 bounds=(1, 64), step=1, int=True,
                                 prefix='tile ')
         self._layout.addWidget(self._tileBox)
-        self._updateVisibility(self.filter.method)
+        self._updateVisibility(self.videoFilter.method)
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
@@ -264,24 +264,24 @@ class QExposureFilter(QVideoFilter):
 
     @QtCore.Slot(str)
     def _setMethod(self, value: str) -> None:
-        self.filter.method = value
+        self.videoFilter.method = value
         self._updateVisibility(value)
 
     @QtCore.Slot(object)
     def _setCutoff(self, value: float) -> None:
-        self.filter.cutoff = value
+        self.videoFilter.cutoff = value
 
     @QtCore.Slot(object)
     def _setGain(self, value: float) -> None:
-        self.filter.gain = value
+        self.videoFilter.gain = value
 
     @QtCore.Slot(object)
     def _setClipLimit(self, value: float) -> None:
-        self.filter.clip_limit = value
+        self.videoFilter.clip_limit = value
 
     @QtCore.Slot(object)
     def _setTileSize(self, value: float) -> None:
-        self.filter.tile_size = int(value)
+        self.videoFilter.tile_size = int(value)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -157,7 +157,7 @@ class TestQROIFilter(unittest.TestCase):
 
     def test_filter_is_roi_filter(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, ROIFilter)
+        self.assertIsInstance(widget.videoFilter, ROIFilter)
 
     def test_title(self):
         widget = make_widget()
@@ -182,22 +182,22 @@ class TestQROIFilter(unittest.TestCase):
     def test_setX_updates_filter(self):
         widget = make_widget()
         widget._setX(3)
-        self.assertEqual(widget.filter.x, 3)
+        self.assertEqual(widget.videoFilter.x, 3)
 
     def test_setY_updates_filter(self):
         widget = make_widget()
         widget._setY(4)
-        self.assertEqual(widget.filter.y, 4)
+        self.assertEqual(widget.videoFilter.y, 4)
 
     def test_setW_updates_filter(self):
         widget = make_widget()
         widget._setW(64)
-        self.assertEqual(widget.filter.w, 64)
+        self.assertEqual(widget.videoFilter.w, 64)
 
     def test_setH_updates_filter(self):
         widget = make_widget()
         widget._setH(64)
-        self.assertEqual(widget.filter.h, 64)
+        self.assertEqual(widget.videoFilter.h, 64)
 
     def test_setX_syncs_spinbox(self):
         widget = make_widget()

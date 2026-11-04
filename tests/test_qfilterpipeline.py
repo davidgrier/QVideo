@@ -286,19 +286,19 @@ class TestRack(PipelineTestCase):
     def test_starts_with_the_checked_filters(self):
         pipeline = self.pipeline_with_rack()
         self.assertEqual(pipeline.filters,
-                         tuple(w.filter for w in self.widgets))
+                         tuple(w.videoFilter for w in self.widgets))
 
     def test_toggling_a_filter_updates_the_pipeline(self):
         pipeline = self.pipeline_with_rack()
         self.widgets[0].setChecked(False)
-        self.assertEqual(pipeline.filters, (self.widgets[1].filter,))
+        self.assertEqual(pipeline.filters, (self.widgets[1].videoFilter,))
 
     def test_adding_a_filter_updates_the_pipeline(self):
         pipeline = self.pipeline_with_rack()
         extra = QVideoFilter(None, 'extra', _Add(100))
         extra.setChecked(True)
         self.rack.add(extra)
-        self.assertEqual(pipeline.filters[-1], extra.filter)
+        self.assertEqual(pipeline.filters[-1], extra.videoFilter)
 
     def test_frames_are_filtered_by_the_rack_filters(self):
         self.pipeline_with_rack()
@@ -314,7 +314,7 @@ class TestRack(PipelineTestCase):
         self.source.send(1)
         self.assertTrue(wait_until(lambda: not boom.isChecked()))
         self.assertIn('boom', boom.toolTip())
-        self.assertNotIn(boom.filter, pipeline.filters)
+        self.assertNotIn(boom.videoFilter, pipeline.filters)
 
     def test_rechecking_a_failed_filter_puts_it_back(self):
         boom = QVideoFilter(None, 'boom', _Boom())
@@ -324,7 +324,7 @@ class TestRack(PipelineTestCase):
         self.source.send(1)
         self.assertTrue(wait_until(lambda: not boom.isChecked()))
         boom.setChecked(True)
-        self.assertIn(boom.filter, pipeline.filters)
+        self.assertIn(boom.videoFilter, pipeline.filters)
 
     def test_detaching_the_rack_stops_following_it(self):
         pipeline = self.pipeline_with_rack()

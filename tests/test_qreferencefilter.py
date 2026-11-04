@@ -209,7 +209,7 @@ class TestReferenceFilterReset(unittest.TestCase):
 class TestQReferenceFilterInit(unittest.TestCase):
 
     def test_the_widget_makes_its_filter(self):
-        self.assertIsInstance(make_widget().filter, _Bias)
+        self.assertIsInstance(make_widget().videoFilter, _Bias)
 
     def test_the_title_is_the_display_name(self):
         self.assertEqual(make_widget().title(), 'Bias')
@@ -219,7 +219,7 @@ class TestQReferenceFilterInit(unittest.TestCase):
 
     def test_nFramesBox_initial_value(self):
         w = make_widget()
-        self.assertEqual(w._nFramesBox.value(), w.filter.nFrames)
+        self.assertEqual(w._nFramesBox.value(), w.videoFilter.nFrames)
 
     def test_has_captureButton(self):
         w = make_widget()
@@ -243,22 +243,22 @@ class TestQReferenceFilterSlots(unittest.TestCase):
     def test_set_nFrames_updates_filter(self):
         w = make_widget()
         w._setNFrames(8)
-        self.assertEqual(w.filter.nFrames, 8)
+        self.assertEqual(w.videoFilter.nFrames, 8)
 
     def test_set_nFrames_clamps_minimum(self):
         w = make_widget()
         w._setNFrames(0)
-        self.assertEqual(w.filter.nFrames, 1)
+        self.assertEqual(w.videoFilter.nFrames, 1)
 
     def test_capture_disables_button(self):
         w = make_widget()
-        with patch.object(w.filter, 'capture'):
+        with patch.object(w.videoFilter, 'capture'):
             w._capture()
         self.assertFalse(w._captureButton.isEnabled())
 
     def test_capture_calls_filter_capture(self):
         w = make_widget()
-        with patch.object(w.filter, 'capture') as mock_cap:
+        with patch.object(w.videoFilter, 'capture') as mock_cap:
             w._capture()
         mock_cap.assert_called_once()
 
@@ -270,19 +270,19 @@ class TestQReferenceFilterSlots(unittest.TestCase):
 
     def test_reset_calls_filter_reset(self):
         w = make_widget()
-        with patch.object(w.filter, 'reset') as mock_reset:
+        with patch.object(w.videoFilter, 'reset') as mock_reset:
             w._reset()
         mock_reset.assert_called_once()
 
     def test_capture_button_click_disables_button(self):
         w = make_widget()
-        with patch.object(w.filter, 'capture'):
+        with patch.object(w.videoFilter, 'capture'):
             w._captureButton.click()
         self.assertFalse(w._captureButton.isEnabled())
 
     def test_reset_button_click_calls_filter_reset(self):
         w = make_widget()
-        with patch.object(w.filter, 'reset') as mock_reset:
+        with patch.object(w.videoFilter, 'reset') as mock_reset:
             w._resetButton.setEnabled(True)
             w._resetButton.click()
         mock_reset.assert_called_once()
@@ -290,7 +290,7 @@ class TestQReferenceFilterSlots(unittest.TestCase):
     def test_filter_captured_signal_re_enables_button(self):
         w = make_widget()
         w._captureButton.setEnabled(False)
-        w.filter.captured.emit()
+        w.videoFilter.captured.emit()
         self.assertTrue(w._captureButton.isEnabled())
 
     def test_call_when_unchecked_returns_frame_unchanged(self):

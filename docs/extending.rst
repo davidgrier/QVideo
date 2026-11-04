@@ -136,19 +136,19 @@ Override :meth:`_setupUi` to add spinboxes, sliders, or any other widget.
        def _setupUi(self) -> None:
            super()._setupUi()                     # creates self._layout
            self._layout.addWidget(QtWidgets.QLabel('gain'))
-           self._spinbox = SpinBox(self, value=self.filter.gain, step=0.1)
+           self._spinbox = SpinBox(self, value=self.videoFilter.gain, step=0.1)
            self._spinbox.valueChanged.connect(self._setGain)
            self._layout.addWidget(self._spinbox)
 
        @QtCore.Slot(object)
        def _setGain(self, value: float) -> None:
-           self.filter.gain = value
+           self.videoFilter.gain = value
 
 The key points:
 
 - ``super()._setupUi()`` must be called first — it creates ``self._layout``
   and configures the group box.
-- ``self.filter`` is the :class:`~QVideo.lib.VideoFilter.VideoFilter` instance
+- ``self.videoFilter`` is the :class:`~QVideo.lib.VideoFilter.VideoFilter` instance
   passed to the constructor.
 - Use :class:`pyqtgraph.SpinBox` instead of :class:`~pyqtgraph.Qt.QtWidgets.QDoubleSpinBox`
   for numeric controls — it integrates more naturally with the pyqtgraph UI style.

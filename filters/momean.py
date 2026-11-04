@@ -101,7 +101,7 @@ class QMoMean(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self._alphaBox = SpinBox(value=self.filter.alpha,
+        self._alphaBox = SpinBox(value=self.videoFilter.alpha,
                                  bounds=(1e-6, 1.0), step=0.05,
                                  prefix='α ')
         self._layout.addWidget(self._alphaBox)
@@ -112,7 +112,7 @@ class QMoMean(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setAlpha(self, value: float) -> None:
-        self.filter.alpha = value
+        self.videoFilter.alpha = value
 
 
 if __name__ == '__main__':  # pragma: no cover

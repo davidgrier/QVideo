@@ -307,7 +307,7 @@ class TestQFilterRackActiveFilters(unittest.TestCase):
         for w in (a, b):
             w.setChecked(True)
             rack.add(w)
-        self.assertEqual(rack.activeFilters(), [a.filter, b.filter])
+        self.assertEqual(rack.activeFilters(), [a.videoFilter, b.videoFilter])
 
     def test_unchecked_widgets_are_left_out(self):
         rack = make_rack()
@@ -315,7 +315,7 @@ class TestQFilterRackActiveFilters(unittest.TestCase):
         b.setChecked(True)
         rack.add(a)
         rack.add(b)
-        self.assertEqual(rack.activeFilters(), [b.filter])
+        self.assertEqual(rack.activeFilters(), [b.videoFilter])
 
     def test_follows_the_rack_order(self):
         rack = make_rack()
@@ -329,7 +329,7 @@ class TestQFilterRackActiveFilters(unittest.TestCase):
         with patch.object(rack, 'mapFromGlobal',
                           return_value=QtCore.QPoint(1, 21)):
             rack._moveSlot(slot0, QtCore.QPoint(0, 0))
-        self.assertEqual(rack.activeFilters(), [b.filter, a.filter])
+        self.assertEqual(rack.activeFilters(), [b.videoFilter, a.videoFilter])
 
 
 class TestSlotUnder(unittest.TestCase):
@@ -556,7 +556,7 @@ class TestQFilterRackSwitchOff(unittest.TestCase):
         for w in (a, b):
             w.setChecked(True)
             rack.add(w)
-        rack.switchOff(b.filter, ValueError('bad'))
+        rack.switchOff(b.videoFilter, ValueError('bad'))
         self.assertTrue(a.isChecked())
         self.assertFalse(b.isChecked())
         self.assertIn('bad', b.toolTip())

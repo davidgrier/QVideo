@@ -173,7 +173,7 @@ class TestDejitterFilterReset(unittest.TestCase):
 class TestQDejitterFilter(unittest.TestCase):
 
     def test_filter_is_dejitter_filter(self):
-        self.assertIsInstance(QDejitterFilter().filter, DejitterFilter)
+        self.assertIsInstance(QDejitterFilter().videoFilter, DejitterFilter)
 
     def test_title(self):
         self.assertEqual(QDejitterFilter().title(), 'Dejitter')
@@ -190,18 +190,18 @@ class TestQDejitterFilter(unittest.TestCase):
     def test_set_mode_updates_filter(self):
         w = QDejitterFilter()
         w._setMode('Rolling')
-        self.assertEqual(w.filter.mode, 'rolling')
+        self.assertEqual(w.videoFilter.mode, 'rolling')
 
     def test_set_alpha_updates_filter(self):
         w = QDejitterFilter()
         w._setAlpha(0.2)
-        self.assertAlmostEqual(w.filter.alpha, 0.2)
+        self.assertAlmostEqual(w.videoFilter.alpha, 0.2)
 
     def test_reset_button_clears_reference(self):
         w = QDejitterFilter()
-        w.filter.process(_REF)
+        w.videoFilter.process(_REF)
         w._resetReference()
-        self.assertIsNone(w.filter._reference)
+        self.assertIsNone(w.videoFilter._reference)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
         w = QDejitterFilter()

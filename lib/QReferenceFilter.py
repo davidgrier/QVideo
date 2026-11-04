@@ -186,7 +186,7 @@ class QReferenceFilter(QVideoFilter):
         super()._setupUi()
         self._layout.addWidget(QtWidgets.QLabel('frames'))
         self._nFramesBox = SpinBox(
-            value=self.filter.nFrames,
+            value=self.videoFilter.nFrames,
             bounds=(1, 256), int=True)
         self._layout.addWidget(self._nFramesBox)
         self._captureButton = QtWidgets.QPushButton('Capture', self)
@@ -199,18 +199,18 @@ class QReferenceFilter(QVideoFilter):
         self._nFramesBox.valueChanged.connect(self._setNFrames)
         self._captureButton.clicked.connect(self._capture)
         self._resetButton.clicked.connect(self._reset)
-        self.filter.captured.connect(self._onCaptured)
+        self.videoFilter.captured.connect(self._onCaptured)
 
     @QtCore.Slot(object)
     def _setNFrames(self, value: int) -> None:
-        self.filter.nFrames = int(value)
+        self.videoFilter.nFrames = int(value)
         with QtCore.QSignalBlocker(self._nFramesBox):
-            self._nFramesBox.setValue(self.filter.nFrames)
+            self._nFramesBox.setValue(self.videoFilter.nFrames)
 
     @QtCore.Slot(bool)
     def _capture(self, _checked: bool = False) -> None:
         self._captureButton.setEnabled(False)
-        self.filter.capture()
+        self.videoFilter.capture()
 
     @QtCore.Slot()
     def _onCaptured(self) -> None:
@@ -218,4 +218,4 @@ class QReferenceFilter(QVideoFilter):
 
     @QtCore.Slot(bool)
     def _reset(self, _checked: bool = False) -> None:
-        self.filter.reset()
+        self.videoFilter.reset()

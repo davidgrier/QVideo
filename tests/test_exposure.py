@@ -241,7 +241,7 @@ class TestQExposureFilter(unittest.TestCase):
         self.w = make_widget()
 
     def test_filter_instance(self):
-        self.assertIsInstance(self.w.filter, ExposureFilter)
+        self.assertIsInstance(self.w.videoFilter, ExposureFilter)
 
     def test_method_box_exists(self):
         self.assertTrue(hasattr(self.w, '_methodBox'))
@@ -278,23 +278,23 @@ class TestQExposureFilter(unittest.TestCase):
 
     def test_set_method_updates_filter(self):
         self.w._setMethod('Sigmoid')
-        self.assertEqual(self.w.filter.method, 'Sigmoid')
+        self.assertEqual(self.w.videoFilter.method, 'Sigmoid')
 
     def test_set_cutoff_updates_filter(self):
         self.w._setCutoff(100.0)
-        self.assertAlmostEqual(self.w.filter.cutoff, 100.0)
+        self.assertAlmostEqual(self.w.videoFilter.cutoff, 100.0)
 
     def test_set_gain_updates_filter(self):
         self.w._setGain(5.0)
-        self.assertAlmostEqual(self.w.filter.gain, 5.0)
+        self.assertAlmostEqual(self.w.videoFilter.gain, 5.0)
 
     def test_set_clip_limit_updates_filter(self):
         self.w._setClipLimit(3.0)
-        self.assertAlmostEqual(self.w.filter.clip_limit, 3.0)
+        self.assertAlmostEqual(self.w.videoFilter.clip_limit, 3.0)
 
     def test_set_tile_size_updates_filter(self):
         self.w._setTileSize(16)
-        self.assertEqual(self.w.filter.tile_size, 16)
+        self.assertEqual(self.w.videoFilter.tile_size, 16)
 
 
 if __name__ == '__main__':  # pragma: no cover

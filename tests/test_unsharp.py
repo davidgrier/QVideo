@@ -78,7 +78,7 @@ class TestQUnsharpFilter(unittest.TestCase):
 
     def test_filter_instance(self):
         from QVideo.filters.unsharp import UnsharpFilter
-        self.assertIsInstance(self.w.filter, UnsharpFilter)
+        self.assertIsInstance(self.w.videoFilter, UnsharpFilter)
 
     def test_radius_spinbox_exists(self):
         self.assertTrue(hasattr(self.w, '_radiusBox'))
@@ -94,11 +94,11 @@ class TestQUnsharpFilter(unittest.TestCase):
 
     def test_set_radius_updates_filter(self):
         self.w._setRadius(5.0)
-        self.assertAlmostEqual(self.w.filter.radius, 5.0)
+        self.assertAlmostEqual(self.w.videoFilter.radius, 5.0)
 
     def test_set_amount_updates_filter(self):
         self.w._setAmount(0.5)
-        self.assertAlmostEqual(self.w.filter.amount, 0.5)
+        self.assertAlmostEqual(self.w.videoFilter.amount, 0.5)
 
 
 if __name__ == '__main__':  # pragma: no cover

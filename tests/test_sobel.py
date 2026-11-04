@@ -121,7 +121,7 @@ class TestSobelFilterGet(unittest.TestCase):
 class TestQSobelFilterInit(unittest.TestCase):
 
     def test_filter_is_sobel_filter(self):
-        self.assertIsInstance(make_widget().filter, SobelFilter)
+        self.assertIsInstance(make_widget().videoFilter, SobelFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Sobel Edge Detection')
@@ -132,12 +132,12 @@ class TestQSobelFilterSetDirection(unittest.TestCase):
     def test_set_direction_updates_filter(self):
         w = make_widget()
         w._setDirection('Horizontal')
-        self.assertEqual(w.filter.direction, 'Horizontal')
+        self.assertEqual(w.videoFilter.direction, 'Horizontal')
 
     def test_set_direction_vertical(self):
         w = make_widget()
         w._setDirection('Vertical')
-        self.assertEqual(w.filter.direction, 'Vertical')
+        self.assertEqual(w.videoFilter.direction, 'Vertical')
 
 
 class TestQSobelFilterSetKsize(unittest.TestCase):
@@ -145,7 +145,7 @@ class TestQSobelFilterSetKsize(unittest.TestCase):
     def test_set_ksize_updates_filter(self):
         w = make_widget()
         w._setKsize(5)
-        self.assertEqual(w.filter.ksize, 5)
+        self.assertEqual(w.videoFilter.ksize, 5)
 
     def test_set_ksize_snaps_spinbox_to_odd(self):
         w = make_widget()

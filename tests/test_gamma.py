@@ -81,7 +81,7 @@ class TestQGammaFilter(unittest.TestCase):
 
     def test_filter_instance(self):
         from QVideo.filters.gamma import GammaFilter
-        self.assertIsInstance(self.w.filter, GammaFilter)
+        self.assertIsInstance(self.w.videoFilter, GammaFilter)
 
     def test_spinbox_exists(self):
         self.assertTrue(hasattr(self.w, '_gammaBox'))
@@ -91,7 +91,7 @@ class TestQGammaFilter(unittest.TestCase):
 
     def test_set_gamma_updates_filter(self):
         self.w._setGamma(2.0)
-        self.assertAlmostEqual(self.w.filter.gamma, 2.0)
+        self.assertAlmostEqual(self.w.videoFilter.gamma, 2.0)
 
 
 if __name__ == '__main__':  # pragma: no cover

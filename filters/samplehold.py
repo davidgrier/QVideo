@@ -124,7 +124,7 @@ class QSampleHold(QVideoFilter):
             button = QtWidgets.QRadioButton(str(order))
             self._layout.addWidget(button)
             self._buttons.append(button)
-        self._buttons[self.filter.order - 1].setChecked(True)
+        self._buttons[self.videoFilter.order - 1].setChecked(True)
         self._resetButton = QtWidgets.QPushButton('Reset', self)
         self._layout.addWidget(self._resetButton)
 
@@ -152,8 +152,8 @@ class QSampleHold(QVideoFilter):
             Accumulation order (1, 2, or 3).
         '''
         if checked:
-            self.filter.order = order
-            self.filter.reset()
+            self.videoFilter.order = order
+            self.videoFilter.reset()
 
     @QtCore.Slot(bool)
     def reset(self, _checked: bool = False) -> None:
@@ -168,7 +168,7 @@ class QSampleHold(QVideoFilter):
         _checked : bool
             Unused toggle state from the button signal.
         '''
-        self.filter.reset()
+        self.videoFilter.reset()
 
 
 if __name__ == '__main__':  # pragma: no cover

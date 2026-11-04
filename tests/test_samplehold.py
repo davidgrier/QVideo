@@ -118,7 +118,7 @@ class TestQSampleHold(unittest.TestCase):
 
     def test_filter_is_sample_hold(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, SampleHold)
+        self.assertIsInstance(widget.videoFilter, SampleHold)
 
     def test_title(self):
         widget = make_widget()
@@ -148,28 +148,28 @@ class TestQSampleHold(unittest.TestCase):
     def test_set_order_when_checked_updates_filter(self):
         widget = make_widget()
         widget.setOrder(True, 2)
-        self.assertEqual(widget.filter.order, 2)
+        self.assertEqual(widget.videoFilter.order, 2)
 
     def test_set_order_when_checked_resets_count(self):
         widget = make_widget()
         widget.setOrder(True, 2)
-        self.assertEqual(widget.filter._count, 9)
+        self.assertEqual(widget.videoFilter._count, 9)
 
     def test_set_order_when_unchecked_does_not_update(self):
         widget = make_widget()
         widget.setOrder(True, 2)
         widget.setOrder(False, 2)
-        self.assertEqual(widget.filter.order, 2)
+        self.assertEqual(widget.videoFilter.order, 2)
 
     def test_reset_calls_filter_reset(self):
         widget = make_widget()
-        widget.filter._count = 0
+        widget.videoFilter._count = 0
         widget.reset()
-        self.assertEqual(widget.filter._count, 3 ** widget.filter.order)
+        self.assertEqual(widget.videoFilter._count, 3 ** widget.videoFilter.order)
 
     def test_resetButton_triggers_filter_reset(self):
         widget = make_widget()
-        with patch.object(widget.filter, 'reset') as mock_reset:
+        with patch.object(widget.videoFilter, 'reset') as mock_reset:
             widget._resetButton.setEnabled(True)
             widget._resetButton.click()
         mock_reset.assert_called_once()

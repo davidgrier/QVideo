@@ -77,7 +77,7 @@ class TestQDoGFilter(unittest.TestCase):
 
     def test_filter_instance(self):
         from QVideo.filters.dog import DoGFilter
-        self.assertIsInstance(self.w.filter, DoGFilter)
+        self.assertIsInstance(self.w.videoFilter, DoGFilter)
 
     def test_low_spinbox_exists(self):
         self.assertTrue(hasattr(self.w, '_lowBox'))
@@ -93,20 +93,20 @@ class TestQDoGFilter(unittest.TestCase):
 
     def test_set_low_sigma_updates_filter(self):
         self.w._setLowSigma(0.5)
-        self.assertAlmostEqual(self.w.filter.low_sigma, 0.5)
+        self.assertAlmostEqual(self.w.videoFilter.low_sigma, 0.5)
 
     def test_set_high_sigma_updates_filter(self):
         self.w._setHighSigma(5.0)
-        self.assertAlmostEqual(self.w.filter.high_sigma, 5.0)
+        self.assertAlmostEqual(self.w.videoFilter.high_sigma, 5.0)
 
     def test_snap_back_on_invalid_low(self):
-        original = self.w.filter.low_sigma
-        self.w._setLowSigma(self.w.filter.high_sigma + 1.0)
+        original = self.w.videoFilter.low_sigma
+        self.w._setLowSigma(self.w.videoFilter.high_sigma + 1.0)
         self.assertAlmostEqual(self.w._lowBox.value(), original)
 
     def test_snap_back_on_invalid_high(self):
-        original = self.w.filter.high_sigma
-        self.w._setHighSigma(self.w.filter.low_sigma - 0.1)
+        original = self.w.videoFilter.high_sigma
+        self.w._setHighSigma(self.w.videoFilter.low_sigma - 0.1)
         self.assertAlmostEqual(self.w._highBox.value(), original)
 
 

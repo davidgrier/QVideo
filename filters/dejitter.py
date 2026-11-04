@@ -144,7 +144,7 @@ class QDejitterFilter(QVideoFilter):
         self._modeBox = QtWidgets.QComboBox()
         self._modeBox.addItems(['Static', 'Rolling'])
         self._layout.addWidget(self._modeBox)
-        self._alphaBox = SpinBox(value=self.filter.alpha,
+        self._alphaBox = SpinBox(value=self.videoFilter.alpha,
                                  bounds=(1e-6, 1.0), step=0.05,
                                  prefix='α ')
         self._alphaBox.setVisible(False)
@@ -161,16 +161,16 @@ class QDejitterFilter(QVideoFilter):
     @QtCore.Slot(str)
     def _setMode(self, text: str) -> None:
         mode = text.lower()
-        self.filter.mode = mode
+        self.videoFilter.mode = mode
         self._alphaBox.setVisible(mode == 'rolling')
 
     @QtCore.Slot(object)
     def _setAlpha(self, value: float) -> None:
-        self.filter.alpha = value
+        self.videoFilter.alpha = value
 
     @QtCore.Slot()
     def _resetReference(self) -> None:
-        self.filter.reset()
+        self.videoFilter.reset()
 
 
 if __name__ == '__main__':  # pragma: no cover

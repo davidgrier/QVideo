@@ -100,7 +100,7 @@ class TestQBlobFilter(unittest.TestCase):
 
     def test_filter_is_blob_filter(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, BlobFilter)
+        self.assertIsInstance(widget.videoFilter, BlobFilter)
 
     def test_title(self):
         widget = make_widget()

@@ -111,7 +111,7 @@ class TestQEdgeFilter(unittest.TestCase):
 
     def test_filter_is_edge_filter(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, EdgeFilter)
+        self.assertIsInstance(widget.videoFilter, EdgeFilter)
 
     def test_title(self):
         widget = make_widget()
@@ -128,12 +128,12 @@ class TestQEdgeFilter(unittest.TestCase):
     def test_set_low_updates_filter(self):
         widget = make_widget()
         widget._setLow(20)
-        self.assertEqual(widget.filter.low, 20)
+        self.assertEqual(widget.videoFilter.low, 20)
 
     def test_set_high_updates_filter(self):
         widget = make_widget()
         widget._setHigh(200)
-        self.assertEqual(widget.filter.high, 200)
+        self.assertEqual(widget.videoFilter.high, 200)
 
     def test_set_low_snaps_spinbox(self):
         widget = make_widget()
@@ -147,16 +147,16 @@ class TestQEdgeFilter(unittest.TestCase):
 
     def test_set_low_rejected_snaps_spinbox_back(self):
         widget = make_widget()
-        original_low = widget.filter.low
+        original_low = widget.videoFilter.low
         with self.assertLogs('QVideo.filters.edge', level='WARNING'):
-            widget._setLow(widget.filter.high + 10)
+            widget._setLow(widget.videoFilter.high + 10)
         self.assertEqual(widget._lowSpinbox.value(), original_low)
 
     def test_set_high_rejected_snaps_spinbox_back(self):
         widget = make_widget()
-        original_high = widget.filter.high
+        original_high = widget.videoFilter.high
         with self.assertLogs('QVideo.filters.edge', level='WARNING'):
-            widget._setHigh(widget.filter.low - 1)
+            widget._setHigh(widget.videoFilter.low - 1)
         self.assertEqual(widget._highSpinbox.value(), original_high)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):

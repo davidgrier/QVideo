@@ -221,22 +221,22 @@ class QVideoFilter(QtWidgets.QGroupBox):
                  title: str,
                  videoFilter: VideoFilter) -> None:
         super().__init__(title, parent)
-        self._filter = videoFilter
+        self._videoFilter = videoFilter
         self._setupUi()
         self._connectSignals()
         self.toggled.connect(self._clearError)
 
     @property
-    def filter(self) -> VideoFilter:
+    def videoFilter(self) -> VideoFilter:
         '''The :class:`VideoFilter` applied when this widget is enabled.'''
-        return self._filter
+        return self._videoFilter
 
-    @filter.setter
-    def filter(self, videoFilter: VideoFilter) -> None:
+    @videoFilter.setter
+    def videoFilter(self, videoFilter: VideoFilter) -> None:
         if not isinstance(videoFilter, VideoFilter):
             raise TypeError(
                 f'expected VideoFilter, got {type(videoFilter).__name__}')
-        self._filter = videoFilter
+        self._videoFilter = videoFilter
 
     def __call__(self, image: Image) -> Image | None:
         '''Apply the filter if enabled, otherwise return *image* unchanged.
@@ -258,9 +258,9 @@ class QVideoFilter(QtWidgets.QGroupBox):
         if not self.isChecked():
             return image
         try:
-            return self.filter(image)
+            return self.videoFilter(image)
         except Exception as error:
-            logger.exception(f'{type(self.filter).__name__} failed and '
+            logger.exception(f'{type(self.videoFilter).__name__} failed and '
                              'was switched off')
             self.switchOff(error)
             return image

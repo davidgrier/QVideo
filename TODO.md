@@ -21,8 +21,6 @@ together.  CI now enforces `SIM` (but `SIM905`), `PERF`, `PIE`, `RUF012`,
       which `wait` must not receive.
 - [ ] Wide signatures: `QRemoteCamera.__init__` (8 arguments),
       `QOpenCVCamera` (7), `QPicamera` (6), the trackpy overlay (6).
-- [ ] `QVideoFilter.filter` shadows the builtin.  It is public API, so leave
-      it unless the name is changed on purpose.
 - [ ] `QVideoWriter.framenumber` is not camelCase, but the writer has a
       signal `frameNumber`; renaming needs a decision about both.  A few
       attributes of filters are snake_case.

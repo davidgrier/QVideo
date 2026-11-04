@@ -78,7 +78,7 @@ class TestDarkFrameFilterGet(unittest.TestCase):
 class TestQDarkFrameFilterInit(unittest.TestCase):
 
     def test_filter_is_dark_frame_filter(self):
-        self.assertIsInstance(make_widget().filter, DarkFrameFilter)
+        self.assertIsInstance(make_widget().videoFilter, DarkFrameFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Dark Frame')

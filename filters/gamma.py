@@ -92,7 +92,7 @@ class QGammaFilter(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._layout.addWidget(QtWidgets.QLabel('γ'))
-        self._gammaBox = SpinBox(value=self.filter.gamma,
+        self._gammaBox = SpinBox(value=self.videoFilter.gamma,
                                  bounds=(0.1, 10.0), step=0.1)
         self._layout.addWidget(self._gammaBox)
 
@@ -102,7 +102,7 @@ class QGammaFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setGamma(self, value: float) -> None:
-        self.filter.gamma = value
+        self.videoFilter.gamma = value
 
 
 if __name__ == '__main__':  # pragma: no cover

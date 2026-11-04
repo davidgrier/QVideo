@@ -89,7 +89,7 @@ class QMoMedian(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self._orderBox = SpinBox(value=self.filter.order,
+        self._orderBox = SpinBox(value=self.videoFilter.order,
                                  bounds=(1, 4), int=True, step=1,
                                  prefix='order ')
         self._layout.addWidget(self._orderBox)
@@ -100,7 +100,7 @@ class QMoMedian(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setOrder(self, value: int) -> None:
-        self.filter.order = int(value)
+        self.videoFilter.order = int(value)
 
 
 if __name__ == '__main__':  # pragma: no cover

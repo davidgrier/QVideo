@@ -119,7 +119,7 @@ class TestQVideoFilter(unittest.TestCase):
     def test_filter_stored(self):
         f = make_filter()
         widget = QVideoFilter(None, 'Test', f)
-        self.assertIs(widget.filter, f)
+        self.assertIs(widget.videoFilter, f)
 
     def test_call_when_unchecked_returns_image_unchanged(self):
         widget = make_widget(checked=False)
@@ -157,8 +157,8 @@ class TestQVideoFilter(unittest.TestCase):
     def test_set_filter_replaces_filter(self):
         widget = make_widget()
         new_filter = make_filter()
-        widget.filter = new_filter
-        self.assertIs(widget.filter, new_filter)
+        widget.videoFilter = new_filter
+        self.assertIs(widget.videoFilter, new_filter)
 
     def test_set_filter_takes_effect_on_call(self):
         class ConstantFilter(VideoFilter):
@@ -166,14 +166,14 @@ class TestQVideoFilter(unittest.TestCase):
                 return _OTHER
 
         widget = make_widget(checked=True)
-        widget.filter = ConstantFilter()
+        widget.videoFilter = ConstantFilter()
         result = widget(_FRAME)
         np.testing.assert_array_equal(result, _OTHER)
 
     def test_filter_setter_rejects_non_filter(self):
         widget = make_widget()
         with self.assertRaises(TypeError):
-            widget.filter = 'not a filter'
+            widget.videoFilter = 'not a filter'
 
     def test_has_layout(self):
         widget = make_widget()
@@ -251,14 +251,14 @@ class TestQVideoFilterFailure(unittest.TestCase):
         self._fail(widget)
         widget(_FRAME)
         widget(_FRAME)
-        self.assertEqual(widget.filter.calls, 1)
+        self.assertEqual(widget.videoFilter.calls, 1)
 
     def test_rechecking_retries_the_filter(self):
         widget = make_failing_widget()
         self._fail(widget)
         widget.setChecked(True)
         self._fail(widget)
-        self.assertEqual(widget.filter.calls, 2)
+        self.assertEqual(widget.videoFilter.calls, 2)
 
     def test_tooltip_explains_the_failure(self):
         widget = make_failing_widget()

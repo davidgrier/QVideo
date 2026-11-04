@@ -105,11 +105,11 @@ class QUnsharpFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self._radiusBox = SpinBox(value=self.filter.radius,
+        self._radiusBox = SpinBox(value=self.videoFilter.radius,
                                   bounds=(0.1, 20.0), step=0.5,
                                   prefix='σ ')
         self._layout.addWidget(self._radiusBox)
-        self._amountBox = SpinBox(value=self.filter.amount,
+        self._amountBox = SpinBox(value=self.videoFilter.amount,
                                   bounds=(0.0, 10.0), step=0.1,
                                   prefix='amount ')
         self._layout.addWidget(self._amountBox)
@@ -121,11 +121,11 @@ class QUnsharpFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setRadius(self, value: float) -> None:
-        self.filter.radius = value
+        self.videoFilter.radius = value
 
     @QtCore.Slot(object)
     def _setAmount(self, value: float) -> None:
-        self.filter.amount = value
+        self.videoFilter.amount = value
 
 
 if __name__ == '__main__':  # pragma: no cover

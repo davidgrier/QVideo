@@ -131,11 +131,11 @@ class QDoGFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self._lowBox = SpinBox(value=self.filter.low_sigma,
+        self._lowBox = SpinBox(value=self.videoFilter.low_sigma,
                                bounds=(0.1, None), step=0.5,
                                prefix='σ_low ')
         self._layout.addWidget(self._lowBox)
-        self._highBox = SpinBox(value=self.filter.high_sigma,
+        self._highBox = SpinBox(value=self.videoFilter.high_sigma,
                                 bounds=(0.2, None), step=0.5,
                                 prefix='σ_high ')
         self._layout.addWidget(self._highBox)
@@ -147,15 +147,15 @@ class QDoGFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setLowSigma(self, value: float) -> None:
-        self.filter.low_sigma = value
+        self.videoFilter.low_sigma = value
         with QtCore.QSignalBlocker(self._lowBox):
-            self._lowBox.setValue(self.filter.low_sigma)
+            self._lowBox.setValue(self.videoFilter.low_sigma)
 
     @QtCore.Slot(object)
     def _setHighSigma(self, value: float) -> None:
-        self.filter.high_sigma = value
+        self.videoFilter.high_sigma = value
         with QtCore.QSignalBlocker(self._highBox):
-            self._highBox.setValue(self.filter.high_sigma)
+            self._highBox.setValue(self.videoFilter.high_sigma)
 
 
 if __name__ == '__main__':  # pragma: no cover

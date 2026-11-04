@@ -94,7 +94,7 @@ class TestQRGBFilter(unittest.TestCase):
 
     def test_filter_is_rgb_filter(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, RGBFilter)
+        self.assertIsInstance(widget.videoFilter, RGBFilter)
 
     def test_title(self):
         widget = make_widget()
@@ -111,13 +111,13 @@ class TestQRGBFilter(unittest.TestCase):
     def test_set_channel_when_checked_updates_filter(self):
         widget = make_widget()
         widget.setChannel(True, 2)
-        self.assertEqual(widget.filter.channel, 2)
+        self.assertEqual(widget.videoFilter.channel, 2)
 
     def test_set_channel_when_unchecked_does_not_update(self):
         widget = make_widget()
         widget.setChannel(True, 1)
         widget.setChannel(False, 1)
-        self.assertEqual(widget.filter.channel, 1)
+        self.assertEqual(widget.videoFilter.channel, 1)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
         widget = make_widget()
@@ -126,7 +126,7 @@ class TestQRGBFilter(unittest.TestCase):
 
     def test_call_when_checked_applies_filter(self):
         widget = make_widget()
-        widget.filter.channel = 1
+        widget.videoFilter.channel = 1
         widget.setChecked(True)
         result = widget(_RGB)
         np.testing.assert_array_equal(result, _RGB[:, :, 1])

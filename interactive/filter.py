@@ -72,5 +72,5 @@ def Filter(*names: str | list[str] | tuple[str, ...]
                     ' or '.join(repr(keys[k]) for k in close) + '?'
                     if close else ' Filter() lists the names.')
             raise ValueError(f'{name!r} is not a known filter.' + hint)
-        filters.append(registry[found]().filter)
+        filters.append(registry[found]().videoFilter)
     return filters

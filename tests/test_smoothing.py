@@ -143,7 +143,7 @@ class TestQSmoothingFilter(unittest.TestCase):
 
     def test_filter_is_smoothing_filter(self):
         widget = make_widget()
-        self.assertIsInstance(widget.filter, SmoothingFilter)
+        self.assertIsInstance(widget.videoFilter, SmoothingFilter)
 
     def test_title(self):
         widget = make_widget()
@@ -156,12 +156,12 @@ class TestQSmoothingFilter(unittest.TestCase):
     def test_set_method_updates_filter(self):
         widget = make_widget()
         widget._methodBox.setCurrentText('Median')
-        self.assertEqual(widget.filter.method, 'median')
+        self.assertEqual(widget.videoFilter.method, 'median')
 
     def test_set_width_updates_filter(self):
         widget = make_widget()
         widget._setWidth(9)
-        self.assertEqual(widget.filter.width, 9)
+        self.assertEqual(widget.videoFilter.width, 9)
 
     def test_set_width_snaps_spinbox_to_corrected_value(self):
         widget = make_widget()
@@ -180,7 +180,7 @@ class TestQSmoothingFilter(unittest.TestCase):
     def test_set_method_box_updates_filter(self):
         widget = make_widget()
         widget._methodBox.setCurrentText('Box')
-        self.assertEqual(widget.filter.method, 'box')
+        self.assertEqual(widget.videoFilter.method, 'box')
 
     def test_call_when_checked_applies_box(self):
         widget = make_widget()

@@ -182,7 +182,7 @@ class TestThresholdFilterGet(unittest.TestCase):
 class TestQThresholdFilterInit(unittest.TestCase):
 
     def test_filter_is_threshold_filter(self):
-        self.assertIsInstance(make_widget().filter, ThresholdFilter)
+        self.assertIsInstance(make_widget().videoFilter, ThresholdFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Threshold')
@@ -193,7 +193,7 @@ class TestQThresholdFilterSetMethod(unittest.TestCase):
     def test_set_method_updates_filter(self):
         w = make_widget()
         w._setMethod('Otsu')
-        self.assertEqual(w.filter.method, 'Otsu')
+        self.assertEqual(w.videoFilter.method, 'Otsu')
 
     def test_global_shows_level_hides_block_c(self):
         w = make_widget()
@@ -229,7 +229,7 @@ class TestQThresholdFilterSetLevel(unittest.TestCase):
     def test_set_level_updates_filter(self):
         w = make_widget()
         w._setLevel(100)
-        self.assertEqual(w.filter.threshold, 100)
+        self.assertEqual(w.videoFilter.threshold, 100)
 
     def test_set_level_snaps_spinbox_to_clamped_value(self):
         w = make_widget()
@@ -250,7 +250,7 @@ class TestQThresholdFilterSetBlockSize(unittest.TestCase):
     def test_set_block_size_updates_filter(self):
         w = make_widget()
         w._setBlockSize(15)
-        self.assertEqual(w.filter.block_size, 15)
+        self.assertEqual(w.videoFilter.block_size, 15)
 
     def test_set_block_size_snaps_spinbox_to_odd(self):
         w = make_widget()
@@ -263,7 +263,7 @@ class TestQThresholdFilterSetC(unittest.TestCase):
     def test_set_c_updates_filter(self):
         w = make_widget()
         w._setC(7)
-        self.assertEqual(w.filter.C, 7)
+        self.assertEqual(w.videoFilter.C, 7)
 
 
 class TestQThresholdFilterCall(unittest.TestCase):

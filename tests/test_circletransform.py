@@ -148,7 +148,7 @@ class TestCircleTransformFilterKernel(unittest.TestCase):
 class TestQCircleTransformFilterWidget(unittest.TestCase):
 
     def test_filter_is_circle_transform_filter(self):
-        self.assertIsInstance(make_widget().filter, CircleTransformFilter)
+        self.assertIsInstance(make_widget().videoFilter, CircleTransformFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Circle Transform')
@@ -168,12 +168,12 @@ class TestQCircleTransformFilterWidget(unittest.TestCase):
     def test_set_window_updates_filter(self):
         w = make_widget()
         w._setWindow(9)
-        self.assertEqual(w.filter.window, 9)
+        self.assertEqual(w.videoFilter.window, 9)
 
     def test_set_window_rounds_to_odd(self):
         w = make_widget()
         w._setWindow(8)
-        self.assertEqual(w.filter.window, 9)
+        self.assertEqual(w.videoFilter.window, 9)
 
     def test_set_window_updates_spinbox(self):
         w = make_widget()

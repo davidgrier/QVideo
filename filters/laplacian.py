@@ -109,11 +109,11 @@ class QLaplacianFilter(QVideoFilter):
 
     def _setupUi(self) -> None:
         super()._setupUi()
-        self._ksizeBox = SpinBox(value=self.filter.ksize,
+        self._ksizeBox = SpinBox(value=self.videoFilter.ksize,
                                  bounds=(1, None), step=2, int=True,
                                  prefix='k ')
         self._layout.addWidget(self._ksizeBox)
-        self._sigmaBox = SpinBox(value=self.filter.sigma,
+        self._sigmaBox = SpinBox(value=self.videoFilter.sigma,
                                  bounds=(0, None), step=0.5,
                                  prefix='σ ')
         self._layout.addWidget(self._sigmaBox)
@@ -125,13 +125,13 @@ class QLaplacianFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setKsize(self, value: int) -> None:
-        self.filter.ksize = value
+        self.videoFilter.ksize = value
         with QtCore.QSignalBlocker(self._ksizeBox):
-            self._ksizeBox.setValue(self.filter.ksize)
+            self._ksizeBox.setValue(self.videoFilter.ksize)
 
     @QtCore.Slot(object)
     def _setSigma(self, value: float) -> None:
-        self.filter.sigma = value
+        self.videoFilter.sigma = value
 
 
 if __name__ == '__main__':  # pragma: no cover

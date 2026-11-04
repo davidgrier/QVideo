@@ -321,7 +321,7 @@ class QFilterRack(QtWidgets.QWidget):
         objects, not the widgets, so they can be handed to a
         :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` on another thread.
         '''
-        return [widget.filter for widget in self if widget.isChecked()]
+        return [widget.videoFilter for widget in self if widget.isChecked()]
 
     @QtCore.Slot(object, object)
     def switchOff(self, video_filter: VideoFilter, error: Exception) -> None:
@@ -337,7 +337,7 @@ class QFilterRack(QtWidgets.QWidget):
             The exception it raised.
         '''
         for widget in self:
-            if widget.filter is video_filter:
+            if widget.videoFilter is video_filter:
                 widget.switchOff(error)
 
     @property
@@ -444,9 +444,9 @@ class QFilterRack(QtWidgets.QWidget):
         fragments, skipped = [], []
         for widget in self:
             if widget.isChecked():
-                code = widget.filter.to_code()
+                code = widget.videoFilter.to_code()
                 if code is None:
-                    skipped.append(type(widget.filter).__name__)
+                    skipped.append(type(widget.videoFilter).__name__)
                 else:
                     fragments.append(code)
         return renderPipeline(fragments, skipped)

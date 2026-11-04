@@ -109,10 +109,10 @@ class QSmoothingFilter(QVideoFilter):
         super()._setupUi()
         self._methodBox = QtWidgets.QComboBox()
         self._methodBox.addItems(['Box', 'Gaussian', 'Median'])
-        self._methodBox.setCurrentText(self.filter.method.capitalize())
+        self._methodBox.setCurrentText(self.videoFilter.method.capitalize())
         self._layout.addWidget(self._methodBox)
         self._spinbox = SpinBox(self, prefix='width: ',
-                                value=self.filter.width,
+                                value=self.videoFilter.width,
                                 step=1, int=True)
         self._spinbox.setMinimum(3)
         self._layout.addWidget(self._spinbox)
@@ -124,13 +124,13 @@ class QSmoothingFilter(QVideoFilter):
 
     @QtCore.Slot(str)
     def _setMethod(self, text: str) -> None:
-        self.filter.method = text.lower()
+        self.videoFilter.method = text.lower()
 
     @QtCore.Slot(object)
     def _setWidth(self, width: int) -> None:
-        self.filter.width = width
+        self.videoFilter.width = width
         with QtCore.QSignalBlocker(self._spinbox):
-            self._spinbox.setValue(self.filter.width)
+            self._spinbox.setValue(self.videoFilter.width)
 
 
 if __name__ == '__main__':  # pragma: no cover

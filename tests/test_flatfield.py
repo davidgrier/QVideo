@@ -106,7 +106,7 @@ class TestFlatFieldFilterGet(unittest.TestCase):
 class TestQFlatFieldFilterInit(unittest.TestCase):
 
     def test_filter_is_flat_field_filter(self):
-        self.assertIsInstance(make_widget().filter, FlatFieldFilter)
+        self.assertIsInstance(make_widget().videoFilter, FlatFieldFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Flat Field')

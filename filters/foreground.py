@@ -134,12 +134,12 @@ class QForegroundEstimator(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._historyBox = SpinBox(self, prefix='history: ',
-                                   value=self.filter.history,
+                                   value=self.videoFilter.history,
                                    step=100, int=True)
         self._historyBox.setMinimum(1)
         self._layout.addWidget(self._historyBox)
         self._thresholdBox = SpinBox(self, prefix='threshold: ',
-                                     value=self.filter.varThreshold,
+                                     value=self.videoFilter.varThreshold,
                                      step=1.0)
         self._thresholdBox.setMinimum(0.0)
         self._layout.addWidget(self._thresholdBox)
@@ -151,13 +151,13 @@ class QForegroundEstimator(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setHistory(self, value: int) -> None:
-        self.filter.history = value
+        self.videoFilter.history = value
         with QtCore.QSignalBlocker(self._historyBox):
-            self._historyBox.setValue(self.filter.history)
+            self._historyBox.setValue(self.videoFilter.history)
 
     @QtCore.Slot(object)
     def _setThreshold(self, value: float) -> None:
-        self.filter.varThreshold = value
+        self.videoFilter.varThreshold = value
 
 
 if __name__ == '__main__':  # pragma: no cover

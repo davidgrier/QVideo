@@ -131,18 +131,18 @@ class QROIFilter(QVideoFilter):
         super()._setupUi()
         self._xSpinbox = SpinBox(self, prefix='x: ',
                                  bounds=(0, None),
-                                 value=self.filter.x, int=True)
+                                 value=self.videoFilter.x, int=True)
         self._ySpinbox = SpinBox(self, prefix='y: ',
                                  bounds=(0, None),
-                                 value=self.filter.y, int=True)
+                                 value=self.videoFilter.y, int=True)
         self._wSpinbox = SpinBox(self, prefix='w: ',
                                  bounds=(1, None),
                                  step=8,
-                                 value=self.filter.w, int=True)
+                                 value=self.videoFilter.w, int=True)
         self._hSpinbox = SpinBox(self, prefix='h: ',
                                  bounds=(1, None),
                                  step=8,
-                                 value=self.filter.h, int=True)
+                                 value=self.videoFilter.h, int=True)
         grid = QtWidgets.QGridLayout()
         grid.setSpacing(2)
         grid.addWidget(self._xSpinbox, 0, 0)
@@ -161,26 +161,26 @@ class QROIFilter(QVideoFilter):
     @QtCore.Slot(object)
     def _setX(self, x: int) -> None:
         '''Set the ROI x position.'''
-        self.filter.x = x
-        self._xSpinbox.setValue(self.filter.x)
+        self.videoFilter.x = x
+        self._xSpinbox.setValue(self.videoFilter.x)
 
     @QtCore.Slot(object)
     def _setY(self, y: int) -> None:
         '''Set the ROI y position.'''
-        self.filter.y = y
-        self._ySpinbox.setValue(self.filter.y)
+        self.videoFilter.y = y
+        self._ySpinbox.setValue(self.videoFilter.y)
 
     @QtCore.Slot(object)
     def _setW(self, w: int) -> None:
         '''Set the ROI width.'''
-        self.filter.w = w
-        self._wSpinbox.setValue(self.filter.w)
+        self.videoFilter.w = w
+        self._wSpinbox.setValue(self.videoFilter.w)
 
     @QtCore.Slot(object)
     def _setH(self, h: int) -> None:
         '''Set the ROI height.'''
-        self.filter.h = h
-        self._hSpinbox.setValue(self.filter.h)
+        self.videoFilter.h = h
+        self._hSpinbox.setValue(self.videoFilter.h)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -115,7 +115,7 @@ class TestLaplacianFilterGet(unittest.TestCase):
 class TestQLaplacianFilterInit(unittest.TestCase):
 
     def test_filter_is_laplacian_filter(self):
-        self.assertIsInstance(make_widget().filter, LaplacianFilter)
+        self.assertIsInstance(make_widget().videoFilter, LaplacianFilter)
 
     def test_title(self):
         self.assertEqual(make_widget().title(), 'Laplacian Edge Detection')
@@ -126,7 +126,7 @@ class TestQLaplacianFilterSetKsize(unittest.TestCase):
     def test_set_ksize_updates_filter(self):
         w = make_widget()
         w._setKsize(5)
-        self.assertEqual(w.filter.ksize, 5)
+        self.assertEqual(w.videoFilter.ksize, 5)
 
     def test_set_ksize_snaps_spinbox_to_odd(self):
         w = make_widget()
@@ -139,12 +139,12 @@ class TestQLaplacianFilterSetSigma(unittest.TestCase):
     def test_set_sigma_updates_filter(self):
         w = make_widget()
         w._setSigma(1.5)
-        self.assertAlmostEqual(w.filter.sigma, 1.5)
+        self.assertAlmostEqual(w.videoFilter.sigma, 1.5)
 
     def test_set_sigma_zero(self):
         w = make_widget()
         w._setSigma(0.0)
-        self.assertEqual(w.filter.sigma, 0.0)
+        self.assertEqual(w.videoFilter.sigma, 0.0)
 
 
 class TestQLaplacianFilterCall(unittest.TestCase):

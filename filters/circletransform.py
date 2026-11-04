@@ -154,7 +154,7 @@ class QCircleTransformFilter(QVideoFilter):
     def _setupUi(self) -> None:
         super()._setupUi()
         self._layout.addWidget(QtWidgets.QLabel('window'))
-        self._spinbox = SpinBox(value=self.filter.window,
+        self._spinbox = SpinBox(value=self.videoFilter.window,
                                 step=2, int=True)
         self._spinbox.setMinimum(3)
         self._layout.addWidget(self._spinbox)
@@ -165,9 +165,9 @@ class QCircleTransformFilter(QVideoFilter):
 
     @QtCore.Slot(object)
     def _setWindow(self, window: int) -> None:
-        self.filter.window = window
+        self.videoFilter.window = window
         with QtCore.QSignalBlocker(self._spinbox):
-            self._spinbox.setValue(self.filter.window)
+            self._spinbox.setValue(self.videoFilter.window)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -87,7 +87,7 @@ class TestMoMedian(unittest.TestCase):
 class TestQMoMedian(unittest.TestCase):
 
     def test_filter_is_momedian(self):
-        self.assertIsInstance(QMoMedian().filter, MoMedian)
+        self.assertIsInstance(QMoMedian().videoFilter, MoMedian)
 
     def test_title(self):
         self.assertEqual(QMoMedian().title(), 'Running Median')
@@ -101,7 +101,7 @@ class TestQMoMedian(unittest.TestCase):
     def test_set_order_updates_filter(self):
         w = QMoMedian()
         w._setOrder(2)
-        self.assertEqual(w.filter.order, 2)
+        self.assertEqual(w.videoFilter.order, 2)
 
     def test_call_when_unchecked_returns_frame_unchanged(self):
         w = QMoMedian()

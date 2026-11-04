@@ -101,7 +101,7 @@ class TestCartoonFilter(unittest.TestCase):
 class TestQPencilSketchFilter(unittest.TestCase):
 
     def test_filter_is_pencilsketch(self):
-        self.assertIsInstance(QPencilSketchFilter().filter, PencilSketchFilter)
+        self.assertIsInstance(QPencilSketchFilter().videoFilter, PencilSketchFilter)
 
     def test_title(self):
         self.assertEqual(QPencilSketchFilter().title(), 'Pencil Sketch')
@@ -128,22 +128,22 @@ class TestQPencilSketchFilter(unittest.TestCase):
     def test_set_sigma_s_updates_filter(self):
         w = QPencilSketchFilter()
         w._setSigmaS(100.)
-        self.assertAlmostEqual(w.filter.sigma_s, 100.)
+        self.assertAlmostEqual(w.videoFilter.sigma_s, 100.)
 
     def test_set_sigma_r_updates_filter(self):
         w = QPencilSketchFilter()
         w._setSigmaR(0.5)
-        self.assertAlmostEqual(w.filter.sigma_r, 0.5)
+        self.assertAlmostEqual(w.videoFilter.sigma_r, 0.5)
 
     def test_set_shade_updates_filter(self):
         w = QPencilSketchFilter()
         w._setShade(0.05)
-        self.assertAlmostEqual(w.filter.shade_factor, 0.05)
+        self.assertAlmostEqual(w.videoFilter.shade_factor, 0.05)
 
     def test_set_gray_updates_filter(self):
         w = QPencilSketchFilter()
         w._setGray(True)
-        self.assertTrue(w.filter.gray)
+        self.assertTrue(w.videoFilter.gray)
 
     def test_call_unchecked_returns_frame(self):
         w = QPencilSketchFilter()
@@ -153,7 +153,7 @@ class TestQPencilSketchFilter(unittest.TestCase):
 class TestQCartoonFilter(unittest.TestCase):
 
     def test_filter_is_cartoon(self):
-        self.assertIsInstance(QCartoonFilter().filter, CartoonFilter)
+        self.assertIsInstance(QCartoonFilter().videoFilter, CartoonFilter)
 
     def test_title(self):
         self.assertEqual(QCartoonFilter().title(), 'Cartoon')
@@ -173,12 +173,12 @@ class TestQCartoonFilter(unittest.TestCase):
     def test_set_sigma_s_updates_filter(self):
         w = QCartoonFilter()
         w._setSigmaS(50.)
-        self.assertAlmostEqual(w.filter.sigma_s, 50.)
+        self.assertAlmostEqual(w.videoFilter.sigma_s, 50.)
 
     def test_set_sigma_r_updates_filter(self):
         w = QCartoonFilter()
         w._setSigmaR(0.3)
-        self.assertAlmostEqual(w.filter.sigma_r, 0.3)
+        self.assertAlmostEqual(w.videoFilter.sigma_r, 0.3)
 
     def test_call_unchecked_returns_frame(self):
         w = QCartoonFilter()

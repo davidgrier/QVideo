@@ -9,7 +9,7 @@ image-processing filter requires minimal boilerplate.
 
 Run the full camcorder application directly::
 
-    python -m QVideo [-b|-c|-f|-i|-m|-p|-r|-v] [cameraID]
+    python -m QVideo [-b|-c|-f|-g|-i|-m|-p|-v] [cameraID]
 
 .. toctree::
    :maxdepth: 2

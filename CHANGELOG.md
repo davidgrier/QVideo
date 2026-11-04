@@ -9,13 +9,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Fixed
+---
 
-- **The examples import `qtpy` or QVideo before `pyqtgraph`.**  With both
-  PyQt5 and PyQt6 installed, `pyqtgraph` imported first chooses its own
-  binding and `QT_API` is ignored.  The README and the quickstart now show
-  the safe order, `QHistogramWidget` imports `qtpy` like the other modules,
-  and a test (`tests/test_import_order.py`) keeps the order.
+## [4.13.0] — 2026-11-03
+
+This release opens the Harvesters backends in a process of their own, makes
+the Viva backend the preferred interface to GenICam cameras, announces a
+change of shape in one place, and fixes the bugs that a review of the core
+of the code found.
 
 ### Added
 
@@ -25,6 +26,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   more to start than a camera (QHOT opens its SLM and makes its hologram
   engine while the camera opens).  It was a private class of `launch()`
   and a copy in QHOT.
+- **`QCamera.modelName`** is the camelCase name of `model_name`, which
+  stays.
+- **`QGenicamCamera.precheck()`** raises in the program, before a worker
+  starts, what opening the camera would raise for want of a producer.  The
+  chooser calls it, so `Camera()` and the camera chooser no longer start a
+  process for every Harvesters backend that has no producer.
+- **`QVivaCamera.updateAccess()`** gives a setter to the features that the
+  camera lets us write now and takes it from the others; `QVivaTree` calls
+  it after every change.
 
 ### Changed
 
@@ -68,6 +78,59 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   holographic-trapping gate of QHOT in the same process, without a worker:
   event-loop median 4.9 ms, 99th percentile 8.7 ms, 9.8 holograms a second
   (the remote Genicam camera: 4.6 ms, 8.2 ms, 9.9 holograms a second).
+- **`QVideoSource` keeps its lock to itself.**  `mutex` and `waitcondition`
+  are now `_mutex` and `_waitCondition`, and `source` is read-only.  Nothing
+  outside the tests used them.
+- **A worker that cannot open its camera for a reason it explains** (a
+  `QCameraError`) no longer prints a traceback on the terminal of the
+  program; the proxy reports the message.  Any other failure keeps its
+  traceback.
+- **`QCamera.shape`** is `QSize(0, 0)` when the width or the height cannot
+  be read at the moment (a GenICam getter answers `None`), and no longer
+  raises `TypeError`.
+- **The fit of a window to the video** counts the title bar and the borders
+  against the available area of the screen.
+
+### Fixed
+
+- **The examples import `qtpy` or QVideo before `pyqtgraph`.**  With both
+  PyQt5 and PyQt6 installed, `pyqtgraph` imported first chooses its own
+  binding and `QT_API` is ignored.  The README and the quickstart now show
+  the safe order, `QHistogramWidget` imports `qtpy` like the other modules,
+  and a test (`tests/test_import_order.py`) keeps the order.
+- **The tree of a camera no longer reads the whole camera after a change.**
+  It re-read every setting and set each in the tree, which warns about a
+  property that it does not show: a tree of 15 controls on a camera of 2000
+  properties (the Viva tree on a Blackfly S) made 2000 reads and 2000
+  warnings for each change.  It now reads back what it shows, and skips a
+  property that cannot be read at the moment.
+- **A control that the camera locks follows the camera.**  The exposure time
+  of the Viva tree stayed disabled for good if the camera started with the
+  exposure automatic, and stayed enabled when it became so.
+- **A NaN or an infinite value no longer stops a tree from being built**
+  (`ValueError` or `OverflowError` in the step of a spin box), and the tree
+  no longer hides the debug messages of its module.
+- **A filter rack with a filter that has no result yet** (a sample-and-hold
+  before its first sample) ends the frame, as the pipeline does, and no
+  longer hands `None` to the next filter.
+- **A worker that goes while a frame is announced** is a failed read, and
+  no longer ends the capture thread with an exception.
+- **A video file that stores no frame rate** made OpenCV answer 0 and PyAV
+  `None`, and the reader and the widget divided by it.  The readers answer
+  30, as the HDF5 reader does.  The extension of a file is compared without
+  regard to case, so `IMG_0001.MP4` is a video.
+- **A window taller than the screen** is no longer shrunk by the window
+  manager, which was the cause of a resize loop in QHOT; the video then
+  fills the window without bars.  Setting a colormap that cannot be made
+  no longer leaves the old one in use under the new name.
+- **A notebook that displays an unopened `Camera()` no longer opens it.**
+  The proxy forwards public names only; IPython looks for `_repr_html_` and
+  the like.
+- **The probe of an OpenCV camera releases the capture device** on every
+  path, including when probing raises.
+- **The documentation** lists `-g` where it listed `-r` or nothing, and
+  describes `target`, `framenumber` and `blank` of `QVideoWriter` as they
+  are.
 
 ---
 

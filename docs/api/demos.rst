@@ -14,7 +14,7 @@ same way.
 The default application is :class:`~QVideo.QCamcorder.QCamcorder` and can
 be launched via the package entry point::
 
-    python -m QVideo [-b|-c|-f|-i|-m|-p|-v] [cameraID]
+    python -m QVideo [-b|-c|-f|-g|-i|-m|-p|-v] [cameraID]
 
 Each demo can also be launched directly::
 

@@ -44,8 +44,9 @@ Tested platforms
      - macOS 26 (FLIR Blackfly S, USB 3)
      - Tested
    * -
-     - Ubuntu 24.04
-     - Not tested
+     - Ubuntu 24.04 (FLIR Blackfly S, USB 3; the pixel format,
+       and with it the bit depth, changed while streaming)
+     - Tested
    * -
      - Windows
      - Not tested

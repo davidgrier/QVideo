@@ -21,9 +21,11 @@ filter pipeline and rack, the frame types and the errors.
 **A file belongs here if it is a base class, or the machinery of one:**
 the classes that applications subclass, and what every application
 uses, such as `launch()` and `QSnapshot`, which any project can attach to
-a source.  A finished widget that nobody subclasses goes in `widgets/`.
-The notebook interface is in `interactive/`, and the table of camera
-backends and the command-line chooser are in `cameras/`.
+a source.  `QCameraOpener` opens the camera in a thread, for `launch()` and
+for programs that start more than a camera.  A finished widget that nobody
+subclasses goes in `widgets/`.  The notebook interface is in
+`interactive/`, and the table of camera backends and the command-line
+chooser are in `cameras/`.
 
 `lib` does not import the packages above it, with one exception: `launch()`
 opens the camera that the command line names through

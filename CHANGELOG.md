@@ -17,6 +17,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the safe order, `QHistogramWidget` imports `qtpy` like the other modules,
   and a test (`tests/test_import_order.py`) keeps the order.
 
+### Added
+
+- **`QCameraOpener`** (`QVideo.lib`) opens the camera that the command line
+  names in a thread of its own, so that a program can build the rest of its
+  interface meanwhile.  `launch()` uses it, and so can a program that has
+  more to start than a camera (QHOT opens its SLM and makes its hologram
+  engine while the camera opens).  It was a private class of `launch()`
+  and a copy in QHOT.
+
 ### Changed
 
 - **`QCamera.set()` announces a change of shape, in one place.**  It reads

@@ -15,6 +15,9 @@ QVideoSource
 QRemoteCamera
     A :class:`QCamera` that runs in a process of its own, so that the
     library of a vendor cannot freeze the program.
+QCameraOpener
+    Thread that opens the camera that the command line names, so that a
+    program can start the rest of its interface meanwhile.
 QCameraTree
     :class:`~pyqtgraph.parametertree.ParameterTree` widget auto-built
     from a camera's registered properties.
@@ -62,6 +65,7 @@ from .QReferenceFilter import ReferenceFilter, QReferenceFilter
 from .QOverlayWidget import QOverlayWidget
 from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
+from .QCameraOpener import QCameraOpener
 from ._launch import launch
 from .QSnapshot import QSnapshot
 
@@ -69,7 +73,7 @@ __all__ = '''Image
            FrameInfo
 clickable launch
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
-QRemoteCamera
+QRemoteCamera QCameraOpener
 QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
 QSnapshot

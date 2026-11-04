@@ -88,7 +88,7 @@ class TestLaunch(unittest.TestCase):
         gate = threading.Event()
         seen = {}
 
-        def open_slowly():
+        def open_slowly(parser=None):
             gate.wait(5)
             return 'noise', MagicMock()
 
@@ -136,7 +136,7 @@ class TestLaunch(unittest.TestCase):
     def test_the_camera_is_closed_if_the_window_is_gone_before_it_opens(self):
         camera = MagicMock()
 
-        def open_slowly():
+        def open_slowly(parser=None):
             time.sleep(0.2)
             return 'noise', camera
 

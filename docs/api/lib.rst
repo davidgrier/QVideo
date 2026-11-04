@@ -19,6 +19,12 @@ QRemoteCamera
 .. automodule:: QVideo.lib.QRemoteCamera
    :members:
 
+QCameraOpener
+-------------
+
+.. automodule:: QVideo.lib.QCameraOpener
+   :members:
+
 Image operations
 ----------------
 

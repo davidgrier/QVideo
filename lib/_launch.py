@@ -7,11 +7,11 @@ one call to it.  What happens, in order:
    shown, so that ``-h`` and a bad value end the program here.
 2. **A main window and a splash screen appear** at once.  The splash says
    what the program is doing.
-3. **The camera opens on a thread of its own** (:class:`_Opener`), because
-   opening one can take seconds (a GenICam camera starts acquiring and reads
-   its whole node map) and the splash screen must not freeze.  The thread
-   hands the open camera back to the main thread, which owns it from then
-   on.
+3. **The camera opens on a thread of its own**
+   (:class:`~QVideo.lib.QCameraOpener.QCameraOpener`), because opening one
+   can take seconds (a GenICam camera starts acquiring and reads its whole
+   node map) and the splash screen must not freeze.  The thread hands the
+   open camera back to the main thread, which owns it from then on.
 4. **The interface is built on the main thread.**  The application's widget
    becomes the central widget of the window, the splash screen goes away
    and the window shows.
@@ -27,10 +27,11 @@ from typing import TYPE_CHECKING
 # qtpy comes first: it selects the Qt binding (QT_API), and pyqtgraph then
 # uses whichever binding is loaded.  Imported first, pyqtgraph would choose
 # its own and ignore QT_API.
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 import pyqtgraph as pg
 
 from QVideo.lib._splash import say, splash
+from QVideo.lib.QCameraOpener import QCameraOpener
 from QVideo.cameras import chooser
 
 if TYPE_CHECKING:
@@ -38,43 +39,6 @@ if TYPE_CHECKING:
 
 
 __all__ = ['launch']
-
-
-class _Opener(QtCore.QThread):
-
-    '''Open the camera chosen on the command line, off the GUI thread.
-
-    Opening a camera can take seconds (a GenICam camera starts acquiring
-    and reads its whole node map), and the window must not wait for it.
-    '''
-
-    #: The backend key and the open camera.
-    opened = QtCore.Signal(str, object)
-    #: Why no camera could be opened.
-    failed = QtCore.Signal(str)
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.camera: 'QCamera | None' = None
-
-    def run(self) -> None:
-        '''Open the camera and send it to the thread of the application.
-
-        Emits :attr:`opened` with the key of the backend and the camera, or
-        :attr:`failed` with the reason.  Emits neither if the application is
-        quitting; :attr:`camera` is then still set, and whoever stops this
-        thread closes it.
-        '''
-        try:
-            key, self.camera = chooser.open_camera()
-        except Exception as error:
-            self.failed.emit(str(error))
-            return
-        if self.isInterruptionRequested():  # the application is quitting
-            return
-        # A QObject can be moved only by the thread that it lives in.
-        self.camera.moveToThread(QtCore.QCoreApplication.instance().thread())
-        self.opened.emit(key, self.camera)
 
 
 class _Launcher:
@@ -116,7 +80,7 @@ class _Launcher:
         QtWidgets.QShortcut(QtGui.QKeySequence('Ctrl+Q'),
                             self.window).activated.connect(app.quit)
         self.screen = splash(title)
-        self.opener = _Opener()
+        self.opener = QCameraOpener()
         self.opener.opened.connect(self.build)
         self.opener.failed.connect(lambda why: self.fail(f'Error: {why}'))
         app.aboutToQuit.connect(self.finish)
@@ -149,6 +113,7 @@ class _Launcher:
         except ImportError as error:
             self.fail(f'Error: {error}')
             return
+        self.opener.camera = None       # the interface has it now
         self.window.setCentralWidget(central)
         if hasattr(central, 'message'):
             central.message.connect(self.window.statusBar().showMessage)
@@ -164,16 +129,12 @@ class _Launcher:
     def finish(self) -> None:
         '''Clean up as the application quits.
 
-        Stops the opener, closes the splash screen and closes a camera that
-        was opened but never given to a window (the application quit while
-        the camera was still opening).
+        Stops the opener, which closes a camera that was opened but never
+        given to a window (the application quit while the camera was still
+        opening), and closes the splash screen.
         '''
-        self.opener.requestInterruption()
-        self.opener.wait()
+        self.opener.stop()
         self.screen.close()
-        if (self.opener.camera is not None
-                and self.window.centralWidget() is None):
-            self.opener.camera.close()
 
 
 def launch(widget: type[QtWidgets.QWidget],

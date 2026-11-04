@@ -37,6 +37,13 @@ class TestQCameraTreeInit(unittest.TestCase):
         tree = make_tree()
         self.assertIsInstance(tree, QCameraTree)
 
+    def test_the_tree_has_no_header_by_default(self):
+        self.assertTrue(make_tree().isHeaderHidden())
+
+    def test_the_header_can_be_asked_for(self):
+        tree = QCameraTree(make_source(), showHeader=True)
+        self.assertFalse(tree.isHeaderHidden())
+
     def test_camera_property_returns_noise_camera(self):
         cam = make_camera()
         tree = make_tree(source=make_source(cam))

@@ -48,7 +48,9 @@ class QCameraTree(ParameterTree):
         :class:`~pyqtgraph.parametertree.ParameterTree`.
     **kwargs :
         Additional keyword arguments forwarded to
-        :class:`~pyqtgraph.parametertree.ParameterTree`.
+        :class:`~pyqtgraph.parametertree.ParameterTree`.  The tree has no
+        header (the "Parameter" and "Value" labels say nothing that the
+        rows do not); ``showHeader=True`` shows it.
 
     Raises
     ------
@@ -99,6 +101,7 @@ class QCameraTree(ParameterTree):
                  *args, **kwargs) -> None:
         if not source.isOpen():     # before there is a widget to discard
             raise RuntimeError('Video source is not open')
+        kwargs.setdefault('showHeader', False)
         super().__init__(*args, **kwargs)
         if isinstance(source, QCamera):
             self._source = QVideoSource(source)

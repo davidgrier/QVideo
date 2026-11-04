@@ -16,6 +16,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   one class, with the same constructor, in `QVideo.lib.QFilterRack`.  Code
   that built a `QFilterRackWidget` to filter recorded frames builds a
   `QFilterRack` and calls it; the rack's pipeline then waits for a source.
+- **`QGenicamCamera.isReadWrite`.**  Nothing called it since the trees
+  began to ask `states()`.
 - **`QVideoWriter.blank`**, which made a writer write black frames.
   Nothing in QVideo set it.
 

@@ -1069,40 +1069,6 @@ class TestState(unittest.TestCase):
         thread.join()
 
 
-class TestIsReadwrite(unittest.TestCase):
-
-    def test_rw_mode_returns_true(self):
-        cam, _, device = make_camera()
-        feature = _make_feature(_IInteger, name='Width',
-                                mode=_EAccessMode.RW)
-        device.remote_device.node_map.get_node.return_value = feature
-        self.assertTrue(cam.isReadWrite('Width'))
-
-    def test_ro_mode_returns_false(self):
-        cam, _, device = make_camera()
-        cam._protected = set()
-        feature = _make_feature(_IInteger, name='Width',
-                                mode=_EAccessMode.RO)
-        device.remote_device.node_map.get_node.return_value = feature
-        self.assertFalse(cam.isReadWrite('Width'))
-
-    def test_protected_feature_returns_true(self):
-        cam, _, device = make_camera()
-        cam._protected = {'Width'}
-        feature = _make_feature(_IInteger, name='Width',
-                                mode=_EAccessMode.RO)
-        device.remote_device.node_map.get_node.return_value = feature
-        self.assertTrue(cam.isReadWrite('Width'))
-
-    def test_unknown_node_returns_false(self):
-        cam, _, device = make_camera()
-        device.remote_device.node_map.has_node.return_value = False
-        with self.assertLogs('QVideo.cameras.Genicam._camera',
-                             level='WARNING'):
-            result = cam.isReadWrite('Nonexistent')
-        self.assertFalse(result)
-
-
 # ---------------------------------------------------------------------------
 # TestWidthHeight
 # ---------------------------------------------------------------------------

@@ -600,7 +600,7 @@ class QGenicamCamera(QCamera):
         another writes it can deadlock with it.
 
         Unlike :meth:`node`, this never logs a warning for missing names.
-        Use it to guard calls to :meth:`node` or :meth:`isReadWrite` in
+        Use it to guard calls to :meth:`node` in
         reactive code paths (e.g. UI update loops) where absent names are
         expected and not an error.
 
@@ -638,27 +638,6 @@ class QGenicamCamera(QCamera):
                 return self._nodeMap.get_node(name)
         logger.warning(f'node {name} is unknown')
         return None
-
-    def isReadWrite(self, feature: str) -> bool:
-        '''Return ``True`` if the named feature is currently writable.
-
-        Parameters
-        ----------
-        feature : str
-            GenICam node name.
-
-        Returns
-        -------
-        bool
-            ``True`` if the feature is writable, or protected (writable
-            after stopping acquisition).
-        '''
-        node = self.node(feature)
-        if node is None:
-            return False
-        with self._mutex:
-            mode = node.node.get_access_mode()
-        return (mode == EAccessMode.RW) or (feature in self._protected)
 
     def nodeTree(self) -> dict:
         '''Return the node map as plain data, for a tree to build from.

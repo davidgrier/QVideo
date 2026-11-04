@@ -196,7 +196,7 @@ these is a reason not to make it the default today:
       interface sends asynchronous, or at least off the GUI thread, and say
       what happens when the worker is in a long read (a setting waits for the
       read: up to a frame period, a second at one frame a second).
-- [ ] **What the trees need**: `node`, `hasNode`, `states`, `isReadWrite`
+- [ ] **What the trees need**: `node`, `hasNode`, `states`
       (`describe()` above) and any other call that a backend's tree makes
       beyond the registry of properties.  Audit `tests/test_vendor_trees.py`
       and the tree of every backend.  Only plain values cross the process: a

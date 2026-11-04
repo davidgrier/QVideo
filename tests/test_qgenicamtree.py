@@ -458,8 +458,7 @@ class TestUpdateEnabled(unittest.TestCase):
 
     def test_readwrite_node_is_enabled(self):
         tree, cam, nm = make_tree(features=[_int_feature('Width')])
-        # Width is in node map (hasNode is True) and isReadWrite is True
-        # (mode was RW during initialize).
+        # Width is in the node map and was RW during initialize.
         self.assertTrue(tree._parameters['Width'].opts.get('enabled', True))
 
     def test_readonly_node_is_disabled(self):

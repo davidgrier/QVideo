@@ -71,6 +71,23 @@ class TestLaunch(unittest.TestCase):
             self.addCleanup(window.close)
         return make_tree, shown[0]
 
+    def launch_on(self, platform):
+        '''Launch on *platform*; return the mock that counts activations.'''
+        with patch.object(launch_module.QtGui, 'QGuiApplication') as gui, \
+                patch.object(QtWidgets.QSplashScreen,
+                             'activateWindow') as activate:
+            gui.platformName.return_value = platform
+            self.run_launch(_Widget)
+        return activate
+
+    def test_the_splash_screen_is_activated_for_macos(self):
+        self.launch_on('cocoa').assert_called_once_with()
+
+    def test_wayland_is_not_asked_to_activate_the_splash_screen(self):
+        # It cannot, and Qt warns: "Wayland does not support
+        # QWindow::requestActivate()".
+        self.launch_on('wayland').assert_not_called()
+
     def test_the_widget_is_built_from_the_started_camera(self):
         make_tree, window = self.run_launch(_Widget)
         make_tree.assert_called_once_with('noise', self.camera)

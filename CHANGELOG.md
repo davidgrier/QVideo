@@ -9,6 +9,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **The camera tree has no "Parameter / Value" header.**  The labels said
+  nothing that the rows do not.  `QCameraTree(source, showHeader=True)`
+  brings it back.
+
+### Fixed
+
+- **A Wayland warning at start-up** ("Wayland does not support
+  QWindow::requestActivate()").  The splash screen asked to be activated,
+  which macOS needs and Wayland cannot do; the request is now made only
+  where it works.
+
 ---
 
 ## [4.15.0] — 2026-11-04

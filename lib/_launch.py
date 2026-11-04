@@ -92,9 +92,11 @@ class _Launcher:
         '''
         self.screen.show()
         # macOS shows a splash screen only if it is also raised and
-        # activated.
+        # activated.  Wayland lets only the compositor activate a window,
+        # and Qt warns when an application asks.
         self.screen.raise_()
-        self.screen.activateWindow()
+        if QtGui.QGuiApplication.platformName() != 'wayland':
+            self.screen.activateWindow()
         say(self.screen, 'Opening the camera...')
         self.opener.start()
         pg.exec()

@@ -935,5 +935,74 @@ class TestComposite(unittest.TestCase):
         self.assertFalse(screen._composite)
 
 
+
+class TestLevels(unittest.TestCase):
+    '''What the display shows as black and as white.'''
+
+    def shown(self, screen, frame):
+        '''Gray at 10, 30, 50, 70 and 90 % of a left-to-right ramp.'''
+        screen.resize(300, 100)
+        screen.show()
+        screen.updateShape(QtCore.QSize(frame.shape[1], frame.shape[0]))
+        screen._ready = True
+        screen.setImage(frame)
+        app.processEvents()
+        image = screen.grab().toImage()
+        width, height = image.width(), image.height()
+        return [image.pixelColor(int(width * x), height // 2).red()
+                for x in (.1, .3, .5, .7, .9)]
+
+    @staticmethod
+    def ramp(top):
+        return np.tile(np.linspace(0, top, 256).astype(np.uint16), (64, 1))
+
+    def test_the_levels_are_none_by_default(self):
+        self.assertIsNone(make_screen().levels)
+
+    def test_levels_are_read_back_as_floats(self):
+        screen = make_screen()
+        screen.levels = (0, 4095)
+        self.assertEqual(screen.levels, (0., 4095.))
+
+    def test_none_gives_back_the_range_of_the_type(self):
+        screen = make_screen()
+        screen.levels = (0, 4095)
+        screen.levels = None
+        self.assertIsNone(screen.levels)
+
+    def test_a_white_level_that_is_not_above_black_is_refused(self):
+        screen = make_screen()
+        for levels in ((5, 5), (10, 2)):
+            with self.subTest(levels=levels):
+                with self.assertRaises(ValueError):
+                    screen.levels = levels
+        self.assertIsNone(screen.levels)
+
+    def test_levels_set_elsewhere_are_reported(self):
+        # A histogram widget sets the levels of the image item itself.
+        screen = make_screen()
+        screen.image.setLevels((0, 255))
+        self.assertEqual(screen.levels, (0., 255.))
+
+    def test_a_12_bit_frame_is_dark_without_levels(self):
+        gray = self.shown(make_screen(), self.ramp(4095))
+        self.assertLess(max(gray), 20)
+
+    def test_a_12_bit_frame_shows_its_whole_range_with_levels(self):
+        screen = make_screen()
+        screen.levels = (0, 4095)
+        gray = self.shown(screen, self.ramp(4095))
+        for got, want in zip(gray, (25, 76, 128, 179, 230)):
+            self.assertAlmostEqual(got, want, delta=4)
+
+    def test_levels_apply_to_the_frames_that_follow(self):
+        screen = make_screen()
+        screen.levels = (0, 4095)
+        self.shown(screen, self.ramp(4095))
+        screen._ready = True
+        screen.setImage(self.ramp(4095))
+        self.assertEqual(screen.levels, (0., 4095.))
+
+
 if __name__ == '__main__':
     unittest.main()

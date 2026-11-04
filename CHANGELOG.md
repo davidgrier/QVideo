@@ -9,6 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`QVideoScreen.levels`**: the values that the display shows as black and
+  as white.  The default, `None`, maps the whole range of the type of the
+  frame, so a 12 bit frame in `uint16` looked 16 times too dark; set
+  `screen.levels = (0, 4095)` to show it.  An explicit range makes
+  pyqtgraph rescale each frame, which cost about 7 ms for a `uint16` frame
+  of 1280 by 1024 (2 ms without).
+
 ---
 
 ## [4.15.1] — 2026-11-04

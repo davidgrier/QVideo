@@ -60,6 +60,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         ``'viridis'``) or a pyqtgraph built-in name.
         Set to ``None`` (default) to display in grayscale.
         Has no effect on color (3-channel) frames.
+    levels : tuple[float, float] | None
+        The values that the display shows as black and as white.  ``None``
+        (default) maps the whole range of the type of the frame, 0 to 255
+        for ``uint8`` and 0 to 65535 for ``uint16``, so a 12 bit frame in
+        ``uint16`` looks 16 times too dark until ``levels`` is
+        ``(0, 4095)``.
 
     Signals
     -------
@@ -160,6 +166,36 @@ class QVideoScreen(GraphicsLayoutWidget):
                 colormap = pg.colormap.get(name)
             self.image.setColorMap(colormap)
         self._colormap = name       # only once the colormap is in use
+
+    @property
+    def levels(self) -> tuple[float, float] | None:
+        '''The values that the display shows as black and as white.
+
+        ``None`` maps the whole range of the type of the frame (0 to 255 for
+        ``uint8``, 0 to 65535 for ``uint16``).  Set ``(0, 4095)`` to show
+        the counts of a 12 bit camera.  The levels apply to every frame that
+        follows, gray or color, until they are changed.
+
+        Raises
+        ------
+        ValueError
+            If the white level is not above the black level.
+        '''
+        levels = self.image.levels
+        if levels is None:
+            return None
+        low, high = levels
+        return float(low), float(high)
+
+    @levels.setter
+    def levels(self, levels: tuple[float, float] | None) -> None:
+        if levels is not None:
+            low, high = levels
+            if not high > low:
+                raise ValueError(
+                    f'the white level must be above the black level: {levels}')
+            levels = (low, high)
+        self.image.setLevels(levels)
 
     def _setready(self) -> None:
         '''Allow the next frame, and show the one that waited.'''

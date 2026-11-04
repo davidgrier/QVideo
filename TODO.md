@@ -465,7 +465,9 @@ bytes over USB3 would make it.  Found on the way:
 - The first frames after a change of format may be in the old format.
 - The screen maps the whole range of the dtype: a 12 bit frame shows 16
   times too dark (a ramp to 4095 shows 2 to 14 of 255); Mono16 shows
-  correctly.
+  correctly.  `QVideoScreen.levels` (added after this was measured) sets
+  the range by hand; nothing chooses it from the bit depth yet, and a
+  range costs about 7 ms a frame at 1280 by 1024 against 2 ms without.
 - Of 16 filters on a `uint16` frame, 4 raise (Canny, Gamma, median
   smoothing, Log exposure: 8 bit lookup tables and OpenCV calls), 5 return
   `uint8` (Laplacian, Sobel, DoG, Pencil sketch, Cartoon, which gives zeros)

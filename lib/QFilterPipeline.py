@@ -11,7 +11,7 @@ from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.videotypes import Image, FrameInfo
 
 if TYPE_CHECKING:
-    from QVideo.lib.QFilterRackWidget import QFilterRackWidget
+    from QVideo.lib.QFilterRack import QFilterRack
     from QVideo.lib.QVideoSource import QVideoSource
 
 
@@ -51,7 +51,7 @@ class QFilterPipeline(QtCore.QThread):
     through the remaining filters unchanged by the failed one.
 
     **Following a rack.**  With a
-    :class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget` the pipeline
+    :class:`~QVideo.lib.QFilterRack.QFilterRack` the pipeline
     runs the rack's switched-on filters, follows the rack as filters are added,
     removed, reordered or toggled, and switches off the rack widget of a
     filter that fails.  The worker thread only ever sees
@@ -69,7 +69,7 @@ class QFilterPipeline(QtCore.QThread):
         Filters to apply, in order.
     depth : int
         Number of frames that may wait for the worker.  Default: ``1``.
-    rack : QFilterRackWidget or None
+    rack : QFilterRack or None
         Rack whose switched-on filters the pipeline runs, in place of
         *filters*.
 
@@ -106,7 +106,7 @@ class QFilterPipeline(QtCore.QThread):
                  source: 'QVideoSource',
                  filters: Iterable[VideoFilter] = (),
                  depth: int = 1,
-                 rack: 'QFilterRackWidget | None' = None) -> None:
+                 rack: 'QFilterRack | None' = None) -> None:
         super().__init__()
         self._mutex = QtCore.QMutex()
         self._wait = QtCore.QWaitCondition()
@@ -115,7 +115,7 @@ class QFilterPipeline(QtCore.QThread):
         self._running = True
         self._filters = tuple(filters)
         self._source: QVideoSource | None = None
-        self._rack: QFilterRackWidget | None = None
+        self._rack: QFilterRack | None = None
         self.source = source
         self.rack = rack
         self.start()
@@ -140,12 +140,12 @@ class QFilterPipeline(QtCore.QThread):
         source.shapeChanged.connect(self.shapeChanged)
 
     @property
-    def rack(self) -> 'QFilterRackWidget | None':
+    def rack(self) -> 'QFilterRack | None':
         '''The rack whose filters the pipeline runs, or ``None``.'''
         return self._rack
 
     @rack.setter
-    def rack(self, rack: 'QFilterRackWidget | None') -> None:
+    def rack(self, rack: 'QFilterRack | None') -> None:
         if self._rack is not None:
             self._rack.filtersChanged.disconnect(self._syncRack)
             self.filterFailed.disconnect(self._rack.switchOff)

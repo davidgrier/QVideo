@@ -151,9 +151,8 @@ widget that owns the pipeline:
    screen.source = rack.pipeline
    layout.addWidget(rack)
 
-To apply the same filters to recorded frames, or to design a pipeline
-without a camera, use the thread-free
-:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`.
+To apply the same filters to recorded frames, call the rack:
+``rack(frame)`` filters the frame in your thread.
 
 Record and play without a window
 --------------------------------

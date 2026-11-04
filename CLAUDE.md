@@ -169,9 +169,8 @@ per camera. It requires `properties` to be a proper dict (populated via
 `registerProperty`).
 
 **`VideoFilter`** objects run in a **`QFilterPipeline`** (a worker thread),
-optionally driven by a **`QFilterRack`** of filter widgets (its
-`QFilterRackWidget` base is the thread-free panel), between a source and its
-consumers.
+optionally driven by a **`QFilterRack`** of filter widgets, between a
+source and its consumers.
 
 ### Camera backends (`cameras/`)
 
@@ -278,11 +277,10 @@ An overlay's control widget subclasses `QOverlayWidget`
 (`lib/QOverlayWidget.py`), which runs the worker thread; the subclass supplies
 the worker, the graphics item and its controls.
 
-The rack comes in two classes.  `QFilterRackWidget` is a pure widget with
-no thread: calling it applies the filters in the caller's thread (recorded
-frames, pipeline design).  `QFilterRack` subclasses it and owns a
-`QFilterPipeline` (`rack.pipeline`) that follows the rack, so a live
-source is filtered off the GUI thread by default.  Connect consumers to
+`QFilterRack` is a widget that owns a `QFilterPipeline`
+(`rack.pipeline`) that follows the rack, so a live source is filtered off
+the GUI thread.  Calling the rack applies the filters in the caller's
+thread (recorded frames).  Connect consumers to
 the pipeline (`screen.source = rack.pipeline`), not to the raw source, so
 they share one filtered stream.  The screen applies no filters.  A filter
 overrides `process(frame)` if it is stateless, or `add`/`get` if it keeps

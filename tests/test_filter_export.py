@@ -1,10 +1,10 @@
-'''Unit tests for FilterCode, VideoFilter.to_code, and QFilterRackWidget.exportPipeline.'''
+'''Unit tests for FilterCode, VideoFilter.to_code, and QFilterRack.exportPipeline.'''
 import unittest
 from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.QVideoFilter import (
     FilterCode, VideoFilter, QVideoFilter, renderPipeline)
-from QVideo.lib.QFilterRackWidget import QFilterRackWidget
+from QVideo.lib.QFilterRack import QFilterRack
 from QVideo.filters.threshold import ThresholdFilter
 from QVideo.filters.edge import EdgeFilter
 from QVideo.filters.roi import ROIFilter
@@ -13,8 +13,20 @@ from QVideo.filters.roi import ROIFilter
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-def make_rack() -> QFilterRackWidget:
-    return QFilterRackWidget(parent=None)
+_racks = []
+
+
+def make_rack() -> QFilterRack:
+    '''A rack, whose pipeline is stopped when the module's tests end.'''
+    rack = QFilterRack(parent=None)
+    _racks.append(rack)
+    return rack
+
+
+def tearDownModule():
+    for rack in _racks:
+        rack.pipeline.stop()
+    _racks.clear()
 
 
 class TestFilterCode(unittest.TestCase):

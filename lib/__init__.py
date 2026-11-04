@@ -35,11 +35,11 @@ QReferenceFilter
     Widget of a :class:`ReferenceFilter`, with its capture controls.
 QOverlayWidget
     Control widget of an overlay that analyzes frames on a thread.
-QFilterRackWidget
-    Dynamic, user-reorderable pipeline of :class:`QVideoFilter` widgets.
+QFilterRack
+    Dynamic, user-reorderable rack of :class:`QVideoFilter` widgets that
+    filters a source on a worker thread.
 QFilterPipeline
     Worker thread that applies a pipeline of filters (or a rack) to a source.
-QFilterRack
     A filter rack that owns a :class:`QFilterPipeline` for a live source.
 QVideoReader
     Abstract base class for video file readers.
@@ -56,7 +56,6 @@ from .QVideoSource import QVideoSource
 from .remote import QRemoteCamera
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
-from .QFilterRackWidget import QFilterRackWidget
 from .QFilterPipeline import QFilterPipeline
 from .QFilterRack import QFilterRack
 from .QFrameRelay import QFrameRelay
@@ -74,7 +73,7 @@ __all__ = '''Image
 clickable launch
 QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
 QRemoteCamera QCameraOpener
-QFilterRackWidget QFilterPipeline QFilterRack QFrameRelay
+QFilterRack QFilterPipeline QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
 QSnapshot
 VideoFilter QVideoFilter ReferenceFilter QReferenceFilter

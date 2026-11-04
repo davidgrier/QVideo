@@ -8,7 +8,7 @@ callable: ``filtered = f(frame)``.  The ``Q``-prefixed variants add a
 
 Stateless filters also implement
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` and participate in
-:meth:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.exportPipeline`,
+:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline`,
 which generates
 a standalone ``filter.py`` from the rack's current settings.  Stateful
 filters that accumulate information across frames cannot be expressed as a

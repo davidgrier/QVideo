@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Removed
 
+- **`QFilterRackWidget`.**  It was the base class of `QFilterRack`, and
+  `QFilterRack` added only the pipeline that it owns.  `QFilterRack` is now
+  one class, with the same constructor, in `QVideo.lib.QFilterRack`.  Code
+  that built a `QFilterRackWidget` to filter recorded frames builds a
+  `QFilterRack` and calls it; the rack's pipeline then waits for a source.
 - **`QVideoWriter.blank`**, which made a writer write black frames.
   Nothing in QVideo set it.
 

@@ -195,9 +195,8 @@ every consumer sees the same filtered stream and a slow filter never makes
 the interface unresponsive.  A
 :class:`~QVideo.lib.QFilterRack.QFilterRack` lets the user add, remove,
 reorder, and adjust the filters while the program runs, and owns the
-pipeline that applies them.  Its thread-free base class,
-:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`, applies the
-same filters to recorded frames.
+pipeline that applies them.  Calling the rack applies the same filters to
+recorded frames.
 
 Application layer
 -----------------

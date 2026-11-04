@@ -7,7 +7,7 @@ builds them from their display names, so that a notebook needs no imports::
 '''
 import difflib
 from QVideo.cameras.chooser import ensure_qapp
-from QVideo.lib.QFilterRackWidget import QFilterRackWidget
+from QVideo.lib.QFilterRack import QFilterRack
 from QVideo.lib.QVideoFilter import VideoFilter
 
 __all__ = ['Filter']
@@ -56,7 +56,7 @@ def Filter(*names: str | list[str] | tuple[str, ...]
     ``capture()`` on the filter that you get to take it from the next
     frame.
     '''
-    registry = QFilterRackWidget.availableFilters()
+    registry = QFilterRack.availableFilters()
     if not names:
         return sorted(registry)
     if len(names) == 1 and isinstance(names[0], (list, tuple)):

@@ -164,7 +164,7 @@ class VideoFilter(QtCore.QObject):
         '''Return a :class:`FilterCode` fragment for pipeline export.
 
         Stateless filters implement this to enable
-        :meth:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.exportPipeline`.
+        :meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline`.
         Stateful filters (those that accumulate state across frames)
         return ``None`` to indicate they cannot be expressed as a
         single-frame pure function.
@@ -191,7 +191,7 @@ class QVideoFilter(QtWidgets.QGroupBox):
     to ``self._layout``.
 
     Subclasses should set :attr:`display_name` to a short human-readable
-    label.  :class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget` uses
+    label.  :class:`~QVideo.lib.QFilterRack.QFilterRack` uses
     this to populate the "Add filter…" picker.
 
     Parameters

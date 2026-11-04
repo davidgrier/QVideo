@@ -9,7 +9,7 @@ from unittest.mock import patch
 import numpy as np
 from qtpy import QtCore, QtTest, QtWidgets
 from QVideo.lib.QFilterPipeline import QFilterPipeline
-from QVideo.lib.QFilterRackWidget import QFilterRackWidget
+from QVideo.lib.QFilterRack import QFilterRack
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.lib.videotypes import FrameInfo
 
@@ -267,10 +267,11 @@ class TestSourceInterface(PipelineTestCase):
 
 
 class TestRack(PipelineTestCase):
-    '''A pipeline follows the enabled filters of a QFilterRackWidget.'''
+    '''A pipeline follows the enabled filters of a QFilterRack.'''
 
     def setUp(self):
-        self.rack = QFilterRackWidget()
+        self.rack = QFilterRack()
+        self.addCleanup(self.rack.pipeline.stop)
         self.widgets = []
         for n in (1, 10):
             widget = QVideoFilter(None, f'+{n}', _Add(n))

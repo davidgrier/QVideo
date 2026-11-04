@@ -51,11 +51,6 @@ logic stays separate from UI concerns.
    a worker thread between a source and its consumers.  A screen or a
    recorder uses the pipeline as its source.
 
-:class:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget`
-   A user-editable list of :class:`~QVideo.lib.QVideoFilter.QVideoFilter`
-   widgets.  It runs no thread; calling it applies the switched-on filters
-   in the caller's thread.
-
 :class:`~QVideo.lib.QFilterRack.QFilterRack`
    A rack widget that owns a pipeline.  The pipeline runs the filters that
    are switched on, on a worker thread, and follows the rack as the user
@@ -256,7 +251,7 @@ filter.
 Supporting pipeline export
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:meth:`~QVideo.lib.QFilterRackWidget.QFilterRackWidget.exportPipeline`
+:meth:`~QVideo.lib.QFilterRack.QFilterRack.exportPipeline`
 generates a
 standalone Python file from the rack's current settings.  It calls
 :meth:`~QVideo.lib.QVideoFilter.VideoFilter.to_code` on each enabled filter

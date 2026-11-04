@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [4.15.1] — 2026-11-04
+
 ### Changed
 
 - **The camera tree has no "Parameter / Value" header.**  The labels said

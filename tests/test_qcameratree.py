@@ -3,7 +3,8 @@ import unittest
 from unittest.mock import patch, MagicMock
 from qtpy import QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
-from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
+from QVideo.cameras.Noise._camera import QNoiseCamera
+from QVideo.lib import QVideoSource
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -15,7 +16,7 @@ def make_camera():
 
 def make_source(camera=None):
     camera = camera or make_camera()
-    return QNoiseSource(camera=camera)
+    return QVideoSource(camera)
 
 
 def make_tree(source=None):
@@ -28,7 +29,7 @@ class TestQCameraTreeInit(unittest.TestCase):
     def test_raises_if_source_not_open(self):
         cam = make_camera()
         cam.close()
-        source = QNoiseSource(camera=cam)
+        source = QVideoSource(cam)
         with self.assertRaises(RuntimeError):
             QCameraTree(source)
 

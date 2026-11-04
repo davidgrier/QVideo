@@ -9,6 +9,26 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Deprecated
+
+- **The `Q<Name>Source` classes of the backends** (`QNoiseSource`,
+  `QOpenCVSource`, `QPicameraSource`, `QIMXSource`, `QGenicamSource`,
+  `QBaslerSource`, `QFlirSource`, `QIDSSource`, `QMVSource`,
+  `QVimbaXSource`, `QVivaSource`).  Each only wrapped its camera in a
+  `QVideoSource`; write `QVideoSource(QNoiseCamera())` instead.  The old
+  names still work and warn; they will be removed in the next major
+  release.
+
+### Changed
+
+- **A backend is a camera and a tree.**  The vendor trees of Basler, FLIR,
+  IDS, MV and VimbaX share their code in `QGenicamTree`: a subclass names
+  its camera class, its default controls and its default settings.  The
+  worker process of `QRemoteCamera` is in the package `QVideo.lib.remote`
+  with its proxy and protocol (`from QVideo.lib import QRemoteCamera` is
+  unchanged).  `chooser.camera_class` and `chooser.tree_class` return the
+  classes of a backend.
+
 ---
 
 ## [4.13.0] — 2026-11-03

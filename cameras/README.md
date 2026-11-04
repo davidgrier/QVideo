@@ -1,7 +1,8 @@
 # cameras: one directory per kind of camera
 
 Each subdirectory is a backend: `Q<Name>Camera` talks to the hardware,
-`Q<Name>Source` runs it in a thread and `Q<Name>Tree` builds its controls.
+and `Q<Name>Tree` builds its controls.  `QVideoSource` runs any of them
+in a thread.
 Backends that use a vendor SDK import it inside `try/except`, so QVideo
 imports without it.
 

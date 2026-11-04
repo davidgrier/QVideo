@@ -1,8 +1,8 @@
 '''FLIR camera and threaded video source (Spinnaker GenTL producer).'''
-from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam import QGenicamCamera
 
 
-__all__ = ['QFlirCamera', 'QFlirSource']
+__all__ = ['QFlirCamera']
 
 
 class QFlirCamera(QGenicamCamera):
@@ -37,26 +37,6 @@ class QFlirCamera(QGenicamCamera):
                      'to the directory containing Spinnaker_GenTL.cti '
                      '(on Linux, typically '
                      '/opt/spinnaker/lib/spinnaker-gentl).')
-
-
-class QFlirSource(QGenicamSource):
-
-    '''Threaded video source backed by :class:`QFlirCamera`.
-
-    Parameters
-    ----------
-    camera : QFlirCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QFlirCamera` is created from ``cameraID``.
-    cameraID : int
-        Index of the camera to open.  Used only when *camera* is ``None``.
-        Default: ``0``.
-    '''
-
-    def __init__(self, camera: QFlirCamera | None = None,
-                 cameraID: int = 0) -> None:
-        camera = camera or QFlirCamera(cameraID=cameraID)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

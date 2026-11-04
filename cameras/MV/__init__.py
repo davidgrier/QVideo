@@ -15,13 +15,14 @@ Classes
 -------
 QMVCamera
     Camera backed by any GenICam device via the mvGenTLProducer.
-QMVSource
-    Threaded video source backed by :class:`QMVCamera`.
 QMVTree
     Parameter tree widget for :class:`QMVCamera` controls.
 '''
-from ._camera import QMVCamera, QMVSource
+from ._camera import QMVCamera
 from ._tree import QMVTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QMVSource=QMVCamera)
 
-__all__ = 'QMVCamera QMVSource QMVTree'.split()
+__all__ = 'QMVCamera QMVTree'.split()

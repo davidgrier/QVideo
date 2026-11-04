@@ -1,7 +1,6 @@
 '''Raspberry Pi AI Camera (IMX500) and threaded video source.'''
 from typing import TYPE_CHECKING
 from qtpy import QtCore
-from QVideo.lib import QVideoSource
 from ._camera import QPicamera
 import logging
 
@@ -16,7 +15,7 @@ except (ImportError, ModuleNotFoundError):
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['QIMXCamera', 'QIMXSource']
+__all__ = ['QIMXCamera']
 
 
 class QIMXCamera(QPicamera):
@@ -89,24 +88,3 @@ class QIMXCamera(QPicamera):
         outputs = self._device.get_outputs(metadata)
         self.newOutput.emit(outputs)
 
-
-class QIMXSource(QVideoSource):
-
-    '''Threaded video source backed by :class:`QIMXCamera`.
-
-    Parameters
-    ----------
-    camera : QIMXCamera or None
-        Camera instance to wrap.  If ``None``, a new :class:`QIMXCamera`
-        is created from the remaining arguments.
-    *args :
-        Forwarded to :class:`QIMXCamera` when *camera* is ``None``.
-    **kwargs :
-        Forwarded to :class:`QIMXCamera` when *camera* is ``None``.
-    '''
-
-    def __init__(self, *args,
-                 camera: QIMXCamera | None = None,
-                 **kwargs) -> None:
-        camera = camera if camera is not None else QIMXCamera(*args, **kwargs)
-        super().__init__(camera)

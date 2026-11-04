@@ -1,10 +1,10 @@
-'''Unit tests for QNoiseCamera and QNoiseSource.'''
+'''Unit tests for QNoiseCamera.'''
 import unittest
 import numpy as np
 from unittest.mock import patch
 from qtpy import QtWidgets
 from QVideo.tests.signals import record
-from QVideo.cameras.Noise._camera import QNoiseCamera, QNoiseSource
+from QVideo.cameras.Noise._camera import QNoiseCamera
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -246,21 +246,7 @@ class TestRead(unittest.TestCase):
         mock_sleep.assert_called_once_with(1. / cam.fps)
 
 
-class TestQNoiseSource(unittest.TestCase):
 
-    def test_creates_camera_when_none_given(self):
-        src = QNoiseSource()
-        self.assertIsInstance(src.source, QNoiseCamera)
-
-    def test_uses_provided_camera(self):
-        cam = make_camera()
-        src = QNoiseSource(camera=cam)
-        self.assertIs(src.source, cam)
-
-    def test_kwargs_forwarded_to_camera(self):
-        src = QNoiseSource(blacklevel=48, whitelevel=200)
-        self.assertEqual(src.source.blacklevel, 48)
-        self.assertEqual(src.source.whitelevel, 200)
 
 
 if __name__ == '__main__':

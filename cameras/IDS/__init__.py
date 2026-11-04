@@ -9,13 +9,14 @@ Classes
 -------
 QIDSCamera
     Camera backed by an IDS Imaging device via the IDS peak GenTL producer.
-QIDSSource
-    Threaded video source backed by :class:`QIDSCamera`.
 QIDSTree
     Parameter tree widget for :class:`QIDSCamera` controls.
 '''
-from ._camera import QIDSCamera, QIDSSource
+from ._camera import QIDSCamera
 from ._tree import QIDSTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QIDSSource=QIDSCamera)
 
-__all__ = 'QIDSCamera QIDSSource QIDSTree'.split()
+__all__ = 'QIDSCamera QIDSTree'.split()

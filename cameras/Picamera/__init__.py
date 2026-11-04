@@ -17,19 +17,20 @@ Classes
 -------
 QPicamera
     Camera backed by the Raspberry Pi camera module via picamera2.
-QPicameraSource
-    Threaded video source backed by :class:`QPicamera`.
 QPicameraTree
     Parameter tree widget for :class:`QPicamera` controls.
 QIMXCamera
     Camera backed by the Raspberry Pi AI Camera (IMX500).
-QIMXSource
-    Threaded video source backed by :class:`QIMXCamera`.
 '''
-from ._camera import QPicamera, QPicameraSource
-from ._imx500 import QIMXCamera, QIMXSource
+from ._camera import QPicamera
+from ._imx500 import QIMXCamera
 from ._tree import QPicameraTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(
+    __name__,
+    QPicameraSource=QPicamera,
+    QIMXSource=QIMXCamera)
 
-__all__ = ('QPicamera QPicameraSource QIMXCamera QIMXSource '
-           'QPicameraTree').split()
+__all__ = 'QPicamera QIMXCamera QPicameraTree'.split()

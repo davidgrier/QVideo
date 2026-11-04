@@ -39,7 +39,7 @@ class TestQuickstart(unittest.TestCase):
 
     def test_the_minimal_display_runs(self):
         block = next(b for b in blocks() if 'QVideoScreen()' in b
-                     and 'QNoiseSource()' in b)
+                     and 'QNoiseCamera()' in b)
         result = self.run_block(block)
         self.assertEqual(result.returncode, 0, result.stderr[-600:])
 

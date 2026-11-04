@@ -10,13 +10,14 @@ Classes
 -------
 QBaslerCamera
     Camera backed by a Basler device via the pylon GenTL producer.
-QBaslerSource
-    Threaded video source backed by :class:`QBaslerCamera`.
 QBaslerTree
     Parameter tree widget for :class:`QBaslerCamera` controls.
 '''
-from ._camera import QBaslerCamera, QBaslerSource
+from ._camera import QBaslerCamera
 from ._tree import QBaslerTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QBaslerSource=QBaslerCamera)
 
-__all__ = 'QBaslerCamera QBaslerSource QBaslerTree'.split()
+__all__ = 'QBaslerCamera QBaslerTree'.split()

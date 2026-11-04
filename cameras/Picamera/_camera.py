@@ -1,7 +1,7 @@
 '''Raspberry Pi camera and threaded video source (picamera2).'''
 from contextlib import suppress
 from typing import TYPE_CHECKING
-from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import QCamera
 import logging
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ except (ImportError, ModuleNotFoundError):
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['QPicamera', 'QPicameraSource']
+__all__ = ['QPicamera']
 
 
 # Mapping from picamera2 sensor names to human-readable model names.
@@ -486,28 +486,6 @@ class QPicamera(QCamera):
             # any hardware stride padding beyond self.width.
             frame = frame[:self.height, :self.width]
         return True, frame
-
-
-class QPicameraSource(QVideoSource):
-
-    '''Threaded video source backed by :class:`QPicamera`.
-
-    Parameters
-    ----------
-    camera : QPicamera or None
-        Camera instance to wrap.  If ``None``, a new :class:`QPicamera`
-        is created from the remaining arguments.
-    *args :
-        Forwarded to :class:`QPicamera` when *camera* is ``None``.
-    **kwargs :
-        Forwarded to :class:`QPicamera` when *camera* is ``None``.
-    '''
-
-    def __init__(self, *args,
-                 camera: QPicamera | None = None,
-                 **kwargs) -> None:
-        camera = camera if camera is not None else QPicamera(*args, **kwargs)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -1,4 +1,4 @@
-'''Unit tests for QPicamera and QPicameraSource.'''
+'''Unit tests for QPicamera.'''
 import sys
 import unittest
 import numpy as np
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets
 
 from QVideo.tests.signals import record
-from QVideo.cameras.Picamera._camera import QPicamera, QPicameraSource
+from QVideo.cameras.Picamera._camera import QPicamera
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -133,9 +133,6 @@ class TestAll(unittest.TestCase):
 
     def test_all_contains_qpicamera(self):
         self.assertIn('QPicamera', _MODULE.__all__)
-
-    def test_all_contains_qpicamerasource(self):
-        self.assertIn('QPicameraSource', _MODULE.__all__)
 
 
 class TestInit(unittest.TestCase):
@@ -578,28 +575,7 @@ class TestDeinitialize(unittest.TestCase):
         self.assertFalse(cam.isOpen())
 
 
-class TestQPicameraSource(unittest.TestCase):
 
-    def test_source_wraps_new_camera(self):
-        device = make_mock_device()
-        with patch.object(_MODULE, 'Picamera2', return_value=device):
-            src = QPicameraSource()
-        self.assertTrue(src.source.isOpen())
-        src.source.close()
-
-    def test_source_accepts_existing_camera(self):
-        cam, _ = make_camera()
-        src = QPicameraSource(camera=cam)
-        self.assertIs(src.source, cam)
-        cam.close()
-
-    def test_source_forwards_camera_id(self):
-        device = make_mock_device()
-        with patch.object(
-                _MODULE, 'Picamera2', return_value=device) as mock_cls:
-            src = QPicameraSource(cameraID=1)
-        mock_cls.assert_called_once_with(camera_num=1)
-        src.source.close()
 
 
 class TestFocus(unittest.TestCase):

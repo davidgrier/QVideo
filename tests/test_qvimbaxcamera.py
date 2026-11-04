@@ -1,4 +1,4 @@
-'''Unit tests for QVimbaXCamera and QVimbaXSource.'''
+'''Unit tests for QVimbaXCamera.'''
 import os
 import sys
 import unittest
@@ -79,7 +79,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 # Import directly from the submodule to avoid pulling in QVimbaXTree
 from QVideo.lib.errors import QDriverError  # noqa: E402
 from QVideo.cameras.Genicam._camera import QGenicamCamera
-from QVideo.cameras.Vimbax._camera import QVimbaXCamera, QVimbaXSource
+from QVideo.cameras.Vimbax._camera import QVimbaXCamera
 
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
 
@@ -226,34 +226,7 @@ class TestQVimbaXCamera(unittest.TestCase):
         h.add_file.assert_called_once_with(FAKE_PRODUCER)
 
 
-# ---------------------------------------------------------------------------
-# TestQVimbaXSource
-# ---------------------------------------------------------------------------
 
-class TestQVimbaXSource(unittest.TestCase):
-
-    def test_uses_provided_camera(self):
-        cam, _, _ = make_camera()
-        src = QVimbaXSource(camera=cam)
-        self.assertIs(src.source, cam)
-
-    def test_creates_camera_when_none_given(self):
-        device = _make_device()
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(QVimbaXCamera, 'producer', FAKE_PRODUCER):
-            with patch.object(_cam_module, 'Harvester', return_value=harvester):
-                src = QVimbaXSource()
-        self.assertIsInstance(src.source, QVimbaXCamera)
-
-    def test_forwards_camera_id(self):
-        device = _make_device()
-        harvester = MagicMock()
-        harvester.create.return_value = device
-        with patch.object(QVimbaXCamera, 'producer', FAKE_PRODUCER):
-            with patch.object(_cam_module, 'Harvester', return_value=harvester):
-                QVimbaXSource(cameraID=1)
-        harvester.create.assert_called_once_with(1)
 
 
 if __name__ == '__main__':

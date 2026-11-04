@@ -58,13 +58,13 @@ The minimal wiring is a source connected to a display widget:
 
 .. code-block:: python
 
-   from QVideo.cameras.Noise import QNoiseSource
-   from QVideo.lib import QVideoScreen
+   from QVideo.cameras.Noise import QNoiseCamera
+   from QVideo.lib import QVideoScreen, QVideoSource
    import pyqtgraph as pg   # after QVideo: QVideo selects the Qt binding
 
    app = pg.mkQApp()
 
-   source = QNoiseSource()
+   source = QVideoSource(QNoiseCamera())
    screen = QVideoScreen()
    screen.source = source
 
@@ -72,15 +72,15 @@ The minimal wiring is a source connected to a display widget:
    source.start()
    app.exec()
 
-:class:`~QVideo.cameras.Noise.QNoiseSource` generates synthetic noise
-frames — no hardware required.  Replace it with any other source to use
-real hardware:
+:class:`~QVideo.cameras.Noise.QNoiseCamera` generates synthetic noise
+frames — no hardware required.  Replace it with the camera of any other
+backend to use real hardware:
 
 .. code-block:: python
 
-   from QVideo.cameras.OpenCV import QOpenCVSource   # USB webcam
-   from QVideo.cameras.Genicam import QGenicamSource # GenICam camera
-   from QVideo.cameras.Basler import QBaslerSource   # Basler camera
+   from QVideo.cameras.OpenCV import QOpenCVCamera   # USB webcam
+   from QVideo.cameras.Genicam import QGenicamCamera # GenICam camera
+   from QVideo.cameras.Basler import QBaslerCamera   # Basler camera
 
 The rest of the code is identical — the source, screen, and filter
 pipeline do not depend on the underlying hardware.
@@ -168,11 +168,12 @@ need the event loop of the application, which in a script you run yourself:
 .. code-block:: python
 
    from qtpy.QtCore import QCoreApplication
-   from QVideo.cameras.Noise import QNoiseSource
+   from QVideo.cameras.Noise import QNoiseCamera
+   from QVideo.lib import QVideoSource
    from QVideo.dvr import QRecorder, QPlayer, formats
 
    app = QCoreApplication([])
-   source = QNoiseSource()
+   source = QVideoSource(QNoiseCamera())
    source.start()
 
    recorder = QRecorder(source)

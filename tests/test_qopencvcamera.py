@@ -4,7 +4,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets, QtCore
 from QVideo.tests.signals import record
-from QVideo.cameras.OpenCV._camera import QOpenCVCamera, QOpenCVSource
+from QVideo.cameras.OpenCV._camera import QOpenCVCamera
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -578,21 +578,7 @@ class TestProbeProperties(unittest.TestCase):
         self.assertIn('exposure', cam.properties)
 
 
-class TestQOpenCVSource(unittest.TestCase):
 
-    def test_creates_camera_if_none_given(self):
-        device = make_mock_device()
-        with patch('cv2.VideoCapture', return_value=device):
-            with patch('QVideo.cameras.OpenCV._camera.configure'):
-                with patch('QVideo.cameras.OpenCV._camera.probe_formats',
-                           return_value=[(640, 480, 1., 30.)]):
-                    src = QOpenCVSource()
-        self.assertIsInstance(src.source, QOpenCVCamera)
-
-    def test_uses_provided_camera(self):
-        cam = make_camera()
-        src = QOpenCVSource(camera=cam)
-        self.assertIs(src.source, cam)
 
 
 if __name__ == '__main__':

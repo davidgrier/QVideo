@@ -21,19 +21,20 @@ Classes
 -------
 QGenicamCamera
     Abstract base for GenICam cameras accessed via Harvesters.
-QGenicamSource
-    Threaded video source backed by :class:`QGenicamCamera`.
 QGenicamTree
     Parameter tree widget for :class:`QGenicamCamera` controls.
 '''
-from ._camera import QGenicamCamera, QGenicamSource
+from ._camera import QGenicamCamera
 from ._tree import QGenicamTree
+from QVideo.cameras._deprecated import deprecated_sources
 
 # Tell Sphinx that these classes belong to the public package namespace,
 # not the private _camera / _tree submodules, to avoid duplicate
 # object descriptions in the generated docs.
 QGenicamCamera.__module__ = __name__
-QGenicamSource.__module__ = __name__
 QGenicamTree.__module__ = __name__
 
-__all__ = 'QGenicamCamera QGenicamSource QGenicamTree'.split()
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QGenicamSource=QGenicamCamera)
+
+__all__ = 'QGenicamCamera QGenicamTree'.split()

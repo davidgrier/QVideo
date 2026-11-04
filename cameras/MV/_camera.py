@@ -1,8 +1,8 @@
 '''MATRIX VISION camera and threaded video source (mvGenTLProducer).'''
-from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam import QGenicamCamera
 
 
-__all__ = ['QMVCamera', 'QMVSource']
+__all__ = ['QMVCamera']
 
 
 class QMVCamera(QGenicamCamera):
@@ -37,26 +37,6 @@ class QMVCamera(QGenicamCamera):
     _producerHint = (
         'Install the mvIMPACT SDK and set GENICAM_GENTL64_PATH to the '
         'directory containing mvGenTLProducer.cti.')
-
-
-class QMVSource(QGenicamSource):
-
-    '''Threaded video source backed by :class:`QMVCamera`.
-
-    Parameters
-    ----------
-    camera : QMVCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QMVCamera` is created from ``cameraID``.
-    cameraID : int
-        Index of the camera to open.  Used only when *camera* is ``None``.
-        Default: ``0``.
-    '''
-
-    def __init__(self, camera: QMVCamera | None = None,
-                 cameraID: int = 0) -> None:
-        camera = camera or QMVCamera(cameraID=cameraID)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

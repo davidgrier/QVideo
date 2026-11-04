@@ -279,8 +279,6 @@ Camera backends
 Each backend lives in ``cameras/<Name>/`` and follows the pattern:
 
 * ``Q<Name>Camera`` — subclasses :class:`~QVideo.lib.QCamera.QCamera`.
-* ``Q<Name>Source`` — subclasses
-  :class:`~QVideo.lib.QVideoSource.QVideoSource`.
 * ``Q<Name>Tree`` — subclasses
   :class:`~QVideo.lib.QCameraTree.QCameraTree` when extra UI logic is
   needed.

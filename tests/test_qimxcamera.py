@@ -1,4 +1,4 @@
-'''Unit tests for QIMXCamera and QIMXSource.'''
+'''Unit tests for QIMXCamera.'''
 import sys
 import unittest
 import numpy as np
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets, QtCore
 
 from QVideo.tests.signals import record
-from QVideo.cameras.Picamera._imx500 import QIMXCamera, QIMXSource
+from QVideo.cameras.Picamera._imx500 import QIMXCamera
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -84,9 +84,6 @@ class TestAll(unittest.TestCase):
 
     def test_all_contains_qimxcamera(self):
         self.assertIn('QIMXCamera', _MODULE.__all__)
-
-    def test_all_contains_qimxsource(self):
-        self.assertIn('QIMXSource', _MODULE.__all__)
 
 
 class TestInheritance(unittest.TestCase):
@@ -202,21 +199,7 @@ class TestNewOutput(unittest.TestCase):
         cam.close()
 
 
-class TestQIMXSource(unittest.TestCase):
 
-    def test_creates_camera_when_none_given(self):
-        device = make_mock_imx500()
-        with patch.object(_MODULE, 'IMX500', return_value=device), \
-                patch.object(_CAMERA_MODULE, 'Transform', MockTransform):
-            source = QIMXSource(model='/fake/model.rpk')
-        self.assertIsInstance(source.source, QIMXCamera)
-        source.source.close()
-
-    def test_uses_provided_camera(self):
-        cam, _ = make_camera()
-        source = QIMXSource(camera=cam)
-        self.assertIs(source.source, cam)
-        cam.close()
 
 
 if __name__ == '__main__':  # pragma: no cover

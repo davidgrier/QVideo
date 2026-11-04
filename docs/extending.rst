@@ -469,13 +469,13 @@ Wiring an overlay into an application
 .. code-block:: python
 
    import pyqtgraph as pg
-   from QVideo.cameras.Noise import QNoiseSource
-   from QVideo.lib import QVideoScreen
+   from QVideo.cameras.Noise import QNoiseCamera
+   from QVideo.lib import QVideoScreen, QVideoSource
    from qtpy.QtWidgets import QApplication, QHBoxLayout, QWidget
 
    app = QApplication([])
 
-   source = QNoiseSource()
+   source = QVideoSource(QNoiseCamera())
    screen = QVideoScreen()
    source.newFrame.connect(screen.setImage)
 

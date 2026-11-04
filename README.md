@@ -90,13 +90,13 @@ Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
 ## Quick start
 
 ```python
-from QVideo.cameras.Noise import QNoiseSource
-from QVideo.lib import QVideoScreen
+from QVideo.cameras.Noise import QNoiseCamera
+from QVideo.lib import QVideoScreen, QVideoSource
 import pyqtgraph as pg   # after QVideo: QVideo selects the Qt binding
 
 pg.mkQApp()
 
-source = QNoiseSource()          # synthetic noise — no hardware needed
+source = QVideoSource(QNoiseCamera())   # synthetic noise: no hardware
 screen = QVideoScreen()
 source.newFrame.connect(screen.setImage)
 
@@ -105,7 +105,7 @@ source.start()
 pg.exec()
 ```
 
-Replace `QNoiseSource` with `QOpenCVSource`, `QGenicamSource`, etc. to switch
+Replace `QNoiseCamera` with `QOpenCVCamera`, `QFlirCamera`, etc. to switch
 hardware — the rest of the code is identical.
 
 ## In a Jupyter notebook

@@ -177,9 +177,12 @@ consumers.
 
 Each backend lives in its own subdirectory and follows the same pattern:
 - `Q<Name>Camera` — subclasses `QCamera`
-- `Q<Name>Source` — subclasses `QVideoSource`, wraps the camera
 - `Q<Name>Tree` — subclasses `QCameraTree` if extra UI logic is needed
-- `__init__.py` exports all three
+- `__init__.py` exports both
+
+`QVideoSource(camera)` runs any camera in a thread; a backend has no source
+class of its own.  The retired `Q<Name>Source` names still work, with a
+`DeprecationWarning`, through `cameras/_deprecated.py`.
 
 Hardware-specific packages (`harvesters`/`genicam` for GenICam, `PySpin` for
 Spinnaker) are soft dependencies: the import is wrapped in

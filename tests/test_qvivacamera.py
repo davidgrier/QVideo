@@ -9,7 +9,7 @@ from QVideo.lib.errors import QDeviceError
 try:
     import viva_genicam as vg
     from viva_genicam.testing import FakeU3vCamera
-    from QVideo.cameras.Viva import QVivaCamera, QVivaSource, QVivaTree
+    from QVideo.cameras.Viva import QVivaCamera, QVivaTree
 except ImportError:  # pragma: no cover
     vg = None
 
@@ -247,13 +247,6 @@ class TestTree(unittest.TestCase):
         finally:
             tree.stop()
             camera.close()
-
-    def test_the_source_wraps_a_camera(self):
-        camera = FakeCamera()
-        source = QVivaSource(camera)
-        self.assertIs(source.source, camera)
-        camera.close()
-
 
 
 @unittest.skipIf(vg is None, 'viva-genicam is not installed')

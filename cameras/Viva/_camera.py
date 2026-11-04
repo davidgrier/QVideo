@@ -2,7 +2,7 @@
 from contextlib import suppress
 from functools import partial
 import logging
-from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import QCamera
 from QVideo.lib.errors import QDeviceError
 
 try:
@@ -16,7 +16,7 @@ except (ImportError, ModuleNotFoundError) as exc:
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['QVivaCamera', 'QVivaSource']
+__all__ = ['QVivaCamera']
 
 #: The feature kinds that become properties: the Python type of each, and
 #: the camera calls that read and write it.
@@ -313,21 +313,3 @@ class QVivaCamera(QCamera):
         self.hardwareTimestamp = frame.ts_host
         return True, image
 
-
-class QVivaSource(QVideoSource):
-
-    '''Threaded video source backed by :class:`QVivaCamera`.
-
-    Parameters
-    ----------
-    camera : QVivaCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QVivaCamera` is created from ``cameraID``.
-    cameraID : int
-        Index of the camera to open.  Used only when *camera* is ``None``.
-        Default: ``0``.
-    '''
-
-    def __init__(self, camera: QVivaCamera | None = None,
-                 cameraID: int = 0) -> None:
-        super().__init__(camera or QVivaCamera(cameraID=cameraID))

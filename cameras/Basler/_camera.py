@@ -1,8 +1,8 @@
 '''Basler camera and threaded video source (pylon GenTL producer).'''
-from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam import QGenicamCamera
 
 
-__all__ = ['QBaslerCamera', 'QBaslerSource']
+__all__ = ['QBaslerCamera']
 
 
 class QBaslerCamera(QGenicamCamera):
@@ -31,26 +31,6 @@ class QBaslerCamera(QGenicamCamera):
     _producerHint = (
         'Install pylon and set GENICAM_GENTL64_PATH to the '
         'directory containing ProducerU3V.cti or ProducerGEV.cti.')
-
-
-class QBaslerSource(QGenicamSource):
-
-    '''Threaded video source backed by :class:`QBaslerCamera`.
-
-    Parameters
-    ----------
-    camera : QBaslerCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QBaslerCamera` is created from ``cameraID``.
-    cameraID : int
-        Index of the camera to open.  Used only when *camera* is ``None``.
-        Default: ``0``.
-    '''
-
-    def __init__(self, camera: QBaslerCamera | None = None,
-                 cameraID: int = 0) -> None:
-        camera = camera or QBaslerCamera(cameraID=cameraID)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

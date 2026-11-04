@@ -1,10 +1,10 @@
 '''Allied Vision camera and threaded video source (VimbaX producer).'''
-from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam import QGenicamCamera
 import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['QVimbaXCamera', 'QVimbaXSource']
+__all__ = ['QVimbaXCamera']
 
 
 class QVimbaXCamera(QGenicamCamera):
@@ -31,26 +31,6 @@ class QVimbaXCamera(QGenicamCamera):
     _producerFilenames = ('VimbaUSBTL.cti', 'VimbaGigETL.cti', 'VimbaCL.cti')
     _producerHint = ('Install VimbaX and set GENICAM_GENTL64_PATH to the '
                      'directory containing VimbaUSBTL.cti.')
-
-
-class QVimbaXSource(QGenicamSource):
-
-    '''Threaded video source backed by :class:`QVimbaXCamera`.
-
-    Parameters
-    ----------
-    camera : QVimbaXCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QVimbaXCamera` is created from ``cameraID``.
-    cameraID : int
-        Index of the camera to open.  Used only when *camera* is ``None``.
-        Default: ``0``.
-    '''
-
-    def __init__(self, camera: QVimbaXCamera | None = None,
-                 cameraID: int = 0) -> None:
-        camera = camera or QVimbaXCamera(cameraID=cameraID)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

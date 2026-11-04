@@ -12,16 +12,17 @@ Classes
 -------
 QOpenCVCamera
     Camera backed by OpenCV's ``VideoCapture``.
-QOpenCVSource
-    Threaded video source backed by :class:`QOpenCVCamera`.
 QOpenCVTree
     Parameter tree widget for :class:`QOpenCVCamera` controls.
 QOpenCVDevices
     Utility class for probing connected OpenCV-accessible devices.
 '''
-from ._camera import QOpenCVCamera, QOpenCVSource
+from ._camera import QOpenCVCamera
 from ._tree import QOpenCVTree
 from ._devices import QOpenCVDevices
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QOpenCVSource=QOpenCVCamera)
 
-__all__ = 'QOpenCVCamera QOpenCVSource QOpenCVTree QOpenCVDevices'.split()
+__all__ = 'QOpenCVCamera QOpenCVTree QOpenCVDevices'.split()

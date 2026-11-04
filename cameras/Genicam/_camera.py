@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import QCamera
 from QVideo.lib.errors import QDeviceError, QDriverError
 from QVideo.cameras import gentl
 
@@ -76,7 +76,7 @@ except ImportError as exc:
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['QGenicamCamera', 'QGenicamSource']
+__all__ = ['QGenicamCamera']
 
 #: Registers longer than this many bytes are reported by size, not content.
 MAX_REGISTER_BYTES = 256
@@ -819,20 +819,6 @@ class QGenicamCamera(QCamera):
             if value is not None:
                 state['value'] = value
         return state
-
-
-class QGenicamSource(QVideoSource):
-
-    '''Threaded video source backed by :class:`QGenicamCamera`.
-
-    Parameters
-    ----------
-    camera : QGenicamCamera
-        Camera instance to wrap.
-    '''
-
-    def __init__(self, camera: QGenicamCamera) -> None:
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

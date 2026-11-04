@@ -1,5 +1,5 @@
 '''OpenCV camera and threaded video source (USB and built-in).'''
-from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import QCamera
 from QVideo.cameras.OpenCV._devices import (
     capture_backend, configure, probe_formats)
 import cv2
@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['QOpenCVCamera', 'QOpenCVSource']
+__all__ = ['QOpenCVCamera']
 
 _FLIP: dict[tuple[bool, bool], int] = {
     (True,  False): 1,   # mirror only  → horizontal flip
@@ -319,29 +319,6 @@ class QOpenCVCamera(QCamera):
                 operation = _FLIP[(self._mirrored, self._flipped)]
                 image = cv2.flip(image, operation)
         return ready, image
-
-
-class QOpenCVSource(QVideoSource):
-
-    '''Threaded video source backed by :class:`QOpenCVCamera`.
-
-    Parameters
-    ----------
-    camera : QOpenCVCamera or None
-        Camera instance to wrap. If ``None``, a new :class:`QOpenCVCamera`
-        is created from the remaining arguments.
-    *args :
-        Forwarded to :class:`QOpenCVCamera` when ``camera`` is ``None``.
-    **kwargs :
-        Forwarded to :class:`QOpenCVCamera` when ``camera`` is ``None``.
-    '''
-
-    def __init__(self, *args,
-                 camera: QOpenCVCamera | None = None,
-                 **kwargs) -> None:
-        if camera is None:
-            camera = QOpenCVCamera(*args, **kwargs)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

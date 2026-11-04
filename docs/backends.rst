@@ -16,16 +16,14 @@ interface) can use without knowing anything about your hardware.
 What a backend is
 -----------------
 
-A backend is a small package in ``cameras/`` with three classes:
+A backend is a small package in ``cameras/`` with two classes:
 
 ``Q<Name>Camera``
    Talks to the hardware.  It subclasses
    :class:`~QVideo.lib.QCamera.QCamera`.  This is the only class that you
    must write by hand.
-``Q<Name>Source``
-   Runs the camera in a thread of its own.  It is three lines.
 ``Q<Name>Tree``
-   The controls.  It is three lines, because
+   The controls.  It is a few lines, because
    :class:`~QVideo.lib.QCameraTree.QCameraTree` builds the controls from
    the properties that the camera registers.
 
@@ -235,24 +233,21 @@ to your SDK to make it yours.
 or setter to write.  Because ``read`` returns a freshly computed array
 every time, the frames are independent.
 
-The source and the tree are the same for every backend:
+The controls are the same for every backend.  A backend needs no class to
+run its camera in a thread, because
+:class:`~QVideo.lib.QVideoSource.QVideoSource` runs any camera:
 
 .. code-block:: python
 
-   from QVideo.lib import QVideoSource, QCameraTree
-
-
-   class QGradientSource(QVideoSource):
-
-       def __init__(self, *args, camera=None, **kwargs) -> None:
-           super().__init__(camera or QGradientCamera(*args, **kwargs))
+   from QVideo.lib import QCameraTree
 
 
    class QGradientTree(QCameraTree):
 
        def __init__(self, *args, camera=None, cameraID: int = 0,
                     **kwargs) -> None:
-           super().__init__(QGradientSource(camera=camera), *args, **kwargs)
+           camera = camera or QGradientCamera()
+           super().__init__(camera, *args, **kwargs)
 
 Try it:
 

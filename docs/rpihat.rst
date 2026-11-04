@@ -41,14 +41,15 @@ Basic usage
 
 .. code-block:: python
 
-    from QVideo.cameras.Picamera import QIMXCamera, QIMXSource
+    from QVideo.cameras.Picamera import QIMXCamera
+    from QVideo.lib import QVideoSource
 
     MODEL = (
         '/usr/share/imx500-models/'
         'imx500_network_nanodet_plus_416x416.rpk'
     )
 
-    source = QIMXSource(model=MODEL)
+    source = QVideoSource(QIMXCamera(model=MODEL))
     source.source.newOutput.connect(my_widget.setOutputs)
     source.start()
 
@@ -119,7 +120,8 @@ Subclass :class:`~QVideo.QCamcorder.QCamcorder` and add
 .. code-block:: python
 
     from QVideo import QCamcorder
-    from QVideo.cameras.Picamera import QIMXSource
+    from QVideo.cameras.Picamera import QIMXCamera
+    from QVideo.lib import QVideoSource
 
     MODEL = (
         '/usr/share/imx500-models/'
@@ -130,7 +132,7 @@ Subclass :class:`~QVideo.QCamcorder.QCamcorder` and add
     class AIDemo(QCamcorder):
 
         def __init__(self, source=None, parent=None) -> None:
-            source = source or QIMXSource(model=MODEL)
+            source = source or QVideoSource(QIMXCamera(model=MODEL))
             super().__init__(source, parent)
             self._detections = DetectionWidget(self)
             self._detections.source = source

@@ -132,12 +132,13 @@ import sys
 import tempfile
 from pathlib import Path
 from qtpy import QtCore
-from QVideo.cameras.Noise import QNoiseSource
+from QVideo.cameras.Noise import QNoiseCamera
+from QVideo.lib import QVideoSource
 from QVideo.dvr import QPlayer, QRecorder
 
 app = QtCore.QCoreApplication([])
 path = str(Path(tempfile.mkdtemp()) / 'run.avi')
-source = QNoiseSource()
+source = QVideoSource(QNoiseCamera())
 source.start()
 recorder = QRecorder(source)
 recorder.start(path, nframes=100000)

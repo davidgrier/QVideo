@@ -21,13 +21,14 @@ Classes
 -------
 QFlirCamera
     Camera backed by a FLIR device via the Spinnaker GenTL producer.
-QFlirSource
-    Threaded video source backed by :class:`QFlirCamera`.
 QFlirTree
     Parameter tree widget for :class:`QFlirCamera` controls.
 '''
-from ._camera import QFlirCamera, QFlirSource
+from ._camera import QFlirCamera
 from ._tree import QFlirTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QFlirSource=QFlirCamera)
 
-__all__ = 'QFlirCamera QFlirSource QFlirTree'.split()
+__all__ = 'QFlirCamera QFlirTree'.split()

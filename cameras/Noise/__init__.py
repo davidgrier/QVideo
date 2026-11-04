@@ -9,13 +9,14 @@ Classes
 -------
 QNoiseCamera
     Camera that generates random noise frames.
-QNoiseSource
-    Threaded video source backed by :class:`QNoiseCamera`.
 QNoiseTree
     Parameter tree widget for :class:`QNoiseCamera` controls.
 '''
-from ._camera import QNoiseCamera, QNoiseSource
+from ._camera import QNoiseCamera
 from ._tree import QNoiseTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QNoiseSource=QNoiseCamera)
 
-__all__ = 'QNoiseCamera QNoiseSource QNoiseTree'.split()
+__all__ = 'QNoiseCamera QNoiseTree'.split()

@@ -1,6 +1,6 @@
 '''Camera tree for the synthetic noise camera.'''
 from QVideo.lib import QCameraTree
-from QVideo.cameras.Noise import QNoiseCamera, QNoiseSource
+from QVideo.cameras.Noise import QNoiseCamera
 
 
 __all__ = ['QNoiseTree']
@@ -12,8 +12,7 @@ class QNoiseTree(QCameraTree):
     :class:`~QVideo.cameras.Noise.QNoiseCamera.QNoiseCamera`.
 
     Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
-    that creates and opens a
-    :class:`~QVideo.cameras.Noise.QNoiseSource.QNoiseSource` automatically.
+    that creates and opens a noise camera if it is given none.
 
     Parameters
     ----------
@@ -35,8 +34,8 @@ class QNoiseTree(QCameraTree):
                  camera: QNoiseCamera | None = None,
                  cameraID: int = 0,
                  **kwargs) -> None:
-        source = QNoiseSource(camera=camera)
-        super().__init__(source, *args, **kwargs)
+        camera = camera or QNoiseCamera()
+        super().__init__(camera, *args, **kwargs)
         if 'color' in self._parameters:
             self._parameters['color'].setOpts(enabled=False)
 

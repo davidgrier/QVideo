@@ -14,18 +14,19 @@ Classes
 -------
 QVivaCamera
     GenICam camera on USB3 Vision or GigE Vision.
-QVivaSource
-    Threaded video source backed by :class:`QVivaCamera`.
 QVivaTree
     Parameter tree widget for :class:`QVivaCamera` controls.
 '''
-from ._camera import QVivaCamera, QVivaSource
+from ._camera import QVivaCamera
 from ._tree import QVivaTree
+from QVideo.cameras._deprecated import deprecated_sources
 
 # Tell Sphinx that these classes belong to the public package namespace,
 # not the private _camera / _tree submodules.
 QVivaCamera.__module__ = __name__
-QVivaSource.__module__ = __name__
 QVivaTree.__module__ = __name__
 
-__all__ = 'QVivaCamera QVivaSource QVivaTree'.split()
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QVivaSource=QVivaCamera)
+
+__all__ = 'QVivaCamera QVivaTree'.split()

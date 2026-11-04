@@ -1,8 +1,8 @@
 '''IDS Imaging camera and threaded video source (IDS peak producer).'''
-from QVideo.cameras.Genicam import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam import QGenicamCamera
 
 
-__all__ = ['QIDSCamera', 'QIDSSource']
+__all__ = ['QIDSCamera']
 
 
 class QIDSCamera(QGenicamCamera):
@@ -30,26 +30,6 @@ class QIDSCamera(QGenicamCamera):
     _producerHint = (
         'Install IDS peak and set GENICAM_GENTL64_PATH to the '
         'directory containing ids_u3vgentl.cti or ids_gevgentl.cti.')
-
-
-class QIDSSource(QGenicamSource):
-
-    '''Threaded video source backed by :class:`QIDSCamera`.
-
-    Parameters
-    ----------
-    camera : QIDSCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QIDSCamera` is created from ``cameraID``.
-    cameraID : int
-        Index of the camera to open.  Used only when *camera* is ``None``.
-        Default: ``0``.
-    '''
-
-    def __init__(self, camera: QIDSCamera | None = None,
-                 cameraID: int = 0) -> None:
-        camera = camera or QIDSCamera(cameraID=cameraID)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

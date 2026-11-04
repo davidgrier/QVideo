@@ -1,5 +1,5 @@
 '''Synthetic noise camera and threaded video source (no hardware).'''
-from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import QCamera
 import numpy as np
 import time
 import logging
@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['QNoiseCamera', 'QNoiseSource']
+__all__ = ['QNoiseCamera']
 
 
 class QNoiseCamera(QCamera):
@@ -110,28 +110,6 @@ class QNoiseCamera(QCamera):
         image = self._rng.integers(self._blacklevel, self._whitelevel,
                                    (self._height, self._width), np.uint8)
         return True, image
-
-
-class QNoiseSource(QVideoSource):
-
-    '''Threaded video source backed by :class:`QNoiseCamera`.
-
-    Parameters
-    ----------
-    camera : QNoiseCamera or None
-        Camera instance to wrap.  If ``None``, a new
-        :class:`QNoiseCamera` is created from the remaining arguments.
-    *args :
-        Forwarded to :class:`QNoiseCamera` when ``camera`` is ``None``.
-    **kwargs :
-        Forwarded to :class:`QNoiseCamera` when ``camera`` is ``None``.
-    '''
-
-    def __init__(self, *args,
-                 camera: QNoiseCamera | None = None,
-                 **kwargs) -> None:
-        camera = camera or QNoiseCamera(*args, **kwargs)
-        super().__init__(camera)
 
 
 if __name__ == '__main__':  # pragma: no cover

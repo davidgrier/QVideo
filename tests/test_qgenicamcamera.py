@@ -1,4 +1,4 @@
-'''Unit tests for QGenicamCamera and QGenicamSource.'''
+'''Unit tests for QGenicamCamera.'''
 import os
 import subprocess
 import sys
@@ -87,7 +87,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 
 
 from QVideo.tests.signals import record
-from QVideo.cameras.Genicam._camera import QGenicamCamera, QGenicamSource
+from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.errors import QDeviceError, QDriverError
 # Retrieve the module object directly — the `import ... as` form resolves
@@ -1208,16 +1208,7 @@ class TestAliases(unittest.TestCase):
         self.assertEqual(len(spy), 0)
 
 
-# ---------------------------------------------------------------------------
-# TestQGenicamSource
-# ---------------------------------------------------------------------------
 
-class TestQGenicamSource(unittest.TestCase):
-
-    def test_uses_provided_camera(self):
-        cam, _, _ = make_camera()
-        src = QGenicamSource(camera=cam)
-        self.assertIs(src.source, cam)
 
 
 class TestActualFps(unittest.TestCase):

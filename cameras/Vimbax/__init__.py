@@ -9,13 +9,14 @@ Classes
 -------
 QVimbaXCamera
     Camera backed by an Allied Vision device via the VimbaX GenTL producer.
-QVimbaXSource
-    Threaded video source backed by :class:`QVimbaXCamera`.
 QVimbaXTree
     Parameter tree widget for :class:`QVimbaXCamera` controls.
 '''
-from ._camera import QVimbaXCamera, QVimbaXSource
+from ._camera import QVimbaXCamera
 from ._tree import QVimbaXTree
+from QVideo.cameras._deprecated import deprecated_sources
 
+#: The retired ``Q<Name>Source`` classes, until the next major release.
+__getattr__ = deprecated_sources(__name__, QVimbaXSource=QVimbaXCamera)
 
-__all__ = 'QVimbaXCamera QVimbaXSource QVimbaXTree'.split()
+__all__ = 'QVimbaXCamera QVimbaXTree'.split()

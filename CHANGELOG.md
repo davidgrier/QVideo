@@ -9,6 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [4.14.0] — 2026-11-04
+
+A pass for duplication: code and concepts that said the same thing twice.
+
 ### Deprecated
 
 - **The `Q<Name>Source` classes of the backends** (`QNoiseSource`,

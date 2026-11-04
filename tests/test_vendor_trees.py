@@ -8,6 +8,7 @@ import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets
+import unittest.mock
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -76,6 +77,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 # Ensure the already-loaded genapi has a proper EVisibility type.
 sys.modules['genicam.genapi'].EVisibility = _EVisibility
 
+from QVideo.cameras.Genicam import QGenicamTree  # noqa: E402
 from QVideo.cameras.Basler._camera  import QBaslerCamera   # noqa: E402
 from QVideo.cameras.Basler._tree   import QBaslerTree   # noqa: E402
 from QVideo.cameras.Flir._camera   import QFlirCamera   # noqa: E402
@@ -211,6 +213,60 @@ class TestQVimbaXTree(unittest.TestCase):
     def test_creates_with_camera(self):
         tree = QVimbaXTree(camera=self.cam)
         self.assertIsInstance(tree, QVimbaXTree)
+
+
+# ---------------------------------------------------------------------------
+# What the vendor trees share
+# ---------------------------------------------------------------------------
+
+VENDORS = [(QBaslerTree, QBaslerCamera), (QFlirTree, QFlirCamera),
+           (QIDSTree, QIDSCamera), (QMVTree, QMVCamera),
+           (QVimbaXTree, QVimbaXCamera)]
+
+
+class TestVendorDefaults(unittest.TestCase):
+
+    def test_each_tree_knows_its_camera_class(self):
+        for tree, camera in VENDORS:
+            with self.subTest(tree=tree.__name__):
+                self.assertIs(tree._cameraClass, camera)
+
+    def test_the_trees_that_curate_show_the_standard_controls(self):
+        for tree, _ in VENDORS[:4]:
+            with self.subTest(tree=tree.__name__):
+                self.assertEqual(tree._DEFAULT_CONTROLS,
+                                 QGenicamTree.STANDARD_CONTROLS)
+
+    def test_vimbax_shows_every_node(self):
+        self.assertIsNone(QVimbaXTree._DEFAULT_CONTROLS)
+
+    def test_a_tree_opens_the_camera_when_given_none(self):
+        cam = make_camera(QBaslerCamera)
+        self.addCleanup(cam.close)
+        with patch.object(QBaslerTree, '_cameraClass',
+                          return_value=cam) as make:
+            QBaslerTree(cameraID=3)
+        make.assert_called_once_with(cameraID=3)
+
+    def test_only_the_settings_that_the_camera_has_are_applied(self):
+        cam = make_camera(QFlirCamera)
+        self.addCleanup(cam.close)
+        name = 'Gain'
+        cam.properties[name] = {}
+        settings = {name: 1, 'NotAFeature': 2}
+        with patch.object(QFlirTree, '_DEFAULT_SETTINGS', settings), \
+             patch.object(type(cam), 'settings',
+                          new_callable=unittest.mock.PropertyMock) as prop:
+            QFlirTree(camera=cam)
+        prop.assert_called_once_with({name: 1})
+
+    def test_a_tree_with_no_settings_leaves_the_camera_alone(self):
+        cam = make_camera(QVimbaXCamera)
+        self.addCleanup(cam.close)
+        with patch.object(type(cam), 'settings',
+                          new_callable=unittest.mock.PropertyMock) as prop:
+            QVimbaXTree(camera=cam)
+        prop.assert_not_called()
 
 
 if __name__ == '__main__':  # pragma: no cover

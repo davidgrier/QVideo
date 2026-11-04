@@ -307,17 +307,16 @@ def main(argv: list[str]) -> int:
     rpc = Connection(int(rpcfd))
     frames = socket.socket(fileno=int(framefd))
     try:
-        from QVideo.cameras.chooser import BACKENDS
+        from QVideo.cameras.chooser import BACKENDS, _load
         if ':' in key:                      # 'module:Class'
             modulename, classname = key.split(':')
+            cls = getattr(importlib.import_module(modulename), classname)
         else:
-            entry = BACKENDS[key]
-            modulename, classname = entry.module, entry.camera_cls
-        module = importlib.import_module(modulename)
-        camera = getattr(module, classname)(cameraID=int(cameraID))
+            cls = _load(BACKENDS[key], BACKENDS[key].camera_cls)
+        camera = cls(cameraID=int(cameraID))
         camera.open()
         if not camera.isOpen():
-            raise RuntimeError(f'{classname} did not open')
+            raise RuntimeError(f'{cls.__name__} did not open')
     except Exception as ex:
         # A QCameraError says what is wrong (no producer, no camera) and the
         # proxy reports its message, so a traceback on the terminal of the

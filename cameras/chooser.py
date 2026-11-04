@@ -230,6 +230,12 @@ def uses_worker(key: str) -> bool:
     return BACKENDS[key].worker and sys.platform != 'win32'
 
 
+def _load(entry: _BackendEntry, name: str) -> type:
+    '''Return the class *name* (``camera_cls`` or ``tree_cls``) of the
+    package of *entry*, importing the package.'''
+    return getattr(importlib.import_module(entry.module), name)
+
+
 def _precheck(entry: _BackendEntry) -> None:
     '''Let a camera class refuse in this process what a worker would refuse.
 
@@ -238,8 +244,7 @@ def _precheck(entry: _BackendEntry) -> None:
     producer).  Starting a worker only to be told so takes a fifth of a
     second and prints the traceback of the worker.
     '''
-    cls = getattr(importlib.import_module(entry.module), entry.camera_cls)
-    check = getattr(cls, 'precheck', None)
+    check = getattr(_load(entry, entry.camera_cls), 'precheck', None)
     if check is not None:
         check()
 
@@ -275,9 +280,7 @@ def create_camera(key: str, camera_id: int = 0,
             from QVideo.lib.QRemoteCamera import QRemoteCamera
             _precheck(entry)
             return QRemoteCamera(key, cameraID=camera_id)
-        module = importlib.import_module(entry.module)
-        cls = getattr(module, entry.camera_cls)
-        return cls(cameraID=camera_id)
+        return _load(entry, entry.camera_cls)(cameraID=camera_id)
     except Exception as ex:
         logger.warning(f'Could not open {entry.label}: {ex}')
         logger.debug(f'Where {entry.label} failed to open:', exc_info=True)
@@ -515,8 +518,7 @@ def make_tree(key: str, camera: QCamera) -> QCameraTree:
         An instance of the tree class of the backend, for *camera*.
     '''
     backend = BACKENDS[key]
-    module = importlib.import_module(backend.module)
-    return getattr(module, backend.tree_cls)(camera=camera)
+    return _load(backend, backend.tree_cls)(camera=camera)
 
 
 def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:

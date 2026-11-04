@@ -32,28 +32,71 @@ class QGenicamTree(QCameraTree):
 
     Parameters
     ----------
-    camera : QGenicamCamera
-        Camera instance to use.
+    camera : QGenicamCamera or None
+        Camera instance to use.  If ``None``, the tree opens a camera of
+        its :attr:`_cameraClass` from ``cameraID``.
+    cameraID : int
+        Index of the camera to open.  Used only when *camera* is
+        ``None``.  Default: ``0``.
     visibility : EVisibility
         Maximum GenICam visibility level to display.
         Default: ``EVisibility.Guru``.
     controls : list of str or None
         If given, only nodes whose names appear in this list are shown;
-        all others are hidden.  Default: ``None`` (show all).
+        all others are hidden.  Default: :attr:`_DEFAULT_CONTROLS`, which
+        is ``None`` (show all) unless a subclass sets it.
     *args :
         Forwarded to :class:`~QVideo.lib.QCameraTree.QCameraTree`.
     **kwargs :
         Forwarded to :class:`~QVideo.lib.QCameraTree.QCameraTree`.
     '''
 
+    #: The controls that most cameras offer, by their SFNC names.
+    STANDARD_CONTROLS = [
+        'ReverseX',
+        'ReverseY',
+        'AcquisitionFrameRate',
+        'AcquisitionResultingFrameRate',
+        'ExposureTime',
+        'ExposureAuto',
+        'Gain',
+        'GainAuto',
+        'Gamma',
+        'BlackLevel',
+        'Width',
+        'Height',
+        'OffsetX',
+        'OffsetY',
+    ]
+
+    #: The camera class of a tree for one vendor; its subclass sets it.
+    _cameraClass: type[QGenicamCamera] | None = None
+
+    #: The controls to show when the caller names none, or ``None`` for
+    #: all of them.
+    _DEFAULT_CONTROLS: list[str] | None = None
+
+    #: Settings that the tree applies to the camera, those that the camera
+    #: has, so that the controls start in a known state.
+    _DEFAULT_SETTINGS: dict[str, object] = {}
+
     #: Parameters that one poll of the camera reads.
     _pollChunk = 32
 
     def __init__(self, *args,
-                 camera: QGenicamCamera,
+                 camera: QGenicamCamera | None = None,
+                 cameraID: int = 0,
                  visibility: EVisibility = EVisibility.Guru,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
+        if camera is None:
+            camera = self._cameraClass(cameraID=cameraID)
+        settings = {key: value
+                    for key, value in self._DEFAULT_SETTINGS.items()
+                    if key in camera.properties}
+        if settings:
+            camera.settings = settings
+        controls = controls or self._DEFAULT_CONTROLS
         self._pollCursor = 0
         self._scaleFactors: dict[str, float] = {}
         self._decParams: set[str] = set()

@@ -12,7 +12,10 @@ from qtpy import QtWidgets
 
 import QVideo.cameras.chooser as chooser_module
 import QVideo.interactive.camera as camera_module
+from QVideo.cameras.OpenCV import QOpenCVCamera
 from QVideo.cameras.chooser import BACKENDS, discover, _probe
+from QVideo.lib import _qapp
+from QVideo.lib._qapp import ensure_qapp
 from QVideo.interactive.camera import Camera, _CameraProxy
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -826,14 +829,17 @@ class TestHelpers(unittest.TestCase):
     def test_a_qapplication_is_made_if_there_is_none(self):
         fake = MagicMock()
         fake.instance.return_value = None
-        with patch('qtpy.QtWidgets.QApplication', fake):
-            chooser_module.ensure_qapp()
+        kept = []
+        with patch('qtpy.QtWidgets.QApplication', fake), \
+                patch.object(_qapp, '_keep', kept):
+            ensure_qapp()
         fake.assert_called_once_with([])
+        self.assertEqual(kept, [fake.return_value])   # kept alive
 
     def test_an_existing_qapplication_is_kept(self):
         fake = MagicMock()
         with patch('qtpy.QtWidgets.QApplication', fake):
-            chooser_module.ensure_qapp()
+            ensure_qapp()
         fake.assert_not_called()
 
     def test_an_importable_backend_has_no_reason(self):
@@ -848,7 +854,7 @@ class TestHelpers(unittest.TestCase):
         good, bad = make_mock_noise_camera(), make_mock_noise_camera(False)
         cameras = {'noise': good, 'opencv': bad, 'flir': None}
         with patch.object(chooser_module, 'create_camera',
-                          side_effect=lambda key, i: cameras[key]):
+                          side_effect=lambda key, i, errors=None: cameras[key]):
             working = chooser_module.working(
                 [('noise', 0), ('opencv', 0), ('flir', 0)])
         self.assertEqual(working, [('noise', 0)])
@@ -859,9 +865,8 @@ class TestHelpers(unittest.TestCase):
         names = {0: 'Front', 1: 'Back'}
         with patch.object(chooser_module, 'discover',
                           return_value=[('opencv', 0), ('noise', 0)]), \
-                patch.object(chooser_module, '_names',
-                             side_effect=lambda k: names if k == 'opencv'
-                             else {}), \
+                patch.object(QOpenCVCamera, 'deviceNames',
+                             return_value=names), \
                 patch.object(chooser_module, 'working',
                              side_effect=lambda c: [x for x in c
                                                     if x != ('opencv', 1)]):

@@ -1,7 +1,7 @@
 '''OpenCV camera and threaded video source (USB and built-in).'''
 from QVideo.lib import QCamera
 from QVideo.cameras.OpenCV._devices import (
-    capture_backend, configure, probe_formats)
+    QOpenCVDevices, capture_backend, configure, probe_formats)
 import cv2
 import logging
 
@@ -130,6 +130,11 @@ class QOpenCVCamera(QCamera):
         self.registerProperty('mirrored', ptype=bool)
         self.registerProperty('flipped', ptype=bool)
         self.open()
+
+    @classmethod
+    def deviceNames(cls) -> dict[int, str]:
+        '''Return the names of the cameras that the system lists.'''
+        return dict(QOpenCVDevices.cameras())
 
     def _initialize(self) -> bool:
         '''Open the OpenCV VideoCapture device and register device properties.

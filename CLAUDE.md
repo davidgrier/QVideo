@@ -199,8 +199,8 @@ When adding a new backend, update all four of the following:
 1. `cameras/chooser.py` — add an entry to `BACKENDS` (module path, camera
    class name, tree class name, display label, command-line flag and its
    help string, and `worker=True` if its library holds the interpreter
-   lock) and append the key to `_DISCOVERY_ORDER` at the appropriate
-   priority position.
+   lock), at the position of its priority: `Camera()` tries the backends
+   in the order of the table, with the noise camera last.
 2. `QCamcorder.py` — update the flag list in the module docstring.
 3. `demos/__init__.py` — update the flag list in the module docstring.
 4. `tests/test_conformance_<name>.py` — mix `CameraConformance`

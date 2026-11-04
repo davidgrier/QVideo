@@ -3,7 +3,6 @@ import sys
 import threading
 import unittest
 from argparse import ArgumentParser
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import numpy as np
 from qtpy import QtWidgets
@@ -202,39 +201,31 @@ class TestTheWorker(unittest.TestCase):
             self.assertFalse(chooser_module.uses_worker('flir'))
 
     def test_a_camera_that_uses_it_is_made_by_the_worker(self):
-        proxy = MagicMock()
+        proxy, cls = MagicMock(), MagicMock()
         with patch.object(chooser_module, 'uses_worker', return_value=True), \
-                patch.object(chooser_module, '_precheck') as check, \
+                patch.object(chooser_module, 'camera_class',
+                             return_value=cls), \
                 patch('QVideo.lib.remote.QRemoteCamera',
                       return_value=proxy) as remote:
             camera = chooser_module.create_camera('flir', 2)
         self.assertIs(camera, proxy)
-        check.assert_called_once_with(BACKENDS['flir'])
+        cls.precheck.assert_called_once_with()
         remote.assert_called_once_with('flir', cameraID=2)
 
     def test_the_class_may_refuse_before_a_worker_starts(self):
         # No producer: say so here, in milliseconds, not after a process.
         refusal = QDriverError('no producer')
+        cls = MagicMock()
+        cls.precheck.side_effect = refusal
         errors = []
         with patch.object(chooser_module, 'uses_worker', return_value=True), \
-                patch.object(chooser_module, '_precheck',
-                             side_effect=refusal), \
+                patch.object(chooser_module, 'camera_class',
+                             return_value=cls), \
                 patch('QVideo.lib.remote.QRemoteCamera') as remote:
             camera = chooser_module.create_camera('flir', 0, errors)
         self.assertIsNone(camera)
         remote.assert_not_called()
         self.assertEqual(errors, [('Flir', refusal)])
-
-    def test_the_check_asks_the_camera_class(self):
-        module = MagicMock()
-        with patch('importlib.import_module', return_value=module):
-            chooser_module._precheck(BACKENDS['flir'])
-        module.QFlirCamera.precheck.assert_called_once_with()
-
-    def test_a_class_without_a_check_is_let_through(self):
-        module = SimpleNamespace(QFlirCamera=type('Camera', (), {}))
-        with patch('importlib.import_module', return_value=module):
-            chooser_module._precheck(BACKENDS['flir'])    # raises nothing
 
     @unittest.skipIf(sys.platform == 'win32', 'there is no worker on Windows')
     def test_the_worker_delivers_frames_through_the_chooser(self):
@@ -257,6 +248,59 @@ class TestTheWorker(unittest.TestCase):
         args, unknown = parser.parse_known_args(['-r'])
         self.assertIn('-r', unknown)
         self.assertFalse(hasattr(args, 'remote'))
+
+
+class TestOpened(unittest.TestCase):
+    '''The candidates that open, one at a time.'''
+
+    def camera(self, is_open=True):
+        camera = MagicMock()
+        camera.isOpen.return_value = is_open
+        return camera
+
+    def test_only_candidates_that_open_are_yielded_in_order(self):
+        made = {'flir': self.camera(False), 'opencv': self.camera(),
+                'noise': self.camera()}
+        errors = []
+        with patch.object(chooser_module, 'create_camera',
+                          side_effect=lambda key, i, errors=None:
+                          made[key]):
+            found = list(chooser_module._opened(
+                [('flir', 0), ('opencv', 0), ('noise', 0)], errors))
+        self.assertEqual(found, [('opencv', 0, made['opencv']),
+                                 ('noise', 0, made['noise'])])
+
+    def test_a_camera_that_did_not_open_is_recorded(self):
+        errors = []
+        with patch.object(chooser_module, 'create_camera',
+                          return_value=self.camera(False)):
+            list(chooser_module._opened([('flir', 0)], errors))
+        self.assertEqual(errors, [('Flir', 'device failed to open')])
+
+    def test_a_camera_that_could_not_be_made_is_skipped(self):
+        with patch.object(chooser_module, 'create_camera',
+                          return_value=None):
+            self.assertEqual(
+                list(chooser_module._opened([('flir', 0)], [])), [])
+
+    def test_nothing_is_made_after_the_reader_stops(self):
+        with patch.object(chooser_module, 'create_camera',
+                          return_value=self.camera()) as create:
+            found = next(chooser_module._opened(
+                [('opencv', 0), ('noise', 0)], []))
+        self.assertEqual(found[0], 'opencv')
+        create.assert_called_once()
+
+
+class TestOrder(unittest.TestCase):
+
+    def test_backends_are_tried_in_the_order_of_the_table(self):
+        with patch.object(chooser_module, '_probe', return_value=True):
+            keys = [key for key, _ in chooser_module.discover(None)]
+        self.assertEqual(keys, list(BACKENDS))
+
+    def test_the_simulated_camera_is_tried_last(self):
+        self.assertEqual(list(BACKENDS)[-1], 'noise')
 
 
 class TestChooseCameraDefault(unittest.TestCase):

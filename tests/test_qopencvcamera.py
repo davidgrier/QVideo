@@ -581,5 +581,14 @@ class TestProbeProperties(unittest.TestCase):
 
 
 
+class TestDeviceNames(unittest.TestCase):
+
+    def test_the_system_lists_the_cameras(self):
+        with patch('QVideo.cameras.OpenCV._camera.QOpenCVDevices.cameras',
+                   return_value=[(0, 'Front'), (1, 'Back')]):
+            self.assertEqual(QOpenCVCamera.deviceNames(),
+                             {0: 'Front', 1: 'Back'})
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -6,7 +6,7 @@ builds them from their display names, so that a notebook needs no imports::
     camera.filters = Filter('Smoothing', 'Canny')
 '''
 import difflib
-from QVideo.cameras.chooser import ensure_qapp
+from QVideo.lib._qapp import ensure_qapp
 from QVideo.lib.QFilterRack import QFilterRack
 from QVideo.lib.QVideoFilter import VideoFilter
 

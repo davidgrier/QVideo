@@ -325,9 +325,8 @@ documentation find your backend:
 
 1. ``cameras/chooser.py``: add an entry to ``BACKENDS`` (module, camera class,
    tree class, label, and the flag character and help string that select
-   the camera on the command line) and put the key in
-   ``_DISCOVERY_ORDER``.  Order matters: ``Camera()`` tries the earlier
-   entries first, and the synthetic Noise camera stays last.
+   the camera on the command line).  Order matters: ``Camera()`` tries the
+   earlier entries first, and the synthetic Noise camera stays last.
 2. ``QCamcorder.py``: add the flag to the list in the module docstring.
 3. ``demos/__init__.py``: add the flag to the list in its docstring.
 4. ``docs/api/cameras.rst``: add an ``automodule`` entry.

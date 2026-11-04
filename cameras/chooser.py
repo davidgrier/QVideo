@@ -7,7 +7,7 @@ This module has four parts, in this order.
    The command-line flags, ``Camera()``, the remote worker and the
    documentation all read this table, so nothing else lists the backends.
 2. **Finding backends**: :func:`discover` lists the backends that can be
-   imported, in :data:`_DISCOVERY_ORDER`.
+   imported, in the order of :data:`BACKENDS`.
 3. **Opening cameras**: :func:`create_camera` makes one camera,
    :func:`open_first` opens the first of several that works, and
    :func:`available_cameras` lists every camera that opens.  A backend that
@@ -26,7 +26,8 @@ This module has four parts, in this order.
 :data:`BACKENDS`.
 
 A new backend adds an entry to :data:`BACKENDS`, with the flag and the help
-text that select it, and its key to :data:`_DISCOVERY_ORDER`.
+text that select it, in the place of its priority: ``Camera()`` tries the
+backends in the order of the table, and the noise camera stays last.
 
 **Defaults and fallbacks.**  With no flag, a program started from the command
 line opens the *noise* camera (:func:`open_camera`); if the camera that a flag
@@ -55,6 +56,7 @@ from collections.abc import Iterator
 from typing import NamedTuple
 
 from QVideo.lib import QCamera, QCameraTree
+from QVideo.lib._qapp import ensure_qapp
 
 __all__ = ['available_cameras', 'camera_class', 'camera_parser',
            'choose_camera', 'make_tree', 'open_camera', 'tree_class']
@@ -106,8 +108,10 @@ class _BackendEntry(NamedTuple):
     worker: bool = False
 
 
-#: The backends, by key.  The key is the lowercase name that ``Camera()``
-#: accepts and that the worker of a remote camera is started with.
+#: The backends, by key, in the order that ``Camera()`` tries them when it
+#: is not told which one to use: real hardware first, the simulated camera
+#: last.  The key is the lowercase name that ``Camera()`` accepts and that
+#: the worker of a remote camera is started with.
 BACKENDS: dict[str, _BackendEntry] = {
     'basler': _BackendEntry(
         'QVideo.cameras.Basler', 'QBaslerCamera', 'QBaslerTree', 'Basler',
@@ -138,12 +142,6 @@ BACKENDS: dict[str, _BackendEntry] = {
         'QVideo.cameras.Noise', 'QNoiseCamera', 'QNoiseTree', 'Noise'),
 }
 
-#: The order in which ``Camera()`` tries the backends when it is not told
-#: which one to use: real hardware first, the simulated camera last.
-_DISCOVERY_ORDER = [
-    'basler', 'flir', 'ids', 'mv', 'vimbax', 'viva', 'picamera', 'opencv',
-    'noise']
-
 #: The backends that a command-line flag selects.
 _CAMERAS = {key: entry for key, entry in BACKENDS.items() if entry.flag}
 
@@ -173,7 +171,7 @@ def discover(model: str | None, camera_id: int = 0) -> list[Candidate]:
     ----------
     model : str or None
         The key of one backend (any case), or ``None`` for every backend in
-        the order of :data:`_DISCOVERY_ORDER`.
+        the order of :data:`BACKENDS`.
     camera_id : int
         The camera that each pair names.
 
@@ -196,28 +194,12 @@ def discover(model: str | None, camera_id: int = 0) -> list[Candidate]:
                 f'Available: {sorted(BACKENDS)}'
             )
         return [(key, camera_id)] if _probe(key) else []
-    return [(key, camera_id) for key in _DISCOVERY_ORDER if _probe(key)]
+    return [(key, camera_id) for key in BACKENDS if _probe(key)]
 
 
 # ----------------------------------------------------------------------
 # Opening cameras
 # ----------------------------------------------------------------------
-
-#: Keeps the application that :func:`ensure_qapp` makes alive.
-_qapp = None
-
-
-def ensure_qapp() -> None:
-    '''Create a QApplication if none exists (required before any QCamera).
-
-    The application is kept in a module variable: if nothing refers to it,
-    Python deletes it again as soon as this function returns.
-    '''
-    global _qapp
-    from qtpy.QtWidgets import QApplication
-    if QApplication.instance() is None:
-        _qapp = QApplication([])
-
 
 def uses_worker(key: str) -> bool:
     '''Return True if the camera of backend *key* opens in a process of its
@@ -243,19 +225,6 @@ def camera_class(key: str) -> type[QCamera]:
 def tree_class(key: str) -> type[QCameraTree]:
     '''Return the class of the controls of backend *key*.'''
     return _load(BACKENDS[key], BACKENDS[key].tree_cls)
-
-
-def _precheck(entry: _BackendEntry) -> None:
-    '''Let a camera class refuse in this process what a worker would refuse.
-
-    A camera class may define a classmethod ``precheck()`` that raises when
-    the camera cannot possibly open (for the GenICam cameras, no GenTL
-    producer).  Starting a worker only to be told so takes a fifth of a
-    second and prints the traceback of the worker.
-    '''
-    check = getattr(_load(entry, entry.camera_cls), 'precheck', None)
-    if check is not None:
-        check()
 
 
 def create_camera(key: str, camera_id: int = 0,
@@ -287,7 +256,7 @@ def create_camera(key: str, camera_id: int = 0,
     try:
         if uses_worker(key):
             from QVideo.lib.remote import QRemoteCamera
-            _precheck(entry)
+            camera_class(key).precheck()
             return QRemoteCamera(key, cameraID=camera_id)
         return camera_class(key)(cameraID=camera_id)
     except Exception as ex:
@@ -322,6 +291,24 @@ def describe(errors: list[Failure]) -> str:
     return '\n'.join(f'{label}: {reason}' for label, reason in errors)
 
 
+def _opened(candidates: list[Candidate],
+            errors: list[Failure]) -> Iterator[tuple[str, int, QCamera]]:
+    '''Yield ``(key, camera_id, camera)`` for each candidate that opens.
+
+    The candidates are tried in order and one at a time, so a caller that
+    stops asking stops opening cameras.  Why a candidate did not open is
+    added to *errors*.
+    '''
+    for key, camera_id in candidates:
+        camera = create_camera(key, camera_id, errors)
+        if camera is None:
+            continue
+        if camera.isOpen():
+            yield key, camera_id, camera
+        else:               # created, but the device is not open
+            errors.append((BACKENDS[key].label, 'device failed to open'))
+
+
 def open_first(candidates: list[Candidate]) -> tuple[str, QCamera]:
     '''Open the first of *candidates* that works.
 
@@ -349,15 +336,10 @@ def open_first(candidates: list[Candidate]) -> tuple[str, QCamera]:
     '''
     hardware = [key for key, _ in candidates if key != 'noise']
     errors: list[Failure] = []
-    opened = None
     with quiet():
-        for key, camera_id in candidates:
-            camera = create_camera(key, camera_id, errors)
-            if camera is not None and camera.isOpen():
-                opened = (key, camera)
-                break
-            if camera is not None:      # created, but the device is not open
-                errors.append((BACKENDS[key].label, 'device failed to open'))
+        opened = next(((key, camera)
+                       for key, _, camera in _opened(candidates, errors)),
+                      None)
     reasons = f':\n{describe(errors)}' if errors else ''
     if opened is None:
         raise RuntimeError(f'No camera could be opened{reasons}')
@@ -375,24 +357,10 @@ def working(candidates: list[Candidate]) -> list[Candidate]:
     '''
     found = []
     with quiet():
-        for key, camera_id in candidates:
-            camera = create_camera(key, camera_id)
-            if camera is not None and camera.isOpen():
-                camera.close()
-                found.append((key, camera_id))
+        for key, camera_id, camera in _opened(candidates, []):
+            camera.close()
+            found.append((key, camera_id))
     return found
-
-
-def _names(key: str) -> dict[int, str]:
-    '''Return the names of the devices that backend *key* can list.
-
-    Only OpenCV can list its devices before it opens them; every other
-    backend answers ``{}`` and is known by its label.
-    '''
-    if key == 'opencv':
-        from QVideo.cameras.OpenCV import QOpenCVDevices
-        return dict(QOpenCVDevices.cameras())
-    return {}
 
 
 def available_cameras() -> list[tuple[str, int, str]]:
@@ -420,7 +388,7 @@ def available_cameras() -> list[tuple[str, int, str]]:
     '''
     found = []
     for key, _ in discover(None):
-        names = _names(key)
+        names = camera_class(key).deviceNames()
         ids = sorted(names) or [0]
         label = BACKENDS[key].label
         for _key, camera_id in working([(key, i) for i in ids]):
@@ -496,12 +464,8 @@ def open_camera(parser: ArgumentParser | None = None
         camera.
     '''
     args, _ = camera_parser(parser).parse_known_args()
-    model = 'noise'
-    for dest in _CAMERAS:
-        if getattr(args, dest, False):
-            model = dest
-            break
-
+    model = next((dest for dest in _CAMERAS if getattr(args, dest, False)),
+                 'noise')
     try:
         return open_first(discover(model, args.cameraID))
     except RuntimeError as ex:

@@ -50,6 +50,16 @@ def make_camera() -> _FakeCamera:
     return _FakeCamera()
 
 
+class TestChooserHooks(unittest.TestCase):
+    '''What the chooser may ask of a camera class.'''
+
+    def test_a_class_accepts_everything_by_default(self):
+        self.assertIsNone(_FakeCamera.precheck())
+
+    def test_a_class_lists_no_devices_by_default(self):
+        self.assertEqual(_FakeCamera.deviceNames(), {})
+
+
 class TestInit(unittest.TestCase):
 
     def test_name_is_class_name(self):

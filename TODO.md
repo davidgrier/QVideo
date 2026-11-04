@@ -31,13 +31,9 @@ Things noticed, not changed:
 
 - [ ] `interactive.live_view` reads the camera inside the event loop of the
       notebook, so the kernel waits for every frame.  Read in an executor.
-- [ ] `ensure_qapp` is in `cameras/chooser.py` and `interactive/filter.py`
-      imports it from there; it belongs in `lib`.
 - [x] The Genicam and Viva cameras repeat the alias tables, the USB speed
       check and the registration of aliases.  Decided 2026-11-04 to leave it:
       they are complementary backends, and one may be dropped.
-- [ ] One refactor at a time, each its own change: the design of
-      `cameras/chooser.py` (below under its own heading).
 
 ---
 

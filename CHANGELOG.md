@@ -23,6 +23,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The chooser.**  `Camera()` tries the backends in the order of the table
+  `BACKENDS`; there is no separate `_DISCOVERY_ORDER` to keep in step.  A
+  camera class answers `precheck()` and `deviceNames()` (new hooks of
+  `QCamera`, which accept everything and list nothing by default) instead
+  of the chooser asking by name; the OpenCV camera lists its devices.
+  `open_first` and `working` share one loop.  `ensure_qapp` is in `lib`.
 - **`QGenicamCamera` classifies a node once.**  Seven methods each walked
   the same chain of node types; `_nodeKind` now does, and `_limits` says
   what bounds a node, for the properties, the plain-data tree and the

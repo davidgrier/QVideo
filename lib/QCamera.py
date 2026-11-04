@@ -506,6 +506,30 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         return QtCore.QSize(int(width), int(height))
 
     # ------------------------------------------------------------------
+    # Hooks for the chooser
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def precheck(cls) -> None:
+        '''Raise now if this camera cannot open for want of a library.
+
+        The chooser calls it before it starts a worker process for the
+        camera, so that a machine without the library fails at once, in
+        this process, with the message that opening the camera would give.
+        The default accepts everything.
+        '''
+
+    @classmethod
+    def deviceNames(cls) -> dict[int, str]:
+        '''Return the names of the devices that the backend can list.
+
+        ``{cameraID: name}`` for the devices that can be named before any
+        is opened, or ``{}`` for a backend that cannot (the default), which
+        the chooser then knows by its label.
+        '''
+        return {}
+
+    # ------------------------------------------------------------------
     # Example
     # ------------------------------------------------------------------
 

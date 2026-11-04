@@ -284,6 +284,21 @@ class TestChooseCameraDefault(unittest.TestCase):
         camera.close()
 
 
+class TestBackendClasses(unittest.TestCase):
+
+    def test_camera_class_of_the_noise_backend(self):
+        from QVideo.cameras.Noise import QNoiseCamera
+        self.assertIs(chooser_module.camera_class('noise'), QNoiseCamera)
+
+    def test_tree_class_of_the_noise_backend(self):
+        from QVideo.cameras.Noise import QNoiseTree
+        self.assertIs(chooser_module.tree_class('noise'), QNoiseTree)
+
+    def test_an_unknown_backend_is_a_key_error(self):
+        with self.assertRaises(KeyError):
+            chooser_module.camera_class('nothing')
+
+
 class TestOpenCameraAndMakeTree(unittest.TestCase):
     '''Opening a camera builds no widget; the tree is a second step.'''
 

@@ -306,12 +306,12 @@ def main(argv: list[str]) -> int:
     rpc = Connection(int(rpcfd))
     frames = socket.socket(fileno=int(framefd))
     try:
-        from QVideo.cameras.chooser import BACKENDS, _load
+        from QVideo.cameras.chooser import camera_class
         if ':' in key:                      # 'module:Class'
             modulename, classname = key.split(':')
             cls = getattr(importlib.import_module(modulename), classname)
         else:
-            cls = _load(BACKENDS[key], BACKENDS[key].camera_cls)
+            cls = camera_class(key)
         camera = cls(cameraID=int(cameraID))
         camera.open()
         if not camera.isOpen():

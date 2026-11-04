@@ -56,8 +56,8 @@ from typing import NamedTuple
 
 from QVideo.lib import QCamera, QCameraTree
 
-__all__ = ['available_cameras', 'camera_parser', 'choose_camera', 'make_tree',
-           'open_camera']
+__all__ = ['available_cameras', 'camera_class', 'camera_parser',
+           'choose_camera', 'make_tree', 'open_camera', 'tree_class']
 
 logger = logging.getLogger(__name__)
 
@@ -231,9 +231,18 @@ def uses_worker(key: str) -> bool:
 
 
 def _load(entry: _BackendEntry, name: str) -> type:
-    '''Return the class *name* (``camera_cls`` or ``tree_cls``) of the
-    package of *entry*, importing the package.'''
+    '''Return the class *name* from the package of *entry*.'''
     return getattr(importlib.import_module(entry.module), name)
+
+
+def camera_class(key: str) -> type[QCamera]:
+    '''Return the camera class of backend *key*, importing its package.'''
+    return _load(BACKENDS[key], BACKENDS[key].camera_cls)
+
+
+def tree_class(key: str) -> type[QCameraTree]:
+    '''Return the class of the controls of backend *key*.'''
+    return _load(BACKENDS[key], BACKENDS[key].tree_cls)
 
 
 def _precheck(entry: _BackendEntry) -> None:
@@ -280,7 +289,7 @@ def create_camera(key: str, camera_id: int = 0,
             from QVideo.lib.remote import QRemoteCamera
             _precheck(entry)
             return QRemoteCamera(key, cameraID=camera_id)
-        return _load(entry, entry.camera_cls)(cameraID=camera_id)
+        return camera_class(key)(cameraID=camera_id)
     except Exception as ex:
         logger.warning(f'Could not open {entry.label}: {ex}')
         logger.debug(f'Where {entry.label} failed to open:', exc_info=True)
@@ -517,8 +526,7 @@ def make_tree(key: str, camera: QCamera) -> QCameraTree:
     QCameraTree
         An instance of the tree class of the backend, for *camera*.
     '''
-    backend = BACKENDS[key]
-    return _load(backend, backend.tree_cls)(camera=camera)
+    return tree_class(key)(camera=camera)
 
 
 def choose_camera(parser: ArgumentParser | None = None) -> QCameraTree:

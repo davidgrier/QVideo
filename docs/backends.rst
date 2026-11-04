@@ -178,6 +178,21 @@ explain itself:
 ``Camera()`` shows these messages when it cannot open anything, and the
 conformance suite does not need them, so they are easy to forget.  Don't.
 
+Two optional class methods let the chooser ask a camera class about itself
+before any camera is open.  Both have defaults in
+:class:`~QVideo.lib.QCamera.QCamera`, so a backend overrides one only when
+it has something to say:
+
+``precheck()``
+   Raise :class:`~QVideo.lib.errors.QDriverError` if the camera cannot
+   possibly open on this machine (the SDK is not installed, a library is
+   missing).  The chooser calls it before it starts a worker process, so
+   the message appears at once.  The default accepts everything.
+``deviceNames()``
+   Return ``{cameraID: name}`` for the devices that the system can list
+   before any is opened.  The camera chooser shows the names.  The default
+   is ``{}``, and the camera is then known by the label of its backend.
+
 ----
 
 A complete example

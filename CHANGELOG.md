@@ -9,6 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [4.15.0] — 2026-11-04
+
+A pass for structure: classes and names that exist because of the order in
+which the code was written.  Three changes are breaking
+(`QFilterRackWidget`, `QVideoWriter.blank` and `QVideoFilter.filter`); the
+platform has few users yet, and there is no deprecation shim for them.
+
 ### Removed
 
 - **`QFilterRackWidget`.**  It was the base class of `QFilterRack`, and
@@ -41,6 +50,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (default controls and settings, codec maps, alias nodes) are tuples or
   annotated `ClassVar`; `QGenicamTree.STANDARD_CONTROLS` is a tuple, and
   `controls` takes any sequence of names.
+- **CI checks more.**  `ruff` also enforces `SIM` (without `SIM905`),
+  `PERF`, `PIE`, `RUF012`, `PLW2901` and `UP037` for the package.
+
+### Documentation
+
+- The README lists the 23 filters that a rack offers, by category; it
+  still named `QBlurFilter` and `QYOLOFilter`, which no longer exist.
+- The API page of the chooser documents `BACKENDS`, `discover`,
+  `create_camera`, `open_first`, `working` and `uses_worker`, which its text
+  already linked to.
+- The guide to writing a backend describes `precheck()` and
+  `deviceNames()`.  The page of camera backends says that the
+  `Q<Name>Source` classes are deprecated.
 
 ---
 

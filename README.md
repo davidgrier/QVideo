@@ -27,8 +27,10 @@ abstraction and require no camera-specific code.
   and emits `newFrame(ndarray, FrameInfo)` at acquisition rate.
 - **Composable filter pipeline** — `VideoFilter` objects run in a
   `QFilterPipeline` on a worker thread between source and consumers (display,
-  recorder); filters include blur, edge detection, RGB channel selection,
-  sample-and-hold, binary threshold, and blob coloring.
+  recorder).  A `QFilterRack` lets the user add, reorder and adjust 23
+  filters (smoothing, edges, thresholds, background estimates, calibration
+  and more) while the program runs, and exports the pipeline as a Python
+  function.
 - **Graphical overlays** — `QTrackpyWidget` for live particle tracking and
   `QYoloWidget` for real-time object detection render markers directly on
   `QVideoScreen`; composite mode lets the DVR record the annotated scene.
@@ -197,15 +199,20 @@ additional code needed.
 
 ## Filters
 
-| Filter | Class | Description |
-|--------|-------|-------------|
-| Gaussian blur | `QBlurFilter` | Smoothing with adjustable kernel radius |
-| Canny edge detection | `QEdgeFilter` | Edge map with configurable thresholds |
-| RGB channel selection | `QRGBFilter` | Pass one or more color channels |
-| Sample and hold | `QSampleHold` | Background normalization via a sampled median estimate |
-| Binary threshold | `QThresholdFilter` | Convert to binary mask at a configurable level |
-| Blob coloring | `QBlobFilter` | Color connected foreground regions with distinct hues |
-| YOLO annotation | `QYOLOFilter` | Annotate frames with YOLO bounding boxes (requires `ultralytics`) |
+Each filter is a `VideoFilter` with a widget (`Q...`) that holds its
+controls.  A `QFilterRack` offers them through its *Add filter…* button,
+`QFilterRack.addByName('Sobel')` adds one in code, and `Filter('Sobel')`
+builds one without a window.
+
+| Category | Filters |
+|----------|---------|
+| Preprocessing | Color Channel, Dejitter, Difference of Gaussians, Exposure, Gamma Correction, Invert, Region of Interest, Smoothing, Unsharp Mask |
+| Edge detection | Canny, Laplacian, Sobel |
+| Segmentation | Threshold, Blob |
+| Background | Foreground, Running Mean, Running Median, Sample and Hold |
+| Calibration | Dark Frame, Flat Field |
+| Feature detection | Circle Transform |
+| Artistic | Cartoon, Pencil Sketch |
 
 ## Overlays
 

@@ -58,8 +58,10 @@ from typing import NamedTuple
 from QVideo.lib import QCamera, QCameraTree
 from QVideo.lib._qapp import ensure_qapp
 
-__all__ = ['available_cameras', 'camera_class', 'camera_parser',
-           'choose_camera', 'make_tree', 'open_camera', 'tree_class']
+__all__ = ['BACKENDS', 'available_cameras', 'camera_class',
+           'camera_parser', 'choose_camera', 'create_camera', 'discover',
+           'make_tree', 'open_camera', 'open_first', 'tree_class',
+           'uses_worker', 'working']
 
 logger = logging.getLogger(__name__)
 
@@ -374,7 +376,8 @@ def available_cameras() -> list[tuple[str, int, str]]:
     -------
     list[tuple[str, int, str]]
         ``(model, cameraID, name)`` in priority order.  The first two
-        items are the arguments of :func:`Camera`; *name* is the name that
+        items are the arguments of
+        :func:`~QVideo.interactive.camera.Camera`; *name* is the name that
         the device gives itself (the model for backends that list no
         names).
 

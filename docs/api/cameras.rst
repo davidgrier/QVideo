@@ -1,6 +1,11 @@
 Camera backends
 ===============
 
+A backend is a camera and the tree of its controls; run any camera in a
+thread with :class:`~QVideo.lib.QVideoSource.QVideoSource`.  The
+``Q<Name>Source`` classes of earlier releases still work from their
+packages and warn that they are deprecated.
+
 Basler
 ------
 

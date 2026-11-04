@@ -145,7 +145,11 @@ lists the shared lowercase names (`width`, `height`, `fps`) in
 same names on every backend.  `set()` announces a changed shape: for a
 property in `shapeProperties` (by default `width` and `height`) it reads
 `shape` before and after the setter and emits `shapeChanged` if it differs,
-so a setter does not emit the signal.
+so a setter does not emit the signal.  Two class methods answer the
+chooser before a camera exists: `precheck()` raises if the camera cannot
+open on this machine (the default accepts everything) and `deviceNames()`
+returns `{cameraID: name}` for the devices that the system can list (the
+default is `{}`).
 
 **`Camera()`** (`interactive/camera.py`) is the headless front door: it
 discovers a backend, creates a `QApplication` if there is none (and keeps
@@ -391,10 +395,12 @@ The `-c` CLI flag opens `QOpenCVTree` in quality mode.
   normalise), *center* (not centre), *gray* (not grey), *behavior* (not
   behaviour), etc.
 
-`ruff check .` (configured in `pyproject.toml`: pyflakes, bugbear and the
-79-character limit) runs in CI as the `Lint` job; fix what it reports
-rather than silencing it, and keep the per-file ignores to re-exports in
-`__init__.py` and the stubs and mocks of the tests.
+`ruff check .` (configured in `pyproject.toml`: pyflakes, bugbear, the
+79-character limit, and for the package, not the tests, `SIM` without
+`SIM905`, `PERF`, `PIE`, `RUF012`, `PLW2901` and `UP037`) runs in CI as the
+`Lint` job; fix what it reports rather than silencing it, and keep the
+per-file ignores to re-exports in `__init__.py` and the stubs and mocks of
+the tests.  A class-level list or dict is a tuple or a `ClassVar`.
 
 ## Naming conventions
 

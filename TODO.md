@@ -6,8 +6,8 @@ Ideas for upgrades and extensions, in no particular order.
 
 ## Polish after the review of 2026-11-03
 
-The review kept to what the CI checks (`ruff` with pyflakes, bugbear and the
-line length).  A stricter pass (`ruff --isolated --select
+The review of 2026-11-03 kept to what the CI then checked (`ruff` with
+pyflakes, bugbear and the line length).  A stricter pass (`ruff --isolated --select
 E,W,F,B,SIM,C4,C901,PIE,RET,UP,PERF,PLR,RUF,PLW`) finds these; fix them
 together.  CI now enforces `SIM` (but `SIM905`), `PERF`, `PIE`, `RUF012`,
 `PLW2901` and `UP037` for the package, not for the tests:

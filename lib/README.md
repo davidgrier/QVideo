@@ -27,6 +27,10 @@ subclasses goes in `widgets/`.  The notebook interface is in
 `interactive/`, and the table of camera backends and the command-line
 chooser are in `cameras/`.
 
+`remote/` is the one subpackage: `QRemoteCamera` and the worker process
+that it starts, for cameras whose library freezes the interface (see its
+`__init__.py`).
+
 `lib` does not import the packages above it, with one exception: `launch()`
 opens the camera that the command line names through
 `cameras/chooser.py`, because starting an application is the job of the

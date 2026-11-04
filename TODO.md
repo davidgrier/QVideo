@@ -13,7 +13,7 @@ together, and decide whether CI should enforce a modest set of them (`SIM`,
 `PERF`, `RUF012`, `PLW2901`, complexity at most 12):
 
 - [ ] `try`/`except`/`pass` that is `contextlib.suppress` (SIM105):
-      `lib/QRemoteCamera.py` (twice), `lib/_remoteworker.py`.
+      `lib/remote/camera.py` (twice), `lib/remote/worker.py`.
 - [ ] Class-level lists and dicts that are constants (RUF012): the
       `_DEFAULT_CONTROLS` and `_DEFAULT_SETTINGS` of the vendor trees, the
       `_ALIAS_NODES` of Genicam and Viva, the writers of `dvr/`.  Make them
@@ -290,13 +290,13 @@ Do this before the first release that has `QRemoteCamera`, and again when it
 becomes a default.
 
 - [ ] **Docstrings.**  Every public class, method and property of
-      `lib/QRemoteCamera.py` has a NumPy-style docstring that says what the
+      `lib/remote/camera.py` has a NumPy-style docstring that says what the
       caller needs and nothing of the implementation; the private modules
-      `lib/_remote.py` and `lib/_remoteworker.py` say what each function
+      `lib/remote/protocol.py` and `lib/remote/worker.py` say what each function
       does.  Run the docstrings through the documentation build and read the
       pages, not only the source.
 - [ ] **The protocol, in one place.**  Describe it once, in the docstring of
-      `lib/_remote.py` or in `docs/architecture.rst`: the two channels, the
+      `lib/remote/protocol.py` or in `docs/architecture.rst`: the two channels, the
       layout of the ring and of an announcement, the requests and their
       answers, the life of the worker (start, close, death of the parent,
       death of the worker), what is guaranteed about frames and what is not.

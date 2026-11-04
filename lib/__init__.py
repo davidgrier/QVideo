@@ -53,7 +53,7 @@ from .clickable import clickable
 from .QCamera import QCamera
 from .errors import QCameraError, QDriverError, QDeviceError
 from .QVideoSource import QVideoSource
-from .QRemoteCamera import QRemoteCamera
+from .remote import QRemoteCamera
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
 from .QFilterRackWidget import QFilterRackWidget

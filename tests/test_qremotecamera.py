@@ -16,13 +16,13 @@ import numpy as np
 from qtpy import QtWidgets
 
 from QVideo.lib import QCameraError, QCameraTree, QVideoSource
-from QVideo.lib._remote import EVENT, REPLY
-from QVideo.lib.QRemoteCamera import QRemoteCamera
+from QVideo.lib.remote.protocol import EVENT, REPLY
+from QVideo.lib.remote import QRemoteCamera
 from QVideo.tests.signals import record
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-LOGGER = 'QVideo.lib.QRemoteCamera'
+LOGGER = 'QVideo.lib.remote.camera'
 FAILING = 'QVideo.tests.remotecameras:FailingCamera'
 FLOATING = 'QVideo.tests.remotecameras:FloatCamera'
 STATES = 'QVideo.tests.remotecameras:StatesCamera'
@@ -265,7 +265,7 @@ class TestTheWorkerOpening(unittest.TestCase):
 
     def run_worker(self, key: str):
         '''Run the worker for *key* here; return its exit code and reply.'''
-        from QVideo.lib import _remoteworker
+        from QVideo.lib.remote import worker as _remoteworker
         rpc, theirRpc = socket.socketpair()
         frames, theirFrames = socket.socketpair(socket.AF_UNIX,
                                                 socket.SOCK_DGRAM)
@@ -486,7 +486,7 @@ class TestTheWorkerLeavesWithTheParent(unittest.TestCase):
 
     def test_worker_exits_when_the_parent_is_killed(self):
         script = ('import time\n'
-                  'from QVideo.lib.QRemoteCamera import QRemoteCamera\n'
+                  'from QVideo.lib.remote import QRemoteCamera\n'
                   'c = QRemoteCamera("noise")\n'
                   'print(c._process.pid, flush=True)\n'
                   'time.sleep(60)\n')

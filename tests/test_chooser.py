@@ -205,7 +205,7 @@ class TestTheWorker(unittest.TestCase):
         proxy = MagicMock()
         with patch.object(chooser_module, 'uses_worker', return_value=True), \
                 patch.object(chooser_module, '_precheck') as check, \
-                patch('QVideo.lib.QRemoteCamera.QRemoteCamera',
+                patch('QVideo.lib.remote.QRemoteCamera',
                       return_value=proxy) as remote:
             camera = chooser_module.create_camera('flir', 2)
         self.assertIs(camera, proxy)
@@ -219,7 +219,7 @@ class TestTheWorker(unittest.TestCase):
         with patch.object(chooser_module, 'uses_worker', return_value=True), \
                 patch.object(chooser_module, '_precheck',
                              side_effect=refusal), \
-                patch('QVideo.lib.QRemoteCamera.QRemoteCamera') as remote:
+                patch('QVideo.lib.remote.QRemoteCamera') as remote:
             camera = chooser_module.create_camera('flir', 0, errors)
         self.assertIsNone(camera)
         remote.assert_not_called()
@@ -240,7 +240,7 @@ class TestTheWorker(unittest.TestCase):
     def test_the_worker_delivers_frames_through_the_chooser(self):
         # The noise camera stands in for a Harvesters backend: the chooser
         # opens it in a worker process of its own, which makes real frames.
-        from QVideo.lib.QRemoteCamera import QRemoteCamera
+        from QVideo.lib.remote import QRemoteCamera
         entry = BACKENDS['noise']._replace(worker=True)
         with patch.dict(BACKENDS, {'noise': entry}):
             camera = chooser_module.create_camera('noise')

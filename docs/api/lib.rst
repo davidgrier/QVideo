@@ -16,7 +16,7 @@ QVideoSource
 QRemoteCamera
 -------------
 
-.. automodule:: QVideo.lib.QRemoteCamera
+.. automodule:: QVideo.lib.remote.camera
    :members:
 
 QCameraOpener

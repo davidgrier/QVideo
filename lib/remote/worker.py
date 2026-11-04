@@ -1,6 +1,6 @@
 '''The process that owns the camera of a :class:`QRemoteCamera`.
 
-Run as ``python -m QVideo.lib._remoteworker KEY CAMERAID RPCFD FRAMEFD``.
+Run as ``python -m QVideo.lib.remote KEY CAMERAID RPCFD FRAMEFD``.
 It opens the camera of backend *KEY*, reads frames into a ring of shared
 memory, and answers the requests of the proxy.  It never creates a
 ``QApplication``.  When the proxy goes away (the connection closes), it
@@ -11,7 +11,6 @@ import importlib
 import logging
 import os
 import socket
-import sys
 import threading
 import time
 from multiprocessing.connection import Connection
@@ -19,8 +18,8 @@ from multiprocessing.shared_memory import SharedMemory
 
 import numpy as np
 
-from QVideo.lib._remote import (CODES, EVENT, HEADER, NOTICE, REPLY, SLOTS,
-                                slot_bytes)
+from QVideo.lib.remote.protocol import (CODES, EVENT, HEADER, NOTICE, REPLY,
+                                        SLOTS, slot_bytes)
 from QVideo.lib.errors import QCameraError
 
 logger = logging.getLogger('QVideo.remote.worker')
@@ -339,6 +338,3 @@ def main(argv: list[str]) -> int:
         rpc.close()
     return 0
 
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))

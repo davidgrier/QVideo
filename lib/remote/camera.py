@@ -11,7 +11,7 @@ from multiprocessing.shared_memory import SharedMemory
 import numpy as np
 from qtpy import QtCore
 
-from QVideo.lib._remote import DTYPES, EVENT, HEADER, NOTICE, REPLY
+from QVideo.lib.remote.protocol import DTYPES, EVENT, HEADER, NOTICE, REPLY
 from QVideo.lib.errors import QCameraError
 from QVideo.lib.QCamera import QCamera
 
@@ -111,7 +111,7 @@ class QRemoteCamera(QCamera):
         rpc, theirRpc = socket.socketpair()
         frames, theirFrames = socket.socketpair(socket.AF_UNIX,
                                                 socket.SOCK_DGRAM)
-        command = [self._python, '-m', 'QVideo.lib._remoteworker',
+        command = [self._python, '-m', 'QVideo.lib.remote',
                    self._key, str(self._cameraID),
                    str(theirRpc.fileno()), str(theirFrames.fileno())]
         self._process = subprocess.Popen(

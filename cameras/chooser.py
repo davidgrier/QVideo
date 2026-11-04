@@ -41,7 +41,7 @@ looks just like a working one that shows noise.
 Harvesters (Basler, Flir, IDS, MV and VimbaX) read frames through a binding
 that holds the interpreter lock, which freezes the other threads of the
 program.  :func:`create_camera` therefore opens them in a worker process
-(:class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`) on macOS and Linux,
+(:class:`~QVideo.lib.remote.camera.QRemoteCamera`) on macOS and Linux,
 whatever the caller, and there is no flag for it.  Creating the camera class
 yourself (``QFlirCamera()``) keeps it in the program.  On Windows, where the
 worker is not available, these backends open in the program.
@@ -270,14 +270,14 @@ def create_camera(key: str, camera_id: int = 0,
         exception is logged as a warning and is not raised again.  The
         camera that comes back may not be open: ask ``isOpen()``.  If
         :func:`uses_worker` is true for *key* it is a
-        :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`, which looks like
+        :class:`~QVideo.lib.remote.camera.QRemoteCamera`, which looks like
         the camera of the backend.
     '''
     ensure_qapp()
     entry = BACKENDS[key]
     try:
         if uses_worker(key):
-            from QVideo.lib.QRemoteCamera import QRemoteCamera
+            from QVideo.lib.remote import QRemoteCamera
             _precheck(entry)
             return QRemoteCamera(key, cameraID=camera_id)
         return _load(entry, entry.camera_cls)(cameraID=camera_id)

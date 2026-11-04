@@ -7,7 +7,7 @@ IDS, MATRIX VISION and Allied Vision only say which producer to load.
 For a GenICam camera, :class:`~QVideo.cameras.Viva.QVivaCamera` is the
 preferred interface.  This one needs a ``.cti`` file and its binding holds
 the interpreter lock, so the chooser opens it in a process of its own
-(:class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`) on macOS and Linux;
+(:class:`~QVideo.lib.remote.camera.QRemoteCamera`) on macOS and Linux;
 creating the class yourself keeps it in the program.
 
 The camera has four parts, in this order.
@@ -665,7 +665,7 @@ class QGenicamCamera(QCamera):
 
         Only plain values (numbers, strings, lists, dicts) are returned,
         so the result crosses the process boundary of a
-        :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera`.  Every entry has
+        :class:`~QVideo.lib.remote.camera.QRemoteCamera`.  Every entry has
         ``name``, ``title`` and ``visibility`` (an integer);
         a category adds ``type='group'`` and ``children``; a leaf adds
         ``type``, ``value``, ``default`` and the limits of its type.  A
@@ -766,7 +766,7 @@ class QGenicamCamera(QCamera):
     def watch(self, names: Iterable[str]) -> None:
         '''Say which nodes a tree will ask about; a local camera ignores it.
 
-        A :class:`~QVideo.lib.QRemoteCamera.QRemoteCamera` reads the watched
+        A :class:`~QVideo.lib.remote.camera.QRemoteCamera` reads the watched
         nodes between frames and keeps the latest states for
         :meth:`states` with ``cached=True``.
         '''

@@ -92,6 +92,7 @@ packages = [
     "QVideo.filters",
     "QVideo.interactive",
     "QVideo.lib",
+    "QVideo.lib.remote",
     "QVideo.overlays",
     "QVideo.widgets",
 ]

@@ -1,5 +1,5 @@
 '''Cameras that fail the way a good camera does not, for the tests of
-:class:`QVideo.lib.QRemoteCamera`.
+:class:`QVideo.lib.remote`.
 
 A worker opens them by name: ``'QVideo.tests.remotecameras:FailingCamera'``.
 This module creates no ``QApplication``, because the worker has none.

@@ -1004,5 +1004,51 @@ class TestLevels(unittest.TestCase):
         self.assertEqual(screen.levels, (0., 4095.))
 
 
+class TestFrameLevels(unittest.TestCase):
+    '''The levels that come with a frame.'''
+
+    def show(self, screen, levels=None):
+        screen._ready = True
+        screen.setImage(np.zeros((4, 4), np.uint16),
+                        FrameInfo(0, 0., levels=levels))
+
+    def test_a_frame_brings_its_levels(self):
+        screen = make_screen()
+        self.show(screen, (0, 4095))
+        self.assertEqual(screen.levels, (0., 4095.))
+
+    def test_the_next_frame_without_levels_restores_the_type_range(self):
+        screen = make_screen()
+        self.show(screen, (0, 4095))
+        self.show(screen, None)
+        self.assertIsNone(screen.levels)
+
+    def test_levels_that_were_set_win(self):
+        screen = make_screen()
+        screen.levels = (0, 255)
+        self.show(screen, (0, 4095))
+        self.assertEqual(screen.levels, (0., 255.))
+
+    def test_none_gives_the_decision_back_to_the_frames(self):
+        screen = make_screen()
+        screen.levels = (0, 255)
+        screen.levels = None
+        self.show(screen, (0, 4095))
+        self.assertEqual(screen.levels, (0., 4095.))
+
+    def test_the_display_is_told_only_when_the_levels_change(self):
+        screen = make_screen()
+        with patch.object(screen.image, 'setLevels') as setLevels:
+            for _ in range(3):
+                self.show(screen, (0, 4095))
+            self.assertEqual(setLevels.call_count, 1)
+
+    def test_a_frame_without_info_leaves_8_bit_display_alone(self):
+        screen = make_screen()
+        screen._ready = True
+        screen.setImage(np.zeros((4, 4), np.uint8))
+        self.assertIsNone(screen.levels)
+
+
 if __name__ == '__main__':
     unittest.main()

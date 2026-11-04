@@ -109,6 +109,14 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     #: :class:`~QVideo.lib.videotypes.FrameInfo` of the frame.
     hardwareTimestamp: float | None = None
 
+    #: The values of the pixels that are black and white in the frames, or
+    #: ``None`` if the pixels fill the range of their type.  A camera whose
+    #: counts have fewer bits than their type, such as 12 bit counts in
+    #: ``uint16``, sets it when its pixel format changes, not for each frame;
+    #: the source copies it into the
+    #: :class:`~QVideo.lib.videotypes.FrameInfo` of each frame.
+    levels: tuple[float, float] | None = None
+
     #: The properties whose setting can change the shape of the frames.
     #: :meth:`set` reads :attr:`shape` before and after the setter of one of
     #: these and emits :attr:`shapeChanged` if it differs, so a backend does

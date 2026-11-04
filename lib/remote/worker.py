@@ -14,6 +14,7 @@ import os
 import socket
 import threading
 import time
+from math import nan
 from multiprocessing.connection import Connection
 from multiprocessing.shared_memory import SharedMemory
 
@@ -142,9 +143,10 @@ class Worker:
         header[0] = self.count
         channels = frame.shape[2] if frame.ndim == 3 else 0
         stamp = getattr(self.camera, 'hardwareTimestamp', None)
+        black, white = getattr(self.camera, 'levels', None) or (nan, nan)
         notice = NOTICE.pack(self.count, self.generation, slot, height, width,
                              channels, CODES[frame.dtype],
-                             float('nan') if stamp is None else stamp)
+                             nan if stamp is None else stamp, black, white)
         try:
             self.frames.send(notice)
         except BlockingIOError:     # the reader is behind: it skips ahead

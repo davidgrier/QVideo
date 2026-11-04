@@ -38,6 +38,7 @@ enumeration is also an integer, so ``_VALUE_KINDS`` lists it first.
 '''
 import logging
 import os
+import re
 from collections.abc import Callable, Iterable
 from contextlib import suppress
 from pathlib import Path
@@ -98,6 +99,21 @@ def registerText(feature: IRegister) -> str:
     if length > MAX_REGISTER_BYTES:
         return f'<{length} bytes>'
     return bytes(feature.get(length)).hex(' ')
+
+
+_DEEP_FORMAT = re.compile(r'(?:Mono|Bayer[A-Z]{2})(\d+)')
+
+
+def _pixelLevels(pixelFormat: str | None) -> tuple[int, int] | None:
+    '''Return the levels of the pixel format, ``None`` if it fills its type.
+
+    A format of more than 8 and fewer than 16 bits (``Mono12``,
+    ``Mono10p``, ``BayerRG12Packed``) is delivered as counts, right
+    justified in ``uint16``: ``Mono12`` has levels ``(0, 4095)``.
+    '''
+    match = _DEEP_FORMAT.match(str(pixelFormat))
+    bits = int(match[1]) if match else 8
+    return (0, 2**bits - 1) if 8 < bits < 16 else None
 
 
 def _nodeKind(feature: IValue) -> str:
@@ -203,11 +219,27 @@ class QGenicamCamera(QCamera):
             with suppress(Exception):
                 self._modelName = str(self._nodeMap.DeviceModelName.value)
             self._registerAliases()
+            self._updateLevels()
             self._checkLink()
         except Exception:
             self._cleanup()  # a camera that is half open stays claimed
             raise
         return True
+
+    def set(self, key: str, value: QCamera.PropertyValue) -> None:
+        '''Set a property; a new pixel format changes the levels.'''
+        super().set(key, value)
+        if self._canonical(key) == 'PixelFormat':
+            self._updateLevels()
+
+    def _updateLevels(self) -> None:
+        '''Read the pixel format and keep the levels that it implies.
+
+        The source copies :attr:`levels` into every frame, so the format is
+        read when it can have changed and not for each frame.
+        '''
+        if 'PixelFormat' in self.properties:
+            self.levels = _pixelLevels(self.get('PixelFormat'))
 
     def _openDevice(self, producer: str) -> None:
         '''Load the GenTL *producer* and open the camera that it finds.'''

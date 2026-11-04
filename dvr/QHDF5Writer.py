@@ -69,8 +69,10 @@ class QHDF5Writer(QVideoWriter):
         gives none.
 
     The attributes of the file are ``format_version`` (2), ``Timestamp``
-    (the UNIX time at which the first frame was captured) and ``fps`` (the
-    frame rate that the writer was told).
+    (the UNIX time at which the first frame was captured), ``fps`` (the
+    frame rate that the writer was told) and, for frames of a camera of
+    more than 8 bits, ``levels`` (the black and white values of the
+    pixels, which the reader hands on to the display).
 
     The file is written in the single-writer, multiple-reader mode of HDF5
     and flushed about once a second.  If the program dies, the file holds
@@ -152,6 +154,8 @@ class QHDF5Writer(QVideoWriter):
         attrs['format_version'] = FORMAT_VERSION
         attrs['Timestamp'] = info.wallclock
         attrs['fps'] = self.fps / self.nskip
+        if info.levels is not None:
+            attrs['levels'] = info.levels
         self._frames = self._file.create_dataset(
             'frames', (0,) + shape, maxshape=(None,) + shape,
             chunks=(1,) + shape, dtype=frame.dtype, **self._filter)

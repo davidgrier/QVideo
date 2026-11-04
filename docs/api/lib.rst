@@ -108,9 +108,11 @@ QFilterPipeline
 :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` runs filters on a worker
 thread between a source and its consumers.  It receives ``newFrame`` from
 the source, applies the filters in order, and emits ``newFrame`` with the
-result and the unchanged
+result and the
 :class:`~QVideo.lib.videotypes.FrameInfo`, so processed frames keep the
-capture time and index of the frames they came from.  It has the same
+capture time and index of the frames they came from.  A frame of more
+than 8 bits is scaled to 8 bits, between its levels, before the first filter
+that is not ``deep``.  It has the same
 ``newFrame``, ``shapeChanged``, ``fps`` and ``shape`` as a
 :class:`~QVideo.lib.QVideoSource.QVideoSource`, so a screen or recorder
 can use it as its source.

@@ -57,6 +57,31 @@ logic stays separate from UI concerns.
    edits it.
 
 
+.. _extending-deep:
+
+Frames of more than 8 bits
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A camera of 10, 12 or 14 bits delivers its counts in ``uint16`` and says
+what black and white are in the ``levels`` of the frame's
+:class:`~QVideo.lib.videotypes.FrameInfo`.  A filter is written for 8 bit
+frames, so the pipeline scales such a frame to ``uint8`` between its levels
+before it reaches a filter, and the frames after that have no levels.
+
+A filter that keeps the scale of the pixels, so that its output has the
+levels of its input, says so with a class attribute and then receives the
+counts:
+
+.. code-block:: python
+
+   class CropFilter(VideoFilter):
+       deep = True      # a crop does not change the pixels
+
+Do this only for a filter that has been tried on a ``uint16`` frame:
+a threshold of 128, a lookup table of 256 entries and an inversion that
+subtracts from 255 are all wrong for counts.  ``ROIFilter`` is ``deep``.
+
+
 Writing a stateless filter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

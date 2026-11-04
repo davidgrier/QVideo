@@ -30,6 +30,8 @@ class ROIFilter(VideoFilter):
         Height of the ROI in pixels.  Default: ``128``.
     '''
 
+    deep = True         # cropping keeps the scale of the pixels
+
     def __init__(self,
                  x: int = 0,
                  y: int = 0,

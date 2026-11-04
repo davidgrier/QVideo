@@ -123,7 +123,9 @@ read the file while it is written.  Any HDF5 tool reads it; with ``h5py``::
 The file also holds ``index``, the number that the source gave each frame,
 and ``hardware_timestamp``, the camera's own time for each frame, which is
 ``nan`` if the camera has none.  The attributes are ``format_version``,
-``Timestamp`` (the UNIX time of the first frame) and ``fps``.
+``Timestamp`` (the UNIX time of the first frame) and ``fps``, and
+``levels`` if the camera has more than 8 bits (the values of black and white,
+which the reader hands on to the display).
 :class:`~QVideo.dvr.QHDF5Reader.QHDF5Reader` also reads the files of
 version 1, which had a dataset for each frame in a group named ``images``.
 

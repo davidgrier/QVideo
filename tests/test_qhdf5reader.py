@@ -53,6 +53,20 @@ class ReaderCase(unittest.TestCase):
         return reader
 
 
+class TestLevels(ReaderCase):
+
+    def test_the_levels_of_a_deep_recording_come_back(self):
+        writer = QHDF5Writer(self.path)
+        writer.write(np.zeros(SHAPE, np.uint16),
+                     FrameInfo(0, 1., levels=(0, 4095)))
+        writer.close()
+        self.assertEqual(self.open().levels, (0., 4095.))
+
+    def test_a_recording_of_8_bit_frames_has_none(self):
+        self.record()
+        self.assertIsNone(self.open().levels)
+
+
 class TestInit(ReaderCase):
 
     def test_opens_on_init(self):

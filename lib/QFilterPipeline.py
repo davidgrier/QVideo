@@ -1,12 +1,14 @@
 '''Worker thread that runs a pipeline of video filters.'''
 from collections import deque
 from collections.abc import Iterable
+from dataclasses import replace
 import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
 from qtpy import QtCore
 
+from QVideo.lib.imageops import to8bit
 from QVideo.lib.QVideoFilter import VideoFilter
 from QVideo.lib.videotypes import Image, FrameInfo
 
@@ -31,8 +33,14 @@ class QFilterPipeline(QtCore.QThread):
     computation, and every consumer sees the same filtered stream.
 
     The :class:`~QVideo.lib.videotypes.FrameInfo` that accompanies each
-    frame is passed through unchanged, so a processed frame keeps the
-    capture time and index of the frame it came from.
+    frame is passed through, so a processed frame keeps the capture time and
+    index of the frame it came from.
+
+    **Deep frames.**  A ``uint16`` frame from a camera of more than 8 bits
+    carries its ``levels`` in the ``FrameInfo``.  A filter that is not
+    :attr:`~QVideo.lib.QVideoFilter.VideoFilter.deep` gets the frame
+    scaled to ``uint8`` between those levels, and the frames after it have
+    no levels.  Filters that are ``deep`` see the counts and keep the levels.
 
     The pipeline can stand in for a
     :class:`~QVideo.lib.QVideoSource.QVideoSource`: it has ``newFrame``,
@@ -203,14 +211,22 @@ class QFilterPipeline(QtCore.QThread):
                 dropped, self._dropped = self._dropped, 0
             if dropped:
                 self.framesDropped.emit(dropped)
-            frame = self._apply(frame)
+            frame, levels = self._apply(frame, info.levels)
             if frame is not None:
+                if levels != info.levels:
+                    info = replace(info, levels=levels)
                 self.newFrame.emit(frame, info)
 
-    def _apply(self, frame: Image) -> Image | None:
-        '''Run *frame* through the filters; ``None`` if a filter has no
-        result yet.'''
+    def _apply(self, frame: Image, levels: tuple | None
+               ) -> tuple[Image | None, tuple | None]:
+        '''Run *frame*, whose pixels have *levels*, through the filters.
+
+        Returns the result and its levels: ``(None, levels)`` if a filter
+        has no result yet.
+        '''
         for video_filter in self._filters:
+            if frame.dtype == np.uint16 and not video_filter.deep:
+                frame, levels = to8bit(frame, levels), None
             try:
                 result = video_filter(frame)
             except Exception as error:
@@ -221,9 +237,9 @@ class QFilterPipeline(QtCore.QThread):
                 self.filterFailed.emit(video_filter, error)
                 continue
             if result is None:
-                return None
+                return None, levels
             frame = result
-        return frame
+        return frame, levels
 
     def __del__(self) -> None:
         # The garbage collector may get here after Qt has deleted the C++

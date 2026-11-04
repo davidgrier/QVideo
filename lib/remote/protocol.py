@@ -32,8 +32,9 @@ SLOTS = 4
 HEADER = 64
 
 #: Announcement of a frame: number, generation of the ring, slot, height,
-#: width, channels (0 for a gray image), dtype code, hardware timestamp.
-NOTICE = struct.Struct('<QIIIIIId')
+#: width, channels (0 for a gray image), dtype code, hardware timestamp,
+#: black level and white level (NaN where the camera has none).
+NOTICE = struct.Struct('<QIIIIIIddd')
 
 DTYPES = {0: np.dtype(np.uint8), 1: np.dtype(np.uint16)}
 CODES = {dtype: code for code, dtype in DTYPES.items()}

@@ -465,18 +465,21 @@ bytes over USB3 would make it.  Found on the way:
 - The first frames after a change of format may be in the old format.
 - The screen maps the whole range of the dtype: a 12 bit frame shows 16
   times too dark (a ramp to 4095 shows 2 to 14 of 255); Mono16 shows
-  correctly.  `QVideoScreen.levels` (added after this was measured) sets
-  the range by hand; nothing chooses it from the bit depth yet, and a
-  range costs about 7 ms a frame at 1280 by 1024 against 2 ms without.
+  correctly.  `QVideoScreen.levels` sets the range, and now each frame
+  brings its own; a range costs about 7 ms a frame at 1280 by 1024 against
+  2 ms without.
 - Of 16 filters on a `uint16` frame, 4 raise (Canny, Gamma, median
   smoothing, Log exposure: 8 bit lookup tables and OpenCV calls), 5 return
   `uint8` (Laplacian, Sobel, DoG, Pencil sketch, Cartoon, which gives zeros)
   and 7 keep the dtype, though the thresholds are still on a scale of 255.
 
-The convention to choose: a frame at full scale in 16 bits (the screen then
-works unchanged and Mono16 already is one; the packed formats shift left),
-with the bit depth in the metadata of a recording, or counts as the camera
-sends them.  The first suits the screen and the second the filters.
+**Decided 2026-11-04: counts as the camera sends them, and the range travels
+with the frame** (`FrameInfo.levels`, cached by the camera and set when the
+pixel format changes).  The screen follows the levels of each frame; the
+filter pipeline scales a deep frame to 8 bits for every filter that is not
+`deep` (`VideoFilter.deep`); an HDF5 recording keeps the levels.  Working on
+a Blackfly S with viva on macOS and on Ubuntu 24.04, changing the bit depth
+while streaming included.
 
 - [x] **Find out what the camera and `to_numpy()` give.**  Done 2026-11-04
   (the table above), through `viva` and through `QGenicamCamera`.
@@ -484,11 +487,16 @@ sends them.  The first suits the screen and the second the filters.
   enumeration, so the tree may show it already; check that changing it
   reallocates the ring of a `QRemoteCamera` and announces the new shape
   and dtype, and that it is a `protected` feature.
-- [ ] **Decide what the frame is.**  Return the camera's counts as
-  `uint16` (left-justified, or right-justified as the camera sends them)
-  and say so in the docstring, or scale to a fixed range.  Record the bit
-  depth in the metadata of a recording, so that a reader can recover the
-  counts.
+- [x] **Decide what the frame is.**  Done 2026-11-04 (see above).
+- [ ] **Make filters `deep`, one at a time.**  Only `ROIFilter` is.  Plain
+  Gaussian smoothing and `UnsharpFilter` keep the scale; `InvertFilter`
+  (65535 minus), the thresholds (255), CLAHE (12032 from 4095) and the
+  lookup-table filters do not, and four raise.  Each needs the scale of its
+  parameters and a test on counts.
+- [ ] **Say it for the other consumers of `levels`.**  `QSnapshot` refuses
+  `uint16`; the `.mp4` and OpenCV `.avi` writers drop to 8 bits silently;
+  the headless `Camera()` proxy and `QFilterRack.__call__` apply filters
+  without the pipeline's scaling; a levels control in `QCamcorder`.
 - [ ] **Walk the pipeline.**  Each stage that assumes `uint8` needs a
   look: `QVideoScreen` (the levels and the color map), the filters (most
   of the OpenCV calls take `uint16`, but the lookup tables of

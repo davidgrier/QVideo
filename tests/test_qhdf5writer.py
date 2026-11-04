@@ -93,6 +93,18 @@ class TestLayout(WriterCase):
             for name in ('timestamp', 'index', 'hardware_timestamp'):
                 self.assertEqual(f[name].shape, (3,))
 
+    def test_a_deep_camera_leaves_its_levels_in_the_file(self):
+        writer = self.make()
+        writer.write(_FRAME, FrameInfo(0, 1., levels=(0, 4095)))
+        writer.close()
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(tuple(f.attrs['levels']), (0, 4095))
+
+    def test_a_file_of_8_bit_frames_has_no_levels(self):
+        self.write([_FRAME])
+        with h5py.File(self.path, 'r') as f:
+            self.assertNotIn('levels', f.attrs)
+
     def test_the_file_says_which_layout_it_has(self):
         self.write([_FRAME])
         with h5py.File(self.path, 'r') as f:

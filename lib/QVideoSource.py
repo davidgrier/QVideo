@@ -111,7 +111,8 @@ class QVideoSource(QtCore.QThread):
                 ok, frame = self.source.saferead()
                 if ok:
                     info = FrameInfo(self._frames, perf_counter(),
-                                     self._hardwareTimestamp())
+                                     self._hardwareTimestamp(),
+                                     getattr(self.source, 'levels', None))
                     self._frames += 1
                     self.newFrame.emit(frame, info)
         logger.debug('streaming finished')

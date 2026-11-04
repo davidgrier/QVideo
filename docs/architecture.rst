@@ -70,8 +70,9 @@ Threading layer — ``QVideo.lib.QVideoSource``
 :class:`~QVideo.lib.QVideoSource.QVideoSource` wraps a camera in a
 ``QThread``, calling ``camera.saferead()`` in a loop and emitting
 ``newFrame(ndarray, FrameInfo)``.  :class:`~QVideo.lib.videotypes.FrameInfo`
-carries the frame's index and a capture timestamp taken in the capture
-thread immediately after the camera returns the frame; slots that need
+carries the frame's index, a capture timestamp taken in the capture
+thread immediately after the camera returns the frame and, for a camera of
+more than 8 bits, the ``levels`` of its pixels; slots that need
 only the image may accept a single argument.  It is the standard way to
 drive a camera from the GUI thread.
 

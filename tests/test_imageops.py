@@ -1,7 +1,7 @@
 '''Unit tests for QVideo.lib.imageops.'''
 import unittest
 import numpy as np
-from QVideo.lib.imageops import grayscale
+from QVideo.lib.imageops import grayscale, to8bit
 
 
 class TestGrayscale(unittest.TestCase):
@@ -39,6 +39,28 @@ class TestGrayscale(unittest.TestCase):
         rng = np.random.default_rng(1)
         gray = rng.integers(0, 256, (20, 30), dtype=np.uint8)
         np.testing.assert_array_equal(grayscale(np.dstack([gray] * 3)), gray)
+
+
+class TestTo8bit(unittest.TestCase):
+
+    def test_the_whole_range_of_uint16_by_default(self):
+        frame = np.array([[0, 257, 65535]], np.uint16)
+        np.testing.assert_array_equal(to8bit(frame), [[0, 1, 255]])
+
+    def test_the_levels_become_black_and_white(self):
+        frame = np.array([[0, 2048, 4095]], np.uint16)
+        np.testing.assert_array_equal(to8bit(frame, (0, 4095)),
+                                      [[0, 128, 255]])
+
+    def test_values_outside_the_levels_saturate(self):
+        frame = np.array([[100, 1000, 5000]], np.uint16)
+        np.testing.assert_array_equal(to8bit(frame, (500, 1500)),
+                                      [[0, 128, 255]])
+
+    def test_the_type_is_uint8_and_the_shape_is_kept(self):
+        for shape in ((6, 8), (6, 8, 3)):
+            out = to8bit(np.zeros(shape, np.uint16), (0, 4095))
+            self.assertEqual((out.dtype, out.shape), (np.uint8, shape))
 
 
 if __name__ == '__main__':  # pragma: no cover

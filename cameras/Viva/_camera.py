@@ -2,6 +2,7 @@
 from contextlib import suppress
 from functools import partial
 import logging
+import re
 from QVideo.lib import QCamera
 from QVideo.lib.errors import QDeviceError
 from typing import ClassVar
@@ -28,6 +29,21 @@ _KINDS = {'Integer': (int, 'integer'),
           'Boolean': (bool, 'bool'),
           'Enumeration': (str, 'enum'),
           'StringReg': (str, 'string')}
+
+
+_DEEP_FORMAT = re.compile(r'(?:Mono|Bayer[A-Z]{2})(\d+)')
+
+
+def _pixelLevels(pixelFormat: str | None) -> tuple[int, int] | None:
+    '''Return the levels of the pixel format, ``None`` if it fills its type.
+
+    A format of more than 8 and fewer than 16 bits (``Mono12``,
+    ``Mono10p``, ``BayerRG12Packed``) is delivered as counts, right
+    justified in ``uint16``: ``Mono12`` has levels ``(0, 4095)``.
+    '''
+    match = _DEEP_FORMAT.match(str(pixelFormat))
+    bits = int(match[1]) if match else 8
+    return (0, 2**bits - 1) if 8 < bits < 16 else None
 
 
 class QVivaCamera(QCamera):
@@ -88,6 +104,7 @@ class QVivaCamera(QCamera):
             self._device = self._connect()
             self._registerFeatures()
             self._registerAliases()
+            self._updateLevels()
             with suppress(Exception):
                 self._modelName = self._device.get_string('DeviceModelName')
             with suppress(Exception):  # maps frame times to the host clock
@@ -98,6 +115,21 @@ class QVivaCamera(QCamera):
             self._cleanup()  # a camera that is half open stays claimed
             raise
         return True
+
+    def set(self, key: str, value: QCamera.PropertyValue) -> None:
+        '''Set a property; a new pixel format changes the levels.'''
+        super().set(key, value)
+        if self._canonical(key) == 'PixelFormat':
+            self._updateLevels()
+
+    def _updateLevels(self) -> None:
+        '''Read the pixel format and keep the levels that it implies.
+
+        The source copies :attr:`levels` into every frame, so the format is
+        read when it can have changed and not for each frame.
+        '''
+        if 'PixelFormat' in self.properties:
+            self.levels = _pixelLevels(self.get('PixelFormat'))
 
     def _connect(self) -> 'vg.Camera':
         '''Return the camera that *cameraID* names.

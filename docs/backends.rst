@@ -162,6 +162,19 @@ store it in ``self.hardwareTimestamp`` (in seconds) inside ``read``.  The
 source copies it into the frame's
 :class:`~QVideo.lib.videotypes.FrameInfo`.  Leave it ``None`` otherwise.
 
+Deep frames
+~~~~~~~~~~~
+
+A camera whose pixels are counts of more than 8 bits, such as 12 bit counts
+in ``uint16``, says what black and white are in ``self.levels``, a tuple
+``(0, 4095)``; it stays ``None`` for ``uint8`` frames and for ``uint16``
+frames that fill the 16 bits.  The source copies it into the
+:class:`~QVideo.lib.videotypes.FrameInfo` of every frame, so set it when the
+pixel format changes (``QGenicamCamera`` and ``QVivaCamera`` do, in
+``set``) and not in ``read``.  The screen shows the frame between those
+levels, a filter pipeline scales it for the filters that are not ``deep``
+(see :ref:`extending-deep`), and a recording in HDF5 keeps them.
+
 Failing helpfully
 ~~~~~~~~~~~~~~~~~
 

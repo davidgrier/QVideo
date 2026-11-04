@@ -111,6 +111,68 @@ class TestPassThrough(PipelineTestCase):
         self.assertEqual(self.values(), [0, 1, 2])
 
 
+class _Deep(VideoFilter):
+    '''Keeps the scale of a deep frame; records what it was given.'''
+    deep = True
+
+    def __init__(self):
+        super().__init__()
+        self.seen = []
+
+    def __call__(self, image):
+        self.seen.append(image.dtype)
+        return image
+
+
+class _Shallow(_Deep):
+    deep = False
+
+
+class TestDeepFrames(PipelineTestCase):
+
+    def send(self):
+        frame = np.full((4, 4), 4095, np.uint16)
+        info = FrameInfo(0, 0., levels=(0, 4095))
+        self.source.newFrame.emit(frame, info)
+        self.assertTrue(wait_until(lambda: self.out))
+        return self.out[0][1]
+
+    def test_a_deep_filter_sees_the_counts_and_the_levels_stay(self):
+        deep = _Deep()
+        self.make([deep])
+        info = self.send()
+        self.assertEqual(deep.seen, [np.uint16])
+        self.assertEqual(info.levels, (0, 4095))
+
+    def test_other_filters_see_the_frame_scaled_to_8_bits(self):
+        shallow = _Shallow()
+        self.make([shallow])
+        info = self.send()
+        self.assertEqual(shallow.seen, [np.uint8])
+        self.assertEqual(self.values(), [255])
+        self.assertIsNone(info.levels)
+
+    def test_the_rest_of_the_pipeline_sees_8_bits(self):
+        deep, shallow, after = _Deep(), _Shallow(), _Deep()
+        self.make([deep, shallow, after])
+        self.send()
+        self.assertEqual(after.seen, [np.uint8])
+
+    def test_without_filters_the_frame_and_the_info_pass_unchanged(self):
+        self.make()
+        info = self.send()
+        self.assertEqual(self.values(), [4095])
+        self.assertEqual(info.levels, (0, 4095))
+
+    def test_8_bit_frames_are_left_alone_by_every_filter(self):
+        shallow = _Shallow()
+        self.make([shallow])
+        self.source.send(3)
+        self.assertTrue(wait_until(lambda: self.out))
+        self.assertEqual(shallow.seen, [np.uint8])
+        self.assertEqual(self.values(), [3])
+
+
 class TestFilters(PipelineTestCase):
 
     def test_filters_apply_in_order(self):

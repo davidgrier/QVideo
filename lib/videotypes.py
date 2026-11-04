@@ -31,11 +31,18 @@ class FrameInfo:
     hardware_timestamp : float | None
         The camera's own timestamp for the frame [s], in the camera's
         native clock, or ``None`` if the camera does not provide one.
+    levels : tuple[float, float] | None
+        The values of the pixels that are black and white, for a frame
+        whose pixels are counts of fewer bits than their type holds: a
+        12 bit camera in ``uint16`` has ``(0, 4095)``.  ``None`` means that
+        the whole range of the type of the frame is the range of the pixels
+        (every ``uint8`` frame).  The screen shows the frame accordingly.
     '''
 
     index: int
     timestamp: float
     hardware_timestamp: float | None = None
+    levels: tuple[float, float] | None = None
 
     @property
     def wallclock(self) -> float:

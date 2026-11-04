@@ -23,6 +23,7 @@ from QVideo.tests.signals import record
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 LOGGER = 'QVideo.lib.remote.camera'
+DEEP = 'QVideo.tests.remotecameras:DeepCamera'
 FAILING = 'QVideo.tests.remotecameras:FailingCamera'
 FLOATING = 'QVideo.tests.remotecameras:FloatCamera'
 STATES = 'QVideo.tests.remotecameras:StatesCamera'
@@ -89,6 +90,24 @@ class TestRemoteCamera(unittest.TestCase):
         self.assertEqual(frame.shape, (480, 640))
         self.assertEqual(frame.dtype, np.uint8)
         self.assertLess(frame.max(), 20)
+
+    def test_a_camera_without_levels_has_none(self):
+        for _ in range(10):
+            if self.camera.saferead()[0]:
+                break
+        self.assertIsNone(self.camera.levels)
+
+    def test_the_levels_cross_with_the_frame(self):
+        camera = QRemoteCamera(DEEP)
+        self.addCleanup(camera.close)
+        ok, frame = False, None
+        for _ in range(10):
+            ok, frame = camera.saferead()
+            if ok:
+                break
+        self.assertTrue(ok)
+        self.assertEqual((frame.dtype, int(frame.max())), (np.uint16, 4095))
+        self.assertEqual(camera.levels, (0., 4095.))
 
     def test_frame_is_a_copy(self):
         ok, first = self.camera.saferead()
@@ -184,7 +203,8 @@ class TestRemoteCamera(unittest.TestCase):
         self.camera._process.kill()
         self.camera._process.wait()
         self.assertTrue(wait_for(lambda: self.camera._ended))
-        notice = (1, 99, 0, 480, 640, 0, 0, float('nan'))
+        nan = float('nan')
+        notice = (1, 99, 0, 480, 640, 0, 0, nan, nan, nan)
         self.assertEqual(self.camera._copy(*notice), (False, None))
 
 

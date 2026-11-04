@@ -408,7 +408,7 @@ class QRemoteCamera(QCamera):
         return self._copy(*NOTICE.unpack(notice))
 
     def _copy(self, number, generation, slot, h, w, channels, code,
-              stamp) -> QCamera.CameraData:
+              stamp, black, white) -> QCamera.CameraData:
         '''Copy the frame that a notice announces out of the ring.
 
         Returns ``(False, None)`` if the worker has gone, or has
@@ -431,6 +431,7 @@ class QRemoteCamera(QCamera):
         if header[0] != number:             # overwritten while we copied
             return False, None
         self.hardwareTimestamp = None if np.isnan(stamp) else stamp
+        self.levels = None if np.isnan(black) else (black, white)
         return True, frame
 
     def __del__(self) -> None:

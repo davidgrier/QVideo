@@ -235,6 +235,29 @@ class TestWrite(unittest.TestCase):
 
 
 @unittest.skipIf(vg is None, 'viva-genicam is not installed')
+class TestLevels(unittest.TestCase):
+
+    def test_an_8_bit_format_has_no_levels(self):
+        with FakeCamera() as camera:
+            self.assertIsNone(camera.levels)
+
+    def test_a_12_bit_format_has_levels_that_follow_the_setting(self):
+        with FakeCamera() as camera:
+            camera.set('PixelFormat', 'Mono12Packed')
+            self.assertEqual(camera.levels, (0, 4095))
+            camera.set('PixelFormat', 'Mono8')
+            self.assertIsNone(camera.levels)
+
+    def test_the_levels_of_each_format(self):
+        levels = {'Mono8': None, 'Mono10': (0, 1023), 'Mono12p': (0, 4095),
+                  'Mono14': (0, 16383), 'Mono16': None, 'BayerRG12': (0, 4095),
+                  'RGB8Packed': None, None: None}
+        for name, want in levels.items():
+            with self.subTest(name=name):
+                self.assertEqual(MODULE._pixelLevels(name), want)
+
+
+@unittest.skipIf(vg is None, 'viva-genicam is not installed')
 class TestTree(unittest.TestCase):
 
     def test_the_tree_shows_the_curated_controls_the_camera_has(self):

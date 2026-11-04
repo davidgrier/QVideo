@@ -52,6 +52,8 @@ class QHDF5Reader(QVideoReader):
         if not self._length:
             return self._fail()
         self._framenumber = 0
+        levels = self._file.attrs.get('levels')
+        self.levels = None if levels is None else tuple(map(float, levels))
         try:
             self._height, self._width = self._frame(0).shape[0:2]
         except OSError:

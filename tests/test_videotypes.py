@@ -16,6 +16,13 @@ class TestFrameInfo(unittest.TestCase):
     def test_hardware_timestamp_defaults_to_none(self):
         self.assertIsNone(FrameInfo(0, 0.).hardware_timestamp)
 
+    def test_levels_default_to_none(self):
+        self.assertIsNone(FrameInfo(0, 0.).levels)
+
+    def test_levels_are_kept(self):
+        self.assertEqual(FrameInfo(0, 0., levels=(0, 4095)).levels,
+                         (0, 4095))
+
     def test_is_immutable(self):
         info = FrameInfo(0, 0.)
         with self.assertRaises(dataclasses.FrozenInstanceError):

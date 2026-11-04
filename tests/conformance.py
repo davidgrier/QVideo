@@ -138,6 +138,13 @@ class CameraConformance:
         stamp = self.camera.hardwareTimestamp
         self.assertTrue(stamp is None or isinstance(stamp, float))
 
+    def test_the_levels_are_none_or_a_black_and_a_white(self):
+        self.camera.read()
+        levels = self.camera.levels
+        if levels is not None:
+            black, white = levels
+            self.assertLess(black, white)
+
     # -- properties --------------------------------------------------
 
     def test_every_property_reads_as_its_declared_type(self):

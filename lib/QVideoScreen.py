@@ -87,6 +87,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         super().__init__(*args, size=size, **kwargs)
         self.framerate = framerate
         self._colormap: str | None = None
+        self._levels: tuple[float, float] | None = None
+        self._shownLevels: tuple[float, float] | None = None
         self._ready = True
         self._pending: Image | None = None
         self._overlays: list[object] = []
@@ -171,10 +173,14 @@ class QVideoScreen(GraphicsLayoutWidget):
     def levels(self) -> tuple[float, float] | None:
         '''The values that the display shows as black and as white.
 
-        ``None`` maps the whole range of the type of the frame (0 to 255 for
-        ``uint8``, 0 to 65535 for ``uint16``).  Set ``(0, 4095)`` to show
-        the counts of a 12 bit camera.  The levels apply to every frame that
-        follows, gray or color, until they are changed.
+        Setting levels fixes them for every frame that follows, gray or
+        color, until they are changed: ``(0, 4095)`` shows the counts of a
+        12 bit camera.  Setting ``None`` (the default) lets each frame bring
+        its own, in the :class:`~QVideo.lib.videotypes.FrameInfo` that
+        accompanies it (a deep camera sends its counts and their range);
+        a frame without levels fills the range of its type (0 to 255 for
+        ``uint8``, 0 to 65535 for ``uint16``).  The property reads the
+        levels that the display uses now.
 
         Raises
         ------
@@ -195,7 +201,20 @@ class QVideoScreen(GraphicsLayoutWidget):
                 raise ValueError(
                     f'the white level must be above the black level: {levels}')
             levels = (low, high)
+        self._levels = self._shownLevels = levels
         self.image.setLevels(levels)
+
+    def _followLevels(self, info: FrameInfo | None) -> None:
+        '''Show the frame between the levels that it comes with.
+
+        Levels that were set explicitly win.  The display is told only when
+        the levels change, because explicit levels make pyqtgraph rescale
+        every frame.
+        '''
+        wanted = self._levels or (info.levels if info else None)
+        if wanted != self._shownLevels:
+            self._shownLevels = wanted
+            self.image.setLevels(wanted)
 
     def _setready(self) -> None:
         '''Allow the next frame, and show the one that waited.'''
@@ -225,6 +244,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             Capture metadata for *image*, passed on with :attr:`newFrame`.
         '''
         if self._ready:
+            self._followLevels(info)
             self.image.setImage(image, autoLevels=False)
             self.newFrame.emit(
                 self._renderComposite() if self._composite else image, info)

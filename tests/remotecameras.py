@@ -11,8 +11,8 @@ import numpy as np
 from QVideo.cameras.Noise import QNoiseCamera
 from QVideo.lib.errors import QDriverError
 
-__all__ = ('FailingCamera FloatCamera StatesCamera ShrinkingCamera '
-           'RefusingCamera').split()
+__all__ = ('DeepCamera FailingCamera FloatCamera StatesCamera '
+           'ShrinkingCamera RefusingCamera').split()
 
 
 class RefusingCamera(QNoiseCamera):
@@ -21,6 +21,16 @@ class RefusingCamera(QNoiseCamera):
 
     def _initialize(self):
         raise QDriverError('no producer here')
+
+
+class DeepCamera(QNoiseCamera):
+
+    '''A camera of 12 bit counts in 16 bit words.'''
+
+    levels = (0, 4095)
+
+    def read(self):
+        return True, np.full((480, 640), 4095, np.uint16)
 
 
 class FailingCamera(QNoiseCamera):

@@ -11,6 +11,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **A deep camera's levels travel with its frames.**
+  `FrameInfo.levels` is the black and white of the pixels of a camera
+  whose counts have fewer bits than their type (`(0, 4095)` for 12 bit
+  counts in `uint16`), `None` otherwise.  `QCamera.levels` is where a
+  camera sets it; `QGenicamCamera` and `QVivaCamera` derive it from
+  `PixelFormat` when it can change (at opening and in `set`), not for
+  each frame, so a change of format reaches the display on the next frame.
+  `QRemoteCamera` carries it across the process boundary.  The screen
+  shows each frame between its levels (`screen.levels = ...` still wins;
+  `None` hands the decision back to the frames), and `QHDF5Writer` leaves
+  the levels in the file as an attribute that `QHDF5Reader` hands on.
+- **The filter pipeline scales a deep frame for the filters that cannot
+  take one.**  Before a filter that is not `deep` (`VideoFilter.deep`,
+  `False` by default) a `uint16` frame becomes `uint8` between its levels
+  (`imageops.to8bit`), and the frames after it have no levels.  `ROIFilter`
+  is `deep`: a crop keeps the counts.  Four filters raised on `uint16`
+  frames and others gave wrong scales, so each filter has to be tried on
+  counts before it is marked `deep`.
 - **`QVideoScreen.levels`**: the values that the display shows as black and
   as white.  The default, `None`, maps the whole range of the type of the
   frame, so a 12 bit frame in `uint16` looked 16 times too dark; set

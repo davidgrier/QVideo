@@ -20,6 +20,18 @@ def make_widget() -> QROIFilter:
     return QROIFilter(parent=None)
 
 
+class TestDeepFrames(unittest.TestCase):
+
+    def test_the_filter_is_deep(self):
+        self.assertTrue(make_filter().deep)
+
+    def test_a_12_bit_frame_is_cropped_with_its_counts(self):
+        frame = np.full((10, 10), 4095, np.uint16)
+        result = make_filter(w=4, h=3)(frame)
+        self.assertEqual((result.dtype, result.shape), (np.uint16, (3, 4)))
+        self.assertTrue((result == 4095).all())
+
+
 class TestROIFilterDefaults(unittest.TestCase):
 
     def test_default_x(self):

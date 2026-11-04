@@ -87,7 +87,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 
 
 from QVideo.tests.signals import record
-from QVideo.cameras.Genicam._camera import QGenicamCamera
+from QVideo.cameras.Genicam._camera import QGenicamCamera, _pixelLevels
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.errors import QDeviceError, QDriverError
 # Retrieve the module object directly — the `import ... as` form resolves
@@ -900,6 +900,46 @@ class TestSet(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # TestGet
 # ---------------------------------------------------------------------------
+
+class TestLevels(unittest.TestCase):
+
+    '''The range of the pixels, which follows the pixel format.'''
+
+    def levels_after(self, pixel_format):
+        feature = _make_feature(_IEnumeration, name='PixelFormat')
+        feature.to_string.return_value = pixel_format
+        cam, _, _ = make_camera_with_node(feature)
+        return cam, feature
+
+    def test_the_levels_of_each_format(self):
+        levels = {'Mono8': None, 'Mono10': (0, 1023), 'Mono12p': (0, 4095),
+                  'Mono14': (0, 16383), 'Mono16': None, 'BayerRG12': (0, 4095),
+                  'RGB8Packed': None, None: None}
+        for name, want in levels.items():
+            with self.subTest(name=name):
+                self.assertEqual(_pixelLevels(name), want)
+
+    def test_a_12_bit_format_has_levels_at_open(self):
+        cam, _ = self.levels_after('Mono12')
+        self.assertEqual(cam.levels, (0, 4095))
+
+    def test_an_8_bit_format_has_no_levels(self):
+        cam, _ = self.levels_after('Mono8')
+        self.assertIsNone(cam.levels)
+
+    def test_a_new_pixel_format_changes_the_levels(self):
+        cam, feature = self.levels_after('Mono8')
+        feature.to_string.return_value = 'Mono10p'
+        cam.set('PixelFormat', 'Mono10p')
+        self.assertEqual(cam.levels, (0, 1023))
+
+    def test_the_levels_are_not_read_from_the_camera_for_each_frame(self):
+        cam, feature = self.levels_after('Mono12')
+        feature.to_string.reset_mock()
+        for _ in range(3):
+            cam.read()
+        feature.to_string.assert_not_called()
+
 
 class TestGet(unittest.TestCase):
 

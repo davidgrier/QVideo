@@ -91,7 +91,16 @@ class VideoFilter(QtCore.QObject):
 
     The :meth:`__call__` operator chains :meth:`add` and :meth:`get`
     so that filters can be used as plain callables.
+
+    A filter works on 8 bit frames.  The filter pipeline hands it a
+    ``uint16`` frame (from a camera of more than 8 bits) only if the class
+    attribute :attr:`deep` is ``True``, which promises that the output has
+    the scale of the input: the same black and white levels.  Otherwise the
+    pipeline first scales the frame to ``uint8`` between its levels.
     '''
+
+    #: Whether the filter keeps the scale of a ``uint16`` frame.
+    deep: bool = False
 
     def __init__(self) -> None:
         super().__init__()

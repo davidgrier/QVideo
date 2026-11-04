@@ -101,7 +101,10 @@ class TestRemoteCamera(unittest.TestCase):
     def test_new_shape_is_announced_and_delivered(self):
         spy = record(self.camera.shapeChanged)
         self.camera.width = 320
-        self.assertEqual(len(spy), 1)
+        # The worker may announce the shape before it answers the request:
+        # the listener thread then emits the signal, which the main thread
+        # receives with its next events.  Either way it is emitted once.
+        self.assertTrue(wait_for(lambda: len(spy) == 1))
         self.assertEqual((spy[0][0].width(), spy[0][0].height()),
                          (320, 480))
         shape = None
@@ -114,6 +117,17 @@ class TestRemoteCamera(unittest.TestCase):
         for _ in range(5):
             self.camera.saferead()
         self.assertEqual(len(spy), 1)       # frames do not announce shapes
+
+    def test_a_shape_announced_by_the_listener_arrives_once(self):
+        spy = record(self.camera.shapeChanged)
+        thread = threading.Thread(target=self.camera._changed,
+                                  args=((320, 480),))
+        thread.start()
+        thread.join()
+        self.assertTrue(wait_for(lambda: len(spy) == 1))
+        self.camera._changed((320, 480))        # the answer to the request
+        app.processEvents()
+        self.assertEqual(len(spy), 1)
 
     def test_larger_frames_get_a_new_ring(self):
         self.camera.width = 1000
@@ -194,7 +208,7 @@ class TestOpenCVHardware(unittest.TestCase):
             small = camera.properties['resolution']['limits'][0]
             spy = record(camera.shapeChanged)
             camera.resolution = small
-            self.assertEqual(len(spy), 1)
+            self.assertTrue(wait_for(lambda: len(spy) == 1))
             w, h = camera.shape.width(), camera.shape.height()
             for _ in range(60):
                 ok, frame = camera.saferead()

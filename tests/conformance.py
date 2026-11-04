@@ -113,6 +113,12 @@ class CameraConformance:
         spy = record(camera.shapeChanged)
         camera.set('width', smaller)
         after = camera.shape
+        # A camera in another process announces the shape a moment after the
+        # call: wait for it, then wait for a second announcement that must
+        # not come.
+        if after != before:
+            until(lambda: spy)
+        until(lambda: False, 50)
         # The camera may refuse or adjust the width: then the shape that it
         # reports is what is announced, and nothing if it did not change.
         self.assertEqual(spy, [(after,)] if after != before else [])

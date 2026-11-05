@@ -373,6 +373,86 @@ scientific cameras that support a large range of sensor modes.
 
 ---
 
+## Help a user choose settings for speed  **Idea; thinking**
+
+Raising the frame rate of a GenICam camera is bewildering to a newcomer.
+The controls interact (exposure limits the frame period, the interface
+limits the throughput, binning and decimation change what ROI means, bit
+depth changes the rate), and the ways to the same speed differ in what they
+cost: field of view (ROI), resolution (binning, decimation), noise (gain,
+short exposure) and contrast.  Most users want to record faster at the
+quality they have now.  Some concessions can be predicted before anything
+is changed; some can be mitigated, but only by the user (more light allows
+less gain at a shorter exposure).  An optimum depends on the instrument.
+
+**Prior art, searched 2026-11-05.**  Nothing found gives advice on the
+trade-off; what exists is below.
+
+- *Calculators.*  Basler has an online Frame Rate Calculator (the user
+  gives a model and an ROI; it returns the maximum rate), documents that
+  height governs the rate on most cameras and width on some, and says to set
+  binning before the ROI on some models.  A camera reports its own answer
+  in `ResultingFrameRate` (`ResultingFrameRateAbs` on GigE).  Teledyne FLIR
+  publishes a table of rates per model, width, height, bit depth, and
+  sensor or ISP binning (`softwareservices.flir.com/<model>/latest/Model/
+  spec.html`), measured with `DeviceLinkThroughputLimit` at its maximum
+  and `AcquisitionFrameRate` disabled.  Hamamatsu explains in prose that an
+  sCMOS rate depends on the number of lines, not the width, that sCMOS
+  binning is digital and does not raise the rate (it does on CCDs), and that
+  the sub-array must be centered on the sensor.  I found no Hamamatsu
+  calculator (I had assumed there was one).
+- *Presets.*  Andor's OptAcquire (iXon) picks readout speed, vertical clock
+  speed and preamp gain for a named purpose: Fastest Frame Rate, Time
+  Lapse, Highest Dynamic Range, Photon Counting.  It is the closest thing
+  to guidance, but the combinations are fixed by the vendor, do not include
+  ROI or illumination, and do not adapt to a stated goal.
+- *Viewers* (pylon Viewer, SpinView, Vimba Viewer, IDS peak Cockpit) show
+  the rate and the bandwidth in use.  *Micro-Manager*, MATLAB's Image
+  Acquisition Toolbox and OpenCV expose the properties and nothing more.
+- *Language models on instruments.*  TEM Agent (arXiv 2511.08819) exposes
+  the microscope to a model through MCP tools, limited to predefined
+  actions, which protects the instrument; the authors found that words such
+  as tilt and rotation were read inconsistently across parameters, and that
+  a little domain knowledge in the prompt cured it.  A zero-shot
+  microscope for 2D materials (arXiv 2504.10281) calls the Zeiss software
+  through function schemas.  A patent describes a model that chooses
+  settings from a wish and repeats with feedback.  None is about a camera's
+  speed and noise.
+
+**What QVideo could add that a vendor tool cannot:** it reads back what the
+camera did and can measure the outcome from a few frames: the achieved rate,
+the mean level and saturation, the noise (standard deviation of a still
+region, or of the difference of two frames).  Each option can then carry
+measured concessions, not guesses: "400 fps, field of view 25 %, noise
++30 %, mean level 60 % of full scale".
+
+Two layers, the first needs no model:
+
+1. **A deterministic explorer** for a stated goal ("at least 500 fps",
+   "keep the full field of view", "keep the noise"): it knows which nodes
+   exist (`Height`, `Width`, binning and decimation selectors, `PixelFormat`,
+   `ExposureTime`, `Gain`, the throughput limit, `AcquisitionFrameRate*`),
+   tries combinations in a safe order, reads `ResultingFrameRate` after each,
+   measures the image, and returns a table of options and their concessions.
+   Even this alone ("Fast" with an explanation) would help a newcomer.
+2. **A language model that chooses and explains.**  It sees the table and
+   the user's goal, asks what the user can change (light, field of view),
+   proposes, and calls `set()` through a short list of tools after the user
+   approves.  Never a change that the user has not seen; read back what the
+   camera did and report the difference.  The SDK is an optional extra, the
+   network and a key may be missing in the lab, and no frame leaves the
+   machine (only property names, limits and measured numbers).
+
+- [ ] Try layer 1 by hand on the Blackfly S: the rate against `Height`,
+  `Width`, binning, bit depth and exposure, with `ResultingFrameRate`, to
+  see how much of a table is the same for every camera.
+- [ ] Decide where it lives: a recipe in `demos/`, not the framework.
+- [ ] A measure of image quality that a few frames can give, and how far
+  it can be trusted (noise from a frame difference; saturation fraction).
+- [ ] Ask collaborators with other cameras which compromises they make.
+
+---
+
 ## New Camera Backends
 
 QVideo currently supports OpenCV, GenICam (Basler, FLIR, IDS, MATRIX VISION,

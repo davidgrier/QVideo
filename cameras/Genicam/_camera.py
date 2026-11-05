@@ -374,7 +374,7 @@ class QGenicamCamera(QCamera):
         '''
         return gentl.findProducer(*filenames)
 
-    def _startAcquisition(self, root: IValue) -> set[str]:
+    def _startAcquisition(self, root: IValue) -> 'set[str]':
         '''Start acquisition and return the features that it makes read-only.
 
         These are the features whose access mode differs before and after

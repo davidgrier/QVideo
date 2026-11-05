@@ -1,5 +1,6 @@
 '''Unit tests for QOpenCVReader.'''
 import unittest
+import cv2
 import numpy as np
 from unittest.mock import patch, MagicMock
 from qtpy import QtWidgets
@@ -130,6 +131,26 @@ class TestQOpenCVReaderRead(unittest.TestCase):
         self.assertEqual(reader.framenumber, 0)
 
 
+class TestQOpenCVReaderDeep(unittest.TestCase):
+
+    def test_8_bit_file_is_opened_with_conversion(self):
+        cap = make_mock_capture()
+        with patch('cv2.VideoCapture', return_value=cap) as mock_cls:
+            QOpenCVReader('test.avi')
+        self.assertEqual(mock_cls.call_args_list[-1][0], ('test.avi',))
+
+    def test_16_bit_file_is_opened_without_conversion(self):
+        deep = np.zeros((480, 640), dtype=np.uint16)
+        cap = make_mock_capture(frame=deep)
+        with patch('cv2.VideoCapture', return_value=cap) as mock_cls:
+            reader = QOpenCVReader('test.avi')
+        args = mock_cls.call_args_list[-1][0]
+        self.assertEqual(args[1], cv2.CAP_FFMPEG)
+        self.assertEqual(args[2], [cv2.CAP_PROP_CONVERT_RGB, 0])
+        ok, frame = reader.read()
+        self.assertEqual(frame.dtype, np.uint16)
+
+
 class TestQOpenCVReaderSeek(unittest.TestCase):
 
     def test_seek_calls_capture_set(self):
@@ -159,6 +180,7 @@ class TestQOpenCVReaderClose(unittest.TestCase):
     def test_close_releases_capture(self):
         reader = make_reader()
         cap = reader._reader
+        cap.release.reset_mock()  # the probe released the same mock
         reader.close()
         cap.release.assert_called_once()
 

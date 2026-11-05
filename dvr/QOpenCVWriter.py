@@ -4,6 +4,7 @@ from QVideo.lib.videotypes import Image, FrameInfo
 from pathlib import Path
 import cv2
 import logging
+import numpy as np
 from typing import ClassVar
 
 
@@ -28,6 +29,11 @@ class QOpenCVWriter(QVideoWriter):
     bypasses probing.  The lossless codecs reproduce every pixel; HuffYUV
     is used only for color frames, because it changes the values of gray
     frames and is several times faster than FFV1 only for color.
+
+    Gray ``uint16`` frames (12-bit and deeper cameras) are written without
+    loss by FFV1 when OpenCV is 4.7 or newer and has FFmpeg; no other
+    codec is tried unless *codec* names one.  :class:`QOpenCVReader` reads
+    them back as ``uint16``.  ``.mp4`` files cannot hold them.
 
     Parameters
     ----------
@@ -65,6 +71,7 @@ class QOpenCVWriter(QVideoWriter):
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         suffix = Path(self.filename).suffix
+        self._explicitCodec = bool(codec)
         self._codecs = (codec,) if codec else self.CODEC_MAP.get(suffix, ())
         self._colorCodecs = (self._codecs if codec else
                              self.COLOR_CODEC_MAP.get(suffix, self._codecs))
@@ -90,12 +97,14 @@ class QOpenCVWriter(QVideoWriter):
             ``False`` otherwise.
         '''
         color = (frame.ndim == 3)
-        self._writer = self._getWriter(frame.shape, color)
+        deep = (frame.ndim == 2 and frame.dtype == np.uint16)
+        self._writer = self._getWriter(frame.shape, color, deep)
         return self._writer is not None
 
     def _getWriter(self,
                    shape: tuple[int, ...],
-                   color: bool) -> cv2.VideoWriter | None:
+                   color: bool,
+                   deep: bool = False) -> cv2.VideoWriter | None:
         '''Probe codecs in preference order and return the first that opens.
 
         Parameters
@@ -104,6 +113,8 @@ class QOpenCVWriter(QVideoWriter):
             Frame shape ``(height, width)`` used to configure the writer.
         color : bool
             ``True`` for color frames, ``False`` for grayscale.
+        deep : bool
+            ``True`` for 16-bit gray frames.
 
         Returns
         -------
@@ -111,10 +122,19 @@ class QOpenCVWriter(QVideoWriter):
             An open ``cv2.VideoWriter``, or ``None`` if no codec succeeded.
         '''
         h, w = shape[:2]
-        for codec in (self._colorCodecs if color else self._codecs):
+        codecs = self._colorCodecs if color else self._codecs
+        if deep and not self._explicitCodec:
+            codecs = tuple(c for c in codecs if c == 'FFV1')
+        for codec in codecs:
             fourcc = cv2.VideoWriter_fourcc(*codec)
-            writer = cv2.VideoWriter(
-                self.filename, fourcc, self.fps, (w, h), color)
+            if deep:
+                writer = cv2.VideoWriter(
+                    self.filename, cv2.CAP_FFMPEG, fourcc, self.fps,
+                    (w, h), [cv2.VIDEOWRITER_PROP_IS_COLOR, 0,
+                             cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_16U])
+            else:
+                writer = cv2.VideoWriter(
+                    self.filename, fourcc, self.fps, (w, h), color)
             if writer.isOpened():
                 logger.debug(f'Opened {self.filename!r} with codec {codec!r}')
                 return writer

@@ -209,6 +209,46 @@ class TestQOpenCVWriterOpen(unittest.TestCase):
         self.assertEqual(used_fourcc, cv2.VideoWriter_fourcc(*'XVID'))
 
 
+_FRAME_DEEP = np.zeros((480, 640), dtype=np.uint16)
+
+
+class TestQOpenCVWriterDeep(unittest.TestCase):
+    '''Gray uint16 frames use FFV1 and the depth parameter.'''
+
+    def test_deep_frame_asks_for_16_bit_depth(self):
+        writer = make_writer('test.mkv')
+        with patch('cv2.VideoWriter') as mock_cls:
+            mock_cls.return_value = make_mock_vw(True)
+            self.assertTrue(writer.open(_FRAME_DEEP))
+        args = mock_cls.call_args[0]
+        self.assertEqual(args[1], cv2.CAP_FFMPEG)
+        self.assertEqual(args[2], cv2.VideoWriter_fourcc(*'FFV1'))
+        self.assertEqual(args[5], [cv2.VIDEOWRITER_PROP_IS_COLOR, 0,
+                                   cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_16U])
+
+    def test_deep_frame_tries_only_ffv1(self):
+        writer = make_writer('test.mp4')
+        with patch('cv2.VideoWriter') as mock_cls:
+            mock_cls.return_value = make_mock_vw(False)
+            with self.assertLogs('QVideo.dvr.QOpenCVWriter', 'WARNING'):
+                self.assertFalse(writer.open(_FRAME_DEEP))
+        mock_cls.assert_not_called()
+
+    def test_explicit_codec_is_honored_for_deep_frames(self):
+        writer = make_writer('test.avi', codec='FFV1')
+        with patch('cv2.VideoWriter') as mock_cls:
+            mock_cls.return_value = make_mock_vw(True)
+            writer.open(_FRAME_DEEP)
+        self.assertEqual(mock_cls.call_count, 1)
+
+    def test_8_bit_frames_do_not_use_the_depth_parameter(self):
+        writer = make_writer('test.mkv')
+        with patch('cv2.VideoWriter') as mock_cls:
+            mock_cls.return_value = make_mock_vw(True)
+            writer.open(_FRAME_GRAY)
+        self.assertEqual(len(mock_cls.call_args[0]), 5)
+
+
 class TestQOpenCVWriterLossless(unittest.TestCase):
     '''Whatever codec is chosen, the frames must come back unchanged.'''
 
@@ -243,6 +283,16 @@ class TestQOpenCVWriterLossless(unittest.TestCase):
             frames = self.frames((48, 64))
             for sent, back in zip(frames, self.roundtrip(frames, suffix)):
                 np.testing.assert_array_equal(sent, back[..., 0])
+
+    def test_deep_frames_come_back_unchanged(self):
+        rng = np.random.default_rng(1)
+        frames = [rng.integers(0, 65536, (48, 64), dtype=np.uint16)
+                  for _ in range(4)]
+        for suffix in ('.avi', '.mkv'):
+            back = self.roundtrip(frames, suffix)
+            for sent, got in zip(frames, back):
+                self.assertEqual(got.dtype, np.uint16)
+                np.testing.assert_array_equal(sent, got)
 
 
 class TestQOpenCVWriterInternalWrite(unittest.TestCase):

@@ -494,21 +494,37 @@ while streaming included.
   lookup-table filters do not, and four raise.  Each needs the scale of its
   parameters and a test on counts.
 - [ ] **Say it for the other consumers of `levels`.**  `QSnapshot` refuses
-  `uint16`; the `.mp4` and OpenCV `.avi` writers drop to 8 bits silently;
+  `uint16`; the `.mp4` writers drop to 8 bits silently (gray `.avi` and `.mkv` are
+  16 bit in both PyAV and OpenCV since 4.16.0);
   the headless `Camera()` proxy and `QFilterRack.__call__` apply filters
   without the pipeline's scaling; a levels control in `QCamcorder`.
 - [ ] **Walk the pipeline.**  Each stage that assumes `uint8` needs a
   look: `QVideoScreen` (the levels and the color map), the filters (most
   of the OpenCV calls take `uint16`, but the lookup tables of
   `GammaFilter` and `ExposureFilter` do not), the overlays, `QSnapshot`,
-  the DVR writers (HDF5 keeps any dtype; PyAV and OpenCV files are
-  8 bit), and the ring of `QRemoteCamera` (`CODES` lists the dtypes it
+  the DVR writers (HDF5 keeps any dtype; gray `.avi` and `.mkv` keep
+  16 bit but not the levels; `.mp4` is 8 bit), and the ring of `QRemoteCamera` (`CODES` lists the dtypes it
   carries).
 - [ ] **QHOT.**  The hologram and the trap overlay assume the video that
   the screen shows; check what the normalization of a hologram does with
   16 bit input.
 - [ ] **Tests** with the fake camera of viva-genicam, if it can make
   Mono12 or Mono16, and with the noise camera at `uint16`.
+- [ ] **A contrast filter for deep frames (an idea, 2026-11-05).**  One
+  `deep` filter with a method selector, for viewing: percentile stretch
+  (1st to 99th, smoothed over frames so that the display does not flicker),
+  global equalization and CLAHE, all on the counts (OpenCV's CLAHE takes
+  `uint16`), then `uint8` out and no levels.  The point is precision: a
+  filter that is not `deep` gets the 8 bit copy of the pipeline, so CLAHE
+  there works on 256 levels of what had 4096 and bands.  Cost: a 4096-bin
+  `cv2.calcHist` and a lookup table are cheap; percentiles of the whole
+  frame at 145 frames a second are not, so estimate the limits from a
+  subsample every few frames.  It changes the counts, so it must sit after
+  every quantitative stage, and a recorder on its output gets 8 bits (record
+  the raw source to keep 16).  **Undecided: it is better to adjust the
+  camera (exposure, gain, light) for a clear image than to repair it
+  afterwards.**  Weigh that before building; the same effect might come
+  from an auto-levels mode of `QVideoScreen.levels`, with no filter.
 
 ---
 

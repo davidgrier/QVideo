@@ -1050,12 +1050,58 @@ ordered by value vs. effort:
 - **Anomaly/novelty detection** — a small autoencoder-style ONNX
   model flagging frames that deviate from a learned baseline; pairs
   with the hot-plug / long-duration-recording themes above.
-- **Foundational: shared `DNNFilter`/`QDNNOverlay` base class**
-  — wraps `cv2.dnn.Net` (model loading, `blobFromImage`
-  preprocessing, `ENGINE_AUTO` selection, a postprocessing hook).
-  Every item above needs the same boilerplate; one abstraction
-  avoids duplicating it across filters.  Worth building this first if
-  more than one DNN-backed filter is planned.
+- **Foundational: a shared helper, `lib/dnn.py`** (design, 2026-11-06;
+  replaces the `DNNFilter`/`QDNNOverlay` base-class pair proposed
+  earlier).  See "Design: filter, overlay or both" below.  Build this
+  first, with the YOLO test case as its first user.
+
+### Design: filter, overlay or both  **Decided 2026-11-06**
+
+Where a model goes depends on what it outputs.  A filter transforms
+frames; an analysis produces data (the same ground on which a trackpy
+filter and a YOLO filter were rejected).
+
+- **Image in, image out: a `VideoFilter`**, in the pipeline between the
+  source and its consumers.  Super-resolution, learned segmentation (an
+  option next to `QForegroundEstimator`), depth maps, learned denoising.
+  These models are slow, so they subclass `AsyncVideoFilter`, which
+  already drops frames.
+- **Image in, structured data out: an overlay** (`QOverlayWidget`), drawn
+  by the screen and emitted as a signal for `QAnalysisWriter`.  YOLO
+  detection, faces and landmarks (`FaceDetectorYN`), OCR, captions,
+  anomaly scores.
+- **The YOLO test case is neither.**  It stays `QYoloOverlay`; the change
+  is inside `_YoloWorker`, which accepts either detector (`ultralytics` or
+  an ONNX model through `cv2.dnn`), with a backend choice in the widget.
+- **No base-class pair.**  What the two kinds share is not a filter or an
+  overlay: a plain, non-Qt helper in `lib/dnn.py` (like `imageops`) that
+  loads the model, calls `blobFromImage`, picks the engine, runs the
+  forward pass and offers a postprocessing hook.  A filter and an overlay
+  worker each use it.  No parallel hierarchies, no Qt in the model code,
+  and it is testable without a GUI with a tiny ONNX model.  It takes the
+  engine or backend as a parameter, `ENGINE_AUTO` by default.
+- A model can produce both (a segmentation network gives a mask and
+  regions).  Start with the output that is needed; the overlay worker may
+  call the same helper later.
+
+First step: `lib/dnn.py` and the `cv2.dnn` backend of `_YoloWorker`, which
+exercises the helper on a real model.
+
+**Speed on CUDA machines.**  The standard `opencv-python` wheels are
+CPU-only: `DNN_BACKEND_CUDA` needs OpenCV built from source with CUDA, so
+an NVIDIA GPU gives no speedup with the pip wheel.  `torch` wheels bundle
+CUDA (and Apple MPS), so `ultralytics` stays as the opt-in accelerated
+backend.  For YOLO-class models a GPU is typically several times faster
+than the CPU (not measured here); for small models such as `yolo11n` at a
+camera's frame rate, the copy of each frame to the GPU can cancel it.
+`cv2.dnn` has no Metal path on a Mac and no GPU option on a Raspberry Pi;
+the CPU is enough for small models there.
+
+- [ ] **Test ONNX Runtime through OpenCV 5** (`cv2.dnn.ENGINE_ORT`) on a
+      CUDA machine: `onnxruntime-gpu` wheels ship with CUDA, and the CoreML
+      provider covers Apple hardware.  If it works with the pip wheel, it
+      gives GPU inference with neither `torch` nor a source build.  Not
+      yet checked whether the engine is usable that way.
 
 ### Test case: torch-free YOLO via `cv2.dnn`
 

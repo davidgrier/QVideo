@@ -407,6 +407,11 @@ the tests.  A class-level list or dict is a tuple or a `ClassVar`.
 Follow the PyQt camelCase convention for all instance attributes on Qt classes:
 - Use `camelCase` for private attributes (e.g. `self._ignoreSync`,
   `self._isOpen`, `self._colorCapable`).
-- Use `snake_case` only for pure-Python, non-Qt classes (e.g. `VideoFilter`
-  subclasses).
+- Use `snake_case` only for pure-Python, non-Qt classes, and for the public
+  parameters of filters (`sigma_s`, `block_size`, `low_sigma`): those are
+  constructor keywords that keep the names of OpenCV and the literature.
+  `VideoFilter` is a `QObject`, so its private attributes are `camelCase`.
+- A public attribute that is a plain compound word of long standing
+  (`QVideoWriter.framenumber`) keeps its name; it is documented API, and the
+  signal `frameNumber` (an event, not a count) is a different thing.
 - When renaming, update both the source file and all corresponding test files.

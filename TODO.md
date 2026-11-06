@@ -19,11 +19,19 @@ together.  CI now enforces `SIM` (but `SIM905`), `PERF`, `PIE`, `RUF012`,
       and `run` overrides, which inherit theirs).  The `lambda: saver.wait()`
       in `dvr/QCircularDVRWidget.py` stays: `destroyed` passes the object,
       which `wait` must not receive.
-- [ ] Wide signatures: `QRemoteCamera.__init__` (8 arguments),
-      `QOpenCVCamera` (7), `QPicamera` (6), the trackpy overlay (6).
-- [ ] `QVideoWriter.framenumber` is not camelCase, but the writer has a
-      signal `frameNumber`; renaming needs a decision about both.  A few
-      attributes of filters are snake_case.
+- [x] Decided 2026-11-06, no change: wide signatures (`QRemoteCamera`,
+      `QOpenCVCamera`, `QPicamera`, the trackpy overlay).  Every argument is
+      a keyword-only option that stands alone; a config object would add a
+      layer and lengthen the call sites.
+- [x] Decided 2026-11-06, no change: `QVideoWriter.framenumber` stays.  It
+      is documented public API on the writer, the readers, `QPlayer` and
+      `QDVRWidget`, and it is a count, where the signal `frameNumber` is an
+      event.  A rename would be breaking for little gain.
+- [x] Decided 2026-11-06, no change: the snake_case public parameters of
+      filters (`sigma_s`, `block_size`, `low_sigma` and so on) are
+      constructor keywords with the names of OpenCV and the literature.
+      `CLAUDE.md` says so now; it had said that `VideoFilter` is not a Qt
+      class, which it is.
 
 Things noticed, not changed:
 

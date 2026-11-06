@@ -9,6 +9,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **A Performance page and a script that makes its tables.**
+  `benchmarks/benchmark.py` measures the frames per second that reach the
+  GUI thread from a synthetic camera, with the delay (median and 99th
+  percentile), CPU and dropped frames; the time that each filter needs for
+  a frame; and the speed and compression of each file writer.  `camera -c`
+  (or any camera flag) measures a camera that is attached, and `--csv`
+  saves the tables.  `docs/performance.rst` has the results for one machine
+  and what is not measured.
+
 ### Fixed
 
 - **Importing `QVideo.overlays.yolo` no longer slows OpenCV.**  `ultralytics`

@@ -1093,8 +1093,9 @@ exercises the helper on a real model.
 the YOLOv8-and-later layout `(1, 4 + nc, N)`), tests with a tiny ONNX
 file written by hand (`tests/onnxfile.py`), docs, and `YoloDemo`
 (`--model x.onnx --imgsz N --names a,b --backend ...`).  **Not yet done:** run
-it on a real Ultralytics export (this machine has no `ultralytics`, `onnx`
-or model; the decoding is tested on synthetic outputs only), measure the
+it on a real Ultralytics export (the dev machine has `ultralytics` and
+`demos/yolo26n.pt` but not the `onnx` package that the export needs; the
+decoding is tested on synthetic outputs only), measure the
 speed against `ultralytics` on the CPU, and the filters (super-resolution,
 learned segmentation, depth), which use `DNN` the same way.
 

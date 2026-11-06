@@ -16,7 +16,9 @@ extend.
 
 The rest of `lib` is what these classes need to work together: the thread
 that reads a camera (`QVideoSource`), the display (`QVideoScreen`), the
-filter pipeline and rack, the frame types and the errors.
+filter pipeline and rack, the frame types and the errors.  `imageops` and `dnn` are plain helpers
+without Qt: `dnn.DNN` runs a network with OpenCV for the filters and
+overlays that need one.
 
 **A file belongs here if it is a base class, or the machinery of one:**
 the classes that applications subclass, and what every application

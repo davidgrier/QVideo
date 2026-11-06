@@ -31,6 +31,12 @@ Image operations
 .. automodule:: QVideo.lib.imageops
    :members:
 
+Neural networks
+---------------
+
+.. automodule:: QVideo.lib.dnn
+   :members:
+
 FrameInfo
 ---------
 

@@ -1087,6 +1087,17 @@ filter and a YOLO filter were rejected).
 First step: `lib/dnn.py` and the `cv2.dnn` backend of `_YoloWorker`, which
 exercises the helper on a real model.
 
+**Done 2026-11-06 (uncommitted until reviewed):** `lib/dnn.py` (`DNN`,
+`letterbox`, `prepare`), the OpenCV backend of `_YoloWorker`
+(`backend='auto'|'ultralytics'|'opencv'`, `imgsz`, `names`; `decode()` for
+the YOLOv8-and-later layout `(1, 4 + nc, N)`), tests with a tiny ONNX
+file written by hand (`tests/onnxfile.py`), docs, and `YoloDemo`
+(`--model x.onnx --imgsz N --names a,b --backend ...`).  **Not yet done:** run
+it on a real Ultralytics export (this machine has no `ultralytics`, `onnx`
+or model; the decoding is tested on synthetic outputs only), measure the
+speed against `ultralytics` on the CPU, and the filters (super-resolution,
+learned segmentation, depth), which use `DNN` the same way.
+
 **Speed on CUDA machines.**  The standard `opencv-python` wheels are
 CPU-only: `DNN_BACKEND_CUDA` needs OpenCV built from source with CUDA, so
 an NVIDIA GPU gives no speedup with the pip wheel.  `torch` wheels bundle

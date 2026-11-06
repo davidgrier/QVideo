@@ -39,7 +39,8 @@ trackpydemo
     Particle positions found by trackpy, drawn over the live video.
 
 yolodemo
-    The same recipe with YOLO object detection.
+    The same recipe with YOLO object detection; ``--model x.onnx`` runs an
+    ONNX model with OpenCV, with no torch.
 
 filterrackdemo
     A :class:`~QVideo.QCamcorder.QCamcorder` whose frames pass through an
@@ -88,10 +89,10 @@ If no flag is given, a noise camera is used as a fallback.
     -m [cameraID]   MATRIX VISION mvGenTLProducer (universal GenICam, not FLIR)
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
     -v [cameraID]   Allied Vision VimbaX camera
-    -h              Show help and exit
     --log-level L   Show log messages of level L and above (DEBUG, INFO,
                     WARNING, ERROR, CRITICAL; default WARNING)
     --version       Show the version of QVideo and exit
+    -h              Show help and exit
 
 ``cameraID`` is an optional integer index (default ``0``) used when
 multiple cameras of the same type are connected.  The flags are mutually

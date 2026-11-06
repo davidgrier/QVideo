@@ -60,6 +60,42 @@ frame.  Detected bounding boxes and class labels are rendered in real time by
 adjusted from the widget; any model supported by the Ultralytics library can
 be selected at construction time.
 
+Two things can run the network.  ``ultralytics`` loads a ``.pt`` file and
+uses a GPU if ``torch`` finds one.  OpenCV loads an ``.onnx`` file and
+needs nothing but QVideo, but it runs on the CPU: the ``opencv-python``
+wheels have no CUDA support.  The default (``backend='auto'``) picks OpenCV
+for a file that ends in ``.onnx`` and ``ultralytics`` for anything else::
+
+    widget = QYoloWidget(parent, model_name='yolo11n.onnx')   # OpenCV
+    widget = QYoloWidget(parent, model_name='yolo11n.pt')     # ultralytics
+
+*Preparing an ONNX file.*  QVideo does not ship a model.  Ultralytics
+licenses its pretrained weights, and files exported from them, under the
+AGPL-3.0, which can bind the program that uses them; read
+`their terms <https://www.ultralytics.com/license>`_, or use a model
+whose license suits your work.  To export a model that you may use, on a
+machine that has ``ultralytics`` (``torch`` is needed for this step only,
+not to run the file)::
+
+    from ultralytics import YOLO
+    YOLO('my_weights.pt').export(format='onnx', imgsz=640)
+
+The reader expects the export of a YOLOv8 or later detection model, whose
+output has the shape ``(1, 4 + classes, N)``: the center and size of each
+box, then a score for each class.  It does not read the older YOLOv5 layout
+with a separate objectness, nor an export that has non-maximum suppression
+in the network.  Give ``imgsz`` the size of the export, and ``names`` the
+names of your classes (a list), unless the network has the 80 classes of
+COCO, whose names are the default.  Without names, a detection is labeled
+with the number of its class.
+
+.. note::
+
+    This path has been tested against synthetic network outputs and a
+    network written by hand, not against an export from Ultralytics.  If an
+    export does not read, ``QYoloWidget`` logs the reason and shows no
+    boxes.
+
 .. automodule:: QVideo.overlays.yolo
    :members:
    :exclude-members: QYoloOverlay

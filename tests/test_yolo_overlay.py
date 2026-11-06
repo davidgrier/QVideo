@@ -1,5 +1,7 @@
 '''Unit tests for the YOLO object-detection overlay.'''
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
@@ -11,8 +13,10 @@ app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 from QVideo.tests.signals import record
 import QVideo.overlays.yolo as _mod  # noqa: E402
 from QVideo.overlays.yolo import (  # noqa: E402
-    _YoloWorker, QYoloOverlay, QYoloWidget,
+    _YoloWorker, QYoloOverlay, QYoloWidget, decode, COCO_NAMES,
 )
+from QVideo.lib.dnn import DNN  # noqa: E402
+from QVideo.tests.onnxfile import writeIdentity  # noqa: E402
 
 # Replace module-level YOLO with a mock so tests never touch real ultralytics.
 mock_YOLO_cls = MagicMock()
@@ -204,6 +208,166 @@ class TestQYoloWidgetConfidence(unittest.TestCase):
         w = _make_widget()
         w._setConfidence(0.6)
         self.assertAlmostEqual(w._worker.confidence, 0.6)
+
+
+# ---------------------------------------------------------------------------
+# the OpenCV backend
+# ---------------------------------------------------------------------------
+
+def _output(*rows) -> np.ndarray:
+    '''Return a network output (1, 4 + classes, N) from rows of
+    cx, cy, w, h and the scores of the classes.'''
+    return np.array(rows, dtype=np.float32).T[None]
+
+
+class TestDecode(unittest.TestCase):
+
+    def test_a_candidate_becomes_a_box(self):
+        out = _output((50, 40, 20, 10, 0.9, 0.1))
+        boxes, scores, classes = decode(out, 0.25)
+        np.testing.assert_allclose(boxes, [[40, 35, 60, 45]])
+        np.testing.assert_allclose(scores, [0.9], rtol=1e-6)
+        self.assertEqual(classes.tolist(), [0])
+
+    def test_the_class_is_the_best_score(self):
+        out = _output((50, 40, 20, 10, 0.1, 0.8))
+        self.assertEqual(decode(out, 0.25)[2].tolist(), [1])
+
+    def test_low_scores_are_dropped(self):
+        out = _output((50, 40, 20, 10, 0.1, 0.2))
+        boxes, scores, classes = decode(out, 0.25)
+        self.assertEqual((len(boxes), len(scores), len(classes)), (0, 0, 0))
+
+    def test_overlapping_boxes_are_merged_and_the_best_kept(self):
+        out = _output((50, 50, 20, 20, 0.6, 0.), (51, 50, 20, 20, 0.9, 0.),
+                      (200, 200, 20, 20, 0.5, 0.))
+        boxes, scores, _ = decode(out, 0.25, iou=0.45)
+        self.assertEqual(len(boxes), 2)
+        self.assertAlmostEqual(float(scores.max()), 0.9, places=5)
+
+    def test_boxes_return_to_the_pixels_of_the_image(self):
+        out = _output((32, 32, 16, 16, 0.9, 0.))
+        boxes, _, _ = decode(out, 0.25, scale=0.5, pad=(0., 16.))
+        np.testing.assert_allclose(boxes, [[48, 16, 80, 48]])
+
+    def test_boxes_are_clipped_to_the_image(self):
+        out = _output((5, 5, 20, 20, 0.9, 0.))
+        boxes, _, _ = decode(out, 0.25, shape=(100, 100))
+        np.testing.assert_allclose(boxes, [[0, 0, 15, 15]])
+
+    def test_the_transposed_layout_is_accepted(self):
+        out = _output((50, 40, 20, 10, 0.9, 0.1)).transpose(0, 2, 1)
+        boxes = decode(out, 0.25, transposed=True)[0]
+        np.testing.assert_allclose(boxes, [[40, 35, 60, 45]])
+
+
+class TestOpenCVWorker(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.dir = tempfile.TemporaryDirectory()
+        cls.path = str(writeIdentity(Path(cls.dir.name) / 'yolo.onnx',
+                                     (1, 3, 64, 64)))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dir.cleanup()
+
+    def setUp(self):
+        mock_YOLO_cls.reset_mock()
+
+    def _worker(self, **kwargs):
+        return _YoloWorker(model_name=self.path, imgsz=64, **kwargs)
+
+    def test_auto_chooses_opencv_for_an_onnx_file(self):
+        worker = self._worker()
+        self.assertEqual(worker.backend, 'opencv')
+        self.assertIsInstance(worker.model, DNN)
+        mock_YOLO_cls.assert_not_called()
+
+    def test_auto_chooses_ultralytics_for_a_pt_file(self):
+        self.assertEqual(_YoloWorker().backend, 'ultralytics')
+
+    def test_opencv_does_not_need_ultralytics(self):
+        with patch.object(_mod, 'YOLO', None):
+            self.assertEqual(self._worker().backend, 'opencv')
+
+    def test_an_unknown_backend_raises(self):
+        with self.assertRaises(ValueError):
+            _YoloWorker(backend='tensorflow')
+
+    def test_a_missing_onnx_file_raises(self):
+        with self.assertRaises(FileNotFoundError):
+            _YoloWorker(model_name='nothing.onnx')
+
+    def test_detections_are_emitted_in_image_pixels(self):
+        worker = self._worker()
+        out = _output((32, 32, 16, 16, 0.9, 0.1))
+        image = np.zeros((64, 128, 3), np.uint8)    # scale 0.5, pad y 16
+        spy = record(worker.newData)
+        with patch.object(DNN, 'forward', return_value=[out]):
+            worker.process(image)
+        df = spy[0][0]
+        self.assertEqual(list(df.columns), ['x1', 'y1', 'x2', 'y2',
+                                            'confidence', 'class', 'label'])
+        self.assertEqual(df[['x1', 'y1', 'x2', 'y2']].values.tolist(),
+                         [[48., 16., 80., 48.]])
+        self.assertEqual(df['class'].tolist(), [0])
+
+    def test_no_detection_emits_none(self):
+        worker = self._worker()
+        spy = record(worker.newData)
+        with patch.object(DNN, 'forward',
+                          return_value=[_output((32, 32, 16, 16, 0., 0.))]):
+            worker.process(np.zeros((64, 64, 3), np.uint8))
+        self.assertIsNone(spy[0][0])
+
+    def test_names_label_the_classes(self):
+        worker = self._worker(names=['cell', 'bead'])
+        out = _output((32, 32, 16, 16, 0.1, 0.9))
+        spy = record(worker.newData)
+        with patch.object(DNN, 'forward', return_value=[out]):
+            worker.process(np.zeros((64, 64, 3), np.uint8))
+        self.assertEqual(spy[0][0]['label'].tolist(), ['bead'])
+
+    def test_unnamed_classes_are_labeled_by_number(self):
+        worker = self._worker()
+        out = _output((32, 32, 16, 16, 0.1, 0.9))
+        spy = record(worker.newData)
+        with patch.object(DNN, 'forward', return_value=[out]):
+            worker.process(np.zeros((64, 64, 3), np.uint8))
+        self.assertEqual(spy[0][0]['label'].tolist(), ['1'])
+
+    def test_a_network_of_80_classes_gets_the_coco_names(self):
+        worker = self._worker()
+        row = [32, 32, 16, 16] + [0.] * 80
+        row[4 + 16] = 0.9
+        out = _output(tuple(row))
+        spy = record(worker.newData)
+        with patch.object(DNN, 'forward', return_value=[out]):
+            worker.process(np.zeros((64, 64, 3), np.uint8))
+        self.assertEqual(spy[0][0]['label'].tolist(), [COCO_NAMES[16]])
+        self.assertEqual(COCO_NAMES[16], 'dog')
+
+    def test_a_failure_emits_none(self):
+        worker = self._worker()
+        spy = record(worker.newData)
+        with patch.object(DNN, 'forward', side_effect=RuntimeError('x')):
+            worker.process(np.zeros((64, 64, 3), np.uint8))
+        self.assertIsNone(spy[0][0])
+
+    def test_the_real_network_runs(self):
+        # The identity network returns the input image, not detections:
+        # the output has the wrong layout, which is a failure that the
+        # worker survives.
+        worker = self._worker()
+        spy = record(worker.newData)
+        worker.process(np.zeros((64, 64, 3), np.uint8))
+        self.assertEqual(len(spy), 1)
+
+    def test_the_widget_passes_the_backend_on(self):
+        w = _make_widget(model_name=self.path, imgsz=64)
+        self.assertEqual(w._worker.backend, 'opencv')
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [4.17.0] — 2026-11-06
+
 ### Added
 
 - **A deep camera's levels travel with its frames.**
@@ -35,6 +39,69 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `screen.levels = (0, 4095)` to show it.  An explicit range makes
   pyqtgraph rescale each frame, which cost about 7 ms for a `uint16` frame
   of 1280 by 1024 (2 ms without).
+- **`lib.dnn`: a helper that runs a neural network with OpenCV.**
+  `DNN(path, size=...)` loads an ONNX file (or anything else that
+  `cv2.dnn.readNet` reads), turns a frame into the input of the network
+  and `forward()` returns the outputs; `letterbox()` and `prepare()` do the
+  usual preprocessing.  It has no Qt in it, so a filter, an overlay worker
+  or a script can use it, and `engine`, `backend` and `target` pass on the
+  choice of the DNN engine.  The standard `opencv-python` wheels run on the
+  CPU only.
+- **`QYoloOverlay` runs an ONNX model with OpenCV, with no `torch`.**
+  `QYoloWidget` takes `backend` (`'auto'`, `'ultralytics'` or `'opencv'`),
+  `imgsz` and `names`; `'auto'` uses OpenCV for a file that ends in
+  `.onnx` and `ultralytics` for anything else, so existing code is
+  unchanged.  `yolo.decode()` reads the output of an Ultralytics YOLOv8 or
+  later detection export, `(1, 4 + classes, N)`, and applies non-maximum
+  suppression.  The documentation says how to export a model and warns that
+  Ultralytics licenses its weights, and files exported from them, under the
+  AGPL-3.0; QVideo ships no model.  **Tested on synthetic outputs and a
+  network written by hand, not yet on an export from Ultralytics.**
+- **The YOLO overlay labels each box with its class**, on by default, in a
+  tab that keeps its size on the screen as the video is zoomed.  The Labels
+  check box, `labels=False` and `--no-labels` turn it off.
+- **`YoloDemo` takes the model from the command line:** `--model`,
+  `--backend`, `--imgsz`, `--names` and `--no-labels`.
+- **`--version` and `--log-level` for every demo and `QCamcorder`.**
+  `--version` prints the version and ends; `--log-level` (`DEBUG` to
+  `CRITICAL`, in either case) sets the level of the `QVideo` loggers and
+  adds a handler that writes to the standard error stream, so that `INFO`
+  and `DEBUG` messages appear.  Without the option, logging is as it was.
+- **`--help` says what the program is.**  The description is the first
+  paragraph of the docstring of the widget, the camera options are in a
+  group of their own, and examples and the address of the documentation end
+  the message.  `lib._launch.argumentParser(widget, examples)` builds the
+  parser for a program of your own.
+- **`QOpenCVWriter` and `QOpenCVReader` handle 16-bit gray video.**  The
+  writer uses FFV1 with a depth of 16 bits (OpenCV 4.7 or newer, with
+  FFmpeg) and tries no lossy codec for such frames; the reader returns
+  `uint16` frames for such files.  `.mp4` cannot hold them.
+- **Documentation:** a table of the camera backends with their flags and
+  what each needs; the DVR file formats and what a recorder needs from its
+  source; recording the composite of the screen and its overlays.  A
+  second Blackfly S (BFS-U3-04S2M-CS) delivered 500 frames a second at
+  720 by 540 through Viva.
+
+### Changed
+
+- **GenICam cameras start with gamma 1 and off.**  The FLIR and Basler
+  trees enabled gamma without setting it, and the cameras power up with
+  their own value (0.8 on FLIR).  `QGenicamTree` and `QVivaTree` now apply
+  `Gamma=1.0` and `GammaEnable=False`, the vendor trees build on those
+  defaults, and `GammaEnable` is one of the standard controls, so that the
+  setting is visible.  A program that wants a gamma sets it, or restores
+  the settings of its own.  VimbaX has no tree defaults and is unchanged.
+- **`interactive.live_view` reads and encodes each frame in a worker
+  thread**, so that the kernel of a notebook no longer waits for the
+  camera.
+- **Release note:** 4.16.0 was bumped in `pyproject.toml` but never tagged
+  or published; its changes are in this release.
+
+### Fixed
+
+- **`QGenicamCamera` imported with a `TypeError` on Python before 3.14.**
+  The method `set()` shadows the builtin in the class body, so the
+  annotation `set[str]` raised; it is quoted now.
 
 ---
 

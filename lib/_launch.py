@@ -21,7 +21,12 @@ one call to it.  What happens, in order:
 If the camera cannot open, or the widget needs a package that is not
 installed, the splash screen closes and the program ends with the message.
 '''
+import inspect
+import logging
 import sys
+import textwrap
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 # qtpy comes first: it selects the Qt binding (QT_API), and pyqtgraph then
@@ -139,6 +144,76 @@ class _Launcher:
         self.screen.close()
 
 
+def summary(widget: type) -> str | None:
+    '''Return the first paragraph of the docstring of *widget*, on one line.
+
+    Every demo and application starts its class docstring with a summary,
+    which ``--help`` shows.  ``None`` if the class has no docstring.
+    '''
+    doc = inspect.getdoc(widget)
+    return ' '.join(doc.split('\n\n')[0].split()) if doc else None
+
+
+#: The documentation, which the epilog of ``--help`` names.
+DOCUMENTATION = 'https://qvideo.readthedocs.io'
+
+
+def argumentParser(widget: type,
+                   examples: Sequence[tuple[str, str]] = ()
+                   ) -> ArgumentParser:
+    '''Return the parser for the command line of the program of *widget*.
+
+    It describes the program with the summary of the class, has the camera
+    options of :func:`~QVideo.cameras.chooser.camera_parser` in groups of
+    their own, and ends with examples and the address of the documentation.
+
+    Parameters
+    ----------
+    widget : type
+        Class of the central widget; its docstring describes the program.
+    examples : sequence of (str, str)
+        Arguments of the program and what they do, for the examples at the
+        end.  The camera flags are always shown.
+    '''
+    examples = (('', 'a simulated camera, with no hardware'),
+                ('-c', 'the first OpenCV camera'),
+                ('-g 1', 'the second GenICam camera (viva-genicam)'),
+                *examples)
+    lines = [f'  {what}:\n    %(prog)s {arguments}'.rstrip()
+             for arguments, what in examples]
+    description = summary(widget)
+    parser = ArgumentParser(
+        description=textwrap.fill(description, 78) if description else None,
+        epilog='examples:\n' + '\n'.join(lines)
+        + f'\n\ndocumentation: {DOCUMENTATION}',
+        formatter_class=RawDescriptionHelpFormatter)
+    return chooser.camera_parser(parser)
+
+
+def configureLogging(level: str | None) -> None:
+    '''Show the log messages of QVideo at *level* and above.
+
+    The ``QVideo`` logger gets the level and, if it has none, a handler that
+    writes to the standard error stream, so that ``INFO`` and ``DEBUG``
+    messages appear (Python shows only warnings and errors by default).
+    ``None`` leaves logging as it is.
+
+    Parameters
+    ----------
+    level : str or None
+        A level name such as ``'DEBUG'``.
+    '''
+    if level is None:
+        return
+    logger = logging.getLogger('QVideo')
+    logger.setLevel(level)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(
+            '%(levelname)s %(name)s: %(message)s'))
+        logger.addHandler(handler)
+
+
 def launch(widget: type[QtWidgets.QWidget],
            title: str | None = None,
            **kwargs) -> None:
@@ -146,9 +221,9 @@ def launch(widget: type[QtWidgets.QWidget],
 
     The camera backend comes from the command-line flags added by
     :func:`~QVideo.cameras.chooser.camera_parser` (a noise camera if there are
-    none).  A splash screen appears at once and says what is happening; the
-    camera opens on a thread of its own, so that a slow camera never freezes
-    it.  The widget then becomes the central widget of the
+    none), which also reads ``--version`` and ``--log-level``.  A splash
+    screen appears at once and says what is happening; the camera opens on a
+XX
     :class:`~qtpy.QtWidgets.QMainWindow`, which is how applications embed
     QVideo components, so that sizing and shutdown are exercised in that
     setting.  The window has a status bar that shows the messages of a widget
@@ -180,7 +255,8 @@ def launch(widget: type[QtWidgets.QWidget],
     # -h and a bad value end the program here, on the main thread: argparse
     # exits by raising SystemExit, which would only end the opener's thread
     # and leave the splash screen waiting for a camera.
-    chooser.camera_parser().parse_known_args()
+    args, _ = argumentParser(widget).parse_known_args()
+    configureLogging(getattr(args, 'log_level', None))
     launcher = _Launcher(pg.mkQApp(title), widget, title, kwargs)
     launcher.run()
     if launcher.problems:

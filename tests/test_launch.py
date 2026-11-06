@@ -1,4 +1,5 @@
 '''Unit tests for launch() and the applications that call it.'''
+import logging
 import os
 import runpy
 import subprocess
@@ -239,15 +240,99 @@ class TestCommandLine(unittest.TestCase):
         self.assertIn('usage:', done.stdout)
         self.assertNotIn('QBasicTimer', done.stderr)
 
+    def test_version_prints_and_ends(self):
+        done = self.launch('--version')
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertRegex(done.stdout, r'^QVideo \S+\n$')
+
+    def test_a_bad_log_level_ends_with_a_message(self):
+        done = self.launch('--log-level', 'LOUD')
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertIn('invalid choice', done.stderr)
+
+    def test_help_says_what_the_program_is(self):
+        done = self.launch('-h')
+        self.assertIn('A widget combining a video screen', done.stdout)
+
+    def test_help_has_groups_examples_and_the_documentation(self):
+        out = self.launch('-h').stdout
+        for text in ('camera selection:', 'general:', 'examples:',
+                     'a simulated camera, with no hardware:',
+                     'qvideo.readthedocs.io'):
+            with self.subTest(text=text):
+                self.assertIn(text, out)
+
     def test_a_bad_value_ends_with_a_message(self):
         done = self.launch('-c', 'abc')
         self.assertEqual(done.returncode, 2, done.stderr)
         self.assertIn('invalid int value', done.stderr)
 
 
+class TestSummary(unittest.TestCase):
+
+    def test_the_first_paragraph_is_one_line(self):
+        class Widget:
+            '''Live video that wraps
+            over two lines.
+
+            More that is not in the summary.
+            '''
+        self.assertEqual(launch_module.summary(Widget),
+                         'Live video that wraps over two lines.')
+
+    def test_a_class_without_a_docstring_has_none(self):
+        class Widget:
+            pass
+        self.assertIsNone(launch_module.summary(Widget))
+
+    def test_every_demo_has_a_summary(self):
+        from QVideo import demos
+        for name in ('Demo', 'FilterDemo', 'FilterRackDemo', 'HistogramDemo',
+                     'UniformityDemo', 'CircularDemo', 'ROIDemo',
+                     'TrackpyDemo', 'YoloDemo', 'CompositeDemo',
+                     'CombinedDemo'):
+            with self.subTest(demo=name):
+                self.assertTrue(launch_module.summary(getattr(demos, name)))
+
+
+class TestConfigureLogging(unittest.TestCase):
+
+    def setUp(self):
+        self.logger = logging.getLogger('QVideo')
+        self.saved = (self.logger.level, list(self.logger.handlers))
+        self.logger.handlers = []
+        self.addCleanup(self.restore)
+
+    def restore(self):
+        self.logger.setLevel(self.saved[0])
+        self.logger.handlers = self.saved[1]
+
+    def test_none_leaves_logging_alone(self):
+        from QVideo.lib._launch import configureLogging
+        configureLogging(None)
+        self.assertEqual(self.logger.level, self.saved[0])
+        self.assertEqual(self.logger.handlers, [])
+
+    def test_the_level_is_set_and_a_handler_added(self):
+        from QVideo.lib._launch import configureLogging
+        configureLogging('DEBUG')
+        self.assertEqual(self.logger.level, logging.DEBUG)
+        self.assertEqual(len(self.logger.handlers), 1)
+
+    def test_an_existing_handler_is_kept_and_not_doubled(self):
+        from QVideo.lib._launch import configureLogging
+        mine = logging.NullHandler()
+        self.logger.addHandler(mine)
+        configureLogging('INFO')
+        configureLogging('INFO')
+        self.assertEqual(self.logger.handlers, [mine])
+        self.assertEqual(self.logger.level, logging.INFO)
+
+
 def run_as_script(name):
     '''Run module *name* as ``python -m`` would; return the launch mock.'''
     with patch('QVideo.lib.launch') as mock_launch, \
+            patch.object(sys, 'argv', [name]), \
             warnings.catch_warnings():
         warnings.simplefilter('ignore', RuntimeWarning)
         runpy.run_module(name, run_name='__main__')

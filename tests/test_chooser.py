@@ -1,6 +1,8 @@
 '''Unit tests for chooser.py.'''
 import sys
 import threading
+import contextlib
+import io
 import unittest
 from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
@@ -166,6 +168,37 @@ class TestCameraParser(unittest.TestCase):
         camera_parser(parser)  # second call should not raise
         args, _ = parser.parse_known_args(['-c'])
         self.assertTrue(args.opencv)
+
+    def test_log_level_is_absent_unless_given(self):
+        args, _ = camera_parser().parse_known_args([])
+        self.assertFalse(hasattr(args, 'log_level'))
+
+    def test_log_level_accepts_either_case(self):
+        for text in ('debug', 'DEBUG', 'Debug'):
+            with self.subTest(text=text):
+                args, _ = camera_parser().parse_known_args(
+                    ['--log-level', text])
+                self.assertEqual(args.log_level, 'DEBUG')
+
+    def test_log_level_rejects_other_values(self):
+        with self.assertRaises(SystemExit):
+            with contextlib.redirect_stderr(io.StringIO()):
+                camera_parser().parse_known_args(['--log-level', 'LOUD'])
+
+    def test_version_prints_the_version_and_ends(self):
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as raised, \
+                contextlib.redirect_stdout(out):
+            camera_parser().parse_known_args(['--version'])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertRegex(out.getvalue(), r'^QVideo \S+\n$')
+
+    def test_options_are_not_duplicated_on_an_existing_parser(self):
+        parser = ArgumentParser()
+        camera_parser(parser)
+        camera_parser(parser)  # a second call should not raise
+        args, _ = parser.parse_known_args(['--log-level', 'info'])
+        self.assertEqual(args.log_level, 'INFO')
 
     def test_does_not_duplicate_cameraID_on_existing_parser(self):
         parser = ArgumentParser()

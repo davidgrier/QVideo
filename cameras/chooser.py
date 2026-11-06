@@ -51,14 +51,15 @@ import contextlib
 import importlib
 import logging
 import sys
-from argparse import ArgumentParser
+from argparse import SUPPRESS, ArgumentParser
 from collections.abc import Iterator
+from importlib.metadata import PackageNotFoundError, version
 from typing import NamedTuple
 
 from QVideo.lib import QCamera, QCameraTree
 from QVideo.lib._qapp import ensure_qapp
 
-__all__ = ['BACKENDS', 'available_cameras', 'camera_class',
+__all__ = ['BACKENDS', 'LOG_LEVELS', 'available_cameras', 'camera_class',
            'camera_parser', 'choose_camera', 'create_camera', 'discover',
            'make_tree', 'open_camera', 'open_first', 'tree_class',
            'uses_worker', 'working']
@@ -403,14 +404,26 @@ def available_cameras() -> list[tuple[str, int, str]]:
 # The command line
 # ----------------------------------------------------------------------
 
+#: The values of ``--log-level``, from most to least talkative.
+LOG_LEVELS = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+
+
+def _version() -> str:
+    '''Return the version of the installed QVideo, or ``'unknown'``.'''
+    try:
+        return version('QVideo')
+    except PackageNotFoundError:  # a bare source checkout
+        return 'unknown'
+
+
 def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     '''Add the camera options to an argument parser.
 
     Adds, to *parser* or to a new one, a group of mutually exclusive
     camera flags (one for every backend of :data:`BACKENDS` that has a
-    flag: ``python QCamcorder.py --help`` lists them) and an optional
-    positional ``cameraID``.  An option that the parser has already is left
-    as it is.
+    flag: ``python QCamcorder.py --help`` lists them), an optional
+    positional ``cameraID``, ``--version`` and ``--log-level``.  An option
+    that the parser has already is left as it is.
 
     Parameters
     ----------
@@ -427,17 +440,39 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
             most one.
         ``cameraID``
             Which camera of the backend (default 0).
+        ``--version``
+            Prints the version of QVideo and ends the program.
+        ``--log-level``
+            One of :data:`LOG_LEVELS`, in either case.  The attribute
+            ``log_level`` is absent if the option is not given, so that
+            a program that configures logging itself is left alone;
+            :func:`~QVideo.lib.launch` applies it.
     '''
     parser = parser or ArgumentParser()
     # An option that the parser has already has a default that is not None.
+    camera = parser.add_argument_group(
+        'camera selection', 'At most one flag; with none, a simulated '
+        'camera runs.')
     if parser.get_default(next(iter(_CAMERAS))) is None:
-        group = parser.add_mutually_exclusive_group()
+        group = camera.add_mutually_exclusive_group()
         for dest, entry in _CAMERAS.items():
             group.add_argument(entry.flag, dest=dest, help=entry.help,
                                action='store_true')
     if parser.get_default('cameraID') is None:
-        parser.add_argument('cameraID', nargs='?', type=int, default=0,
-                            help='camera ID number (default: %(default)d)')
+        camera.add_argument('cameraID', nargs='?', type=int, default=0,
+                            help='which camera of the backend, when '
+                            'several are connected (default: %(default)d)')
+    general = parser.add_argument_group('general')
+    if parser.get_default('log_level') is None:
+        general.add_argument('--log-level', dest='log_level',
+                             type=str.upper, choices=LOG_LEVELS,
+                             default=SUPPRESS, metavar='LEVEL',
+                             help='show log messages of this level and '
+                             'above: ' + ', '.join(LOG_LEVELS)
+                             + ' (default: WARNING)')
+    if '--version' not in parser._option_string_actions:
+        general.add_argument('--version', action='version',
+                             version=f'QVideo {_version()}')
     return parser
 
 

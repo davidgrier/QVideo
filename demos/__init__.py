@@ -89,6 +89,9 @@ If no flag is given, a noise camera is used as a fallback.
     -p [cameraID]   Raspberry Pi camera module (requires picamera2)
     -v [cameraID]   Allied Vision VimbaX camera
     -h              Show help and exit
+    --log-level L   Show log messages of level L and above (DEBUG, INFO,
+                    WARNING, ERROR, CRITICAL; default WARNING)
+    --version       Show the version of QVideo and exit
 
 ``cameraID`` is an optional integer index (default ``0``) used when
 multiple cameras of the same type are connected.  The flags are mutually

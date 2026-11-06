@@ -19,6 +19,7 @@ class QMVTree(QGenicamTree):
     _cameraClass = QMVCamera
     _DEFAULT_CONTROLS = QGenicamTree.STANDARD_CONTROLS
     _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
+        QGenicamTree._DEFAULT_SETTINGS,
         ExposureAuto='Off',
         GainAuto='Off',
     )

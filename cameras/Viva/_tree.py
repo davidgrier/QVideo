@@ -1,4 +1,6 @@
 '''Camera property tree for GenICam cameras driven by viva-genicam.'''
+from typing import ClassVar
+
 from qtpy import QtCore
 from pyqtgraph.parametertree import Parameter
 
@@ -39,6 +41,7 @@ class QVivaTree(QCameraTree):
         'ExposureAuto',
         'Gain',
         'GainAuto',
+        'GammaEnable',
         'Gamma',
         'BlackLevel',
         'PixelFormat',
@@ -48,12 +51,24 @@ class QVivaTree(QCameraTree):
         'OffsetY',
     )
 
+    #: Settings that the tree applies to the camera, those that the camera
+    #: has.  Gamma is 1 and off, as scientific applications expect.
+    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
+        Gamma=1.0,
+        GammaEnable=False,
+    )
+
     def __init__(self, *args,
                  camera: Source | None = None,
                  cameraID: int = 0,
                  controls: list[str] | None = None,
                  **kwargs) -> None:
         camera = camera or QVivaCamera(cameraID=cameraID)
+        settings = {key: value
+                    for key, value in self._DEFAULT_SETTINGS.items()
+                    if key in camera.properties}
+        if settings:
+            camera.settings = settings
         controls = controls or self._DEFAULT_CONTROLS
         description = [entry for entry in self._defaultDescription(camera)
                        if entry['name'] in controls]

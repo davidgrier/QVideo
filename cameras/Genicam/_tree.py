@@ -62,6 +62,7 @@ class QGenicamTree(QCameraTree):
         'ExposureAuto',
         'Gain',
         'GainAuto',
+        'GammaEnable',
         'Gamma',
         'BlackLevel',
         'Width',
@@ -78,8 +79,13 @@ class QGenicamTree(QCameraTree):
     _DEFAULT_CONTROLS: tuple[str, ...] | None = None
 
     #: Settings that the tree applies to the camera, those that the camera
-    #: has, so that the controls start in a known state.
-    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = {}
+    #: has, so that the controls start in a known state.  Gamma is 1 and
+    #: off, as scientific applications expect; a vendor tree that sets its
+    #: own defaults starts from these.
+    _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
+        Gamma=1.0,
+        GammaEnable=False,
+    )
 
     #: Parameters that one poll of the camera reads.
     _pollChunk = 32

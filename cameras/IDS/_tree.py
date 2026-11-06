@@ -19,6 +19,7 @@ class QIDSTree(QGenicamTree):
     _cameraClass = QIDSCamera
     _DEFAULT_CONTROLS = QGenicamTree.STANDARD_CONTROLS
     _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
+        QGenicamTree._DEFAULT_SETTINGS,
         AcquisitionFrameRateEnable=True,
         ExposureAuto='Off',
         GainAuto='Off',

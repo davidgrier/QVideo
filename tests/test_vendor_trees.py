@@ -260,6 +260,18 @@ class TestVendorDefaults(unittest.TestCase):
             QFlirTree(camera=cam)
         prop.assert_called_once_with({name: 1})
 
+    def test_every_genicam_tree_starts_with_gamma_one_and_off(self):
+        from QVideo.cameras.IDS import QIDSTree
+        from QVideo.cameras.MV import QMVTree
+        for tree in (QFlirTree, QBaslerTree, QIDSTree, QMVTree):
+            with self.subTest(tree=tree.__name__):
+                settings = tree._DEFAULT_SETTINGS
+                self.assertEqual(settings['Gamma'], 1.0)
+                self.assertIs(settings['GammaEnable'], False)
+
+    def test_gamma_enable_is_a_standard_control(self):
+        self.assertIn('GammaEnable', QGenicamTree.STANDARD_CONTROLS)
+
     def test_a_tree_with_no_settings_leaves_the_camera_alone(self):
         cam = make_camera(QVimbaXCamera)
         self.addCleanup(cam.close)

@@ -19,9 +19,9 @@ class QBaslerTree(QGenicamTree):
     _cameraClass = QBaslerCamera
     _DEFAULT_CONTROLS = QGenicamTree.STANDARD_CONTROLS
     _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
+        QGenicamTree._DEFAULT_SETTINGS,
         AcquisitionFrameRateEnable=True,
         BlackLevelSelector='All',
-        GammaEnable=True,
         ExposureAuto='Off',
         GainAuto='Off',
     )

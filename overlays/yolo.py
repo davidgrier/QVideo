@@ -38,12 +38,36 @@ logger = logging.getLogger(__name__)
 __all__ = ['QYoloOverlay', 'QYoloWidget', 'decode', 'COCO_NAMES']
 
 
+#: The ``ultralytics`` class ``YOLO``, once :func:`_loadYOLO` has imported it.
+YOLO = None
+#: Why the import of ``ultralytics`` failed, if it did.
 _importError = None
-try:
-    from ultralytics import YOLO
-except Exception as ex:  # a broken installation raises more than ImportError
-    YOLO = None
-    _importError = ex
+
+
+def _loadYOLO():
+    '''Import ``ultralytics`` on first use and return its ``YOLO`` class.
+
+    The import is not done when this module is, because it has a side
+    effect on the whole program: ``ultralytics`` calls
+    ``cv2.setNumThreads(0)`` when it is imported, which leaves OpenCV with
+    one thread, and the ONNX model that OpenCV runs then takes four times
+    as long.  The number of threads is put back after the import, which
+    inference does not need changed.  Returns ``None`` if the import fails;
+    :data:`_importError` says why.
+    '''
+    global YOLO, _importError
+    if YOLO is not None:
+        return YOLO
+    threads = cv2.getNumThreads()
+    try:
+        from ultralytics import YOLO as cls
+    except Exception as ex:  # a broken install raises more than ImportError
+        _importError = ex
+        return None
+    finally:
+        cv2.setNumThreads(threads)
+    YOLO = cls
+    return cls
 
 
 #: The names of the 80 classes of the COCO data set, which the pretrained
@@ -198,6 +222,7 @@ class _YoloWorker(QtCore.QObject):
         if backend == 'opencv':
             self.model = DNN(model_name, size=(imgsz, imgsz))
             return
+        YOLO = _loadYOLO()
         if YOLO is None:
             raise ImportError(
                 'ultralytics is required for QYoloWidget.'

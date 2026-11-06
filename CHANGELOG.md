@@ -9,6 +9,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **Importing `QVideo.overlays.yolo` no longer slows OpenCV.**  `ultralytics`
+  calls `cv2.setNumThreads(0)` when it is imported, which left the whole
+  program with one OpenCV thread and made an ONNX model run four times as
+  long (98 ms a frame, against 27 ms).  The module imported it at the top;
+  it is imported now when a `.pt` model is first loaded, and the number of
+  threads is put back after the import.  The OpenCV backend has now been
+  tested on a real export (`yolo11n`): it finds the same objects as
+  `ultralytics`.
+
 ---
 
 ## [4.17.0] — 2026-11-06

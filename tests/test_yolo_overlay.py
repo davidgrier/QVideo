@@ -94,13 +94,13 @@ class TestYoloWorkerInit(unittest.TestCase):
                 _YoloWorker()
 
     def test_raises_when_yolo_missing(self):
-        with patch.object(_mod, 'YOLO', None):
+        with patch.object(_mod, '_loadYOLO', return_value=None):
             with self.assertRaises(ImportError):
                 _YoloWorker()
 
     def test_the_error_names_why_the_import_failed(self):
         broken = OSError('libtorch could not be loaded')
-        with patch.object(_mod, 'YOLO', None), \
+        with patch.object(_mod, '_loadYOLO', return_value=None), \
                 patch.object(_mod, '_importError', broken):
             with self.assertRaises(ImportError) as caught:
                 _YoloWorker()
@@ -343,6 +343,46 @@ class TestDecode(unittest.TestCase):
         np.testing.assert_allclose(boxes, [[40, 35, 60, 45]])
 
 
+class TestLoadYOLO(unittest.TestCase):
+
+    def test_importing_the_module_does_not_import_ultralytics(self):
+        import subprocess
+        import sys
+        code = ('import sys\n'
+                'import QVideo.overlays.yolo\n'
+                'print("ultralytics" in sys.modules)')
+        done = subprocess.run([sys.executable, '-c', code],
+                              capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.stdout.strip(), 'False', done.stderr)
+
+    def test_the_threads_of_opencv_are_put_back(self):
+        import sys
+        import types
+        fake = types.ModuleType('ultralytics')
+        fake.YOLO = MagicMock()
+
+        def side_effect_of_the_import(count):
+            calls.append(count)
+
+        calls = []
+        with patch.dict(sys.modules, {'ultralytics': fake}), \
+                patch.object(_mod, 'YOLO', None), \
+                patch.object(_mod.cv2, 'getNumThreads', return_value=7), \
+                patch.object(_mod.cv2, 'setNumThreads',
+                             side_effect=side_effect_of_the_import):
+            cls = _mod._loadYOLO()
+            _mod.YOLO = None            # do not leave the fake behind
+        self.assertIs(cls, fake.YOLO)
+        self.assertEqual(calls, [7])
+
+    def test_a_failed_import_is_reported_not_raised(self):
+        import sys
+        with patch.dict(sys.modules, {'ultralytics': None}), \
+                patch.object(_mod, 'YOLO', None):
+            self.assertIsNone(_mod._loadYOLO())
+        self.assertIsNotNone(_mod._importError)
+
+
 class TestOpenCVWorker(unittest.TestCase):
 
     @classmethod
@@ -371,8 +411,10 @@ class TestOpenCVWorker(unittest.TestCase):
         self.assertEqual(_YoloWorker().backend, 'ultralytics')
 
     def test_opencv_does_not_need_ultralytics(self):
-        with patch.object(_mod, 'YOLO', None):
+        with patch.object(_mod, 'YOLO', None), \
+                patch.object(_mod, '_loadYOLO') as load:
             self.assertEqual(self._worker().backend, 'opencv')
+        load.assert_not_called()
 
     def test_an_unknown_backend_raises(self):
         with self.assertRaises(ValueError):

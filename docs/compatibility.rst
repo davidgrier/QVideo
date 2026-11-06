@@ -202,7 +202,9 @@ new in NumPy 2, but they are tested only with NumPy 2.
 
 *Workaround.*  Use the Viva backend (``-g``), which releases the lock: a
 counter in the main thread ran at 97 to 99 % of its free-running speed while
-Viva streamed a Blackfly S at 170 frames a second.
+Viva streamed a Blackfly S at 170 frames a second.  A second camera, a
+Blackfly S BFS-U3-04S2M-CS, delivered 500 frames a second at 720 x 540
+through Viva.
 
 For a backend that uses Harvesters, QVideo runs the camera in a process of
 its own, which has an interpreter lock of its own, whenever the chooser opens

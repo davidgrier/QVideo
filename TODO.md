@@ -119,10 +119,14 @@ nodes.  The window of `QCamcorder` alone was too noisy to use (120 and 138).
 
 ---
 
-## Capture that does not freeze the process (GenICam and the interpreter lock)
+## Capture that does not freeze the process (GenICam and the interpreter lock)  **Resolved 2026-11-06**
 
-**Active.**  `QRemoteCamera` (option 1 below) is written and in `lib/`; what
-remains is the Flir gate, the GenICam tree and Windows (see the checklist).
+**Resolved 2026-11-06** for both the official GenICam stack (Harvesters)
+and viva-genicam: capture no longer freezes the GUI.  The text below is the
+record of the problem and of how it was approached.  Its unchecked items
+were written before the resolution; review each one and delete it, or keep
+it as a separate item, the next time this file is tidied.
+
 The `genicam` binding that harvesters uses holds the Python
 interpreter lock while it waits for a frame and while it reads nodes, so a
 streaming Flir camera freezes every other thread of the process: in QHOT the

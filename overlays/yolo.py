@@ -284,21 +284,41 @@ class QYoloOverlay(pg.GraphicsObject):
     '''Bounding-box overlay that marks YOLO detected objects.
 
     A :class:`pyqtgraph.GraphicsObject` that draws axis-aligned
-    bounding boxes over detected objects.  Add it to a
+    bounding boxes over detected objects, each with the label of its class
+    on a tab at its upper left corner.  Add it to a
     :class:`~QVideo.lib.QVideoScreen.QVideoScreen` via
     ``screen.addOverlay(widget.overlay)``.
+
+    Parameters
+    ----------
+    labels : bool
+        Draw the labels.  Default: ``True``.
     '''
 
-    def __init__(self) -> None:
+    #: Height of the text of a label [pixels of the screen].
+    labelSize = 12
+
+    def __init__(self, labels: bool = True) -> None:
         super().__init__()
         self._features = None
+        self._labels = labels
         self._pen = pg.mkPen('g', width=2)
+
+    @property
+    def labels(self) -> bool:
+        '''Whether the boxes are labeled.'''
+        return self._labels
+
+    @labels.setter
+    def labels(self, value: bool) -> None:
+        self._labels = bool(value)
+        self.update()
 
     def boundingRect(self) -> QtCore.QRectF:
         return QtCore.QRectF(0, 0, 10000, 10000)
 
     def paint(self, painter: QtGui.QPainter, option, widget=None) -> None:
-        '''Draw bounding boxes for all current detections.'''
+        '''Draw bounding boxes, and their labels, for all detections.'''
         if self._features is None or len(self._features) == 0:
             return
         painter.setPen(self._pen)
@@ -307,6 +327,42 @@ class QYoloOverlay(pg.GraphicsObject):
                 row['x1'], row['y1'],
                 row['x2'] - row['x1'],
                 row['y2'] - row['y1']))
+        if self._labels:
+            for _, row in self._features.iterrows():
+                self._paintLabel(painter, row)
+
+    def _paintLabel(self, painter: QtGui.QPainter, row) -> None:
+        '''Draw the label of the box *row* above its upper left corner.
+
+        The text keeps its size on the screen as the video is zoomed, so the
+        painter is scaled back to pixels of the screen.  The tab goes inside
+        the box if there is no room above it.
+        '''
+        text = str(row['label'])
+        transform = painter.worldTransform()
+        sx, sy = transform.m11(), transform.m22()
+        if not (sx and sy):
+            return
+        top = row['y1'] if sy > 0 else row['y2']   # the edge at the top
+        painter.save()
+        painter.translate(row['x1'], top)
+        painter.scale(1 / sx, 1 / sy)       # pixels of the screen, y down
+        font = painter.font()
+        font.setPixelSize(self.labelSize)
+        painter.setFont(font)
+        metrics = QtGui.QFontMetrics(font)
+        width = metrics.horizontalAdvance(text) + 6
+        height = metrics.height() + 2
+        y = -height
+        if transform.map(QtCore.QPointF(row['x1'], top)).y() < height:
+            y = 0.                          # no room above: inside the box
+        tab = QtCore.QRectF(0, y, width, height)
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(pg.mkBrush('g'))
+        painter.drawRect(tab)
+        painter.setPen(pg.mkPen('k'))
+        painter.drawText(tab, QtCore.Qt.AlignmentFlag.AlignCenter, text)
+        painter.restore()
 
     @QtCore.Slot(object)
     def setFeatures(self, features) -> None:
@@ -315,9 +371,9 @@ class QYoloOverlay(pg.GraphicsObject):
         Parameters
         ----------
         features : pandas.DataFrame or None
-            DataFrame with ``x1``, ``y1``, ``x2``, ``y2`` columns
-            returned by :class:`_YoloWorker`.  ``None`` or empty clears
-            the overlay.
+            DataFrame with ``x1``, ``y1``, ``x2``, ``y2`` and ``label``
+            columns returned by :class:`_YoloWorker`.  ``None`` or empty
+            clears the overlay.
         '''
         self._features = features
         self.update()
@@ -345,6 +401,9 @@ class QYoloWidget(QOverlayWidget):
         What runs the network, and the size and class names of an ONNX
         model.  See :class:`_YoloWorker`.  The default runs a ``.onnx``
         file with OpenCV and anything else with ``ultralytics``.
+    labels : bool
+        Label each box with the name of its class.  The check box
+        "Labels" changes it.  Default: ``True``.
     '''
 
     def __init__(self,
@@ -353,10 +412,11 @@ class QYoloWidget(QOverlayWidget):
                  confidence: float = 0.25,
                  backend: str = 'auto',
                  imgsz: int = 640,
-                 names: Sequence[str] | None = None) -> None:
+                 names: Sequence[str] | None = None,
+                 labels: bool = True) -> None:
         worker = _YoloWorker(model_name=model_name, confidence=confidence,
                              backend=backend, imgsz=imgsz, names=names)
-        super().__init__('YOLO', QYoloOverlay(), worker, parent)
+        super().__init__('YOLO', QYoloOverlay(labels), worker, parent)
 
     def _setupUi(self) -> None:
         super()._setupUi()
@@ -367,6 +427,14 @@ class QYoloWidget(QOverlayWidget):
         self._confidenceSpinBox.setValue(self._worker.confidence)
         self._confidenceSpinBox.valueChanged.connect(self._setConfidence)
         self._layout.addRow('Confidence', self._confidenceSpinBox)
+        self._labelsCheckBox = QtWidgets.QCheckBox()
+        self._labelsCheckBox.setChecked(self.overlay.labels)
+        self._labelsCheckBox.toggled.connect(self._setLabels)
+        self._layout.addRow('Labels', self._labelsCheckBox)
+
+    @QtCore.Slot(bool)
+    def _setLabels(self, checked: bool) -> None:
+        self.overlay.labels = checked
 
     @QtCore.Slot(float)
     def _setConfidence(self, value: float) -> None:

@@ -54,6 +54,8 @@ class YoloDemo(Demo):
     names : sequence of str or None
         Names of the classes of an ONNX model.  The default is the 80
         names of COCO if the network has 80 classes.
+    labels : bool
+        Label each box with the name of its class.  Default: ``True``.
     **kwargs :
         Additional keyword arguments forwarded to
         :class:`~QVideo.demos.demo.Demo`.
@@ -65,10 +67,11 @@ class YoloDemo(Demo):
                  backend: str = 'auto',
                  imgsz: int = 640,
                  names: Sequence[str] | None = None,
+                 labels: bool = True,
                  **kwargs) -> None:
         # _setupUi runs inside super().__init__
         self._model = dict(model_name=model_name, backend=backend,
-                           imgsz=imgsz, names=names)
+                           imgsz=imgsz, names=names, labels=labels)
         super().__init__(cameraTree, **kwargs)
 
     def _setupUi(self) -> None:
@@ -98,12 +101,14 @@ def options(argv: Sequence[str] | None = None) -> dict:
                        'extension of the model)')
     model.add_argument('--imgsz', type=int, default=640, metavar='PIXELS',
                        help='input size of an ONNX model (default: 640)')
+    model.add_argument('--no-labels', dest='labels', action='store_false',
+                       help='draw the boxes without the names of the classes')
     model.add_argument('--names', metavar='A,B,...',
                        help='comma-separated class names of an ONNX model '
                        '(default: COCO if the network has 80 classes)')
     args, _ = parser.parse_known_args(argv)
     return dict(model_name=args.model, backend=args.backend,
-                imgsz=args.imgsz,
+                imgsz=args.imgsz, labels=args.labels,
                 names=args.names.split(',') if args.names else None)
 
 

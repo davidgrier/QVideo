@@ -184,6 +184,68 @@ class TestQYoloOverlay(unittest.TestCase):
         self.assertIsNone(self._overlay._features)
 
 
+def _render(overlay, size=(200, 100), shape=(100, 200)):
+    '''Paint *overlay* on a black image and return its pixels.'''
+    from qtpy import QtGui
+    image = QtGui.QImage(size[0], size[1], QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtGui.QColor('black'))
+    painter = QtGui.QPainter(image)
+    overlay.paint(painter, None)
+    painter.end()
+    ptr = image.constBits()
+    ptr.setsize(image.sizeInBytes())
+    pixels = np.frombuffer(ptr, np.uint8).reshape(size[1], size[0], 4)
+    return pixels[..., :3].copy()
+
+
+def _one_box():
+    return pd.DataFrame({'x1': [50.], 'y1': [50.], 'x2': [150.],
+                         'y2': [90.], 'confidence': [0.9], 'class': [0],
+                         'label': ['cat']})
+
+
+class TestQYoloOverlayLabels(unittest.TestCase):
+
+    def test_labels_are_on_by_default(self):
+        self.assertTrue(QYoloOverlay().labels)
+
+    def test_labels_can_start_off(self):
+        self.assertFalse(QYoloOverlay(labels=False).labels)
+
+    def test_the_setter_stores_a_bool(self):
+        overlay = QYoloOverlay()
+        overlay.labels = 0
+        self.assertIs(overlay.labels, False)
+
+    def test_a_label_is_drawn_above_the_box(self):
+        overlay = QYoloOverlay()
+        overlay.setFeatures(_one_box())
+        pixels = _render(overlay)
+        tab = pixels[36:49, 52:60]              # just above the box
+        self.assertTrue((tab[..., 1] > 0).any())
+
+    def test_nothing_is_drawn_above_the_box_without_labels(self):
+        overlay = QYoloOverlay(labels=False)
+        overlay.setFeatures(_one_box())
+        pixels = _render(overlay)
+        self.assertEqual(int(pixels[:48].max()), 0)
+
+    def test_the_label_goes_inside_a_box_at_the_top_edge(self):
+        box = _one_box()
+        box[['y1', 'y2']] = (2., 40.)
+        overlay = QYoloOverlay()
+        overlay.setFeatures(box)
+        pixels = _render(overlay)
+        inside = pixels[4:14, 52:58]
+        self.assertTrue((inside[..., 1] > 0).any())
+
+    def test_painting_with_no_detections_is_harmless(self):
+        overlay = QYoloOverlay()
+        self.assertEqual(int(_render(overlay).max()), 0)
+        overlay.setFeatures(None)
+        self.assertEqual(int(_render(overlay).max()), 0)
+
+
 # ---------------------------------------------------------------------------
 # QYoloWidget
 # ---------------------------------------------------------------------------
@@ -193,6 +255,26 @@ class TestQYoloWidgetInit(unittest.TestCase):
     def test_initial_confidence_in_spinbox(self):
         w = _make_widget(confidence=0.5)
         self.assertAlmostEqual(w._confidenceSpinBox.value(), 0.5)
+
+
+class TestQYoloWidgetLabels(unittest.TestCase):
+
+    def test_labels_are_on_by_default(self):
+        w = _make_widget()
+        self.assertTrue(w.overlay.labels)
+        self.assertTrue(w._labelsCheckBox.isChecked())
+
+    def test_labels_can_start_off(self):
+        w = _make_widget(labels=False)
+        self.assertFalse(w.overlay.labels)
+        self.assertFalse(w._labelsCheckBox.isChecked())
+
+    def test_the_check_box_toggles_the_labels(self):
+        w = _make_widget()
+        w._labelsCheckBox.setChecked(False)
+        self.assertFalse(w.overlay.labels)
+        w._labelsCheckBox.setChecked(True)
+        self.assertTrue(w.overlay.labels)
 
 
 class TestQYoloWidgetOverlay(unittest.TestCase):

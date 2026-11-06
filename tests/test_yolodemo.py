@@ -47,6 +47,13 @@ class TestYoloDemoInit(unittest.TestCase):
             widget = YoloDemo(QNoiseTree(), model_name='yolo11s.pt')
         self.assertIsInstance(widget, YoloDemo)
 
+    def test_labels_option_reaches_the_overlay(self):
+        with patch.object(_yolo_mod, 'YOLO', MagicMock()), \
+             patch.object(_YoloWorker, 'moveToThread'), \
+             patch.object(QtCore.QThread, 'start'):
+            widget = YoloDemo(QNoiseTree(), labels=False)
+        self.assertFalse(widget.yolo.overlay.labels)
+
     def test_controls_contains_yolo_widget(self):
         widget = make_demo()
         items = [widget._controls.itemAt(i).widget()
@@ -78,15 +85,19 @@ class TestOptions(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(options([]), dict(
-            model_name='yolo11n.pt', backend='auto', imgsz=640,
+            model_name='yolo11n.pt', backend='auto', imgsz=640, labels=True,
             names=None))
 
     def test_the_model_and_its_description(self):
         got = options(['--model', 'cells.onnx', '--imgsz', '320',
                        '--names', 'cell,bead', '--backend', 'opencv'])
         self.assertEqual(got, dict(
-            model_name='cells.onnx', backend='opencv', imgsz=320,
+            model_name='cells.onnx', backend='opencv', imgsz=320, labels=True,
             names=['cell', 'bead']))
+
+    def test_labels_are_on_unless_turned_off(self):
+        self.assertTrue(options([])['labels'])
+        self.assertFalse(options(['--no-labels'])['labels'])
 
     def test_camera_flags_are_left_to_launch(self):
         self.assertEqual(options(['-c', '--model', 'a.onnx'])['model_name'],

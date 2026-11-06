@@ -86,14 +86,33 @@ slots do.
 Cameras that are attached
 -------------------------
 
-Measured on hardware, with the program that is named:
+``benchmarks/benchmark.py camera -g --exposure 1000`` measures an attached
+camera in the same way as the synthetic one (``--exposure`` turns off the
+automatic exposure, which otherwise lengthens the exposure and lowers the
+frame rate in dim light).  Ten seconds each, through the Viva backend:
 
-* A FLIR Blackfly S (USB 3) delivers 170 frames a second to a program through
-  the Viva backend, holds no interpreter lock, and passes the
-  holographic-trapping test of QHOT in the same process (event-loop median
-  4.9 ms, 99th percentile 8.7 ms, 9.8 holograms a second).
-* A second Blackfly S (BFS-U3-04S2M-CS) delivers 500 frames a second at
-  720 x 540 through Viva.
+.. csv-table::
+   :header: "Camera", "Frame", "Delivered", "p50 (ms)", "p99 (ms)",
+      "CPU (%)", "Dropped"
+   :widths: 30 14 11 9 9 8 9
+
+   "Blackfly S BFS-U3-04S2M", "720x540", "199.8", "0.05", "0.32", "9", "0"
+   "Blackfly S (1280 x 1024)", "1280x1024", "170.2", "0.04", "0.30", "9", "0"
+
+Each delivers all that the camera produces, and the camera, not QVideo, sets
+the rate.  The 1280 x 1024 camera runs at its 170 frames a second.  The
+720 x 540 camera reports a throughput of 77.8 MB/s as its maximum
+(``DeviceMaxThroughput``), which is 200 frames a second of this size, and
+500 frames a second were recorded earlier with the same model, so check the
+cable and the port if you see less than you expect.
+
+Also measured on hardware, with other programs:
+
+* A FLIR Blackfly S (USB 3) passes the holographic-trapping test of QHOT in
+  the same process as Viva (event-loop median 4.9 ms, 99th percentile
+  8.7 ms, 9.8 holograms a second), and Viva holds no interpreter lock.
+* A Blackfly S (BFS-U3-04S2M-CS) delivered 500 frames a second at 720 x 540
+  through Viva.
 
 The comparison of the Harvesters and Viva backends, with the cost of the
 process that keeps the interpreter lock free, is in :doc:`compatibility`

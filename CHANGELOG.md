@@ -16,8 +16,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   GUI thread from a synthetic camera, with the delay (median and 99th
   percentile), CPU and dropped frames; the time that each filter needs for
   a frame; and the speed and compression of each file writer.  `camera -c`
-  (or any camera flag) measures a camera that is attached, and `--csv`
-  saves the tables.  `docs/performance.rst` has the results for one machine
+  (or any camera flag) measures a camera that is attached, `--exposure`
+  turns off its automatic exposure and sets the time, and `--csv` saves
+  the tables.  `docs/performance.rst` has the results for one machine
   and what is not measured.
 
 ### Fixed

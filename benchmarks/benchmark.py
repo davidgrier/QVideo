@@ -371,18 +371,30 @@ def benchmarkRecord(nframes: int = 200) -> list[dict]:
 # a live camera
 # ----------------------------------------------------------------------
 
-def benchmarkCamera(argv: list[str], seconds: float) -> list[dict]:
-    '''Measure the camera that the flags in *argv* name.'''
+def benchmarkCamera(argv: list[str], seconds: float,
+                    exposure: float | None = None) -> list[dict]:
+    '''Measure the camera that the flags in *argv* name.
+
+    A camera with automatic exposure lengthens it in dim light, which
+    lowers the frame rate, so *exposure* (microseconds) turns the
+    automatic exposure off and sets the time.
+    '''
     from QVideo.cameras.chooser import open_camera, camera_parser
     parser = camera_parser(argparse.ArgumentParser())
     sys.argv = [sys.argv[0], *argv]
     key, camera = open_camera(parser)
-    print(f'  camera: {key}, {camera.shape} ...', flush=True)
+    if exposure is not None:
+        camera.set('ExposureAuto', 'Off')
+        time.sleep(0.5)
+        camera.set('ExposureTime', exposure)
+    size = camera.shape
+    frame = f'{size.width()}x{size.height()}'
+    print(f'  camera: {key}, {frame} ...', flush=True)
     try:
         result = measure(camera, seconds)
     finally:
         camera.close()
-    return [{'camera': key, 'frame': str(camera.shape), **result}]
+    return [{'camera': key, 'frame': frame, **result}]
 
 
 # ----------------------------------------------------------------------
@@ -397,6 +409,9 @@ def main() -> None:
                         'by camera flags (default: capture filters record)')
     parser.add_argument('--seconds', type=float, default=3.,
                         help='seconds to measure each capture (default: 3)')
+    parser.add_argument('--exposure', type=float, metavar='US',
+                        help='camera only: turn off automatic exposure '
+                        'and set the exposure time in microseconds')
     parser.add_argument('--csv', metavar='DIRECTORY', type=Path,
                         help='save the tables here')
     args, rest = parser.parse_known_args()
@@ -419,7 +434,7 @@ def main() -> None:
     if 'record' in which:
         results['record'] = benchmarkRecord()
     if 'camera' in which:
-        results['camera'] = benchmarkCamera(flags, args.seconds)
+        results['camera'] = benchmarkCamera(flags, args.seconds, args.exposure)
     titles = {'capture': 'Capture: synthetic camera to the GUI thread',
               'filters': 'Filters: time for one frame',
               'record': 'Recording: 200 frames of 1280 x 1024 gray',

@@ -8,6 +8,7 @@ machine or the libraries change.
 
     python benchmarks/benchmark.py                 # capture, filters, record
     python benchmarks/benchmark.py camera -c       # a live camera
+    python benchmarks/benchmark.py camera -g --exposure 1000   # short exposure
     python benchmarks/benchmark.py --csv results   # also save the tables
 
 The directory is not installed with the package.

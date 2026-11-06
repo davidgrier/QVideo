@@ -1092,12 +1092,19 @@ exercises the helper on a real model.
 (`backend='auto'|'ultralytics'|'opencv'`, `imgsz`, `names`; `decode()` for
 the YOLOv8-and-later layout `(1, 4 + nc, N)`), tests with a tiny ONNX
 file written by hand (`tests/onnxfile.py`), docs, and `YoloDemo`
-(`--model x.onnx --imgsz N --names a,b --backend ...`).  **Not yet done:** run
-it on a real Ultralytics export (the dev machine has `ultralytics` and
-`demos/yolo26n.pt` but not the `onnx` package that the export needs; the
-decoding is tested on synthetic outputs only), measure the
-speed against `ultralytics` on the CPU, and the filters (super-resolution,
-learned segmentation, depth), which use `DNN` the same way.
+(`--model x.onnx --imgsz N --names a,b --backend ...`). **Tested 2026-11-06 on
+a real export** (`yolo11n.pt` to ONNX with Ultralytics 8.4, opset 18): the
+OpenCV backend finds the same five objects as `ultralytics` on `bus.jpg`, with
+the same labels; boxes differ by up to 9 pixels (square padded input against
+Ultralytics' minimal padding) and the weakest score is 0.4 against 0.6. Speed
+on the dev machine's CPU (10 cores): 27 ms a frame with OpenCV, 34 ms with
+`ultralytics`. Importing `ultralytics` sets `cv2.setNumThreads(0)`, which made
+OpenCV four times slower (98 ms); the import is lazy now and restores the
+threads. `yolo26n.pt` exports with the same `(1, 84, 8400)` layout (Ultralytics
+8.4, default options) and reads the same way: same five objects, 27 ms, so no
+change to `decode()` was needed; an export made with other options may differ.
+**Not yet done:** the filters (super-resolution, learned segmentation, depth),
+which use `DNN` the same way.
 
 **Speed on CUDA machines.**  The standard `opencv-python` wheels are
 CPU-only: `DNN_BACKEND_CUDA` needs OpenCV built from source with CUDA, so

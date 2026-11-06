@@ -215,3 +215,4 @@ cython_debug/
 
 # YOLO model weights (large binary files)
 *.pt
+*.onnx

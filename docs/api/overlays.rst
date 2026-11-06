@@ -91,10 +91,18 @@ with the number of its class.
 
 .. note::
 
-    This path has been tested against synthetic network outputs and a
-    network written by hand, not against an export from Ultralytics.  If an
-    export does not read, ``QYoloWidget`` logs the reason and shows no
-    boxes.
+    The reader has been tested against the exports of ``yolo11n.pt`` and
+    ``yolo26n.pt`` by Ultralytics 8.4, with default options: it finds the objects that ``ultralytics`` finds, with
+    the same labels, and the boxes differ by a few pixels (OpenCV is given a
+    square, padded input).  Other exports are expected to work if they have
+    the layout above.  If one does not read, ``QYoloWidget`` logs the
+    reason and shows no boxes.
+
+    Importing ``ultralytics`` makes OpenCV use one thread for the whole
+    program, which makes the ONNX model about four times slower.  QVideo
+    imports it only for a ``.pt`` model, and puts the number of threads
+    back.  A program of your own that imports it first should do the same
+    (``cv2.setNumThreads(n)``).
 
 .. automodule:: QVideo.overlays.yolo
    :members:

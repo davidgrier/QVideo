@@ -16,6 +16,19 @@ Typical usage::
     screen.addOverlay(widget.overlay)
     widget.newData.connect(my_slot)
 
+Recording the overlays
+----------------------
+
+Overlays are drawn by the screen, so a recorder connected to the camera does
+not see them.  To record what the screen shows, set
+:attr:`~QVideo.lib.QVideoScreen.QVideoScreen.composite` to ``True`` and
+record from the screen: its ``newFrame`` signal then carries the rendered
+scene (the video frame with the overlays on it) as an ``(H, W, 3)`` RGB
+array, instead of the frame.  The rendering costs time on the interface
+thread, so it suits a demonstration or a figure better than a measurement.
+:mod:`QVideo.demos.compositedemo` shows the wiring, with a menu that chooses
+what the recorder records.
+
 Trackpy
 -------
 

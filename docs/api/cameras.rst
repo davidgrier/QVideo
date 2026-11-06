@@ -6,6 +6,36 @@ thread with :class:`~QVideo.lib.QVideoSource.QVideoSource`.  The
 ``Q<Name>Source`` classes of earlier releases still work from their
 packages and warn that they are deprecated.
 
+Which backend to use
+--------------------
+
+====================  =========  =========================================
+Backend               Flag       What it needs
+====================  =========  =========================================
+Viva (GenICam)        ``-g``     ``pip install QVideo[viva]``; preferred
+                                 for GenICam cameras, no vendor SDK
+OpenCV                ``-c``     ``pip install QVideo[opencv]``; USB
+                                 webcams and V4L2 devices
+Raspberry Pi          ``-p``     ``picamera2`` (``QVideo[picamera]``)
+Flir                  ``-f``     Spinnaker GenTL producer, and
+                                 ``pip install QVideo[genicam]``
+Basler                ``-b``     pylon GenTL producer, and
+                                 ``QVideo[genicam]``
+IDS Imaging           ``-i``     IDS peak GenTL producer, and
+                                 ``QVideo[genicam]``
+MATRIX VISION         ``-m``     mvGenTLProducer, and ``QVideo[genicam]``
+Allied Vision         ``-v``     VimbaX GenTL producer, and
+                                 ``QVideo[genicam]``
+Noise                 (none)     nothing; the reference camera and the
+                                 fallback
+====================  =========  =========================================
+
+A program started with no flag opens the noise camera.  Each section below
+says which hardware the backend serves and how to install what it needs.
+Open one in a script with the class, ``QFlirCamera()``, or let
+:func:`~QVideo.interactive.camera.Camera` find a camera.  Only the Flir
+backend has run on hardware of its maker; see :doc:`../compatibility`.
+
 Basler
 ------
 

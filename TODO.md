@@ -937,7 +937,7 @@ requested.
 
 ---
 
-## Documentation Gaps
+## Documentation Gaps  **Done 2026-11-06**
 
 Some pages of the ReadTheDocs site are API listings with little prose.
 Fill the gaps so that a page gives a user enough context to use the module
@@ -955,7 +955,11 @@ without reading the source.
 
 ---
 
-## Broken PyPI Page Graphic
+## Broken PyPI Page Graphic  **Done 2026-04-25; checked 2026-11-06**
+
+Fixed in 4672f6d: `README.md` uses the absolute raw.githubusercontent.com
+URL of `docs/dvrdemo.png`, which answers 200.  Confirm on the PyPI page
+after the next release.  The original report:
 
 The image on the QVideo PyPI page fails to render.  PyPI serves
 `README.md` as the project description but does not resolve relative

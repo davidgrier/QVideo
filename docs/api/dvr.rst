@@ -10,6 +10,57 @@ their control panel.  Scripts and notebooks use the recorder and the player
 directly, or open a file with :func:`~QVideo.dvr.formats.openVideo` to get
 its frames as arrays.
 
+Formats
+-------
+
+The extension of a file name chooses the format.
+
+``.h5``
+    HDF5, written by :class:`~QVideo.dvr.QHDF5Writer.QHDF5Writer` and read
+    by :class:`~QVideo.dvr.QHDF5Reader.QHDF5Reader`; it needs ``h5py``
+    (``pip install QVideo[dvr]``).  The file is lossless, holds the frames
+    and, for each frame, the time at which it was captured, its index and
+    the camera's own timestamp, and carries the settings of the camera as
+    metadata.  It can be read while it is written and survives a crash.
+    The ``hdf5plugin`` package, installed with the same extra, adds the
+    ``zstd``, ``lz4`` and ``blosc2`` compression filters; without it the
+    writer uses what ``h5py`` has.
+``.avi``, ``.mkv``
+    Lossless video.  With PyAV installed (``pip install QVideo[av]``) the
+    codec is FFV1, which returns every pixel of 8-bit gray, 16-bit gray and
+    8-bit color frames.  Without PyAV, OpenCV writes the file with the first
+    lossless codec that it accepts (FFV1, or HuffYUV for color frames).
+``.mp4``
+    H.264 video, with a small loss, for files that are meant to be shown.
+    It cannot hold 16-bit frames.
+
+PyAV is used when it is installed, and OpenCV otherwise.  The tables in
+:mod:`~QVideo.dvr.formats` can be changed to use another class for an
+extension.
+
+What a source must provide
+--------------------------
+
+A recorder does not need a camera.  It takes anything that has a
+``newFrame`` signal, which carries the frame and its
+:class:`~QVideo.lib.videotypes.FrameInfo`, and an ``fps`` attribute, the
+frame rate in frames per second.  A
+:class:`~QVideo.lib.QVideoSource.QVideoSource` does, as do
+:class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` and
+:class:`~QVideo.lib.QVideoScreen.QVideoScreen`, which is how a recording
+can hold the filtered frames or the composite scene.
+
+A script records 300 frames of a camera like this::
+
+    from QVideo.cameras.Noise import QNoiseCamera
+    from QVideo.lib import QVideoSource
+    from QVideo.dvr import QRecorder
+
+    source = QVideoSource(QNoiseCamera())
+    recorder = QRecorder(source)
+    source.start()
+    recorder.start('noise.h5', nframes=300)
+
 QDVRWidget
 ----------
 

@@ -96,15 +96,17 @@ frame rate in dim light).  Ten seconds each, through the Viva backend:
       "CPU (%)", "Dropped"
    :widths: 30 14 11 9 9 8 9
 
-   "Blackfly S BFS-U3-04S2M", "720x540", "199.8", "0.05", "0.32", "9", "0"
+   "Blackfly S BFS-U3-04S2M", "720x540", "437.4", "0.05", "0.43", "18", "0"
    "Blackfly S (1280 x 1024)", "1280x1024", "170.2", "0.04", "0.30", "9", "0"
 
 Each delivers all that the camera produces, and the camera, not QVideo, sets
-the rate.  The 1280 x 1024 camera runs at its 170 frames a second.  The
-720 x 540 camera reports a throughput of 77.8 MB/s as its maximum
-(``DeviceMaxThroughput``), which is 200 frames a second of this size, and
-500 frames a second were recorded earlier with the same model, so check the
-cable and the port if you see less than you expect.
+the rate: 170 frames a second for the 1280 x 1024 camera, and 437 for the
+720 x 540 camera, which reports that rate as its maximum at the exposure
+of 0.1 ms that it was set to.  The camera keeps its settings when the
+program ends, so check ``AcquisitionResultingFrameRate`` and the exposure
+before you blame the software for a low rate: the same camera delivered
+only 200 frames a second, with nothing dropped, before its frame rate was
+raised.
 
 Also measured on hardware, with other programs:
 
@@ -112,7 +114,8 @@ Also measured on hardware, with other programs:
   the same process as Viva (event-loop median 4.9 ms, 99th percentile
   8.7 ms, 9.8 holograms a second), and Viva holds no interpreter lock.
 * A Blackfly S (BFS-U3-04S2M-CS) delivered 500 frames a second at 720 x 540
-  through Viva.
+  through Viva.  ``QCamcorder`` recorded the other 720 x 540 camera at its
+  437 frames a second to an ``.mkv`` file, which was saved at that rate.
 
 The comparison of the Harvesters and Viva backends, with the cost of the
 process that keeps the interpreter lock free, is in :doc:`compatibility`

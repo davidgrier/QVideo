@@ -426,11 +426,13 @@ class QYoloWidget(QOverlayWidget):
         self._confidenceSpinBox.setDecimals(2)
         self._confidenceSpinBox.setValue(self._worker.confidence)
         self._confidenceSpinBox.valueChanged.connect(self._setConfidence)
-        self._layout.addRow('Confidence', self._confidenceSpinBox)
-        self._labelsCheckBox = QtWidgets.QCheckBox()
+        self._labelsCheckBox = QtWidgets.QCheckBox('Labels')
         self._labelsCheckBox.setChecked(self.overlay.labels)
         self._labelsCheckBox.toggled.connect(self._setLabels)
-        self._layout.addRow('Labels', self._labelsCheckBox)
+        row = QtWidgets.QHBoxLayout()
+        row.addWidget(self._confidenceSpinBox, 1)
+        row.addWidget(self._labelsCheckBox)
+        self._layout.addRow('Confidence', row)
 
     @QtCore.Slot(bool)
     def _setLabels(self, checked: bool) -> None:

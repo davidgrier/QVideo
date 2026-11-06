@@ -44,6 +44,32 @@ Things noticed, not changed:
 
 ---
 
+## One function that saves an image, for `QSnapshot` and for QHOT  **Idea; requested 2026-11-06**
+
+Found in the review of QHOT, which has its own copy of the part of
+`QSnapshot._save` that turns an array into a file (`QSaveFile._qimage` and
+`image`).  `QSnapshot` itself does not suit QHOT: it caches frames from a
+signal, writes to the home directory, only logs a failure and registers its
+own shortcuts, where QHOT pulls an image on demand (the video, the pattern
+on the SLM, or a task), keeps a data directory, never overwrites a file, and
+reports every outcome in the status bar.  The array to file part is the same.
+
+- [ ] **`imageops.save_image(image, filename)`**: an `(H, W)`, `(H, W, 3)` or
+  `(H, W, 4)` array of `uint8` becomes a `QImage` (the format follows the
+  extension, as in Qt), which is copied so that it owns its pixels.  It
+  raises, and does not log: `ValueError` for a dtype or a shape that cannot be
+  saved, `OSError` if the file cannot be written.
+- [ ] **`QSnapshot._save` calls it** and keeps what is its own: the cache, the
+  shortcuts and the warnings.  It also settles the `uint16` question of
+  "Video deeper than 8 bits" in one place, instead of a refusal in each
+  consumer.
+- [ ] **Then QHOT calls it** (`QSaveFile.image`, in place of `_qimage`) and
+  raises its requirement (`QVideo[dvr]>=`) once the release is on PyPI.
+- Test: the pixels read back from the file equal the array, for gray, RGB and
+  RGBA; an array that is not contiguous; a path that cannot be written.
+
+---
+
 ## The tree shows what the camera did on its own  **Open; found 2026-11-03**
 
 `QCameraTree` reads the camera back only after a change made in the tree.

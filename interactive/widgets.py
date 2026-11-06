@@ -96,7 +96,9 @@ def live_view(read: Callable[[], 'Image'], fps: float = 30.0) -> LiveView:
 
     Encodes each frame as JPEG and updates an :mod:`ipywidgets` ``Image``
     from an ``asyncio`` background loop.  No matplotlib backend switching
-    is required.  The feed ends, with a warning, when *read* raises.
+    is required.  Each frame is read and encoded in a worker thread, so
+    that the kernel does not wait for the camera.  The feed ends, with a
+    warning, when *read* raises.
 
     Parameters
     ----------
@@ -130,7 +132,8 @@ def live_view(read: Callable[[], 'Image'], fps: float = 30.0) -> LiveView:
         interval = 1.0 / fps
         while True:
             try:
-                widget.value = _encode(read())
+                widget.value = await asyncio.to_thread(
+                    lambda: _encode(read()))
             except Exception as ex:
                 logger.warning(f'live view stopped: {ex}')
                 break

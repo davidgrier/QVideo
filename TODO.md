@@ -27,8 +27,9 @@ together.  CI now enforces `SIM` (but `SIM905`), `PERF`, `PIE`, `RUF012`,
 
 Things noticed, not changed:
 
-- [ ] `interactive.live_view` reads the camera inside the event loop of the
-      notebook, so the kernel waits for every frame.  Read in an executor.
+- [x] Done 2026-11-06: `interactive.live_view` reads and encodes each frame
+      in a worker thread (`asyncio.to_thread`), so the kernel no longer waits
+      for the camera.
 - [x] The Genicam and Viva cameras repeat the alias tables, the USB speed
       check and the registration of aliases.  Decided 2026-11-04 to leave it:
       they are complementary backends, and one may be dropped.

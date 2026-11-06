@@ -482,6 +482,31 @@ class TestLiveView(unittest.TestCase):
             asyncio.run(asyncio.wait_for(loops[0], timeout=5))
         self.assertIn('Camera read failed', logs.output[0])
 
+    def test_live_view_reads_off_the_event_loop_thread(self):
+        import threading
+        from QVideo.interactive.widgets import live_view
+        threads = []
+        frame = np.zeros((4, 4), dtype=np.uint8)
+
+        def read():
+            threads.append(threading.get_ident())
+            if len(threads) > 2:
+                raise RuntimeError('done')
+            return frame
+
+        async def run():
+            main = threading.get_ident()
+            with patch('ipywidgets.Image'), \
+                 patch('QVideo.interactive.widgets._display'):
+                task = live_view(read, fps=1000)._task
+                await asyncio.wait_for(task, timeout=5)
+            return main
+
+        with self.assertLogs('QVideo.interactive.widgets', 'WARNING'):
+            main = asyncio.run(run())
+        self.assertEqual(threads[0], main)  # the first frame sizes the widget
+        self.assertNotIn(main, threads[1:])
+
     def test_live_view_stop_cancels_task(self):
         from QVideo.interactive.widgets import LiveView
         mock_task = MagicMock()

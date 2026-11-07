@@ -362,6 +362,27 @@ class TestTree(unittest.TestCase):
         self.assertIs(
             QVivaTree._DEFAULT_SETTINGS['AcquisitionFrameRateEnable'], True)
 
+    def test_the_exposure_and_the_gain_start_manual(self):
+        settings = QVivaTree._DEFAULT_SETTINGS
+        self.assertEqual(settings['ExposureAuto'], 'Off')
+        self.assertEqual(settings['GainAuto'], 'Off')
+
+    def test_a_camera_that_starts_automatic_is_made_manual(self):
+        state = {'ExposureAuto': 'Continuous', 'GainAuto': 'Continuous'}
+        camera = FakeCamera()
+        for name in state:
+            camera.registerProperty(
+                name, getter=lambda name=name: state[name],
+                setter=lambda value, name=name: state.update({name: value}),
+                ptype=str)
+        tree = QVivaTree(camera=camera)
+        try:
+            self.assertEqual(state, {'ExposureAuto': 'Off',
+                                     'GainAuto': 'Off'})
+        finally:
+            tree.stop()
+            camera.close()
+
 
 @unittest.skipIf(vg is None, 'viva-genicam is not installed')
 class TestAccess(unittest.TestCase):

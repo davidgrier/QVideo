@@ -34,6 +34,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `AcquisitionFrameRateEnable` is off, which is how it leaves the factory,
   and the Viva tree shows no control for the enable.  The Flir, Basler and
   IDS trees switch it on when they start; the Viva tree does now.
+- **The Viva tree starts with manual exposure and gain**, as the Flir tree
+  does: `ExposureAuto` and `GainAuto` are `Off`.  An automatic exposure
+  changes under a measurement, and by lengthening the exposure it lowers
+  the frame rate (66 frames a second where the camera can do 437).
 
 - **A USB3 Vision camera under Viva gives a hardware timestamp.**  Only a
   GigE Vision camera can be calibrated to host time, so every frame of a

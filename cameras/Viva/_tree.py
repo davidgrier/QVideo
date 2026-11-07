@@ -52,10 +52,14 @@ class QVivaTree(QCameraTree):
     )
 
     #: Settings that the tree applies to the camera, those that the camera
-    #: has.  Gamma is 1 and off, as scientific applications expect.
+    #: has.  Gamma is 1 and off, as scientific applications expect.  The
+    #: frame rate is enabled, as in the trees of the vendors: while it is
+    #: not, the camera makes the frame rate read-only and the tree shows
+    #: no control that could enable it.
     _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
         Gamma=1.0,
         GammaEnable=False,
+        AcquisitionFrameRateEnable=True,
     )
 
     def __init__(self, *args,

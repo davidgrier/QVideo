@@ -342,6 +342,26 @@ class TestTree(unittest.TestCase):
             tree.stop()
             camera.close()
 
+    def test_the_frame_rate_is_enabled_so_that_it_can_be_written(self):
+        # While the camera does not enable it, the frame rate is read-only
+        # and the tree has no control that could enable it.
+        written = {}
+        camera = FakeCamera()
+        camera.registerProperty('AcquisitionFrameRateEnable',
+                                getter=lambda: written.get('enable', False),
+                                setter=lambda v: written.update(enable=v),
+                                ptype=bool)
+        tree = QVivaTree(camera=camera)
+        try:
+            self.assertIs(written['enable'], True)
+        finally:
+            tree.stop()
+            camera.close()
+
+    def test_the_frame_rate_enable_is_a_default_setting(self):
+        self.assertIs(
+            QVivaTree._DEFAULT_SETTINGS['AcquisitionFrameRateEnable'], True)
+
 
 @unittest.skipIf(vg is None, 'viva-genicam is not installed')
 class TestAccess(unittest.TestCase):

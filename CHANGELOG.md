@@ -29,6 +29,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The frame rate control of `-g` (Viva) was gray until something enabled
+  it.**  A camera makes `AcquisitionFrameRate` read-only while
+  `AcquisitionFrameRateEnable` is off, which is how it leaves the factory,
+  and the Viva tree shows no control for the enable.  The Flir, Basler and
+  IDS trees switch it on when they start; the Viva tree does now.
+
 - **A USB3 Vision camera under Viva gives a hardware timestamp.**  Only a
   GigE Vision camera can be calibrated to host time, so every frame of a
   USB camera had `hardwareTimestamp = None` and a recording held NaN in

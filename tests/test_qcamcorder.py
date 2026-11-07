@@ -1,5 +1,6 @@
 '''Unit tests for QCamcorder.'''
 import unittest
+from unittest.mock import patch
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.QCamcorder import QCamcorder
@@ -118,6 +119,9 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
 class TestQCamcorderMessage(unittest.TestCase):
 
     def setUp(self):
+        patcher = patch.object(QtWidgets.QMessageBox, 'open')
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.widget = make_camcorder()
         self.addCleanup(self.widget.cameraWidget.stop)
         self.messages = []
@@ -160,6 +164,33 @@ class TestQCamcorderMessage(unittest.TestCase):
         app.processEvents()
         self.widget.dvr.recording.emit(True)
         self.assertEqual(self.last(), '')
+
+
+class TestQCamcorderStopDialog(unittest.TestCase):
+
+    def setUp(self):
+        patcher = patch.object(QtWidgets.QMessageBox, 'open')
+        self.open = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.widget = make_camcorder()
+        self.addCleanup(self.widget.cameraWidget.stop)
+
+    def test_no_dialog_at_first(self):
+        app.processEvents()
+        self.open.assert_not_called()
+
+    def test_a_stop_opens_a_warning_dialog(self):
+        self.widget.dvr.stopped.emit('recording fell 2.0 s behind')
+        app.processEvents()
+        self.open.assert_called_once()
+        box = self.widget._stopBox
+        self.assertEqual(box.icon(), QtWidgets.QMessageBox.Icon.Warning)
+
+    def test_the_dialog_gives_the_reason(self):
+        self.widget.dvr.stopped.emit('recording fell 2.0 s behind')
+        app.processEvents()
+        self.assertEqual(self.widget._stopBox.text(),
+                         'Recording fell 2.0 s behind.')
 
 
 if __name__ == '__main__':

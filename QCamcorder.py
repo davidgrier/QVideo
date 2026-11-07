@@ -124,6 +124,8 @@ class QCamcorder(QtWidgets.QWidget):
         # Queued, so that the reason follows the end of the recording,
         # which clears the message.
         self.dvr.stopped.connect(self.message, QtCore.Qt.QueuedConnection)
+        self.dvr.stopped.connect(self._showStopped,
+                                 QtCore.Qt.QueuedConnection)
         self.screen.newFrame.connect(self._snapshot.newFrame)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -161,6 +163,22 @@ class QCamcorder(QtWidgets.QWidget):
     def _clearMessage(self, recording: bool) -> None:
         '''Clear the message when a recording starts or ends.'''
         self.message.emit('')
+
+    @QtCore.Slot(str)
+    def _showStopped(self, reason: str) -> None:
+        '''Tell the user why a recording stopped by itself.
+
+        The status bar is easy to miss while watching the video, and a
+        recording that ends without notice can lose data.  The dialog does
+        not block: the recording has already stopped, and a modal loop
+        would hold up the frames that the screen is showing.
+        '''
+        box = QtWidgets.QMessageBox(
+            QtWidgets.QMessageBox.Icon.Warning, 'Recording stopped',
+            reason[:1].upper() + reason[1:] + '.', parent=self)
+        box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._stopBox = box
+        box.open()
 
     @QtCore.Slot(float)
     def _showBacklog(self, fraction: float) -> None:

@@ -21,6 +21,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the tables.  `docs/performance.rst` has the results for one machine
   and what is not measured.
 
+### Changed
+
+- **`QCamcorder` shows a dialog when a recording stops by itself**, with the
+  reason (for example that the writer fell behind the camera, and what to
+  try), in addition to the status bar.  The dialog does not block the video.
+
 ### Fixed
 
 - **Importing `QVideo.overlays.yolo` no longer slows OpenCV.**  `ultralytics`

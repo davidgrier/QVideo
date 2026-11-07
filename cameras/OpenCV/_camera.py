@@ -1,4 +1,7 @@
 '''OpenCV camera and threaded video source (USB and built-in).'''
+from pathlib import Path
+from time import perf_counter
+
 from QVideo.lib import QCamera
 from QVideo.cameras.OpenCV._devices import (
     QOpenCVDevices, capture_backend, configure, probe_formats)
@@ -110,6 +113,13 @@ class QOpenCVCamera(QCamera):
     #: ``resolution`` sets the width and the height together.
     shapeProperties = ('width', 'height', 'resolution')
 
+    #: Seconds without a frame after which a live camera (not a video file)
+    #: is lost, or ``None`` to never say so.  OpenCV raises nothing when a
+    #: webcam is unplugged: its reads just fail, as they do at the end of a
+    #: file, so time is the only sign.  A webcam sends frames all the time,
+    #: so a few seconds of none is a camera that is gone.
+    lossTimeout: float | None = 2.
+
     def __init__(self, *args,
                  cameraID: int = 0,
                  mirrored: bool = False,
@@ -127,6 +137,8 @@ class QOpenCVCamera(QCamera):
         self._configWidth = width
         self._configHeight = height
         self._configFps = fps
+        self._live = True
+        self._lastFrame = perf_counter()
         self.registerProperty('mirrored', ptype=bool)
         self.registerProperty('flipped', ptype=bool)
         self.open()
@@ -167,6 +179,10 @@ class QOpenCVCamera(QCamera):
         if not any(self._device.read()[0] for _ in range(5)):
             self._device.release()
             return False
+        # A video file ends with failed reads: it is not a camera to lose.
+        self._live = not (isinstance(self._cameraID, (str, Path))
+                          and Path(self._cameraID).is_file())
+        self._lastFrame = perf_counter()
         self._registerProperties()
         self.shapeChanged.emit(self.shape)
         return True
@@ -315,8 +331,12 @@ class QOpenCVCamera(QCamera):
             ready, image = self._device.read()
         except Exception as ex:
             logger.warning(f'Frame read failed: {ex}')
+            self._checkLoss()
             return False, None
-        if ready:
+        if not ready:
+            self._checkLoss()
+        else:
+            self._lastFrame = perf_counter()
             if image.ndim == 3:
                 code = self.BGR2GRAY if self._gray else self.BGR2RGB
                 image = cv2.cvtColor(image, code)
@@ -324,6 +344,26 @@ class QOpenCVCamera(QCamera):
                 operation = _FLIP[(self._mirrored, self._flipped)]
                 image = cv2.flip(image, operation)
         return ready, image
+
+    def set(self, key: str, value: QCamera.PropertyValue) -> None:
+        '''Set a property; a change may stall the stream for a moment.'''
+        super().set(key, value)
+        self._lastFrame = perf_counter()
+
+    def _checkLoss(self) -> None:
+        '''Say that the camera is lost if it has sent no frame for long.
+
+        Called after a read that failed.  A video file is never lost, and
+        neither is a camera when :attr:`lossTimeout` is ``None``.
+        '''
+        if not self._live or self.lossTimeout is None:
+            return
+        if not self._device.isOpened():
+            self._deviceLost('the system closed the camera')
+            return
+        silent = perf_counter() - self._lastFrame
+        if silent > self.lossTimeout:
+            self._deviceLost(f'the camera sent no frame for {silent:.0f} s')
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -228,8 +228,12 @@ Be careful about what means "gone".  A read that times out is not: a
 camera that waits for a trigger or exposes for seconds also returns
 nothing.  ``QVivaCamera`` treats the end of the stream as the loss, because
 a live stream raises when it has no frame and only returns ``None`` when
-the device has gone, after the error that says why.  Find the signal that
-your library gives, and test it by pulling a cable.
+the device has gone, after the error that says why.  ``QOpenCVCamera`` has
+no such signal (OpenCV raises nothing, and a video file also ends with
+failed reads), so it uses time: a camera that is live, not a file, and has
+sent no frame for ``lossTimeout`` seconds (2, or ``None`` for never) is
+lost.  Find the signal that your library gives, and test it by pulling a
+cable.
 
 ----
 

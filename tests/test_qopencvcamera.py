@@ -1,4 +1,5 @@
 '''Unit tests for QOpenCVCamera.'''
+import tempfile
 import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
@@ -588,6 +589,109 @@ class TestDeviceNames(unittest.TestCase):
                    return_value=[(0, 'Front'), (1, 'Back')]):
             self.assertEqual(QOpenCVCamera.deviceNames(),
                              {0: 'Front', 1: 'Back'})
+
+
+
+class TestLoss(unittest.TestCase):
+    '''A webcam that sends no frame for long is lost; a file never is.'''
+
+    def silent(self, camera, seconds=10.):
+        '''The camera has sent nothing for *seconds*, and fails its reads.'''
+        camera._device.read.return_value = (False, None)
+        camera._lastFrame -= seconds
+
+    def lose(self, camera):
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            return camera.saferead()
+
+    def test_a_camera_that_sends_nothing_for_long_is_lost(self):
+        camera = make_camera()
+        lost = record(camera.lost)
+        self.silent(camera)
+        self.assertEqual(self.lose(camera), (False, None))
+        self.assertFalse(camera.isOpen())
+        self.assertEqual(len(lost), 1)
+        self.assertIn('no frame for 10 s', lost[0][0])
+
+    def test_it_says_so_once(self):
+        camera = make_camera()
+        lost = record(camera.lost)
+        self.silent(camera)
+        self.lose(camera)
+        camera.saferead()
+        camera.saferead()
+        self.assertEqual(len(lost), 1)
+
+    def test_a_short_silence_is_not_a_loss(self):
+        camera = make_camera()
+        lost = record(camera.lost)
+        self.silent(camera, seconds=0.5)
+        self.assertEqual(camera.saferead(), (False, None))
+        self.assertTrue(camera.isOpen())
+        self.assertEqual(lost, [])
+
+    def test_a_frame_starts_the_clock_again(self):
+        camera = make_camera()
+        self.silent(camera, seconds=1.9)
+        camera._device.read.return_value = (True, _FRAME_BGR.copy())
+        self.assertTrue(camera.saferead()[0])
+        camera._device.read.return_value = (False, None)
+        camera._lastFrame -= 1.9            # 3.8 s in all, but not in a row
+        camera.saferead()
+        self.assertTrue(camera.isOpen())
+
+    def test_a_read_that_raises_counts_as_silence(self):
+        camera = make_camera()
+        camera._device.read.side_effect = RuntimeError('gone')
+        camera._lastFrame -= 10.
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            with self.assertLogs('QVideo.cameras.OpenCV._camera', 'WARNING'):
+                camera.saferead()
+        self.assertFalse(camera.isOpen())
+
+    def test_a_camera_that_the_system_closed_is_lost_at_once(self):
+        camera = make_camera()
+        camera._device.read.return_value = (False, None)
+        camera._device.isOpened.return_value = False
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR') as logs:
+            camera.saferead()
+        self.assertIn('closed the camera', logs.output[0])
+
+    def test_a_video_file_is_never_lost(self):
+        with tempfile.NamedTemporaryFile(suffix='.avi') as video:
+            camera = make_camera(cameraID=video.name)
+            lost = record(camera.lost)
+            self.silent(camera, seconds=3600.)          # the end of the file
+            self.assertEqual(camera.saferead(), (False, None))
+            self.assertTrue(camera.isOpen())
+            self.assertEqual(lost, [])
+
+    def test_a_network_stream_is_live(self):
+        camera = make_camera(cameraID='rtsp://example.invalid/stream')
+        self.silent(camera)
+        self.lose(camera)
+        self.assertFalse(camera.isOpen())
+
+    def test_a_loss_timeout_of_none_never_says_so(self):
+        camera = make_camera()
+        camera.lossTimeout = None
+        self.silent(camera, seconds=3600.)
+        camera.saferead()
+        self.assertTrue(camera.isOpen())
+
+    def test_a_longer_timeout_is_kept(self):
+        camera = make_camera()
+        camera.lossTimeout = 30.
+        self.silent(camera, seconds=10.)
+        camera.saferead()
+        self.assertTrue(camera.isOpen())
+
+    def test_a_change_of_a_setting_starts_the_clock_again(self):
+        camera = make_camera()
+        self.silent(camera, seconds=10.)
+        camera.set('color', False)
+        camera.saferead()
+        self.assertTrue(camera.isOpen())
 
 
 if __name__ == '__main__':

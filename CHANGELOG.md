@@ -41,8 +41,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   50 ms between asks of a closed camera instead of reading as fast as it
   can: with an unplugged Blackfly S under Viva it did a million reads a
   second and used a whole core, without a word in the log.  `QVivaCamera`
-  reports the loss when its stream ends.  Nothing reconnects; restart the
-  program.  A camera counts as open while `_initialize` runs, so a
+  reports the loss when its stream ends, and `QOpenCVCamera` when a live
+  camera (a webcam or a network stream, not a video file) sends no frame for
+  `lossTimeout` seconds (2; `None` turns it off).  Nothing reconnects;
+  restart the program.  A camera counts as open while `_initialize` runs, so a
   backend can read and write its device there.
 
 ### Changed

@@ -725,12 +725,18 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   unplug the cable, and look: the dialog, the status bar, the disabled
   tree, the last frame, an idle core.  (The parts were tested with a fake
   and with a script; not the window.)
+- [x] **OpenCV** (2026-11-07): a live camera (not a video file) that sends no
+  frame for `lossTimeout` seconds (2) is lost; a closed `VideoCapture` is lost
+  at once.  Tested with a mock, on the built-in camera (no false loss: 181
+  frames in 6 s, longest gap 51 ms) and on a video file played past its end.
+  **Not tried by unplugging a USB webcam** (only the built-in one is here):
+  what V4L2 and AVFoundation do on an unplug is a guess (reads fail, maybe
+  `isOpened()` goes `False`).
 - [ ] **The other backends** call `_deviceLost` where their library says the
   device is gone, each tried by pulling a cable.  `QRemoteCamera` knows when
   its worker has gone (`_lost`); Harvesters (`QGenicamCamera`) raises generic
-  errors, so classify them only if that backend stays; OpenCV has no signal
-  (a failed read is also the end of a file); Picamera is cabled and never
-  needs it.
+  errors, so classify them only if that backend stays; Picamera is cabled and
+  never needs it.
 - [ ] **Optional:** stop a running recording with "camera lost" (it stalls
   now; the dialog tells the user to stop it); a placard on the screen; a
   `launch()` option to quit on loss.

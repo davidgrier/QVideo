@@ -729,11 +729,21 @@ for reconnection, and every change is additive (fits a minor release).
   the camera; (4) optional: starting with no camera and discovering new
   devices (OS notifications or polling), which needs the camera to open
   on a worker thread and is the only route back to a splash screen.
-- **Open decisions** — reconnect to the same camera only (recommended) or
-  any of the same model; stop recording on loss (recommended) or let HDF5
-  continue; notice on the screen or status bar only; retry forever
-  (recommended) or give up; replay settings (recommended) or camera
-  defaults.
+- **Decided 2026-11-06** (all as recommended): reconnect to the same device
+  only (matched by serial number); stop a recording on loss, with the
+  reason (HDF5 continuing through a gap is left for later); show a "camera
+  lost" placard on the screen as well as the status bar; retry until the
+  user stops the source (back-off 0.5 s doubling to 5 s); replay the
+  settings the user applied.  The API stability policy waits for this.
+- **Since the plan of 2026-10-28** — PySpin is retired, so the guard against
+  a hung `DevClose` is for whatever backend hangs, not for Spinnaker.  Viva
+  (`QVivaCamera`) is now the preferred GenICam backend: its loss shows as a
+  `GenicamError` or a timeout, and reconnecting is a new `connect_*` of the
+  same serial number.  `QRemoteCamera` already notices when its worker goes
+  (`_lost`); reconnecting means starting a new worker.  The dialog of
+  `QCamcorder` for a recording that stops by itself will carry the "camera
+  lost" reason.  Phase 0 (Noise `unplug()`/`plug()` and the conformance
+  group) needs no hardware and is the place to start.
 
 ---
 

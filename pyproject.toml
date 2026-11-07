@@ -141,6 +141,14 @@ ignore = ["SIM905"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.pyright]
+# Type checking of lib/, the best-typed part, as an allowed-to-fail job in
+# CI.  qtpy does not declare Slot and Signal as exports of its modules,
+# which pyright reports 72 times and which says nothing about our code.
+include = ["lib"]
+pythonVersion = "3.11"
+reportPrivateImportUsage = "none"
+
 [tool.coverage.run]
 source = ["QVideo"]
 omit = [
@@ -150,6 +158,10 @@ omit = [
 ]
 
 [tool.coverage.report]
+# A floor under the measured 96%, to make a regression visible.  CI checks
+# it in one job (Python 3.12, PyQt6, with the YOLO extras); the other jobs
+# do not measure coverage.
+fail_under = 95
 exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.:",

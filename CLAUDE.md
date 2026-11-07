@@ -15,8 +15,12 @@ python -m pytest tests/test_qgenicamcamera.py
 # Run a single test
 python -m pytest tests/test_qgenicamcamera.py::TestRead::test_frame_shape
 
-# Run with coverage report
-python -m pytest --cov=. --cov-report=term-missing
+# Run with coverage report (fails under 95%: add --cov-fail-under=0
+# when running only some of the tests)
+python -m pytest --cov --cov-report=term-missing
+
+# Type-check lib/ (the CI job is informational; configured in pyproject.toml)
+pyright
 
 # Build HTML documentation  (output: docs/_build/html/index.html)
 sphinx-build -b html docs docs/_build/html
@@ -394,6 +398,11 @@ The `-c` CLI flag opens `QOpenCVTree` in quality mode.
   documentation, and UI strings: *color* (not colour), *normalize* (not
   normalise), *center* (not centre), *gray* (not grey), *behavior* (not
   behaviour), etc.
+
+CI also runs `pyright` on `lib/` as an informational job (`Types`; it does
+not fail the workflow) and one test job with a coverage floor of 95%
+(`fail_under` in `pyproject.toml`; the suite measures 96%).  Keep the floor
+below the measured value: it makes a regression visible and is no target.
 
 `ruff check .` (configured in `pyproject.toml`: pyflakes, bugbear, the
 79-character limit, and for the package, not the tests, `SIM` without

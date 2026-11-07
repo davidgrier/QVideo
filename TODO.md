@@ -696,54 +696,48 @@ report its own.
 
 ---
 
-## Hot-Plug Support  **Planned; not urgent**
+## Camera loss  **Viva done 2026-11-07; the other backends open**
 
-A camera that is unplugged during a session is not handled: the read
-warnings flood the log (deliberately, until this is built) and the live
-view freezes.  The design recovers inside the capture thread that
-`QVideoSource` already owns, so no change to how cameras open is needed
-for reconnection, and every change is additive (fits a minor release).
+Replaces the hot-plug plan of 2026-10-28.  Decided 2026-11-07: QVideo does
+**not** reconnect (a solution in search of a problem); restarting the program
+is the recovery.  What it must do is fail gracefully and say so: show the
+last frame, let everything else carry on, and not flood or spin.
 
-- **Detection** — a camera is lost after `lossTimeout` seconds (default 2)
-  without a frame; a backend may report it at once with `self.lost(reason)`.
-  The source then stops calling `read()`, which ends the warning flood.
-- **State machine** — `QVideoSource` goes `running -> lost -> reconnecting
-  -> running` and emits `lost(str)`, `reconnecting(int)` and
-  `reconnected()`.  Reconnection closes the camera (guarded: Spinnaker 4.3
-  hung in `DevClose`), then reopens it at a back-off interval until the
-  user stops the source.
-- **Identity and settings** — the camera records its identity (serial
-  number, else model and index) and reconnects only to the same device;
-  `QCamera.set` keeps the values applied so far, which the source replays
-  after a reconnect.
-- **Consumers** — the screen keeps the last frame and shows a "camera
-  lost" notice; `QCameraTree` is disabled while lost; `QRecorder` stops
-  with "camera lost" (`stopWhenLost=True`); `QCamcorder` shows the reason
-  in the status bar.
-- **Backends** — OpenCV reopens the same index; Genicam/FLIR must
-  rediscover (`update()`) and create the same serial again, with a close
-  that cannot block; Picamera is not hot-pluggable.
-- **Phases** — (0) Noise `unplug()`/`plug()` and a conformance group for
-  surviving loss; (1) the state machine and the consumers, tested with
-  Noise; (2) OpenCV, tried on a USB webcam; (3) FLIR rediscovery, tried on
-  the camera; (4) optional: starting with no camera and discovering new
-  devices (OS notifications or polling), which needs the camera to open
-  on a worker thread and is the only route back to a splash screen.
-- **Decided 2026-11-06** (all as recommended): reconnect to the same device
-  only (matched by serial number); stop a recording on loss, with the
-  reason (HDF5 continuing through a gap is left for later); show a "camera
-  lost" placard on the screen as well as the status bar; retry until the
-  user stops the source (back-off 0.5 s doubling to 5 s); replay the
-  settings the user applied.  The API stability policy waits for this.
-- **Since the plan of 2026-10-28** — PySpin is retired, so the guard against
-  a hung `DevClose` is for whatever backend hangs, not for Spinnaker.  Viva
-  (`QVivaCamera`) is now the preferred GenICam backend: its loss shows as a
-  `GenicamError` or a timeout, and reconnecting is a new `connect_*` of the
-  same serial number.  `QRemoteCamera` already notices when its worker goes
-  (`_lost`); reconnecting means starting a new worker.  The dialog of
-  `QCamcorder` for a recording that stops by itself will carry the "camera
-  lost" reason.  Phase 0 (Noise `unplug()`/`plug()` and the conformance
-  group) needs no hardware and is the place to start.
+**Built (c1fc375).**  `QCamera._deviceLost(reason)` closes the camera, logs
+one error and emits `lost(str)`, which `QVideoSource` passes on.  A closed
+camera answers `saferead()` with `(False, None)`, `get()` with `None`, and
+refuses `set()`/`execute()` with a warning; a camera counts as open while
+`_initialize` runs.  The capture loop waits 50 ms between asks of a closed
+camera.  `QCameraTree` disables itself; `QCamcorder` shows the reason in the
+status bar and a dialog.  `QVivaCamera` reports the end of its stream as the
+loss (a live stream raises when it has no frame, timeouts included, and only
+returns `None` after the device has gone).  Documented in
+`docs/backends.rst` ("When the device goes"); the conformance suite checks
+that every backend answers quietly once lost.
+
+**Measured 2026-11-06** on a Blackfly S, USB, under Viva: unplugging gives
+`TransportError: read a frame: the device is disconnected` 40 ms after the
+last frame, then `next_frame` returns `None` for ever; the old loop did
+1,000,000 reads a second at 100% of a core with one line in the log.
+`close()` of the dead device returns at once.
+
+- [ ] **Verify the whole path on the camera.**  Run `python -m QVideo -g`,
+  unplug the cable, and look: the dialog, the status bar, the disabled
+  tree, the last frame, an idle core.  (The parts were tested with a fake
+  and with a script; not the window.)
+- [ ] **The other backends** call `_deviceLost` where their library says the
+  device is gone, each tried by pulling a cable.  `QRemoteCamera` knows when
+  its worker has gone (`_lost`); Harvesters (`QGenicamCamera`) raises generic
+  errors, so classify them only if that backend stays; OpenCV has no signal
+  (a failed read is also the end of a file); Picamera is cabled and never
+  needs it.
+- [ ] **Optional:** stop a running recording with "camera lost" (it stalls
+  now; the dialog tells the user to stop it); a placard on the screen; a
+  `launch()` option to quit on loss.
+- Not planned: reconnection, device identity, replay of settings, starting
+  without a camera.  The five decisions of 2026-11-06 that assumed
+  reconnection (same device, retry, replay) no longer apply; stopping a
+  recording on loss and a placard are still wanted, as optional above.
 
 ---
 

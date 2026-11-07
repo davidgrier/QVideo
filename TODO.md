@@ -729,9 +729,18 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   frame for `lossTimeout` seconds (2) is lost; a closed `VideoCapture` is lost
   at once.  Tested with a mock, on the built-in camera (no false loss: 181
   frames in 6 s, longest gap 51 ms) and on a video file played past its end.
-  **Not tried by unplugging a USB webcam** (only the built-in one is here):
-  what V4L2 and AVFoundation do on an unplug is a guess (reads fail, maybe
-  `isOpened()` goes `False`).
+  **Tried 2026-11-07 by unplugging a Logitech C920 on macOS (AVFoundation):**
+  the reads fail without an exception, each one blocking about 0.5 s;
+  `isOpened()` stays `True`, so only the timeout catches it (the loss came
+  2 s after the last frame).  Linux (V4L2) is not tried.
+- [ ] **OpenCV's device numbers do not match the names.**  On macOS, with the
+  built-in camera and the C920 attached, Qt lists `{0: FaceTime HD Camera,
+  1: HD Pro Webcam C920}` and OpenCV's index 0 is the C920 and index 1 the
+  FaceTime camera (looked at the frames).  `QOpenCVCamera.deviceNames()`
+  comes from QtMultimedia, so the chooser shows the wrong name for an index
+  and `-c 1` opens the other camera.  Needs a way to name the cameras in
+  OpenCV's order (AVFoundation directly?), or to say that the names are
+  unreliable.  Check Linux (V4L2 numbers `/dev/videoN`) and Windows.
 - [ ] **The other backends** call `_deviceLost` where their library says the
   device is gone, each tried by pulling a cable.  `QRemoteCamera` knows when
   its worker has gone (`_lost`); Harvesters (`QGenicamCamera`) raises generic

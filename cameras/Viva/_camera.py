@@ -116,7 +116,8 @@ class QVivaCamera(QCamera):
                 level = (logging.WARNING if self._device.transport == 'gige'
                          else logging.DEBUG)
                 logger.log(level, f'Could not calibrate the camera clock: '
-                           f'{ex}; the frames have no hardware timestamp')
+                           f'{ex}; the timestamps of the frames are those '
+                           'of the clock of the camera')
             self._startStream()
             self._findStreamLocked()
         except Exception:
@@ -351,6 +352,24 @@ class QVivaCamera(QCamera):
         except vg.GenicamError as ex:
             logger.warning(f'camera read failed: {ex}')
             return False, None
-        self.hardwareTimestamp = frame.ts_host
+        self.hardwareTimestamp = self._timestamp(frame)
         return True, image
+
+    @staticmethod
+    def _timestamp(frame) -> float | None:
+        '''Return the time that the camera gave *frame* [s], or ``None``.
+
+        viva-genicam maps the timestamp of the camera to host time (POSIX
+        seconds) for a camera that it can calibrate, GigE Vision.  A USB3
+        Vision camera cannot be calibrated, so its frames have only the
+        ticks of the camera, which are nanoseconds (a Blackfly S counted
+        999.8 million of them a second against the clock of the host).  The
+        seconds of that clock are good for the time between frames, not for
+        the time of day.  Replace this when viva-genicam gives the time.
+        '''
+        if frame.ts_host is not None:
+            return frame.ts_host
+        if frame.ts_dev:
+            return frame.ts_dev * 1e-9
+        return None
 

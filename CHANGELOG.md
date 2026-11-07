@@ -29,6 +29,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **A USB3 Vision camera under Viva gives a hardware timestamp.**  Only a
+  GigE Vision camera can be calibrated to host time, so every frame of a
+  USB camera had `hardwareTimestamp = None` and a recording held NaN in
+  `hardware_timestamp`.  The frame now carries the clock of the camera (its
+  ticks, which are nanoseconds: 999.8 million a second against the host
+  clock on a Blackfly S), good for the time between frames and not for the
+  time of day.  A GigE camera that fails to calibrate is reported with a
+  warning, and the YOLO and trackpy workers log the traceback of the first
+  failure of a detection.
+
 - **Recording 16-bit gray video to `.avi` is 3.5 times faster.**  FFV1 is
   slow on 16-bit pixels (55 frames a second of 1280 x 1024, against 460 for
   8-bit), so the PyAV writer now uses FFVHuff for them in an `.avi` file:

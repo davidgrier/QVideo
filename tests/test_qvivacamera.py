@@ -194,7 +194,7 @@ class TestClock(unittest.TestCase):
             camera = self.camera('gige')
         self.addCleanup(camera.close)
         self.assertTrue(camera.isOpen())
-        self.assertIn('no hardware timestamp', logs.output[0])
+        self.assertIn('clock of the camera', logs.output[0])
 
     def test_a_usb_camera_has_no_clock_to_calibrate_and_no_warning(self):
         with self.assertNoLogs('QVideo.cameras.Viva._camera', 'WARNING'):
@@ -205,6 +205,34 @@ class TestClock(unittest.TestCase):
         with self.assertNoLogs('QVideo.cameras.Viva._camera', 'WARNING'):
             with FakeCamera():
                 pass
+
+
+class TestTimestamp(unittest.TestCase):
+
+    def frame(self, host=None, device=None):
+        return MagicMock(ts_host=host, ts_dev=device)
+
+    def test_the_time_of_the_host_is_used_when_the_clock_is_calibrated(self):
+        stamp = QVivaCamera._timestamp(self.frame(1.7e9, 123))
+        self.assertEqual(stamp, 1.7e9)
+
+    def test_the_ticks_of_the_camera_are_nanoseconds(self):
+        stamp = QVivaCamera._timestamp(self.frame(None, 2_500_000_000))
+        self.assertAlmostEqual(stamp, 2.5)
+
+    def test_a_frame_without_a_timestamp_has_none(self):
+        self.assertIsNone(QVivaCamera._timestamp(self.frame()))
+        self.assertIsNone(QVivaCamera._timestamp(self.frame(None, 0)))
+
+    def test_a_frame_read_from_a_usb_camera_has_the_time_of_the_camera(self):
+        with FakeCamera() as camera:
+            stamps = []
+            for _ in range(5):
+                ok, _frame = camera.saferead()
+                stamps.append(camera.hardwareTimestamp)
+        self.assertTrue(ok)
+        self.assertNotIn(None, stamps)
+        self.assertEqual(stamps, sorted(set(stamps)))   # it runs forward
 
 
 class TestUsbLink(unittest.TestCase):

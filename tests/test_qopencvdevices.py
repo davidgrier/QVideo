@@ -4,7 +4,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import QVideo.cameras.OpenCV._devices as _devices_module
-from QVideo.cameras.OpenCV._devices import QOpenCVDevices, capture_backend
+from QVideo.cameras.OpenCV._devices import (
+    CameraDevice, QOpenCVDevices, capture_backend)
 
 
 def make_mock_format(width, height, min_fps, max_fps):
@@ -358,6 +359,131 @@ class TestProbeFormats(unittest.TestCase):
         with patch('cv2.VideoCapture', return_value=cap):
             self.assertEqual(QOpenCVDevices._probe_formats(0), [])
         cap.release.assert_called_once_with()
+
+
+
+def device(identifier, name='Cam'):
+    return make_mock_camera_device(identifier, name, [])
+
+
+class TestOrdered(unittest.TestCase):
+    '''OpenCV does not number the cameras in the order that Qt lists them.'''
+
+    def order(self, system, devices):
+        with patch('platform.system', return_value=system):
+            return QOpenCVDevices._ordered(devices)
+
+    def test_macos_sorts_by_the_unique_id(self):
+        # What a MacBook gave with a USB camera: Qt listed the built-in
+        # camera first; OpenCV opened the USB camera as 0.
+        builtin = device(b'47B4B64B-7067-4B9C-AD2B-AE273A71F4B5', 'FaceTime')
+        usb = device(b'0x1110000046d08e5', 'C920')
+        self.assertEqual(self.order('Darwin', [builtin, usb]),
+                         [(0, usb), (1, builtin)])
+
+    def test_macos_keeps_an_order_that_is_sorted(self):
+        usb = device(b'0x1110000046d08e5')
+        builtin = device(b'47B4B64B')
+        self.assertEqual(self.order('Darwin', [usb, builtin]),
+                         [(0, usb), (1, builtin)])
+
+    def test_linux_takes_the_index_from_the_path(self):
+        a = device(b'/dev/video0')
+        b = device(b'/dev/video2')       # video1 is a metadata node
+        self.assertEqual(self.order('Linux', [b, a]), [(0, a), (2, b)])
+
+    def test_linux_leaves_out_a_device_without_a_video_path(self):
+        a = device(b'/dev/video0')
+        b = device(b'libcamera:something')
+        self.assertEqual(self.order('Linux', [a, b]), [(0, a)])
+
+    def test_linux_ids_of_the_gstreamer_backend_have_a_prefix(self):
+        a = device(b'v4l2:///dev/video3')
+        self.assertEqual(self.order('Linux', [a]), [(3, a)])
+
+    def test_other_systems_keep_the_order_of_qt(self):
+        a, b = device(b'z'), device(b'a')
+        self.assertEqual(self.order('Windows', [a, b]), [(0, a), (1, b)])
+
+
+class TestDevices(unittest.TestCase):
+
+    def devices(self, system, qt):
+        with patch('platform.system', return_value=system), \
+             patch.object(_devices_module, '_QMediaDevices',
+                          make_mock_qmediadevices(qt)):
+            return QOpenCVDevices.devices()
+
+    def test_a_device_has_an_index_a_name_and_an_id(self):
+        result = self.devices('Linux', [device(b'/dev/video0', 'Webcam')])
+        self.assertEqual(result, [CameraDevice(0, 'Webcam', '/dev/video0')])
+
+    def test_the_prefix_of_the_gstreamer_backend_is_not_in_the_id(self):
+        result = self.devices('Linux', [device(b'v4l2:///dev/video1', 'W')])
+        self.assertEqual(result[0].id, '/dev/video1')
+
+    def test_the_names_follow_the_indices_of_opencv(self):
+        builtin = device(b'47B4B64B', 'FaceTime')
+        usb = device(b'0x1110000046d08e5', 'C920')
+        result = self.devices('Darwin', [builtin, usb])
+        self.assertEqual([(d.index, d.name) for d in result],
+                         [(0, 'C920'), (1, 'FaceTime')])
+
+    def test_without_qt_the_cameras_have_no_id(self):
+        with patch.object(_devices_module, '_QMediaDevices', None), \
+             patch.object(QOpenCVDevices, '_probe_cameras',
+                          return_value=[(0, 'Camera 0')]):
+            result = QOpenCVDevices.devices()
+        self.assertEqual(result, [CameraDevice(0, 'Camera 0', '')])
+
+    def test_without_qt_and_without_probing_there_is_nothing_to_list(self):
+        with patch.object(_devices_module, '_QMediaDevices', None), \
+             patch.object(QOpenCVDevices, '_probe_cameras') as probe:
+            self.assertEqual(QOpenCVDevices.devices(probe=False), [])
+        probe.assert_not_called()
+
+    def test_the_formats_are_those_of_the_camera_opencv_opens(self):
+        # Index 0 is the USB camera on macOS, whatever Qt lists first.
+        builtin = make_mock_camera_device(b'47B4B64B', 'FaceTime', [])
+        usb = make_mock_camera_device(b'0x1110000046d08e5', 'C920', [])
+        with patch('platform.system', return_value='Darwin'):
+            self.assertIs(QOpenCVDevices._find_device(0, [builtin, usb]), usb)
+
+
+class TestFind(unittest.TestCase):
+
+    CAMERAS = [CameraDevice(0, 'HD Pro Webcam C920', '0x1110000046d08e5'),
+               CameraDevice(1, 'FaceTime HD Camera', '47B4B64B-7067'),
+               CameraDevice(2, 'HD Pro Webcam C922', '0x1120000046d085c')]
+
+    def find(self, spec):
+        with patch.object(QOpenCVDevices, 'devices',
+                          return_value=self.CAMERAS):
+            return QOpenCVDevices.find(spec)
+
+    def test_an_index_that_exists(self):
+        self.assertEqual(self.find(1), 1)
+
+    def test_an_index_that_does_not_exist(self):
+        self.assertIsNone(self.find(5))
+
+    def test_a_unique_id(self):
+        self.assertEqual(self.find('0x1120000046d085c'), 2)
+
+    def test_an_id_is_not_case_sensitive(self):
+        self.assertEqual(self.find('47b4b64b-7067'), 1)
+
+    def test_a_part_of_a_name(self):
+        self.assertEqual(self.find('facetime'), 1)
+        self.assertEqual(self.find('C920'), 0)
+
+    def test_a_part_of_a_name_that_two_cameras_have_is_refused(self):
+        self.assertIsNone(self.find('webcam'))
+
+    def test_nothing_matches_nothing(self):
+        self.assertIsNone(self.find('no such camera'))
+        self.assertIsNone(self.find(''))
+        self.assertIsNone(self.find('   '))
 
 
 if __name__ == '__main__':

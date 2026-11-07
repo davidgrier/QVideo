@@ -3,6 +3,7 @@ from pathlib import Path
 from time import perf_counter
 
 from QVideo.lib import QCamera
+from QVideo.lib.errors import QDeviceError
 from QVideo.cameras.OpenCV._devices import (
     QOpenCVDevices, capture_backend, configure, probe_formats)
 import cv2
@@ -80,8 +81,16 @@ class QOpenCVCamera(QCamera):
 
     Parameters
     ----------
-    cameraID : int
-        Index of the camera device to open. Default: ``0``.
+    cameraID : int or str
+        Which camera to open.  An index, which OpenCV gives the cameras in
+        its own order (macOS sorts them by their ids, which is not the
+        order in which the system lists them).  Or what stays with a
+        camera: the unique identifier that the system gives its device, or
+        a part of its name (``'C920'``), which must belong to one camera.
+        See
+        :meth:`~QVideo.cameras.OpenCV.QOpenCVDevices.devices`.  A path to a
+        video file, or the address of a stream, is opened as it is.
+        Default: ``0``.
     mirrored : bool
         Flip the image horizontally. Default: ``False``.
     flipped : bool
@@ -130,7 +139,7 @@ class QOpenCVCamera(QCamera):
                  fps: float | None = 30.,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._cameraID = cameraID
+        self._cameraID = self._resolve(cameraID)
         self._mirrored = bool(mirrored)
         self._flipped = bool(flipped)
         self._gray = bool(gray)
@@ -139,9 +148,53 @@ class QOpenCVCamera(QCamera):
         self._configFps = fps
         self._live = True
         self._lastFrame = perf_counter()
+        #: The identifier that the system gives the device (see
+        #: :class:`~QVideo.cameras.OpenCV.CameraDevice`), or ``None``.
+        self.deviceID: str | None = None
         self.registerProperty('mirrored', ptype=bool)
         self.registerProperty('flipped', ptype=bool)
         self.open()
+
+    @staticmethod
+    def _resolve(spec: int | str) -> int | str:
+        '''Return the *cameraID* that OpenCV opens for *spec*.
+
+        An index, a video file and the address of a stream stand for
+        themselves.  Any other text names a camera by its identifier or by
+        a part of its name.
+
+        Raises
+        ------
+        QDeviceError
+            If no camera, or more than one, matches the text.
+        '''
+        if isinstance(spec, int):
+            return spec
+        text = str(spec).strip()
+        if text.isdigit():
+            return int(text)
+        if '://' in text or Path(text).is_file():
+            return spec
+        index = QOpenCVDevices.find(text)
+        if index is None:
+            known = ', '.join(f'{d.index}: {d.name}'
+                              for d in QOpenCVDevices.devices()) or 'none'
+            raise QDeviceError(
+                f'No single camera matches {text!r}.  The cameras are: '
+                f'{known}.  Give an index, the id of the device, or a part '
+                'of its name that only one camera has.')
+        return index
+
+    def _identify(self) -> None:
+        '''Remember the name and the identifier of the open camera.'''
+        if not isinstance(self._cameraID, int):
+            return
+        # Never probe: that opens every camera, this one among them.
+        for device in QOpenCVDevices.devices(probe=False):
+            if device.index == self._cameraID:
+                self._modelName = device.name
+                self.deviceID = device.id or None
+                return
 
     @classmethod
     def deviceNames(cls) -> dict[int, str]:
@@ -183,6 +236,7 @@ class QOpenCVCamera(QCamera):
         self._live = not (isinstance(self._cameraID, (str, Path))
                           and Path(self._cameraID).is_file())
         self._lastFrame = perf_counter()
+        self._identify()
         self._registerProperties()
         self.shapeChanged.emit(self.shape)
         return True

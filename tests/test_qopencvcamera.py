@@ -6,6 +6,9 @@ from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets, QtCore
 from QVideo.tests.signals import record
 from QVideo.cameras.OpenCV._camera import QOpenCVCamera
+import QVideo.cameras.OpenCV._devices as _devices_module
+from QVideo.cameras.OpenCV._devices import CameraDevice, QOpenCVDevices
+from QVideo.lib.errors import QDeviceError
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -692,6 +695,77 @@ class TestLoss(unittest.TestCase):
         camera.set('color', False)
         camera.saferead()
         self.assertTrue(camera.isOpen())
+
+
+
+class TestWhichCamera(unittest.TestCase):
+    '''A camera is opened by what stays with it, not only by an index.'''
+
+    CAMERAS = [CameraDevice(0, 'HD Pro Webcam C920', '0x1110000046d08e5'),
+               CameraDevice(1, 'FaceTime HD Camera', '47B4B64B-7067'),
+               CameraDevice(2, 'HD Pro Webcam C922', '0x1120000046d085c')]
+
+    def resolve(self, spec):
+        with patch.object(QOpenCVDevices, 'devices',
+                          return_value=self.CAMERAS):
+            return QOpenCVCamera._resolve(spec)
+
+    def test_an_index_stands_for_itself(self):
+        self.assertEqual(self.resolve(1), 1)
+
+    def test_a_number_in_text_is_an_index(self):
+        self.assertEqual(self.resolve('2'), 2)
+
+    def test_a_unique_id_names_a_camera(self):
+        self.assertEqual(self.resolve('0x1110000046d08e5'), 0)
+
+    def test_a_part_of_a_name_names_a_camera(self):
+        self.assertEqual(self.resolve('FaceTime'), 1)
+
+    def test_an_address_is_not_looked_up(self):
+        self.assertEqual(self.resolve('rtsp://example.invalid/s'),
+                         'rtsp://example.invalid/s')
+
+    def test_a_video_file_is_not_looked_up(self):
+        with tempfile.NamedTemporaryFile(suffix='.avi') as video:
+            self.assertEqual(self.resolve(video.name), video.name)
+
+    def test_a_name_that_no_camera_has_is_refused_with_the_list(self):
+        with self.assertRaises(QDeviceError) as caught:
+            self.resolve('Logitech')
+        message = str(caught.exception)
+        self.assertIn("'Logitech'", message)
+        self.assertIn('0: HD Pro Webcam C920', message)
+        self.assertIn('1: FaceTime HD Camera', message)
+
+    def test_a_name_that_two_cameras_have_is_refused(self):
+        with self.assertRaises(QDeviceError):
+            self.resolve('webcam')
+
+    def test_the_camera_opens_the_index_that_the_name_stands_for(self):
+        with patch.object(QOpenCVDevices, 'devices',
+                          return_value=self.CAMERAS):
+            camera = make_camera(cameraID='FaceTime')
+        self.assertEqual(camera._cameraID, 1)
+
+    def test_an_open_camera_knows_its_name_and_its_id(self):
+        with patch.object(QOpenCVDevices, 'devices',
+                          return_value=self.CAMERAS):
+            camera = make_camera(cameraID=0)
+        self.assertEqual(camera.modelName, 'HD Pro Webcam C920')
+        self.assertEqual(camera.deviceID, '0x1110000046d08e5')
+
+    def test_opening_a_camera_does_not_open_the_others_to_name_it(self):
+        with patch.object(_devices_module, '_QMediaDevices', None):
+            with patch.object(QOpenCVDevices, '_probe_cameras') as probe:
+                camera = make_camera(cameraID=0)
+        probe.assert_not_called()
+        self.assertIsNone(camera.deviceID)
+
+    def test_a_video_file_has_no_device_id(self):
+        with tempfile.NamedTemporaryFile(suffix='.avi') as video:
+            camera = make_camera(cameraID=video.name)
+        self.assertIsNone(camera.deviceID)
 
 
 if __name__ == '__main__':

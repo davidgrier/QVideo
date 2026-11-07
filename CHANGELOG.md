@@ -49,6 +49,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`QOpenCVCamera` opens a camera by what stays with it.**  `cameraID` may
+  be the unique identifier that the system gives the device, or a part of
+  its name (`'C920'`) that only one camera has, as well as an index; an
+  unknown or ambiguous name raises `QDeviceError` with the list of cameras.
+  `QOpenCVDevices.devices()` lists each camera with its index, name and id
+  (`CameraDevice`), `QOpenCVDevices.find()` looks one up, and an open camera
+  has `modelName` and `deviceID`.  The command line still takes an index.
+
 - **`QCamcorder` shows a dialog when a recording stops by itself**: a
   headline, and the reason (for example that the writer fell behind the
   camera, and what to try), in addition to the status bar.  The dialog does
@@ -77,6 +85,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The chooser named the wrong OpenCV camera.**  OpenCV gives the cameras
+  no names and numbers them as its backend does, and the list of names came
+  from Qt, which lists them in the order in which the system found them.  On
+  a Mac with a USB webcam and the built-in camera Qt put the built-in camera
+  first, OpenCV opened the webcam as 0 (it sorts the cameras by their
+  unique ids), and "HD Pro Webcam C920" in the chooser opened the FaceTime
+  camera.  The names now follow OpenCV's index: sorted by id on macOS, the
+  `N` of `/dev/videoN` on Linux (`cameras()` numbered by position before,
+  which is wrong when `video1` is a metadata node).  Windows is not checked.
 - **The docstring of `launch()` had a stray line** (`XX`) in the middle of a
   sentence, which Sphinx reported as a warning and which was on the page
   of the API since 4.17.0.

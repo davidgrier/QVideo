@@ -1,5 +1,8 @@
 '''Camera and format enumeration for OpenCV-backed cameras.'''
 import platform
+import re
+from typing import NamedTuple
+
 import cv2
 
 try:
@@ -9,8 +12,34 @@ except (ImportError, AttributeError):
     _QMediaDevices = None
 
 
-__all__ = ['QOpenCVDevices', 'COMMON_RESOLUTIONS', 'capture_backend',
-           'probe_resolutions', 'probe_formats', 'configure']
+__all__ = ['QOpenCVDevices', 'CameraDevice', 'COMMON_RESOLUTIONS',
+           'capture_backend', 'probe_resolutions', 'probe_formats',
+           'configure']
+
+
+class CameraDevice(NamedTuple):
+    '''A camera as the system lists it.
+
+    Attributes
+    ----------
+    index : int
+        The *cameraID* that OpenCV opens the camera by.  It is not the
+        position of the camera in the list of Qt, and it can change when a
+        camera is plugged in or removed.
+    name : str
+        The name that the system gives the camera.
+    id : str
+        The identifier that the system gives the device, empty when it
+        gives none.  It is what stays with the camera: on macOS the
+        ``uniqueID`` of AVFoundation (a UUID for a built-in camera, and for a
+        USB camera the location and the ids of the vendor and product, so
+        two cameras of one model differ by their ports); on Linux the path
+        ``/dev/videoN``.
+    '''
+
+    index: int
+    name: str
+    id: str
 
 
 def capture_backend() -> int:
@@ -192,6 +221,16 @@ def configure(device: cv2.VideoCapture,
     # already requested on the device, clamped to whatever the driver allows.
 
 
+def _deviceID(device) -> str:
+    '''Return the identifier that the system gives a ``QCameraDevice``.
+
+    Qt6 with GStreamer prefixes a path with ``v4l2://``; the prefix is
+    removed, so that ids look alike on every Qt backend.
+    '''
+    text = bytes(device.id()).rstrip(b'\x00').decode(errors='replace')
+    return text.removeprefix('v4l2://')
+
+
 class QOpenCVDevices:
     '''Camera discovery and format enumeration for OpenCV cameras.
 
@@ -204,11 +243,44 @@ class QOpenCVDevices:
     '''
 
     @staticmethod
+    def devices(probe: bool = True) -> list[CameraDevice]:
+        '''Return the available cameras, with their identifiers.
+
+        The *index* of each is the *cameraID* that OpenCV opens it by.
+        OpenCV gives no names and numbers the cameras as its backend does,
+        so QtMultimedia names them and the index is worked out for each
+        platform (see :meth:`_ordered`).  Without QtMultimedia the cameras
+        are found by opening each index in turn, and have no name or id.
+
+        Parameters
+        ----------
+        probe : bool
+            Whether to open each index in turn when there is no
+            QtMultimedia.  That opens every camera, even if only for a
+            moment: ``False`` returns an empty list instead, for code that
+            has a camera open and wants only its name.
+
+        Returns
+        -------
+        list[CameraDevice]
+            One for each camera, sorted by index.
+        '''
+        if _QMediaDevices is None:
+            if not probe:
+                return []
+            return [CameraDevice(i, name, '')
+                    for i, name in QOpenCVDevices._probe_cameras()]
+        return [CameraDevice(i, dev.description(), _deviceID(dev))
+                for i, dev in QOpenCVDevices._ordered(
+                    _QMediaDevices.videoInputs())]
+
+    @staticmethod
     def cameras() -> list[tuple[int, str]]:
         '''Return a list of available cameras as ``(index, name)`` pairs.
 
         The index is the integer *cameraID* suitable for passing to
-        :class:`~QVideo.cameras.OpenCV.QOpenCVCamera`.
+        :class:`~QVideo.cameras.OpenCV.QOpenCVCamera`.  See
+        :meth:`devices` for the identifiers.
 
         Returns
         -------
@@ -216,10 +288,66 @@ class QOpenCVDevices:
             ``(cameraID, description)`` for each detected camera, sorted
             by *cameraID*.
         '''
-        if _QMediaDevices is not None:
-            return [(i, dev.description())
-                    for i, dev in enumerate(_QMediaDevices.videoInputs())]
-        return QOpenCVDevices._probe_cameras()
+        return [(d.index, d.name) for d in QOpenCVDevices.devices()]
+
+    @staticmethod
+    def find(spec: int | str) -> int | None:
+        '''Return the index of the camera that *spec* names, or ``None``.
+
+        Parameters
+        ----------
+        spec : int or str
+            An index; the identifier of a device (``CameraDevice.id``, not
+            case sensitive); or a part of its name (not case sensitive),
+            which must belong to one camera only.
+
+        Returns
+        -------
+        int or None
+            The *cameraID* for OpenCV, or ``None`` if no camera matches, or
+            if a part of a name matches two cameras.
+        '''
+        devices = QOpenCVDevices.devices()
+        if isinstance(spec, int):
+            return spec if any(d.index == spec for d in devices) else None
+        text = str(spec).strip().lower()
+        if not text:
+            return None
+        exact = [d for d in devices if d.id.lower() == text]
+        if len(exact) == 1:
+            return exact[0].index
+        named = [d for d in devices if text in d.name.lower()]
+        return named[0].index if len(named) == 1 else None
+
+    @staticmethod
+    def _ordered(devices) -> list[tuple[int, object]]:
+        '''Return ``(index, device)`` for the devices that Qt lists.
+
+        The order of Qt is not the order of OpenCV: Qt lists the devices
+        as the system found them, which depends on when each was plugged
+        in.  OpenCV numbers them by rules of its own.
+
+        - Linux: the index is the *N* of the device ``/dev/videoN``.  A
+          device that has no such path cannot be opened by index and is
+          left out.
+        - macOS: OpenCV sorts the devices by their ``uniqueID``.  (A
+          MacBook with a USB camera: Qt listed the built-in camera first,
+          and OpenCV opened the USB camera as 0, whose id begins ``0x``,
+          before the built-in camera, whose id is a UUID.)
+        - Elsewhere: the order of Qt, which is the order of the backend
+          when both use the same one.  Not checked.
+        '''
+        system = platform.system()
+        if system == 'Linux':
+            found = []
+            for dev in devices:
+                match = re.search(r'/video(\d+)$', _deviceID(dev))
+                if match:
+                    found.append((int(match.group(1)), dev))
+            return sorted(found, key=lambda pair: pair[0])
+        if system == 'Darwin':
+            return list(enumerate(sorted(devices, key=_deviceID)))
+        return list(enumerate(devices))
 
     @staticmethod
     def formats(cameraID: int = 0) -> list[tuple[int, int, float, float]]:
@@ -260,11 +388,6 @@ class QOpenCVDevices:
     def _find_device(cameraID: int, devices) -> object | None:
         '''Match *cameraID* to a :class:`~QtMultimedia.QCameraDevice`.
 
-        On Linux, ``QCameraDevice.id()`` returns a byte string containing
-        the V4L2 device path (e.g. ``b'/dev/video0'``), which maps directly
-        to the OpenCV camera index.  On other platforms, the enumeration
-        order matches OpenCV, so the index is used directly.
-
         Parameters
         ----------
         cameraID : int
@@ -276,24 +399,12 @@ class QOpenCVDevices:
         Returns
         -------
         QCameraDevice or None
-            The matching device, or ``None`` if not found.
+            The device that OpenCV opens as *cameraID* (see
+            :meth:`_ordered`), or ``None`` if there is none.
         '''
-        if platform.system() == 'Linux':
-            # Qt6/GStreamer backend reports IDs as b'v4l2:///dev/videoN';
-            # Qt6/V4L2 backend reports b'/dev/videoN'.  Match on the suffix
-            # '/videoN' to handle both formats.
-            target_suffix = f'/video{cameraID}'.encode()
-            for dev in devices:
-                dev_id = bytes(dev.id()).rstrip(b'\x00')
-                if dev_id.endswith(target_suffix):
-                    return dev
-            return None
-        # macOS: Qt6 and OpenCV both use AVFoundation, order matches.
-        # Windows: Qt6 uses WMF; OpenCV may use DirectShow or MSMF.
-        # Index correlation holds when both use the same backend but
-        # may fail when virtual cameras (OBS, etc.) differ.
-        if cameraID < len(devices):
-            return devices[cameraID]
+        for index, dev in QOpenCVDevices._ordered(devices):
+            if index == cameraID:
+                return dev
         return None
 
     @staticmethod

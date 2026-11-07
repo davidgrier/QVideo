@@ -306,3 +306,17 @@ index:
 .. code-block:: python
 
    camera = Camera('OpenCV', cameraID=1)   # second USB camera
+
+The index is the one that OpenCV gives the camera, which is not always the
+order in which the system lists them (on a Mac, OpenCV sorts the cameras by
+their ids).  ``QOpenCVDevices.devices()`` lists each camera with the index
+that opens it and the identifier that stays with the device, and
+``QOpenCVCamera`` opens a camera by that identifier or by a part of its
+name, which does not change when another camera is plugged in:
+
+.. code-block:: python
+
+   from QVideo.cameras.OpenCV import QOpenCVCamera, QOpenCVDevices
+   for device in QOpenCVDevices.devices():
+       print(device)       # CameraDevice(index=0, name='HD Pro ...', ...)
+   camera = QOpenCVCamera(cameraID='C920')

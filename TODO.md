@@ -733,14 +733,22 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   the reads fail without an exception, each one blocking about 0.5 s;
   `isOpened()` stays `True`, so only the timeout catches it (the loss came
   2 s after the last frame).  Linux (V4L2) is not tried.
-- [ ] **OpenCV's device numbers do not match the names.**  On macOS, with the
-  built-in camera and the C920 attached, Qt lists `{0: FaceTime HD Camera,
-  1: HD Pro Webcam C920}` and OpenCV's index 0 is the C920 and index 1 the
-  FaceTime camera (looked at the frames).  `QOpenCVCamera.deviceNames()`
-  comes from QtMultimedia, so the chooser shows the wrong name for an index
-  and `-c 1` opens the other camera.  Needs a way to name the cameras in
-  OpenCV's order (AVFoundation directly?), or to say that the names are
-  unreliable.  Check Linux (V4L2 numbers `/dev/videoN`) and Windows.
+- [x] **OpenCV's device numbers did not match the names** (macOS, found
+  2026-11-07, fixed the same day).  With the built-in camera and the C920
+  attached, Qt listed `{0: FaceTime HD Camera, 1: HD Pro Webcam C920}` (the
+  order of plugging in) and OpenCV's index 0 was the C920 (looked at the
+  frames).  Now `QOpenCVDevices.devices()` works the index out per platform:
+  macOS sorts by the Qt `id()` (= AVFoundation `uniqueID`; the rule agrees
+  with two observations here and with the source of `cv2-enumerate-cameras`,
+  but is OpenCV's own business and may change); Linux takes the `N` of
+  `/dev/videoN`; elsewhere Qt's order.  `QOpenCVCamera(cameraID=...)` takes
+  an index, an id or a part of a name.
+- [ ] **Still open for OpenCV identity:** Windows (is Qt's WMF order OpenCV's
+  MSMF or DirectShow order?) and Linux (V4L2 with several cameras, and the
+  Pi's libcamera, are not tried); `-c` and `Camera()` take only an index (an
+  id or name needs `type=int` changed for every backend); a USB webcam's macOS
+  id has no serial number (it holds the port and the vendor and product ids),
+  so two cameras of one model are told apart by the port.
 - [ ] **The other backends** call `_deviceLost` where their library says the
   device is gone, each tried by pulling a cable.  `QRemoteCamera` knows when
   its worker has gone (`_lost`); Harvesters (`QGenicamCamera`) raises generic

@@ -103,6 +103,10 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     shapeChanged = QtCore.Signal(QtCore.QSize)
     #: Emitted by :meth:`get` with the property name and current value.
     propertyValue = QtCore.Signal(str, object)
+    #: Emitted once, with the reason, when the device has gone (a USB cable
+    #: that was pulled).  The camera is closed by then; see
+    #: :meth:`_deviceLost`.
+    lost = QtCore.Signal(str)
 
     #: The camera's own timestamp for the frame most recently read [s], in
     #: the camera's native clock, or ``None`` if it provides none.  A
@@ -309,7 +313,14 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             ``False``.
         '''
         if not self._isOpen:
-            self._isOpen = bool(self._initialize(*args, **kwargs))
+            # The camera answers get, set and read while it is initialized:
+            # a backend configures the device with them.
+            self._isOpen = True
+            try:
+                self._isOpen = bool(self._initialize(*args, **kwargs))
+            except BaseException:
+                self._isOpen = False
+                raise
             if not self._isOpen:
                 logger.warning(f'{self.name}: initialization failed')
         return self
@@ -330,6 +341,32 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     def isOpen(self) -> bool:
         '''Return whether the device is currently open.'''
         return self._isOpen
+
+    def _deviceLost(self, reason: str) -> None:
+        '''Close a camera whose device has gone, and say so once.
+
+        A backend calls this from the place where it learns that the
+        device is not there any more (not for an error that the device
+        reports and survives).  The camera is closed, so that everything
+        that follows (reads, writes) is answered quietly instead of
+        failing, one error is logged and :attr:`lost` is emitted.  A
+        camera that is already closed says nothing.
+
+        Parameters
+        ----------
+        reason : str
+            What the backend knows, for the log and for the user.
+        '''
+        with self._mutex:
+            if not self._isOpen:
+                return
+            logger.error(f'{self.name}: the camera was lost: {reason}')
+            try:
+                self.close()
+            except Exception as ex:     # a device that has gone may refuse
+                logger.debug(f'Closing the lost camera failed: {ex}')
+            self._isOpen = False
+        self.lost.emit(reason)
 
     @abstractmethod
     def _initialize(self, *args, **kwargs) -> bool:
@@ -396,6 +433,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         if key not in self.properties:
             logger.error(f'Unknown property: {key}')
             return
+        if not self._isOpen:
+            logger.warning(f'The camera is closed: {key} was not set')
+            return
         setter = self.properties[key]['setter']
         if setter is None:
             logger.warning(f'Property {key!r} is read-only')
@@ -436,6 +476,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         if key not in self.properties:
             logger.error(f'Unknown property: {key}')
             return None
+        if not self._isOpen:
+            logger.debug(f'The camera is closed: {key} was not read')
+            return None
         value = self.properties[key]['getter']()
         self.propertyValue.emit(key, value)
         return value
@@ -449,10 +492,12 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         key : str
             Method name.
         '''
-        if key in self._methods:
-            self._methods[key]()
-        else:
+        if key not in self._methods:
             logger.error(f'Unknown method: {key}')
+        elif not self._isOpen:
+            logger.warning(f'The camera is closed: {key} was not run')
+        else:
+            self._methods[key]()
 
     # ------------------------------------------------------------------
     # Frame acquisition
@@ -473,7 +518,8 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         '''Read one frame under the camera mutex.
 
         Blocks any concurrent call to :meth:`set`, :meth:`get`, or
-        :meth:`execute` until the frame transfer completes.
+        :meth:`execute` until the frame transfer completes.  A camera that
+        is closed has nothing to read, and answers ``(False, None)``.
 
         Returns
         -------
@@ -481,6 +527,8 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             Result of :meth:`read`.
         '''
         with self._mutex:
+            if not self._isOpen:
+                return False, None
             return self.read()
 
     # ------------------------------------------------------------------

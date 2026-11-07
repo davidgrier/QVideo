@@ -206,6 +206,31 @@ it has something to say:
    before any is opened.  The camera chooser shows the names.  The default
    is ``{}``, and the camera is then known by the label of its backend.
 
+When the device goes
+~~~~~~~~~~~~~~~~~~~~
+
+A USB cable is pulled, a network camera loses power.  QVideo does not
+reconnect: the program carries on with the last frame on the screen, and
+the user restarts it to use the camera again.  What it does need is a camera
+that fails once, tells the user, and then answers quietly, instead of
+raising on every control and reading as fast as the processor allows.
+
+Call ``self._deviceLost(reason)`` from the place where your backend learns
+that the device is *gone*, not for an error that a working device reports.
+It closes the camera, logs one error and emits
+:attr:`~QVideo.lib.QCamera.QCamera.lost`, which the source passes on, the
+control tree answers by disabling its controls and
+:class:`~QVideo.QCamcorder.QCamcorder` by saying so.  Afterwards
+``saferead()`` returns ``(False, None)``, ``get`` returns ``None``, and
+``set`` and ``execute`` log a warning and do nothing.
+
+Be careful about what means "gone".  A read that times out is not: a
+camera that waits for a trigger or exposes for seconds also returns
+nothing.  ``QVivaCamera`` treats the end of the stream as the loss, because
+a live stream raises when it has no frame and only returns ``None`` when
+the device has gone, after the error that says why.  Find the signal that
+your library gives, and test it by pulling a cable.
+
 ----
 
 A complete example
@@ -379,6 +404,8 @@ Before you open a pull request:
 - Failing to open raises ``QDriverError`` or ``QDeviceError`` with advice.
 - ``_deinitialize`` really frees the device, and ``open`` works again.
 - The conformance suite passes on a simulated device.
+- If the library can tell that the device is gone, ``_deviceLost`` is called
+  (and not for a timeout).
 - ``ruff check .`` is clean and the lines are at most 79 characters.
 - The four registration edits are made and the documentation builds.
 - You tried it in ``python -m QVideo`` and, if you can, in a notebook with

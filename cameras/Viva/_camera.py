@@ -96,6 +96,8 @@ class QVivaCamera(QCamera):
         self._stream: vg.FrameStream | None = None
         self._kinds: dict[str, str] = {}
         self._streamLocked: set[str] = set()
+        #: Why the last read failed; the reason when the stream then ends.
+        self._readError: str | None = None
         self.open()
 
     def _initialize(self) -> bool:
@@ -235,6 +237,8 @@ class QVivaCamera(QCamera):
         this after a change, and each property is writable exactly when
         it has a setter.
         '''
+        if not self.isOpen():
+            return
         for name, kind in self._kinds.items():
             state = self._device.feature_state(name)
             writable = self._isWritable(state, name)
@@ -280,7 +284,10 @@ class QVivaCamera(QCamera):
         except vg.GenicamError as ex:
             logger.warning(f'{name} is not currently writable: {ex}')
         finally:
-            self._startStream()
+            try:
+                self._startStream()
+            except vg.TransportError as ex:
+                self._deviceLost(str(ex))
 
     def _registerAliases(self) -> None:
         '''Offer the lowercase names for the standard nodes that exist.'''
@@ -347,11 +354,18 @@ class QVivaCamera(QCamera):
         try:
             frame = self._stream.next_frame(timeout_ms=self.timeout)
             if frame is None:
+                # A stream that is alive raises when it has no frame (a
+                # timeout is an error too) and never returns None: it ends
+                # when the device goes, after the error that said why.
+                self._deviceLost(f'the stream ended after: '
+                                 f'{self._readError or "no error"}')
                 return False, None
             image = frame.to_numpy()
         except vg.GenicamError as ex:
+            self._readError = str(ex)
             logger.warning(f'camera read failed: {ex}')
             return False, None
+        self._readError = None
         self.hardwareTimestamp = self._timestamp(frame)
         return True, image
 

@@ -13,6 +13,9 @@ from QVideo.lib.videotypes import FrameInfo
 
 logger = logging.getLogger(__name__)
 
+#: How long the capture loop waits [ms] before it asks a closed camera again.
+_CLOSED_WAIT_MS = 50
+
 VideoSourceType: TypeAlias = QCamera | QVideoReader
 
 __all__ = ['QVideoSource', 'VideoSourceType']
@@ -37,6 +40,10 @@ class QVideoSource(QtCore.QThread):
         is stamped in the capture thread immediately after the frame is
         read.  Slots that need only the frame may accept a single
         argument.
+    lost(str)
+        The camera has been lost, with the reason: that of the camera
+        (:attr:`~QVideo.lib.QCamera.QCamera.lost`), passed on.  The camera
+        is closed, and the loop waits for :meth:`stop`.
 
     Notes
     -----
@@ -48,11 +55,15 @@ class QVideoSource(QtCore.QThread):
 
     #: Emitted when a new video frame is available.
     newFrame = QtCore.Signal(np.ndarray, object)
+    #: Emitted, with the reason, when the camera has been lost.
+    lost = QtCore.Signal(str)
 
     def __init__(self, source: VideoSourceType) -> None:
         super().__init__()
         self._source = source
         self.shapeChanged = source.shapeChanged
+        if isinstance(source, QCamera):     # a file cannot be lost
+            source.lost.connect(self.lost)
         source.moveToThread(self)
         self._mutex = QtCore.QMutex()
         self._waitCondition = QtCore.QWaitCondition()
@@ -115,7 +126,20 @@ class QVideoSource(QtCore.QThread):
                                      getattr(self.source, 'levels', None))
                     self._frames += 1
                     self.newFrame.emit(frame, info)
+                elif not self.source.isOpen():
+                    self._waitClosed()
         logger.debug('streaming finished')
+
+    def _waitClosed(self) -> None:
+        '''Wait a little, instead of reading, while the camera is closed.
+
+        A camera that was lost has nothing to read, and a loop that asks
+        again at once keeps a core busy for nothing.  :meth:`stop` wakes
+        the wait, and a camera that is opened again is read again.
+        '''
+        with QtCore.QMutexLocker(self._mutex):
+            if self._running:
+                self._waitCondition.wait(self._mutex, _CLOSED_WAIT_MS)
 
     def _hardwareTimestamp(self) -> float | None:
         '''Return the camera's timestamp for the frame just read, if any.'''

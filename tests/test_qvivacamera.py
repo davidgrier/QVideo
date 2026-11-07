@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets
 from QVideo.lib.errors import QDeviceError
+from QVideo.tests.signals import record
 
 try:
     import viva_genicam as vg
@@ -268,11 +269,53 @@ class TestRead(unittest.TestCase):
             with self.assertLogs(MODULE.logger, 'WARNING'):
                 self.assertEqual(camera.read(), (False, None))
 
-    def test_a_clean_end_of_the_stream_is_a_failed_read(self):
+    def test_a_timeout_does_not_close_the_camera(self):
+        with FakeCamera() as camera:
+            camera._stream = MagicMock()
+            camera._stream.next_frame.side_effect = vg.TransportError(
+                'timeout waiting for frame')
+            with self.assertLogs(MODULE.logger, 'WARNING'):
+                for _ in range(5):
+                    camera.read()
+            self.assertTrue(camera.isOpen())
+
+    def test_a_stream_that_has_ended_is_a_lost_camera(self):
+        with FakeCamera() as camera:
+            lost = record(camera.lost)
+            camera._stream = MagicMock()
+            camera._stream.next_frame.side_effect = [
+                vg.TransportError('read a frame: the device is disconnected'),
+                None]
+            with self.assertLogs(MODULE.logger, 'WARNING'):
+                camera.read()
+            self.assertTrue(camera.isOpen())    # one error is no loss
+            with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+                self.assertEqual(camera.read(), (False, None))
+            self.assertFalse(camera.isOpen())
+            self.assertEqual(len(lost), 1)
+            self.assertIn('disconnected', lost[0][0])
+
+    def test_a_lost_camera_answers_quietly(self):
         with FakeCamera() as camera:
             camera._stream = MagicMock()
             camera._stream.next_frame.return_value = None
-            self.assertEqual(camera.read(), (False, None))
+            with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+                camera.read()
+            self.assertEqual(camera.saferead(), (False, None))
+            self.assertIsNone(camera.get('Width'))
+            camera.updateAccess()               # does not touch the device
+            with self.assertLogs('QVideo.lib.QCamera', 'WARNING'):
+                camera.set('Width', 320)
+
+    def test_a_lost_camera_says_so_once(self):
+        with FakeCamera() as camera:
+            lost = record(camera.lost)
+            camera._stream = MagicMock()
+            camera._stream.next_frame.return_value = None
+            with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+                camera.read()
+            camera._deviceLost('again')
+            self.assertEqual(len(lost), 1)
 
     def test_a_frame_arrives_as_an_array(self):
         with FakeCamera() as camera:

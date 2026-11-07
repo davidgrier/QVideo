@@ -126,6 +126,7 @@ class QCamcorder(QtWidgets.QWidget):
         self.dvr.stopped.connect(self.message, QtCore.Qt.QueuedConnection)
         self.dvr.stopped.connect(self._showStopped,
                                  QtCore.Qt.QueuedConnection)
+        self.source.lost.connect(self._showLost)
         self.screen.newFrame.connect(self._snapshot.newFrame)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -169,13 +170,33 @@ class QCamcorder(QtWidgets.QWidget):
         '''Tell the user why a recording stopped by itself.
 
         The status bar is easy to miss while watching the video, and a
-        recording that ends without notice can lose data.  The dialog does
-        not block: the recording has already stopped, and a modal loop
-        would hold up the frames that the screen is showing.
+        recording that ends without notice can lose data.
+        '''
+        self._warn('Recording stopped', reason[:1].upper() + reason[1:] + '.')
+
+    @QtCore.Slot(str)
+    def _showLost(self, reason: str) -> None:
+        '''Tell the user that the camera has gone.
+
+        The screen keeps the last frame and everything else carries on, so
+        nothing else says why the picture is still.  A recording that is
+        running waits for frames that will not come: stop it.
+        '''
+        self.message.emit(f'Camera lost: {reason}')
+        self._warn('Camera lost',
+                   f'The camera was lost: {reason}.\n\nThe last frame '
+                   'stays on the screen.  Stop a recording that is '
+                   'running, and restart the program to use the camera '
+                   'again.')
+
+    def _warn(self, title: str, text: str) -> None:
+        '''Show a warning dialog that does not block.
+
+        The dialog is not modal: a modal loop would hold up the frames that
+        the screen is showing.
         '''
         box = QtWidgets.QMessageBox(
-            QtWidgets.QMessageBox.Icon.Warning, 'Recording stopped',
-            reason[:1].upper() + reason[1:] + '.', parent=self)
+            QtWidgets.QMessageBox.Icon.Warning, title, text, parent=self)
         box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self._stopBox = box
         box.open()

@@ -193,5 +193,37 @@ class TestQCamcorderStopDialog(unittest.TestCase):
                          'Recording fell 2.0 s behind.')
 
 
+class TestQCamcorderCameraLost(unittest.TestCase):
+
+    def setUp(self):
+        patcher = patch.object(QtWidgets.QMessageBox, 'open')
+        self.open = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.widget = make_camcorder()
+        self.addCleanup(self.widget.cameraWidget.stop)
+        self.messages = []
+        self.widget.message.connect(self.messages.append)
+
+    def lose(self, reason='the cable was pulled'):
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.widget.source.source._deviceLost(reason)
+        app.processEvents()
+
+    def test_the_status_bar_says_why(self):
+        self.lose()
+        self.assertIn('Camera lost: the cable was pulled', self.messages)
+
+    def test_a_dialog_opens_without_blocking(self):
+        self.lose()
+        self.open.assert_called_once()
+        box = self.widget._stopBox
+        self.assertEqual(box.icon(), QtWidgets.QMessageBox.Icon.Warning)
+        self.assertIn('the cable was pulled', box.text())
+
+    def test_the_controls_are_disabled(self):
+        self.lose()
+        self.assertFalse(self.widget.cameraWidget.isEnabled())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -422,6 +422,68 @@ class TestRun(unittest.TestCase):
         self.assertTrue(finished)
 
 
+class TestLostCamera(unittest.TestCase):
+    '''A camera that is lost closes, and the loop waits, not spins.'''
+
+    def setUp(self):
+        from QVideo.cameras.Noise import QNoiseCamera
+        from QVideo.tests.fakes import until
+        self.until = until
+        self.camera = QNoiseCamera()
+        self.source = QVideoSource(self.camera)
+        self.frames = record(self.source.newFrame)
+        self.lost = record(self.source.lost)
+        self.source.start()
+        self.addCleanup(self.stopSource)
+        until(lambda: len(self.frames) >= 2, 10000)
+
+    def stopSource(self):
+        self.source.stop()
+        self.source.wait()
+
+    def lose(self, reason='unplugged'):
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.camera._deviceLost(reason)
+        self.until(lambda: self.lost or app.processEvents(), 5000)
+
+    def test_the_source_passes_the_loss_on(self):
+        self.lose('the cable was pulled')
+        app.processEvents()
+        self.assertEqual(self.lost, [('the cable was pulled',)])
+
+    def test_the_loop_does_not_spin_on_a_closed_camera(self):
+        self.lose()
+        reads = []
+        saferead = self.camera.saferead
+
+        def counting():
+            reads.append(1)
+            return saferead()
+
+        self.camera.saferead = counting
+        time.sleep(0.5)
+        self.assertLess(len(reads), 30)         # a wait of 50 ms, not a spin
+
+    def test_no_frame_arrives_after_the_loss(self):
+        self.lose()
+        time.sleep(0.1)
+        count = len(self.frames)
+        time.sleep(0.2)
+        self.assertEqual(len(self.frames), count)
+
+    def test_stop_ends_the_wait_at_once(self):
+        self.lose()
+        start = time.perf_counter()
+        self.source.stop()
+        self.source.wait()
+        self.assertLess(time.perf_counter() - start, 1.)
+        self.assertFalse(self.source.isRunning())
+
+    def test_a_source_that_is_not_a_camera_has_the_signal_too(self):
+        source = make_vs()              # a mock, as a reader is: not a camera
+        self.assertTrue(hasattr(source.lost, 'connect'))
+
+
 class TestDroppingARunningSource(unittest.TestCase):
 
     CODE = """

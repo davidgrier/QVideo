@@ -29,6 +29,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   time of day.  A GigE camera that fails to calibrate is reported with a
   warning.
 
+- **A camera that is lost fails once and then answers quietly.**  When a
+  USB or network camera is unplugged, `QCamera._deviceLost(reason)` closes
+  it, logs one error and emits the new `lost(str)` signal (passed on by
+  `QVideoSource`).  The tree disables its controls, `QCamcorder` shows the
+  reason in the status bar and a dialog, and the last frame stays on the
+  screen; filters, overlays and playback carry on.  A closed camera
+  answers `saferead()` with `(False, None)`, `get()` with `None`, and
+  refuses `set()` and `execute()` with a warning.  The capture loop waits
+  50 ms between asks of a closed camera instead of reading as fast as it
+  can: with an unplugged Blackfly S under Viva it did a million reads a
+  second and used a whole core, without a word in the log.  `QVivaCamera`
+  reports the loss when its stream ends.  Nothing reconnects; restart the
+  program.  A camera counts as open while `_initialize` runs, so a
+  backend can read and write its device there.
+
 ### Changed
 
 - **`QCamcorder` shows a dialog when a recording stops by itself**, with the
@@ -58,6 +73,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The docstring of `launch()` had a stray line** (`XX`) in the middle of a
+  sentence, which Sphinx reported as a warning and which was on the page
+  of the API since 4.17.0.
 - **The frame rate control of `-g` (Viva) was gray until something enabled
   it.**  A camera makes `AcquisitionFrameRate` read-only while
   `AcquisitionFrameRateEnable` is off, which is how it leaves the factory,

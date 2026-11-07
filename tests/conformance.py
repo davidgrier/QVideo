@@ -67,6 +67,18 @@ class CameraConformance:
         self.camera.close()
         self.assertFalse(self.camera.isOpen())
 
+    def test_a_lost_camera_is_closed_and_answers_quietly(self):
+        lost = record(self.camera.lost)
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.camera._deviceLost('unplugged')
+        self.assertFalse(self.camera.isOpen())
+        self.assertEqual(lost, [('unplugged',)])
+        self.assertEqual(self.camera.saferead(), (False, None))
+        name = next(iter(self.camera.properties))
+        self.assertIsNone(self.camera.get(name))
+        with self.assertLogs('QVideo.lib.QCamera', 'WARNING'):
+            self.camera.set(name, 1)
+
     def test_the_camera_reads_again_after_it_is_reopened(self):
         self.camera.close()
         self.camera.open()

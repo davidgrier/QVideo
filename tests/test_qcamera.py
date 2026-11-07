@@ -3,7 +3,7 @@ import threading
 import time
 import unittest
 import numpy as np
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from qtpy import QtCore, QtWidgets
 from QVideo.tests.signals import record
 from QVideo.lib.QCamera import QCamera
@@ -48,6 +48,11 @@ class _FakeCamera(QCamera):
 
 def make_camera() -> _FakeCamera:
     return _FakeCamera()
+
+
+def open_camera() -> _FakeCamera:
+    '''A camera that is open, as it must be to answer get, set and read.'''
+    return make_camera().open()
 
 
 class TestChooserHooks(unittest.TestCase):
@@ -201,40 +206,40 @@ class TestContextManager(unittest.TestCase):
 class TestRegistration(unittest.TestCase):
 
     def test_properties_returns_list(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertIsInstance(cam.properties, dict)
 
     def test_registered_properties_present(self):
-        cam = make_camera()
+        cam = open_camera()
         for name in ('width', 'height', 'fps', 'color'):
             self.assertIn(name, cam.properties)
 
     def test_methods_returns_list(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertIsInstance(cam.methods, list)
 
     def test_registered_method_present(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertIn('calibrate', cam.methods)
 
     def test_auto_getter_reads_backing_attribute(self):
-        cam = make_camera()
+        cam = open_camera()
         cam._fps = 60.
         self.assertEqual(cam.get('fps'), 60.)
 
     def test_auto_setter_writes_backing_attribute(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.set('fps', 24.)
         self.assertAlmostEqual(cam._fps, 24.)
 
     def test_auto_setter_coerces_to_ptype(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.set('width', 320.9)   # float passed, ptype=int
         self.assertIsInstance(cam._width, int)
         self.assertEqual(cam._width, 320)
 
     def test_explicit_setter_none_is_read_only(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
             cam.set('color', True)
         self.assertFalse(cam.color)
@@ -248,7 +253,7 @@ class TestRegistration(unittest.TestCase):
                                       getter=lambda: self._gain,
                                       setter=lambda v: setattr(self, '_gain', int(v)),
                                       ptype=int)
-        cam = _ExtendedCamera()
+        cam = _ExtendedCamera().open()
         self.assertIn('gain', cam.properties)
         self.assertIn('width', cam.properties)
 
@@ -256,16 +261,16 @@ class TestRegistration(unittest.TestCase):
 class TestGetattr(unittest.TestCase):
 
     def test_registered_property_accessible_as_attribute(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertEqual(cam.width, 640)
 
     def test_registered_property_attribute_updates_with_setter(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.set('width', 320)
         self.assertEqual(cam.width, 320)
 
     def test_unregistered_attribute_raises(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertRaises(AttributeError):
             _ = cam.nonexistent
 
@@ -273,39 +278,39 @@ class TestGetattr(unittest.TestCase):
 class TestSetattr(unittest.TestCase):
 
     def test_attribute_assignment_calls_setter(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.fps = 60.
         self.assertAlmostEqual(cam.fps, 60.)
 
     def test_attribute_assignment_routes_through_registered_setter(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.width = 320
         self.assertEqual(cam.width, 320)
 
     def test_attribute_assignment_coerces_to_ptype(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.width = '1280'
         self.assertEqual(cam.width, 1280)
         self.assertIsInstance(cam.width, int)
 
     def test_attribute_assignment_to_readonly_logs_warning(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
             cam.color = True
 
     def test_unregistered_attribute_assignment_sets_python_attribute(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.custom_attr = 'hello'
         self.assertEqual(cam.custom_attr, 'hello')
 
     def test_internal_attribute_set_directly(self):
-        cam = make_camera()
+        cam = open_camera()
         cam._fps = 99.
         self.assertAlmostEqual(cam._fps, 99.)
 
     def test_custom_setter_called_on_attribute_assignment(self):
         setter_calls = []
-        cam = make_camera()
+        cam = open_camera()
         cam.registerProperty('gain', getter=lambda: 1.0,
                              setter=lambda v: setter_calls.append(v), ptype=float)
         cam.gain = 2.5
@@ -315,23 +320,23 @@ class TestSetattr(unittest.TestCase):
 class TestActualFps(unittest.TestCase):
 
     def test_it_is_the_requested_rate_by_default(self):
-        self.assertEqual(make_camera().actualFps, 30.)
+        self.assertEqual(open_camera().actualFps, 30.)
 
     def test_it_follows_the_requested_rate(self):
-        camera = make_camera()
+        camera = open_camera()
         camera.fps = 12.
         self.assertEqual(camera.actualFps, 12.)
 
     def test_it_is_read_only(self):
         with self.assertRaises(AttributeError):
-            make_camera().actualFps = 10.
+            open_camera().actualFps = 10.
 
     def test_a_subclass_can_report_what_the_hardware_does(self):
         class Slow(_FakeCamera):
             @property
             def actualFps(self):
                 return 0.5 * self.fps
-        camera = Slow()
+        camera = Slow().open()
         camera.fps = 20.
         self.assertEqual((camera.fps, camera.actualFps), (20., 10.))
 
@@ -339,37 +344,37 @@ class TestActualFps(unittest.TestCase):
 class TestShape(unittest.TestCase):
 
     def test_shape_returns_qsize(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertIsInstance(cam.shape, QtCore.QSize)
 
     def test_shape_matches_registered_width_height(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertEqual(cam.shape, QtCore.QSize(640, 480))
 
     def test_shape_updates_with_width(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.set('width', 320)
         self.assertEqual(cam.shape.width(), 320)
 
     def test_shape_updates_with_height(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.set('height', 240)
         self.assertEqual(cam.shape.height(), 240)
 
     def test_shape_changed_emitted_on_width_change(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         cam.set('width', 320)
         self.assertEqual(len(spy), 1)
 
     def test_shape_changed_emitted_on_height_change(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         cam.set('height', 240)
         self.assertEqual(len(spy), 1)
 
     def test_shape_returns_zero_size_when_not_registered(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.properties.clear()
         self.assertEqual(cam.shape, QtCore.QSize(0, 0))
 
@@ -378,7 +383,7 @@ class TestShape(unittest.TestCase):
         # not allow to read at the moment.
         for name in ('width', 'height'):
             with self.subTest(name):
-                cam = make_camera()
+                cam = open_camera()
                 cam.registerProperty(name, getter=lambda: None, ptype=int)
                 self.assertEqual(cam.shape, QtCore.QSize(0, 0))
 
@@ -400,32 +405,32 @@ class TestShapeChanged(unittest.TestCase):
     '''set() announces the new shape, once, if the shape is different.'''
 
     def test_a_new_width_announces_the_new_shape_once(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         cam.set('width', 320)
         self.assertEqual(spy, [(QtCore.QSize(320, 480),)])
 
     def test_a_new_height_announces_the_new_shape_once(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         cam.set('height', 240)
         self.assertEqual(spy, [(QtCore.QSize(640, 240),)])
 
     def test_the_same_value_announces_nothing(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         cam.set('width', 640)
         cam.set('height', 480)
         self.assertEqual(spy, [])
 
     def test_assigning_the_attribute_announces_too(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         cam.width = 320
         self.assertEqual(spy, [(QtCore.QSize(320, 480),)])
 
     def test_an_alias_announces_like_its_property(self):
-        cam = _StandardCamera()
+        cam = _StandardCamera().open()
         spy = record(cam.shapeChanged)
         cam.set('width', 320)
         cam.set('Height', 240)
@@ -433,7 +438,7 @@ class TestShapeChanged(unittest.TestCase):
                                (QtCore.QSize(320, 240),)])
 
     def test_another_property_does_not_even_read_the_shape(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
         with patch.object(QCamera, 'shape',
                           new_callable=PropertyMock) as shape:
@@ -442,7 +447,7 @@ class TestShapeChanged(unittest.TestCase):
         self.assertEqual(spy, [])
 
     def test_the_signal_comes_after_the_setter_has_finished(self):
-        cam = make_camera()
+        cam = open_camera()
         seen = []
         cam.shapeChanged.connect(lambda shape: seen.append(
             (shape, cam._width, cam._height)))
@@ -450,7 +455,7 @@ class TestShapeChanged(unittest.TestCase):
         self.assertEqual(seen, [(QtCore.QSize(320, 480), 320, 480)])
 
     def test_a_setter_that_raises_announces_nothing(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.shapeChanged)
 
         def refuse(value):
@@ -463,13 +468,13 @@ class TestShapeChanged(unittest.TestCase):
     def test_a_property_that_sets_both_is_listed_to_be_announced(self):
         class Listed(_ResolutionCamera):
             shapeProperties = ('width', 'height', 'resolution')
-        cam = Listed()
+        cam = Listed().open()
         spy = record(cam.shapeChanged)
         cam.set('resolution', '320x240')
         self.assertEqual(spy, [(QtCore.QSize(320, 240),)])
 
     def test_a_property_that_is_not_listed_announces_nothing(self):
-        cam = _ResolutionCamera()
+        cam = _ResolutionCamera().open()
         spy = record(cam.shapeChanged)
         cam.set('resolution', '320x240')
         self.assertEqual(cam.shape, QtCore.QSize(320, 240))
@@ -478,7 +483,7 @@ class TestShapeChanged(unittest.TestCase):
     def test_a_camera_that_announces_its_own_shape_lists_none(self):
         class Proxy(_FakeCamera):
             shapeProperties = ()
-        cam = Proxy()
+        cam = Proxy().open()
         spy = record(cam.shapeChanged)
         cam.set('width', 320)
         self.assertEqual(spy, [])
@@ -501,10 +506,10 @@ class TestAliases(unittest.TestCase):
     '''Other names for properties, for the names that every camera shares.'''
 
     def setUp(self):
-        self.cam = _StandardCamera()
+        self.cam = _StandardCamera().open().open()
 
     def test_there_are_none_by_default(self):
-        self.assertEqual(make_camera().aliases, {})
+        self.assertEqual(open_camera().aliases, {})
 
     def test_an_alias_is_not_a_property(self):
         self.assertNotIn('width', self.cam.properties)
@@ -545,49 +550,49 @@ class TestAliases(unittest.TestCase):
 class TestSettings(unittest.TestCase):
 
     def test_settings_returns_dict(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertIsInstance(cam.settings, dict)
 
     def test_settings_contains_registered_properties(self):
-        cam = make_camera()
+        cam = open_camera()
         s = cam.settings
         self.assertIn('width', s)
         self.assertIn('height', s)
         self.assertIn('fps', s)
 
     def test_settings_does_not_emit_property_value_signal(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.propertyValue)
         cam.settings
         self.assertEqual(len(spy), 0)
 
     def test_set_valid_property(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.set('width', 320)
         self.assertEqual(cam.width, 320)
 
     def test_set_invalid_property_logs_error(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='ERROR'):
             cam.set('nonexistent', 42)
 
     def test_set_read_only_property_logs_warning(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='WARNING'):
             cam.set('color', True)
 
     def test_get_valid_property(self):
-        cam = make_camera()
+        cam = open_camera()
         self.assertEqual(cam.get('width'), 640)
 
     def test_get_invalid_property_returns_none(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='ERROR'):
             result = cam.get('nonexistent')
         self.assertIsNone(result)
 
     def test_get_emits_property_value_signal(self):
-        cam = make_camera()
+        cam = open_camera()
         spy = record(cam.propertyValue)
         cam.get('width')
         self.assertEqual(len(spy), 1)
@@ -596,7 +601,7 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(value, 640)
 
     def test_set_settings_applies_all(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.settings = {'width': 320, 'height': 240}
         self.assertEqual(cam.width, 320)
         self.assertEqual(cam.height, 240)
@@ -605,28 +610,28 @@ class TestSettings(unittest.TestCase):
 class TestRead(unittest.TestCase):
 
     def test_read_returns_tuple(self):
-        cam = make_camera()
+        cam = open_camera()
         result = cam.read()
         self.assertIsInstance(result, tuple)
         self.assertEqual(len(result), 2)
 
     def test_read_success_flag(self):
-        cam = make_camera()
+        cam = open_camera()
         success, _ = cam.read()
         self.assertTrue(success)
 
     def test_read_returns_ndarray(self):
-        cam = make_camera()
+        cam = open_camera()
         _, frame = cam.read()
         self.assertIsInstance(frame, np.ndarray)
 
     def test_read_frame_shape(self):
-        cam = make_camera()
+        cam = open_camera()
         _, frame = cam.read()
         self.assertEqual(frame.shape, (480, 640))
 
     def test_saferead_calls_read(self):
-        cam = make_camera()
+        cam = open_camera()
         with patch.object(cam, 'read', wraps=cam.read) as mock_read:
             cam.saferead()
             self.assertTrue(mock_read.called)
@@ -635,12 +640,12 @@ class TestRead(unittest.TestCase):
 class TestExecute(unittest.TestCase):
 
     def test_execute_calls_method(self):
-        cam = make_camera()
+        cam = open_camera()
         cam.execute('calibrate')
         self.assertTrue(cam._method_called)
 
     def test_execute_invalid_method_logs_error(self):
-        cam = make_camera()
+        cam = open_camera()
         with self.assertLogs('QVideo.lib.QCamera', level='ERROR'):
             cam.execute('nonexistent')
 
@@ -649,7 +654,7 @@ class TestSerialization(unittest.TestCase):
     '''No device access overlaps a frame read, by any route.'''
 
     def setUp(self):
-        self.cam = make_camera()
+        self.cam = open_camera()
         self.reading = threading.Event()
         self.overlaps = []
 
@@ -698,6 +703,108 @@ class TestSerialization(unittest.TestCase):
     def test_a_setter_may_read_other_properties(self):
         self.cam.set('width', 320)
         self.assertEqual(self.cam.shape.width(), 320)
+
+
+
+class TestLostCamera(unittest.TestCase):
+    '''A camera whose device has gone is closed, and answers quietly.'''
+
+    def setUp(self):
+        self.cam = open_camera()
+        self.lost = record(self.cam.lost)
+
+    def lose(self, reason='unplugged'):
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.cam._deviceLost(reason)
+
+    def test_a_lost_camera_is_closed(self):
+        self.lose()
+        self.assertFalse(self.cam.isOpen())
+        self.assertEqual(self.cam._deinitialize_called, 1)
+
+    def test_it_says_so_once_with_the_reason(self):
+        self.lose('the cable was pulled')
+        self.cam._deviceLost('again')
+        self.assertEqual(self.lost, [('the cable was pulled',)])
+
+    def test_the_log_has_the_reason(self):
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR') as logs:
+            self.cam._deviceLost('the cable was pulled')
+        self.assertIn('the cable was pulled', logs.output[0])
+
+    def test_a_camera_that_is_not_open_has_nothing_to_lose(self):
+        camera = make_camera()
+        records = record(camera.lost)
+        camera._deviceLost('x')
+        self.assertEqual(records, [])
+
+    def test_a_device_that_refuses_to_close_is_closed_anyway(self):
+        self.cam._deinitialize = MagicMock(side_effect=OSError('gone'))
+        self.lose()
+        self.assertFalse(self.cam.isOpen())
+        self.assertEqual(len(self.lost), 1)
+
+    def test_a_read_is_a_failed_read(self):
+        self.lose()
+        self.assertEqual(self.cam.saferead(), (False, None))
+
+    def test_a_property_reads_as_none(self):
+        self.lose()
+        self.assertIsNone(self.cam.get('width'))
+
+    def test_a_write_is_refused_with_a_warning(self):
+        self.lose()
+        with self.assertLogs('QVideo.lib.QCamera', 'WARNING'):
+            self.cam.set('width', 320)
+        self.assertEqual(self.cam._width, 640)
+
+    def test_a_method_is_refused_with_a_warning(self):
+        self.lose()
+        with self.assertLogs('QVideo.lib.QCamera', 'WARNING'):
+            self.cam.execute('calibrate')
+        self.assertFalse(self.cam._method_called)
+
+    def test_a_camera_that_is_opened_again_answers_again(self):
+        self.lose()
+        self.cam.open()
+        self.assertEqual(self.cam.get('width'), 640)
+        self.assertTrue(self.cam.saferead()[0])
+        self.assertEqual(len(self.lost), 1)
+
+    def test_it_can_be_lost_again_after_it_is_opened_again(self):
+        self.lose()
+        self.cam.open()
+        self.lose('again')
+        self.assertEqual(len(self.lost), 2)
+
+
+class TestOpening(unittest.TestCase):
+    '''The camera answers while it is initialized, and only then.'''
+
+    def test_a_backend_can_read_the_camera_in_initialize(self):
+        seen = []
+
+        class Reading(_FakeCamera):
+            def _initialize(self):
+                seen.append((self.isOpen(), self.get('width')))
+                return super()._initialize()
+
+        Reading().open()
+        self.assertEqual(seen, [(True, 640)])
+
+    def test_a_failed_initialization_leaves_the_camera_closed(self):
+        camera = _FakeCamera()
+        camera._initialize = lambda: False
+        with self.assertLogs('QVideo.lib.QCamera', 'WARNING'):
+            camera.open()
+        self.assertFalse(camera.isOpen())
+
+    def test_an_initialization_that_raises_leaves_the_camera_closed(self):
+        camera = _FakeCamera()
+        camera._initialize = MagicMock(side_effect=RuntimeError('no'))
+        with self.assertRaises(RuntimeError):
+            camera.open()
+        self.assertFalse(camera.isOpen())
 
 
 if __name__ == '__main__':

@@ -134,6 +134,7 @@ class QCameraTree(ParameterTree):
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
+        self._source.lost.connect(self._disable)
         cast(QtCore.QCoreApplication,
              QtCore.QCoreApplication.instance()).aboutToQuit.connect(
                  self.stop)
@@ -194,6 +195,16 @@ class QCameraTree(ParameterTree):
             yield
         finally:
             self._ignoreSync = ignoring
+
+    @QtCore.Slot(str)
+    def _disable(self, reason: str) -> None:
+        '''Disable the controls of a camera that is not there any more.
+
+        The camera is closed and answers nothing, so a control that is
+        still enabled can only be changed to no effect.
+        '''
+        self.setEnabled(False)
+        self.setToolTip(f'The camera was lost: {reason}')
 
     @QtCore.Slot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:

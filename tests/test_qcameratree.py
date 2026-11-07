@@ -253,6 +253,34 @@ class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
         self.assertEqual(tree.get('height'), 100)
 
 
+class TestQCameraTreeLost(unittest.TestCase):
+    '''The controls of a camera that was lost are disabled.'''
+
+    def setUp(self):
+        self.tree = make_tree()
+        self.addCleanup(self.tree.stop)
+
+    def lose(self, reason='unplugged'):
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.tree.camera._deviceLost(reason)
+        app.processEvents()
+
+    def test_it_is_enabled_at_first(self):
+        self.assertTrue(self.tree.isEnabled())
+
+    def test_the_loss_disables_it(self):
+        self.lose()
+        self.assertFalse(self.tree.isEnabled())
+
+    def test_the_tooltip_says_why(self):
+        self.lose('the cable was pulled')
+        self.assertIn('the cable was pulled', self.tree.toolTip())
+
+    def test_a_change_made_before_the_loss_still_reaches_the_camera(self):
+        self.tree.set('width', 320)
+        self.assertEqual(self.tree.camera.get('width'), 320)
+
+
 class TestQCameraTreeLogging(unittest.TestCase):
 
     def test_the_logger_leaves_its_level_to_the_application(self):

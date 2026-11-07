@@ -186,11 +186,14 @@ class TestQCamcorderStopDialog(unittest.TestCase):
         box = self.widget._stopBox
         self.assertEqual(box.icon(), QtWidgets.QMessageBox.Icon.Warning)
 
-    def test_the_dialog_gives_the_reason(self):
+    def test_the_headline_is_short_and_the_reason_explains(self):
         self.widget.dvr.stopped.emit('recording fell 2.0 s behind')
         app.processEvents()
-        self.assertEqual(self.widget._stopBox.text(),
+        box = self.widget._stopBox
+        self.assertEqual(box.text(), 'The recording stopped.')
+        self.assertEqual(box.informativeText(),
                          'Recording fell 2.0 s behind.')
+        self.assertEqual(box.detailedText(), '')
 
 
 class TestQCamcorderCameraLost(unittest.TestCase):
@@ -209,16 +212,30 @@ class TestQCamcorderCameraLost(unittest.TestCase):
             self.widget.source.source._deviceLost(reason)
         app.processEvents()
 
-    def test_the_status_bar_says_why(self):
+    def test_the_status_bar_says_what_to_do(self):
         self.lose()
-        self.assertIn('Camera lost: the cable was pulled', self.messages)
+        self.assertEqual(
+            self.messages[-1],
+            'Camera lost.  Restart the program to use it again.')
 
     def test_a_dialog_opens_without_blocking(self):
         self.lose()
         self.open.assert_called_once()
         box = self.widget._stopBox
         self.assertEqual(box.icon(), QtWidgets.QMessageBox.Icon.Warning)
-        self.assertIn('the cable was pulled', box.text())
+        self.assertEqual(box.text(), 'Lost contact with the camera.')
+
+    def test_the_dialog_says_what_to_do(self):
+        self.lose()
+        text = self.widget._stopBox.informativeText()
+        self.assertIn('Stop any recording', text)
+        self.assertIn('restart the program', text)
+
+    def test_the_technical_reason_is_behind_the_details_button(self):
+        self.lose('the cable was pulled')
+        box = self.widget._stopBox
+        self.assertEqual(box.detailedText(), 'The cable was pulled.')
+        self.assertNotIn('cable', box.text() + box.informativeText())
 
     def test_the_controls_are_disabled(self):
         self.lose()

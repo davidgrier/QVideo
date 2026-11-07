@@ -293,7 +293,9 @@ class TestRead(unittest.TestCase):
                 self.assertEqual(camera.read(), (False, None))
             self.assertFalse(camera.isOpen())
             self.assertEqual(len(lost), 1)
-            self.assertIn('disconnected', lost[0][0])
+            self.assertEqual(
+                lost[0][0], 'the camera stopped sending frames '
+                '(read a frame: the device is disconnected)')
 
     def test_a_lost_camera_answers_quietly(self):
         with FakeCamera() as camera:

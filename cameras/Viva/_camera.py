@@ -357,8 +357,9 @@ class QVivaCamera(QCamera):
                 # A stream that is alive raises when it has no frame (a
                 # timeout is an error too) and never returns None: it ends
                 # when the device goes, after the error that said why.
-                self._deviceLost(f'the stream ended after: '
-                                 f'{self._readError or "no error"}')
+                self._deviceLost(
+                    'the camera stopped sending frames'
+                    + (f' ({self._readError})' if self._readError else ''))
                 return False, None
             image = frame.to_numpy()
         except vg.GenicamError as ex:

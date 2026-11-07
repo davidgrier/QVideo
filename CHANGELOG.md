@@ -32,9 +32,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **A camera that is lost fails once and then answers quietly.**  When a
   USB or network camera is unplugged, `QCamera._deviceLost(reason)` closes
   it, logs one error and emits the new `lost(str)` signal (passed on by
-  `QVideoSource`).  The tree disables its controls, `QCamcorder` shows the
-  reason in the status bar and a dialog, and the last frame stays on the
-  screen; filters, overlays and playback carry on.  A closed camera
+  `QVideoSource`).  The tree disables its controls, `QCamcorder` shows a
+  dialog (a headline, what to do, and the technical reason behind a
+  "Show Details" button) and a short message in the status bar, and the last
+  frame stays on the screen; filters, overlays and playback carry on.  A closed camera
   answers `saferead()` with `(False, None)`, `get()` with `None`, and
   refuses `set()` and `execute()` with a warning.  The capture loop waits
   50 ms between asks of a closed camera instead of reading as fast as it
@@ -46,9 +47,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
-- **`QCamcorder` shows a dialog when a recording stops by itself**, with the
-  reason (for example that the writer fell behind the camera, and what to
-  try), in addition to the status bar.  The dialog does not block the video.
+- **`QCamcorder` shows a dialog when a recording stops by itself**: a
+  headline, and the reason (for example that the writer fell behind the
+  camera, and what to try), in addition to the status bar.  The dialog does
+  not block the video.
 - **Recording 16-bit gray video to `.avi` is 3.5 times faster.**  FFV1 is
   slow on 16-bit pixels (55 frames a second of 1280 x 1024, against 460 for
   8-bit), so the PyAV writer now uses FFVHuff for them in an `.avi` file:

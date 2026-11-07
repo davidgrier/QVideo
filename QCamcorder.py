@@ -172,7 +172,8 @@ class QCamcorder(QtWidgets.QWidget):
         The status bar is easy to miss while watching the video, and a
         recording that ends without notice can lose data.
         '''
-        self._warn('Recording stopped', reason[:1].upper() + reason[1:] + '.')
+        self._warn('Recording stopped', 'The recording stopped.',
+                   reason[:1].upper() + reason[1:] + '.')
 
     @QtCore.Slot(str)
     def _showLost(self, reason: str) -> None:
@@ -182,21 +183,28 @@ class QCamcorder(QtWidgets.QWidget):
         nothing else says why the picture is still.  A recording that is
         running waits for frames that will not come: stop it.
         '''
-        self.message.emit(f'Camera lost: {reason}')
-        self._warn('Camera lost',
-                   f'The camera was lost: {reason}.\n\nThe last frame '
-                   'stays on the screen.  Stop a recording that is '
-                   'running, and restart the program to use the camera '
-                   'again.')
+        self.message.emit('Camera lost.  Restart the program to use it again.')
+        self._warn('Camera lost', 'Lost contact with the camera.',
+                   'No more images will arrive, and the last one stays on '
+                   'the screen.  Stop any recording that is running, then '
+                   'restart the program to use the camera again.',
+                   details=reason[:1].upper() + reason[1:] + '.')
 
-    def _warn(self, title: str, text: str) -> None:
+    def _warn(self, title: str, headline: str, explanation: str = '',
+              details: str = '') -> None:
         '''Show a warning dialog that does not block.
 
-        The dialog is not modal: a modal loop would hold up the frames that
-        the screen is showing.
+        The headline is short and says what happened; the explanation says
+        what it means and what to do; the details, behind a button, are for
+        the technical text that a backend gives.  The dialog is not modal: a
+        modal loop would hold up the frames that the screen is showing.
         '''
         box = QtWidgets.QMessageBox(
-            QtWidgets.QMessageBox.Icon.Warning, title, text, parent=self)
+            QtWidgets.QMessageBox.Icon.Warning, title, headline,
+            parent=self)
+        box.setInformativeText(explanation)
+        if details:
+            box.setDetailedText(details)
         box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self._stopBox = box
         box.open()

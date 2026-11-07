@@ -653,15 +653,16 @@ while streaming included.
 can be opened, and `QCameraChooser` (in `widgets/`) is a combo box over
 that list.  What remains:
 
-- **Integration with `QCamcorder`** — replace the startup camera argument
-  with an optional embedded `QCameraChooser` panel so the user can switch
-  cameras without restarting the application.  Switching needs the camera
-  to be closed and opened again while the screen, the recorder and the
-  filters keep their connections, which is the same machinery as hot-plug
-  (see the next section).
-- **Point-and-click start** — `launch()` takes its camera from the command
-  line (`-b/-c/-f/…`).  A chooser shown before the window builds could
-  offer the cameras that `available_cameras()` finds.
+- **Switching cameras in `QCamcorder`** — an embedded `QCameraChooser`
+  panel in place of the startup argument, so the user can switch cameras
+  without restarting.  Switching needs the camera to be closed and opened
+  again while the screen, the recorder and the filters keep their
+  connections.  Hot-plug was dropped (2026-11-07), so this has no
+  machinery to share; it stands on its own and nobody has asked for it.
+- **Point-and-click start** (partly done 2026-11-07) — `launch()` shows a
+  list of the cameras, by name, when a flag names a backend that lists
+  several and `cameraID` leaves the choice open.  Still open: a chooser
+  across backends, for a launch with no flag, from `available_cameras()`.
 - **Refactor `cameras/chooser.py`** (cleaned and documented, 2026-11-02;
   it is readable now, but the design is unchanged).  It does five jobs:
   the table of backends, importing and probing, creating and opening

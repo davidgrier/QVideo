@@ -639,16 +639,35 @@ class TestQDVRWidgetControls(WidgetCase):
         self.assertEqual(_clock(65.4), '1:05.4')
 
 
+def glyphColors(icon: QtGui.QIcon) -> list[tuple[int, int, int]]:
+    '''Return the colors of the solid pixels of *icon*.
+
+    A style may draw its glyphs a little translucent (the glyphs of macOS
+    reach an alpha of 216), so a pixel is solid when it is more than half
+    opaque.  The image is converted so that the colors are not multiplied
+    by the alpha.
+    '''
+    image = icon.pixmap(24, 24).toImage().convertToFormat(
+        QtGui.QImage.Format.Format_ARGB32)
+    pixels = [QtGui.QColor.fromRgba(image.pixel(x, y))
+              for x in range(image.width()) for y in range(image.height())]
+    return [(c.red(), c.green(), c.blue()) for c in pixels
+            if c.alpha() > 127]
+
+
 class TestQDVRWidgetIcons(WidgetCase):
+
+    def assertColor(self, colors, expected):
+        self.assertTrue(colors)
+        for color in colors:
+            for got, want in zip(color, expected):
+                self.assertAlmostEqual(got, want, delta=4)
 
     def test_the_icons_have_the_color_of_the_button_text(self):
         widget = self.make()
         text = widget.palette().buttonText().color()
-        image = widget.stopButton.icon().pixmap(24, 24).toImage()
-        colors = {QtGui.QColor(image.pixel(x, y)).rgb()
-                  for x in range(image.width()) for y in range(image.height())
-                  if QtGui.QColor.fromRgba(image.pixel(x, y)).alpha() == 255}
-        self.assertEqual(colors, {text.rgb()})
+        self.assertColor(glyphColors(widget.stopButton.icon()),
+                         (text.red(), text.green(), text.blue()))
 
     def test_the_icons_follow_a_dark_palette(self):
         widget = self.make()
@@ -657,12 +676,7 @@ class TestQDVRWidgetIcons(WidgetCase):
                          QtGui.QColor(230, 230, 230))
         widget.setPalette(palette)
         icon = widget._icon(QtWidgets.QStyle.StandardPixmap.SP_MediaStop)
-        image = icon.pixmap(24, 24).toImage()
-        opaque = [QtGui.QColor.fromRgba(image.pixel(x, y))
-                  for x in range(image.width()) for y in range(image.height())
-                  if QtGui.QColor.fromRgba(image.pixel(x, y)).alpha() == 255]
-        self.assertTrue(opaque)
-        self.assertTrue(all(c.red() == 230 for c in opaque))
+        self.assertColor(glyphColors(icon), (230, 230, 230))
 
     def test_the_record_button_has_an_icon(self):
         self.assertEqual(self.make().recordButton.text(), '')

@@ -305,11 +305,12 @@ class QFilterRack(QtWidgets.QWidget):
             ``None`` if a filter has no result yet (a sample-and-hold
             before its first sample); the filters after it are not called.
         '''
+        result: Image | None = image
         for slot in self._iterSlots():
-            image = slot.widget(image)
-            if image is None:
+            result = slot.widget(result)
+            if result is None:
                 return None
-        return image
+        return result
 
     def __iter__(self) -> Iterator[QVideoFilter]:
         return (slot.widget for slot in self._iterSlots())

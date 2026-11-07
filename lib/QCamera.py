@@ -4,6 +4,7 @@ import threading
 from abc import abstractmethod
 from collections.abc import Callable
 from functools import wraps
+from typing import Any, cast, overload
 from types import TracebackType
 
 from qtpy import QtCore
@@ -138,7 +139,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         #: The registered properties: each name maps to its spec (getter,
         #: setter, type and limits).  Iterate it for the names, which are
         #: the keys of :attr:`settings`.
-        self.properties: dict[str, dict[str, object]] = {}
+        self.properties: dict[str, dict[str, Any]] = {}
         self._methods: dict[str, Callable[[], object]] = {}
         self._isOpen = False
         self._modelName: str | None = None
@@ -161,7 +162,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         it was asked for, for example when its exposure is long or its
         buffers overrun).  It is read-only: set ``fps``.
         '''
-        return self.fps
+        return cast(float, self.fps)
 
     def __getattr__(self, name: str) -> object:
         '''Delegate attribute lookup to registered property getters.
@@ -242,12 +243,16 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             values, which the Qt and Jupyter interfaces present as a
             drop-down.
         '''
-        if getter is _AUTO:
-            def getter():
-                return getattr(self, f'_{name}')
-        if setter is _AUTO:
-            def setter(value):
-                setattr(self, f'_{name}', ptype(value))
+        def readBacking():
+            return getattr(self, f'_{name}')
+
+        def writeBacking(value):
+            setattr(self, f'_{name}', ptype(value))
+
+        if isinstance(getter, _Auto):
+            getter = readBacking
+        if isinstance(setter, _Auto):
+            setter = writeBacking
         self.properties[name] = dict(
             getter=self._serialized(getter),
             setter=self._serialized(setter),
@@ -264,6 +269,12 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             Zero-argument callable to invoke.
         '''
         self._methods[name] = self._serialized(method)
+
+    @overload
+    def _serialized(self, function: Callable) -> Callable: ...
+
+    @overload
+    def _serialized(self, function: None) -> None: ...
 
     def _serialized(self, function: Callable | None) -> Callable | None:
         '''Wrap *function* so that it runs holding the device lock.'''

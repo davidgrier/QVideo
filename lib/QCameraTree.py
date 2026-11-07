@@ -2,6 +2,7 @@
 import contextlib
 import logging
 import math
+from typing import cast
 
 from qtpy import QtCore, QtGui, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
@@ -133,7 +134,9 @@ class QCameraTree(ParameterTree):
 
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
+        cast(QtCore.QCoreApplication,
+             QtCore.QCoreApplication.instance()).aboutToQuit.connect(
+                 self.stop)
 
     def _setupUi(self) -> None:
         header = self.header()

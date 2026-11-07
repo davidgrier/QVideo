@@ -1,5 +1,6 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
 import logging
+from typing import cast
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
@@ -400,7 +401,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         if not self.hasHeightForWidth():
             return
         shape = self._videoShape
-        window = self.window()
+        window = cast(QtWidgets.QWidget, self.window())
         screen = (QtWidgets.QApplication.screenAt(window.pos())
                   or QtWidgets.QApplication.primaryScreen())
         available = screen.availableGeometry()
@@ -435,7 +436,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         by the user or by an earlier fit, is left alone.
         '''
         super().showEvent(event)
-        if not self.window().testAttribute(
+        if not cast(QtWidgets.QWidget, self.window()).testAttribute(
                 QtCore.Qt.WidgetAttribute.WA_Resized):
             self._fitToVideo()
 

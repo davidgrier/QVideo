@@ -20,12 +20,41 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   turns off its automatic exposure and sets the time, and `--csv` saves
   the tables.  `docs/performance.rst` has the results for one machine
   and what is not measured.
+- **A USB3 Vision camera under Viva gives a hardware timestamp.**  Only a
+  GigE Vision camera can be calibrated to host time, so every frame of a
+  USB camera had `hardwareTimestamp = None` and a recording held NaN in
+  `hardware_timestamp`.  The frame now carries the clock of the camera (its
+  ticks, which are nanoseconds: 999.8 million a second against the host
+  clock on a Blackfly S), good for the time between frames and not for the
+  time of day.  A GigE camera that fails to calibrate is reported with a
+  warning.
 
 ### Changed
 
 - **`QCamcorder` shows a dialog when a recording stops by itself**, with the
   reason (for example that the writer fell behind the camera, and what to
   try), in addition to the status bar.  The dialog does not block the video.
+- **Recording 16-bit gray video to `.avi` is 3.5 times faster.**  FFV1 is
+  slow on 16-bit pixels (55 frames a second of 1280 x 1024, against 460 for
+  8-bit), so the PyAV writer now uses FFVHuff for them in an `.avi` file:
+  also lossless, 194 frames a second, files 40% larger.  A 16-bit `.mkv`
+  file stays on FFV1 (Matroska has no FFVHuff), and the dialog that says a
+  recording fell behind now suggests `.avi` or `.h5` for it.
+- **The Viva tree starts with manual exposure and gain**, as the Flir tree
+  does: `ExposureAuto` and `GainAuto` are `Off`.  An automatic exposure
+  changes under a measurement, and by lengthening the exposure it lowers
+  the frame rate (66 frames a second where the camera can do 437).  The
+  exposure that the automatic mode last chose is kept, so lower it to
+  reach the full rate.
+- **The YOLO and trackpy workers log the traceback of the first failure**
+  of a detection, as a warning; the failures that follow, one for each
+  frame, are logged at debug level, and a failure after a success is
+  reported again.  A bug in the detection no longer looks like an ordinary
+  failure.
+- **Continuous integration** runs `pyright` on `lib/` in a job that does not
+  fail the workflow, and checks a coverage floor of 95% (the suite measures
+  96%) in one test job.  `pyright` is configured in `pyproject.toml`; run
+  `pyright` to see its report.
 
 ### Fixed
 
@@ -34,27 +63,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `AcquisitionFrameRateEnable` is off, which is how it leaves the factory,
   and the Viva tree shows no control for the enable.  The Flir, Basler and
   IDS trees switch it on when they start; the Viva tree does now.
-- **The Viva tree starts with manual exposure and gain**, as the Flir tree
-  does: `ExposureAuto` and `GainAuto` are `Off`.  An automatic exposure
-  changes under a measurement, and by lengthening the exposure it lowers
-  the frame rate (66 frames a second where the camera can do 437).
-
-- **A USB3 Vision camera under Viva gives a hardware timestamp.**  Only a
-  GigE Vision camera can be calibrated to host time, so every frame of a
-  USB camera had `hardwareTimestamp = None` and a recording held NaN in
-  `hardware_timestamp`.  The frame now carries the clock of the camera (its
-  ticks, which are nanoseconds: 999.8 million a second against the host
-  clock on a Blackfly S), good for the time between frames and not for the
-  time of day.  A GigE camera that fails to calibrate is reported with a
-  warning, and the YOLO and trackpy workers log the traceback of the first
-  failure of a detection.
-
-- **Recording 16-bit gray video to `.avi` is 3.5 times faster.**  FFV1 is
-  slow on 16-bit pixels (55 frames a second of 1280 x 1024, against 460 for
-  8-bit), so the PyAV writer now uses FFVHuff for them in an `.avi` file:
-  also lossless, 194 frames a second, files 40% larger.  A 16-bit `.mkv`
-  file stays on FFV1 (Matroska has no FFVHuff), and the dialog that says a
-  recording fell behind now suggests `.avi` or `.h5` for it.
 - **Importing `QVideo.overlays.yolo` no longer slows OpenCV.**  `ultralytics`
   calls `cv2.setNumThreads(0)` when it is imported, which left the whole
   program with one OpenCV thread and made an ONNX model run four times as
@@ -63,6 +71,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   threads is put back after the import.  The OpenCV backend has now been
   tested on a real export (`yolo11n`): it finds the same objects as
   `ultralytics`.
+- **Edge cases that the type checker found.**  A `QFilterPipeline` with no
+  source (a rack that has none yet) has a frame rate of 0 and an empty
+  shape instead of raising `AttributeError`, and ignores a rack that has
+  gone.  `QFrameRelay` ignores a wake-up that has no frame.  A reader that
+  reports success with no frame ends the iteration, and indexing it raises
+  `IndexError`.  A camera in a process of its own (`QRemoteCamera`) fails
+  the read of a frame that is announced after it was closed, and its worker
+  says that it has no ring yet, instead of failing on `None`.
 
 ---
 

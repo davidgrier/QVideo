@@ -29,6 +29,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **Recording 16-bit gray video to `.avi` is 3.5 times faster.**  FFV1 is
+  slow on 16-bit pixels (55 frames a second of 1280 x 1024, against 460 for
+  8-bit), so the PyAV writer now uses FFVHuff for them in an `.avi` file:
+  also lossless, 194 frames a second, files 40% larger.  A 16-bit `.mkv`
+  file stays on FFV1 (Matroska has no FFVHuff), and the dialog that says a
+  recording fell behind now suggests `.avi` or `.h5` for it.
 - **Importing `QVideo.overlays.yolo` no longer slows OpenCV.**  `ultralytics`
   calls `cv2.setNumThreads(0)` when it is imported, which left the whole
   program with one OpenCV thread and made an ONNX model run four times as

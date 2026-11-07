@@ -27,6 +27,10 @@ class TestQPyAVWriterClass(unittest.TestCase):
         self.assertEqual(QPyAVWriter.CODEC_MAP['.avi'][0], 'ffv1')
         self.assertEqual(QPyAVWriter.CODEC_MAP['.mkv'][0], 'ffv1')
 
+    def test_16_bit_avi_uses_the_faster_lossless_codec(self):
+        self.assertEqual(QPyAVWriter.CODEC_MAP_GRAY16['.avi'][0], 'ffvhuff')
+        self.assertNotIn('.mkv', QPyAVWriter.CODEC_MAP_GRAY16)
+
     def test_h264_for_mp4(self):
         self.assertEqual(QPyAVWriter.CODEC_MAP['.mp4'][0], 'libx264')
 
@@ -89,6 +93,18 @@ class TestQPyAVWriter(unittest.TestCase):
                     for sent, got in zip(frames, back):
                         self.assertEqual(sent.dtype, got.dtype)
                         np.testing.assert_array_equal(sent, got)
+
+    def test_the_codec_follows_the_pixels_and_the_container(self):
+        cases = [('.avi', np.uint8, 'ffv1'), ('.avi', np.uint16, 'ffvhuff'),
+                 ('.mkv', np.uint8, 'ffv1'), ('.mkv', np.uint16, 'ffv1')]
+        for suffix, dtype, codec in cases:
+            with self.subTest(suffix=suffix, dtype=dtype.__name__):
+                writer = QPyAVWriter(str(self.dir / f'a{suffix}'), fps=30)
+                self.addCleanup(writer.close)
+                self.assertTrue(
+                    writer.open(self.frames((48, 64), dtype)[0]))
+                self.assertEqual(writer._stream.codec_context.name, codec)
+                writer.close()
 
     def test_mp4_keeps_the_number_of_frames(self):
         frames = self.frames((48, 64, 3))

@@ -4,7 +4,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import numpy as np
 from qtpy import QtTest, QtWidgets
 from QVideo.dvr import QRecorder, formats
@@ -266,6 +266,17 @@ class TestRemedy(RecorderCase):
         remedy = self.recorder._remedy()
         self.recorder._writer = None
         self.assertIn('faster disk', remedy)
+
+    def test_16_bit_mkv_suggests_avi_or_hdf5(self):
+        writer = Mock(filename='x.mkv', _format='gray16le')
+        self.recorder._writer = writer
+        with patch.object(formats, 'pyav_available', True):
+            remedy = self.recorder._remedy()
+            writer._format = 'gray'
+            other = self.recorder._remedy()
+        self.recorder._writer = None
+        self.assertIn('.avi or .h5', remedy)
+        self.assertNotIn('.avi or .h5', other)
 
 
 class TestFrameSize(RecorderCase):

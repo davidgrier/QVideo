@@ -204,6 +204,14 @@ A recording that must keep every frame should use a lossless format, and
 the writer must be faster than the camera: the recorder queues frames while
 the writer is behind, and stops the recording if the backlog grows beyond
 its limit (see :class:`~QVideo.dvr.QRecorder.QRecorder`).  On this machine
+Sixteen-bit gray frames are the slow case for FFV1: 1280 x 1024 frames of a
+smooth scene with a little noise went at 55 frames a second to an ``.mkv``
+file, against 460 for 8-bit frames, and no FFV1 option (slices, threads,
+coder) changed that.  FFVHuff, also lossless, writes 16-bit frames to an
+``.avi`` file at 194 frames a second, with files 40% larger, and QVideo uses
+it for them; Matroska does not hold FFVHuff, so a 16-bit ``.mkv`` file stays
+on FFV1.  For 16-bit video at a high rate, record to ``.avi`` or ``.h5``.
+
 HDF5 with ``zstd`` or no compression writes far faster than a camera
 delivers, and keeps a timestamp for every frame.  PyAV with FFV1 is the
 fastest lossless video, and the OpenCV writer is several times slower than

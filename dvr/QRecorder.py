@@ -254,5 +254,9 @@ class QRecorder(QtCore.QObject):
         if isinstance(self._writer, QHDF5Writer):
             return 'use a faster disk, or lower the frame size or rate'
         if formats.pyav_available:
+            if getattr(self._writer, '_format', None) == 'gray16le' \
+                    and str(self._writer.filename).endswith('.mkv'):
+                return ('record 16-bit video to an .avi or .h5 file, '
+                        'which is faster, or lower the frame size or rate')
             return 'lower the frame size or rate'
         return 'install QVideo[av], or lower the frame size or rate'

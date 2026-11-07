@@ -1,6 +1,6 @@
 '''A rack of filter widgets that filters a live source on a worker thread.'''
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from qtpy import QtCore, QtWidgets, QtGui
 import pyqtgraph as pg
@@ -283,7 +283,7 @@ class QFilterRack(QtWidgets.QWidget):
 
     def _slotAt(self, index: int) -> '_FilterSlot | None':
         item = self._slots.itemAt(index)
-        return item.widget() if item else None
+        return cast('_FilterSlot | None', item.widget()) if item else None
 
     def _iterSlots(self) -> Iterator['_FilterSlot']:
         for i in range(self._slots.count()):

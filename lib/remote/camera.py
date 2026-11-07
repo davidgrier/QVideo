@@ -414,19 +414,20 @@ class QRemoteCamera(QCamera):
         Returns ``(False, None)`` if the worker has gone, or has
         overwritten the frame before the copy was done.
         '''
-        if generation != self._generation:
+        ring = self._ring
+        if ring is None or generation != self._generation:
             try:
                 name, self._capacity, self._generation = self._call('ring')
             except QCameraError as ex:      # the worker has gone
                 logger.warning(f'No ring for the frame: {ex}')
                 return False, None
-            if self._ring is not None:
-                self._ring.close()
-            self._ring = _attach(name)
+            if ring is not None:
+                ring.close()
+            ring = self._ring = _attach(name)
         shape = (h, w, channels) if channels else (h, w)
         start = slot * self._capacity
-        header = np.ndarray(1, np.uint64, self._ring.buf, start)
-        frame = np.ndarray(shape, DTYPES[code], self._ring.buf,
+        header = np.ndarray(1, np.uint64, ring.buf, start)
+        frame = np.ndarray(shape, DTYPES[code], ring.buf,
                            start + HEADER).copy()
         if header[0] != number:             # overwritten while we copied
             return False, None

@@ -139,7 +139,7 @@ class QCameraTree(ParameterTree):
                  self.stop)
 
     def _setupUi(self) -> None:
-        header = self.header()
+        header = cast(QtWidgets.QHeaderView, self.header())
         self.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
         self.setIndentation(10)
         count = self.columnCount()

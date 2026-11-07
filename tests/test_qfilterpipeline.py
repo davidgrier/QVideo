@@ -89,6 +89,24 @@ class PipelineTestCase(unittest.TestCase):
         return [value for value, _ in self.out]
 
 
+class TestWithoutASource(unittest.TestCase):
+
+    def setUp(self):
+        self.pipeline = QFilterPipeline(None)
+        self.addCleanup(self.pipeline.stop)
+
+    def test_it_has_no_frame_rate(self):
+        self.assertEqual(self.pipeline.fps, 0.)
+
+    def test_it_has_an_empty_shape(self):
+        self.assertTrue(self.pipeline.shape.isEmpty())
+
+    def test_it_follows_a_rack_that_has_gone(self):
+        self.pipeline.rack = None
+        self.pipeline._syncRack()           # a queued signal can come late
+        self.assertEqual(self.pipeline.filters, ())
+
+
 class TestPassThrough(PipelineTestCase):
 
     def test_frames_pass_through_with_no_filters(self):

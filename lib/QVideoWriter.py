@@ -184,7 +184,7 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
             self._frameType = frame.shape, frame.dtype
         elif self.fixedSize and (frame.shape,
                                  frame.dtype) != self._frameType:
-            self._stop(self._changed(frame))
+            self._stop(self._changed(frame, self._frameType))
             return
         if self.framenumber >= self.target * self.nskip:
             self._stop()
@@ -204,12 +204,13 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         self._stopped = True
         self.finished.emit(reason)
 
-    def _changed(self, frame: Image) -> str:
+    def _changed(self, frame: Image,
+                 expected: tuple[tuple[int, ...], np.dtype]) -> str:
         '''Describe a frame that differs from the frames of the file.'''
         def describe(shape, dtype):
             size = 'x'.join(str(n) for n in reversed(shape))
             return f'{size} {dtype}'
-        return (f'the frame size changed from {describe(*self._frameType)} '
+        return (f'the frame size changed from {describe(*expected)} '
                 f'to {describe(frame.shape, frame.dtype)} during the '
                 'recording, and a file has only one; a filter or a '
                 'resized window may have changed it')

@@ -111,7 +111,7 @@ class QFilterPipeline(QtCore.QThread):
     filterFailed = QtCore.Signal(object, object)
 
     def __init__(self,
-                 source: 'QVideoSource',
+                 source: 'QVideoSource | None',
                  filters: Iterable[VideoFilter] = (),
                  depth: int = 1,
                  rack: 'QFilterRack | None' = None) -> None:
@@ -166,7 +166,8 @@ class QFilterPipeline(QtCore.QThread):
     @QtCore.Slot()
     def _syncRack(self) -> None:
         '''Run the filters that the rack has switched on.'''
-        self.filters = self._rack.activeFilters()
+        if self._rack is not None:     # the rack may be gone by now
+            self.filters = self._rack.activeFilters()
 
     @property
     def filters(self) -> tuple[VideoFilter, ...]:
@@ -181,12 +182,13 @@ class QFilterPipeline(QtCore.QThread):
     @property
     def fps(self) -> float:
         '''Frame rate of the source [frames per second].'''
-        return self.source.fps
+        return self._source.fps if self._source is not None else 0.
 
     @property
     def shape(self) -> QtCore.QSize:
         '''Shape of the source frames as ``QSize(width, height)``.'''
-        return self.source.shape
+        return (self._source.shape if self._source is not None
+                else QtCore.QSize())
 
     @QtCore.Slot(np.ndarray, object)
     def _deliver(self, frame: Image, info: FrameInfo) -> None:

@@ -174,6 +174,12 @@ class TestRemoteCamera(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(frame.shape, (480, 640))
 
+    def test_a_notice_after_close_is_a_failed_read(self):
+        self.camera.close()
+        notice = (1, self.camera._generation, 0, 2, 2, 0, 0,
+                  float('nan'), float('nan'), float('nan'))
+        self.assertEqual(self.camera._copy(*notice), (False, None))
+
     def test_unknown_request_is_reported(self):
         with self.assertRaises(QCameraError):
             self.camera._call('nothing')
@@ -424,6 +430,26 @@ class TestTheCameraChangesTheShape(unittest.TestCase):
 
 
 @not_on_windows
+class TestTheWorkerRing(unittest.TestCase):
+
+    def worker(self):
+        from QVideo.lib.remote.worker import Worker
+        return Worker(unittest.mock.Mock(), unittest.mock.Mock(),
+                      unittest.mock.Mock())
+
+    def test_the_ring_is_unknown_before_the_first_frame(self):
+        with self.assertRaises(RuntimeError):
+            self.worker().ringInfo()
+
+    def test_a_new_ring_is_the_one_that_is_announced(self):
+        worker = self.worker()
+        ring = worker.allocate(1000)
+        self.addCleanup(ring.unlink)
+        self.addCleanup(ring.close)
+        self.assertIs(ring, worker.ring)
+        self.assertEqual(worker.ringInfo()[0], ring.name)
+
+
 class TestTheWorkerSpeaks(unittest.TestCase):
 
     def test_the_listener_sorts_answers_from_events(self):

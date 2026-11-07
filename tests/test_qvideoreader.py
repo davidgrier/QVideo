@@ -80,6 +80,23 @@ class assertLogs_context:
         self._cm.__exit__(*args)
 
 
+class _EmptyReader(_FakeVideoReader):
+    '''A reader that says it read a frame and has none.'''
+
+    def read(self):
+        return True, None
+
+
+class TestWithoutAFrame(unittest.TestCase):
+
+    def test_iteration_ends(self):
+        self.assertEqual(list(_EmptyReader()), [])
+
+    def test_indexing_is_an_error(self):
+        with self.assertRaises(IndexError):
+            _EmptyReader()[0]
+
+
 class TestInit(unittest.TestCase):
 
     def test_filename_stored(self):

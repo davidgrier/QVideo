@@ -65,6 +65,6 @@ class QFrameRelay(QtCore.QObject):
     def _deliver(self) -> None:
         '''Pass the kept frame on; runs in the thread of the relay.'''
         with QtCore.QMutexLocker(self._mutex):
-            frame, info = self._latest
-            self._latest = None
-        self.newFrame.emit(frame, info)
+            latest, self._latest = self._latest, None
+        if latest is not None:      # a wake can outlive its frame
+            self.newFrame.emit(*latest)

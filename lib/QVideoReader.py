@@ -206,7 +206,7 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
         self.seek(0)
         while True:
             ok, frame = self.read()
-            if not ok:
+            if not ok or frame is None:
                 return
             yield frame
 
@@ -237,7 +237,7 @@ class QVideoReader(QtCore.QObject, metaclass=QABCMeta):
             raise IndexError(f'frame {index} is not in a video of {n} frames')
         self.seek(index % n)
         ok, frame = self.read()
-        if not ok:
+        if not ok or frame is None:
             raise IndexError(f'frame {index} could not be read')
         return frame
 

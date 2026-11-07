@@ -398,9 +398,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         the video then has bars.  Width and height are adjusted to preserve
         the video aspect ratio.
         '''
-        if not self.hasHeightForWidth():
-            return
         shape = self._videoShape
+        if shape is None:
+            return
         window = cast(QtWidgets.QWidget, self.window())
         screen = (QtWidgets.QApplication.screenAt(window.pos())
                   or QtWidgets.QApplication.primaryScreen())

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from argparse import ArgumentParser
+from typing import cast
 
 from qtpy import QtCore
 
@@ -96,7 +97,9 @@ class QCameraOpener(QtCore.QThread):
         if self.isInterruptionRequested():  # the application is quitting
             camera.close()
             return
-        camera.moveToThread(QtCore.QCoreApplication.instance().thread())
+        app = cast(QtCore.QCoreApplication,
+                   QtCore.QCoreApplication.instance())
+        camera.moveToThread(app.thread())
         self.key, self.camera = key, camera
         self.opened.emit(key, camera)
 

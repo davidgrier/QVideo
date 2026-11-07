@@ -75,6 +75,15 @@ class TestDelivery(RelayTestCase):
         self.assertEqual(self.values(), [1, 2])
 
 
+class TestStrayWake(RelayTestCase):
+
+    def test_a_wake_without_a_frame_delivers_nothing(self):
+        self.make()
+        self.relay._wake.emit()
+        app.processEvents()
+        self.assertEqual(self.out, [])
+
+
 class TestLatestWins(RelayTestCase):
 
     def test_a_busy_receiver_gets_only_the_newest_frame(self):

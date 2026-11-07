@@ -107,16 +107,18 @@ class Worker:
     # The ring
     # ------------------------------------------------------------------
 
-    def allocate(self, nbytes: int) -> None:
-        '''Make a ring whose slots hold frames of *nbytes*.'''
+    def allocate(self, nbytes: int) -> SharedMemory:
+        '''Make a ring whose slots hold frames of *nbytes*, and return it.'''
         old = self.ring
         self.capacity = slot_bytes(nbytes)
-        self.ring = SharedMemory(create=True, size=SLOTS * self.capacity)
-        self.ring.buf[:] = bytes(self.ring.size)
+        ring = self.ring = SharedMemory(create=True,
+                                        size=SLOTS * self.capacity)
+        ring.buf[:] = bytes(ring.size)
         self.generation += 1
         if old is not None:
             old.close()
             old.unlink()
+        return ring
 
     def publish(self, frame: np.ndarray) -> None:
         '''Put *frame* in the next slot of the ring and announce it.'''
@@ -124,8 +126,9 @@ class Worker:
         if frame.dtype not in CODES:
             raise TypeError(f'frames of {frame.dtype} are not supported')
         nbytes = frame.nbytes
-        if self.ring is None or slot_bytes(nbytes) > self.capacity:
-            self.allocate(nbytes)
+        ring = self.ring
+        if ring is None or slot_bytes(nbytes) > self.capacity:
+            ring = self.allocate(nbytes)
         height, width = frame.shape[:2]
         if (width, height) != self.announced:
             # Whoever changed the shape, the proxy hears of it before the
@@ -135,9 +138,9 @@ class Worker:
         self.count += 1
         slot = self.count % SLOTS
         start = slot * self.capacity
-        header = np.ndarray(1, np.uint64, self.ring.buf, start)
+        header = np.ndarray(1, np.uint64, ring.buf, start)
         header[0] = 0
-        pixels = np.ndarray(frame.shape, frame.dtype, self.ring.buf,
+        pixels = np.ndarray(frame.shape, frame.dtype, ring.buf,
                             start + HEADER)
         pixels[...] = frame
         header[0] = self.count
@@ -236,6 +239,8 @@ class Worker:
 
     def ringInfo(self) -> tuple:
         '''Return the name, slot size and generation of the ring.'''
+        if self.ring is None:
+            raise RuntimeError('the camera has not delivered a frame yet')
         return self.ring.name, self.capacity, self.generation
 
     def serve(self) -> None:

@@ -84,9 +84,13 @@ class TestCameraParser(unittest.TestCase):
     def test_creates_new_parser_when_none(self):
         self.assertIsInstance(camera_parser(None), ArgumentParser)
 
-    def test_default_cameraID_is_zero(self):
+    def test_cameraID_is_unset_by_default(self):
         args, _ = camera_parser().parse_known_args([])
-        self.assertEqual(args.cameraID, 0)
+        self.assertIsNone(args.cameraID)
+
+    def test_cameraID_text_stays_text(self):
+        args, _ = camera_parser().parse_known_args(['C920'])
+        self.assertEqual(args.cameraID, 'C920')
 
     def test_cameraID_positional_argument(self):
         args, _ = camera_parser().parse_known_args(['3'])
@@ -556,3 +560,57 @@ class TestChooseCameraFallback(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestChoices(unittest.TestCase):
+
+    '''A vague camera on the command line becomes a list to choose from.'''
+
+    NAMES = {0: 'HD Pro Webcam C920', 1: 'FaceTime HD Camera',
+             2: 'Studio Camera 920'}
+
+    def setUp(self):
+        patcher = patch.object(chooser_module, 'camera_class')
+        self.addCleanup(patcher.stop)
+        patcher.start().return_value.deviceNames.return_value = self.NAMES
+
+    def test_no_spec_offers_every_device(self):
+        self.assertEqual(chooser_module.choices('opencv', None), self.NAMES)
+
+    def test_an_index_never_asks(self):
+        self.assertEqual(chooser_module.choices('opencv', 1), {})
+
+    def test_the_noise_camera_never_asks(self):
+        self.assertEqual(chooser_module.choices('noise', None), {})
+
+    def test_a_name_fragment_offers_what_matches(self):
+        self.assertEqual(chooser_module.choices('opencv', '920'),
+                         {0: self.NAMES[0], 2: self.NAMES[2]})
+
+    def test_one_device_needs_no_question(self):
+        self.assertEqual(chooser_module.choices('opencv', 'facetime'), {})
+
+    def test_one_device_only_does_not_ask(self):
+        chooser_module.camera_class.return_value.deviceNames \
+            .return_value = {0: 'Only'}
+        self.assertEqual(chooser_module.choices('opencv', None), {})
+
+    def test_resolve_no_spec_is_the_first_camera(self):
+        self.assertEqual(chooser_module.resolve('opencv', None), 0)
+
+    def test_resolve_keeps_an_index(self):
+        self.assertEqual(chooser_module.resolve('opencv', 2), 2)
+
+    def test_resolve_turns_a_name_into_its_index(self):
+        self.assertEqual(chooser_module.resolve('opencv', 'facetime'), 1)
+
+    def test_resolve_leaves_what_it_cannot_match(self):
+        self.assertEqual(chooser_module.resolve('opencv', 'nothing'),
+                         'nothing')
+        self.assertEqual(chooser_module.resolve('opencv', '920'), '920')
+
+    def test_open_camera_takes_the_camera_that_was_chosen(self):
+        with patch('sys.argv', ['prog', '-c']), \
+                patch.object(chooser_module, 'open_first') as first:
+            open_camera(cameraID=2)
+        first.assert_called_once_with([('opencv', 2)])

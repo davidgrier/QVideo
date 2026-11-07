@@ -1,4 +1,5 @@
 '''Unit tests for QOpenCVCamera.'''
+import contextlib
 import tempfile
 import unittest
 import numpy as np
@@ -7,8 +8,17 @@ from qtpy import QtWidgets, QtCore
 from QVideo.tests.signals import record
 from QVideo.cameras.OpenCV._camera import QOpenCVCamera
 import QVideo.cameras.OpenCV._devices as _devices_module
+
 from QVideo.cameras.OpenCV._devices import CameraDevice, QOpenCVDevices
 from QVideo.lib.errors import QDeviceError
+
+
+@contextlib.contextmanager
+def no_qt_cameras():
+    '''Qt lists no cameras: neither Qt6 nor Qt5 can name them.'''
+    with patch.object(_devices_module, '_QMediaDevices', None), \
+            patch.object(_devices_module, '_QCameraInfo', None):
+        yield
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -756,7 +766,7 @@ class TestWhichCamera(unittest.TestCase):
         self.assertEqual(camera.deviceID, '0x1110000046d08e5')
 
     def test_opening_a_camera_does_not_open_the_others_to_name_it(self):
-        with patch.object(_devices_module, '_QMediaDevices', None):
+        with no_qt_cameras():
             with patch.object(QOpenCVDevices, '_probe_cameras') as probe:
                 camera = make_camera(cameraID=0)
         probe.assert_not_called()

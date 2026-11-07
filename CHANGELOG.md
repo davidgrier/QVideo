@@ -11,6 +11,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Choose the camera by name, or from a list.** The `cameraID` of the
+  command line may be text: `python -m QVideo -c C920` opens the OpenCV
+  camera whose name contains `C920`.  With a flag but no `cameraID`, or
+  with text that fits several cameras, `launch()` shows a list and asks
+  which to open (cancelling ends the program); an index never asks.  A
+  backend that lists no device names behaves as before.
+  Under PyQt5, which has no `QMediaDevices`, the cameras are named by
+  `QCameraInfo` (they were `Camera 0`, `Camera 1`).
+
 - **A Performance page and a script that makes its tables.**
   `benchmarks/benchmark.py` measures the frames per second that reach the
   GUI thread from a synthetic camera, with the delay (median and 99th

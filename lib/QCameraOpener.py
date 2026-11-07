@@ -77,6 +77,8 @@ class QCameraOpener(QtCore.QThread):
                  parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self._parser = parser
+        #: The camera to open in place of the one on the command line.
+        self.cameraID: int | str | None = None
         self.camera: QCamera | None = None
         self.key: str | None = None
         self.reason: str | None = None
@@ -89,7 +91,7 @@ class QCameraOpener(QtCore.QThread):
         camera, if the application is quitting.
         '''
         try:
-            key, camera = chooser.open_camera(self._parser)
+            key, camera = chooser.open_camera(self._parser, self.cameraID)
         except Exception as error:
             self.reason = str(error)
             self.failed.emit(self.reason)

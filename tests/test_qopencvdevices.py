@@ -1,4 +1,5 @@
 '''Unit tests for QOpenCVDevices.'''
+import contextlib
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
@@ -6,6 +7,14 @@ from unittest.mock import MagicMock, patch
 import QVideo.cameras.OpenCV._devices as _devices_module
 from QVideo.cameras.OpenCV._devices import (
     CameraDevice, QOpenCVDevices, capture_backend)
+
+
+@contextlib.contextmanager
+def no_qt_cameras():
+    '''Qt lists no cameras: neither Qt6 nor Qt5 can name them.'''
+    with patch.object(_devices_module, '_QMediaDevices', None), \
+            patch.object(_devices_module, '_QCameraInfo', None):
+        yield
 
 
 def make_mock_format(width, height, min_fps, max_fps):
@@ -82,7 +91,7 @@ class TestCameras(unittest.TestCase):
         self.assertEqual(result, [(0, 'Webcam A'), (1, 'Webcam B')])
 
     def test_cameras_falls_back_to_probe_when_no_qt(self):
-        with patch.object(_devices_module, '_QMediaDevices', None):
+        with no_qt_cameras():
             with patch.object(QOpenCVDevices, '_probe_cameras',
                               return_value=[(0, 'Camera 0')]) as mock_probe:
                 result = QOpenCVDevices.cameras()
@@ -121,7 +130,7 @@ class TestFormats(unittest.TestCase):
         self.assertEqual(result, probed)
 
     def test_formats_falls_back_when_no_qt(self):
-        with patch.object(_devices_module, '_QMediaDevices', None):
+        with no_qt_cameras():
             with patch.object(QOpenCVDevices, '_probe_formats',
                               return_value=[(640, 480, 1., 30.)]) as mock_probe:
                 result = QOpenCVDevices.formats(0)
@@ -139,7 +148,7 @@ class TestFormats(unittest.TestCase):
         mock_probe.assert_called_once_with(0, None)
 
     def test_formats_returns_list(self):
-        with patch.object(_devices_module, '_QMediaDevices', None):
+        with no_qt_cameras():
             with patch.object(QOpenCVDevices, '_probe_formats',
                               return_value=[]):
                 result = QOpenCVDevices.formats(0)
@@ -430,14 +439,14 @@ class TestDevices(unittest.TestCase):
                          [(0, 'C920'), (1, 'FaceTime')])
 
     def test_without_qt_the_cameras_have_no_id(self):
-        with patch.object(_devices_module, '_QMediaDevices', None), \
+        with no_qt_cameras(), \
              patch.object(QOpenCVDevices, '_probe_cameras',
                           return_value=[(0, 'Camera 0')]):
             result = QOpenCVDevices.devices()
         self.assertEqual(result, [CameraDevice(0, 'Camera 0', '')])
 
     def test_without_qt_and_without_probing_there_is_nothing_to_list(self):
-        with patch.object(_devices_module, '_QMediaDevices', None), \
+        with no_qt_cameras(), \
              patch.object(QOpenCVDevices, '_probe_cameras') as probe:
             self.assertEqual(QOpenCVDevices.devices(probe=False), [])
         probe.assert_not_called()
@@ -488,3 +497,30 @@ class TestFind(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestQt5Names(unittest.TestCase):
+
+    '''Qt5 has no QMediaDevices: QCameraInfo names the cameras.'''
+
+    def info(self, name, description):
+        info = MagicMock()
+        info.deviceName.return_value = name
+        info.description.return_value = description
+        return info
+
+    def test_a_camera_info_answers_like_a_camera_device(self):
+        device = _devices_module._Qt5Device(self.info('0xABC', 'USB'))
+        self.assertEqual(device.id(), b'0xABC')
+        self.assertEqual(device.description(), 'USB')
+
+    def test_qt5_names_the_cameras(self):
+        infos = [self.info('47B4', 'FaceTime'), self.info('0x11', 'USB')]
+        qci = MagicMock()
+        qci.availableCameras.return_value = infos
+        with patch.object(_devices_module, '_QMediaDevices', None), \
+                patch.object(_devices_module, '_QCameraInfo', qci), \
+                patch('platform.system', return_value='Darwin'):
+            found = QOpenCVDevices.devices(probe=False)
+        self.assertEqual([(d.index, d.name) for d in found],
+                         [(0, 'USB'), (1, 'FaceTime')])

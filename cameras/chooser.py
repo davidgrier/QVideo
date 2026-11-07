@@ -51,7 +51,7 @@ import contextlib
 import importlib
 import logging
 import sys
-from argparse import SUPPRESS, ArgumentParser
+from argparse import SUPPRESS, ArgumentParser, Namespace
 from collections.abc import Iterator
 from importlib.metadata import PackageNotFoundError, version
 from typing import NamedTuple
@@ -167,7 +167,8 @@ def _probe(key: str) -> bool:
         return False
 
 
-def discover(model: str | None, camera_id: int = 0) -> list[Candidate]:
+def discover(model: str | None,
+             camera_id: int | str = 0) -> list[Candidate]:
     '''Return the backends to try, as ``(key, camera_id)`` pairs.
 
     Parameters
@@ -175,7 +176,7 @@ def discover(model: str | None, camera_id: int = 0) -> list[Candidate]:
     model : str or None
         The key of one backend (any case), or ``None`` for every backend in
         the order of :data:`BACKENDS`.
-    camera_id : int
+    camera_id : int or str
         The camera that each pair names.
 
     Returns
@@ -230,7 +231,7 @@ def tree_class(key: str) -> type[QCameraTree]:
     return _load(BACKENDS[key], BACKENDS[key].tree_cls)
 
 
-def create_camera(key: str, camera_id: int = 0,
+def create_camera(key: str, camera_id: int | str = 0,
                   errors: list[Failure] | None = None) -> QCamera | None:
     '''Import and instantiate the camera of backend *key*.
 
@@ -238,8 +239,9 @@ def create_camera(key: str, camera_id: int = 0,
     ----------
     key : str
         Key of the backend in :data:`BACKENDS`.
-    camera_id : int
-        Which camera of that backend.
+    camera_id : int or str
+        Which camera of that backend: an index or, for a backend that
+        understands it, text (a name, an identifier).
     errors : list, optional
         If given, a ``(label, exception)`` pair is appended to it when the
         camera cannot be created.
@@ -439,7 +441,10 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
             Selects the backend (the flags are in :data:`BACKENDS`); at
             most one.
         ``cameraID``
-            Which camera of the backend (default 0).
+            Which camera of the backend: an index, or text (part of the
+            name of the device) for a backend that lists names.  Without
+            it the first camera opens, unless the backend lists several:
+            :func:`~QVideo.lib.launch` then asks which one.
         ``--version``
             Prints the version of QVideo and ends the program.
         ``--log-level``
@@ -458,10 +463,11 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
         for dest, entry in _CAMERAS.items():
             group.add_argument(entry.flag, dest=dest, help=entry.help,
                                action='store_true')
-    if parser.get_default('cameraID') is None:
-        camera.add_argument('cameraID', nargs='?', type=int, default=0,
-                            help='which camera of the backend, when '
-                            'several are connected (default: %(default)d)')
+    if not any(a.dest == 'cameraID' for a in parser._actions):
+        camera.add_argument('cameraID', nargs='?', type=_spec,
+                            help='which camera of the backend: an index, '
+                            'or part of the name of the device (default: '
+                            'the only camera, or a choice from a list)')
     general = parser.add_argument_group('general')
     if parser.get_default('log_level') is None:
         general.add_argument('--log-level', dest='log_level',
@@ -476,7 +482,67 @@ def camera_parser(parser: ArgumentParser | None = None) -> ArgumentParser:
     return parser
 
 
-def open_camera(parser: ArgumentParser | None = None
+def _spec(text: str) -> int | str:
+    '''Return *text* as an index if it is all digits, else as it is.'''
+    return int(text) if text.isdigit() else text
+
+
+def _model(args: Namespace) -> str:
+    '''Return the key of the backend that the flags in *args* select.'''
+    return next((dest for dest in _CAMERAS if getattr(args, dest, False)),
+                'noise')
+
+
+def _devices(key: str, spec: int | str | None) -> dict[int, str]:
+    '''Return the devices of backend *key* that *spec* could mean.'''
+    names = camera_class(key).deviceNames()
+    if isinstance(spec, str):
+        text = spec.lower()
+        names = {i: n for i, n in names.items() if text in n.lower()}
+    return names
+
+
+def choices(model: str, spec: int | str | None) -> dict[int, str]:
+    '''Return the cameras to choose from, when the command line is vague.
+
+    Parameters
+    ----------
+    model : str
+        Key of the backend.
+    spec : int, str or None
+        The ``cameraID`` of the command line.
+
+    Returns
+    -------
+    dict[int, str]
+        ``{cameraID: name}`` of the devices that match *spec* if there are
+        several of them (no *spec* matches all), else ``{}``: an index, a
+        simulated camera, and a backend that lists no names never need to
+        ask.
+    '''
+    if model == 'noise' or isinstance(spec, int):
+        return {}
+    names = _devices(model, spec)
+    return names if len(names) > 1 else {}
+
+
+def resolve(model: str, spec: int | str | None) -> int | str:
+    '''Return the *cameraID* that *spec* names.
+
+    A name that fits one device becomes its index.  Text that fits none
+    (an identifier, a file, an address) is left for the camera to
+    interpret, and no *spec* means the first camera.
+    '''
+    if spec is None:
+        return 0
+    if isinstance(spec, int):
+        return spec
+    names = _devices(model, spec)
+    return next(iter(names)) if len(names) == 1 else spec
+
+
+def open_camera(parser: ArgumentParser | None = None,
+                cameraID: int | str | None = None
                 ) -> tuple[str, QCamera]:
     '''Open the camera that the command-line arguments name.
 
@@ -494,6 +560,9 @@ def open_camera(parser: ArgumentParser | None = None
     parser : ArgumentParser or None
         The parser that reads the command line.  The camera options are
         added to it.  If ``None``, a new one is created.
+    cameraID : int, str or None
+        The camera, in place of the one on the command line (for a program
+        that has asked the user).
 
     Returns
     -------
@@ -502,13 +571,13 @@ def open_camera(parser: ArgumentParser | None = None
         camera.
     '''
     args, _ = camera_parser(parser).parse_known_args()
-    model = next((dest for dest in _CAMERAS if getattr(args, dest, False)),
-                 'noise')
+    model = _model(args)
+    spec = resolve(model, args.cameraID if cameraID is None else cameraID)
     try:
-        return open_first(discover(model, args.cameraID))
+        return open_first(discover(model, spec))
     except RuntimeError as ex:
         logger.warning(str(ex))
-        return open_first(discover('noise', args.cameraID))
+        return open_first(discover('noise', spec))
 
 
 def make_tree(key: str, camera: QCamera) -> QCameraTree:

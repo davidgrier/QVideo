@@ -11,6 +11,11 @@ try:
 except (ImportError, AttributeError):
     _QMediaDevices = None
 
+try:                            # Qt5 lists cameras in QCameraInfo
+    _QCameraInfo = _QtMultimedia.QCameraInfo
+except (NameError, AttributeError):
+    _QCameraInfo = None
+
 
 __all__ = ['QOpenCVDevices', 'CameraDevice', 'COMMON_RESOLUTIONS',
            'capture_backend', 'probe_resolutions', 'probe_formats',
@@ -231,6 +236,30 @@ def _deviceID(device) -> str:
     return text.removeprefix('v4l2://')
 
 
+class _Qt5Device:
+    '''A ``QCameraInfo`` that answers like a ``QCameraDevice``.'''
+
+    def __init__(self, info) -> None:
+        self._info = info
+
+    def id(self) -> bytes:
+        '''The identifier: ``deviceName`` is the path or the unique id.'''
+        return self._info.deviceName().encode()
+
+    def description(self) -> str:
+        '''The name that the system gives the camera.'''
+        return self._info.description()
+
+
+def _videoInputs() -> list | None:
+    '''Return the cameras that Qt lists, or ``None`` if Qt cannot.'''
+    if _QMediaDevices is not None:
+        return list(_QMediaDevices.videoInputs())
+    if _QCameraInfo is not None:
+        return [_Qt5Device(info) for info in _QCameraInfo.availableCameras()]
+    return None
+
+
 class QOpenCVDevices:
     '''Camera discovery and format enumeration for OpenCV cameras.
 
@@ -265,14 +294,14 @@ class QOpenCVDevices:
         list[CameraDevice]
             One for each camera, sorted by index.
         '''
-        if _QMediaDevices is None:
+        inputs = _videoInputs()
+        if inputs is None:
             if not probe:
                 return []
             return [CameraDevice(i, name, '')
                     for i, name in QOpenCVDevices._probe_cameras()]
         return [CameraDevice(i, dev.description(), _deviceID(dev))
-                for i, dev in QOpenCVDevices._ordered(
-                    _QMediaDevices.videoInputs())]
+                for i, dev in QOpenCVDevices._ordered(inputs)]
 
     @staticmethod
     def cameras() -> list[tuple[int, str]]:

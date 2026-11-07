@@ -95,6 +95,8 @@ class _Launcher:
 
         Returns when the application quits.
         '''
+        if not self.choose():
+            return
         self.screen.show()
         # macOS shows a splash screen only if it is also raised and
         # activated.  Wayland lets only the compositor activate a window,
@@ -105,6 +107,34 @@ class _Launcher:
         say(self.screen, 'Opening the camera...')
         self.opener.start()
         pg.exec()
+
+    def choose(self) -> bool:
+        '''Ask which camera to open, if the command line leaves it open.
+
+        A backend that lists several cameras, and a ``cameraID`` that fits
+        more than one of them (or none is given), makes a list to choose
+        from.
+
+        Returns
+        -------
+        bool
+            ``False`` if the user cancelled, which ends the program.
+        '''
+        args, _ = argumentParser(self.widget).parse_known_args()
+        found = chooser.choices(chooser._model(args), args.cameraID)
+        if not found:
+            return True
+        names = list(found.values())
+        labels = [name if names.count(name) == 1 else f'{name} ({index})'
+                  for index, name in found.items()]
+        label, ok = QtWidgets.QInputDialog.getItem(
+            None, 'Choose a camera', 'Multiple cameras are connected:',
+            labels, 0, False)
+        if not ok:
+            self.fail('No camera was chosen.')
+            return False
+        self.opener.cameraID = list(found)[labels.index(label)]
+        return True
 
     def build(self, key: str, camera: 'QCamera') -> None:
         '''Make the interface for the open *camera* and show the window.

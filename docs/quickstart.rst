@@ -51,6 +51,16 @@ camcorder.  Use the flag for your camera type:
 The camcorder window shows the live feed, a property tree for adjusting
 camera settings, and a DVR panel for recording.
 
+When more than one camera is connected, a flag alone opens a window that
+lists the cameras by name and asks which to open.  To skip the question,
+name the camera, with an index or with a part of its name (OpenCV cameras):
+
+.. code-block:: bash
+
+   python -m QVideo -c          # asks, if multiple cameras are connected
+   python -m QVideo -c 1        # the second camera of OpenCV
+   python -m QVideo -c C920     # the camera whose name contains C920
+
 Display a live feed in your own application
 -------------------------------------------
 

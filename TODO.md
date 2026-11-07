@@ -745,8 +745,9 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   an index, an id or a part of a name.
 - [ ] **Still open for OpenCV identity:** Windows (is Qt's WMF order OpenCV's
   MSMF or DirectShow order?) and Linux (V4L2 with several cameras, and the
-  Pi's libcamera, are not tried); `-c` and `Camera()` take only an index (an
-  id or name needs `type=int` changed for every backend); a USB webcam's macOS
+  Pi's libcamera, are not tried); `Camera()` in a script takes only an
+  index (the command line takes a name, and asks when several cameras
+  fit); a USB webcam's macOS
   id has no serial number (it holds the port and the vendor and product ids),
   so two cameras of one model are told apart by the port.
 - [ ] **The other backends** call `_deviceLost` where their library says the

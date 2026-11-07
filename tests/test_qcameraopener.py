@@ -27,7 +27,7 @@ class FakeCamera(QtCore.QObject):
 
 
 def opens(camera_class=FakeCamera, key='noise', delay=0.):
-    def open_camera(parser=None):
+    def open_camera(parser=None, cameraID=None):
         time.sleep(delay)
         return key, camera_class()
     return patch.object(chooser, 'open_camera', open_camera)
@@ -70,7 +70,7 @@ class TestOpening(unittest.TestCase):
     def test_gives_the_parser_to_the_chooser(self):
         seen = []
 
-        def open_camera(parser=None):
+        def open_camera(parser=None, cameraID=None):
             seen.append(parser)
             return 'noise', FakeCamera()
 
@@ -107,7 +107,7 @@ class TestOpening(unittest.TestCase):
 class TestFailing(unittest.TestCase):
 
     def failing(self, message='no camera could be opened'):
-        def open_camera(parser=None):
+        def open_camera(parser=None, cameraID=None):
             raise RuntimeError(message)
         return patch.object(chooser, 'open_camera', open_camera)
 
@@ -156,7 +156,7 @@ class TestStopping(unittest.TestCase):
     def test_a_camera_that_opens_after_the_request_is_closed(self):
         made = []
 
-        def open_camera(parser=None):
+        def open_camera(parser=None, cameraID=None):
             time.sleep(0.2)
             camera = MagicMock()
             made.append(camera)

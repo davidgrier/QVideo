@@ -106,7 +106,7 @@ class TestLaunch(unittest.TestCase):
         gate = threading.Event()
         seen = {}
 
-        def open_slowly(parser=None):
+        def open_slowly(parser=None, cameraID=None):
             gate.wait(5)
             return 'noise', MagicMock()
 
@@ -154,7 +154,7 @@ class TestLaunch(unittest.TestCase):
     def test_the_camera_is_closed_if_the_window_is_gone_before_it_opens(self):
         camera = MagicMock()
 
-        def open_slowly(parser=None):
+        def open_slowly(parser=None, cameraID=None):
             time.sleep(0.2)
             return 'noise', camera
 
@@ -213,6 +213,51 @@ APPLICATIONS = [('QVideo.demos.demo', 'Demo'),
                 ('QVideo.demos.yolodemo', 'YoloDemo')]
 
 
+class TestChooseCamera(unittest.TestCase):
+
+    '''launch() asks which camera when the command line leaves it open.'''
+
+    def launcher(self, found, answer):
+        with patch.object(sys, 'argv', ['application', '-c']), \
+                patch.object(launch_module.chooser, 'choices',
+                             return_value=found), \
+                patch.object(launch_module.QtWidgets.QInputDialog,
+                             'getItem', return_value=answer) as dialog:
+            launcher = launch_module._Launcher(app, _Widget, 'Title', {})
+            self.addCleanup(launcher.screen.close)
+            with patch.object(launcher, 'fail') as fail:
+                result = launcher.choose()
+        return launcher, result, dialog, fail
+
+    def test_nothing_to_ask_opens_the_camera_from_the_command_line(self):
+        launcher, result, dialog, _ = self.launcher({}, ('', False))
+        self.assertTrue(result)
+        dialog.assert_not_called()
+        self.assertIsNone(launcher.opener.cameraID)
+
+    def test_the_choice_goes_to_the_opener(self):
+        found = {0: 'Webcam', 3: 'Other'}
+        launcher, result, dialog, _ = self.launcher(
+            found, ('Other', True))
+        self.assertTrue(result)
+        self.assertEqual(launcher.opener.cameraID, 3)
+        self.assertEqual(dialog.call_args.args[3], ['Webcam', 'Other'])
+        self.assertIn('Multiple', dialog.call_args.args[2])
+
+    def test_cameras_with_one_name_are_told_apart_by_index(self):
+        launcher, _, dialog, _ = self.launcher(
+            {0: 'Webcam', 1: 'Webcam', 2: 'Other'}, ('Webcam (1)', True))
+        self.assertEqual(dialog.call_args.args[3],
+                         ['Webcam (0)', 'Webcam (1)', 'Other'])
+        self.assertEqual(launcher.opener.cameraID, 1)
+
+    def test_cancelling_ends_the_program(self):
+        launcher, result, _, fail = self.launcher(
+            {0: 'Webcam', 1: 'Other'}, ('', False))
+        self.assertFalse(result)
+        fail.assert_called_once_with('No camera was chosen.')
+
+
 class TestCommandLine(unittest.TestCase):
 
     '''The command line is read on the main thread, before the interface.
@@ -262,10 +307,6 @@ class TestCommandLine(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertIn(text, out)
 
-    def test_a_bad_value_ends_with_a_message(self):
-        done = self.launch('-c', 'abc')
-        self.assertEqual(done.returncode, 2, done.stderr)
-        self.assertIn('invalid int value', done.stderr)
 
 
 class TestSummary(unittest.TestCase):

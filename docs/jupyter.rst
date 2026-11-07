@@ -320,3 +320,8 @@ name, which does not change when another camera is plugged in:
    for device in QOpenCVDevices.devices():
        print(device)       # CameraDevice(index=0, name='HD Pro ...', ...)
    camera = QOpenCVCamera(cameraID='C920')
+
+The command line takes the same text: ``python -m QVideo -c C920`` opens the
+camera whose name contains ``C920``.  With ``-c`` alone, and multiple cameras
+connected, a window lists them and asks which to open (``-c 0`` opens the
+first one without asking).

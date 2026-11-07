@@ -223,7 +223,8 @@ def launch(widget: type[QtWidgets.QWidget],
     :func:`~QVideo.cameras.chooser.camera_parser` (a noise camera if there are
     none), which also reads ``--version`` and ``--log-level``.  A splash
     screen appears at once and says what is happening; the camera opens on a
-XX
+    thread of its own, so that a slow camera never freezes it.  The widget
+    then becomes the central widget of the
     :class:`~qtpy.QtWidgets.QMainWindow`, which is how applications embed
     QVideo components, so that sizing and shutdown are exercised in that
     setting.  The window has a status bar that shows the messages of a widget

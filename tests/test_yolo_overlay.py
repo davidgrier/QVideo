@@ -143,6 +143,29 @@ class TestYoloWorkerDetect(unittest.TestCase):
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
+    def test_the_first_failure_is_logged_with_its_traceback(self):
+        self._worker.model.side_effect = RuntimeError('oops')
+        with self.assertLogs(_mod.logger, 'WARNING') as logs:
+            self._worker.process(_make_frame())
+        self.assertEqual(len(logs.records), 1)
+        self.assertIsNotNone(logs.records[0].exc_info)
+
+    def test_the_failures_that_follow_are_not_warnings(self):
+        self._worker.model.side_effect = RuntimeError('oops')
+        self._worker.process(_make_frame())
+        with self.assertNoLogs(_mod.logger, 'WARNING'):
+            self._worker.process(_make_frame())
+
+    def test_a_failure_after_a_success_is_reported_again(self):
+        self._worker.model.side_effect = RuntimeError('oops')
+        self._worker.process(_make_frame())
+        self._worker.model.side_effect = None
+        self._worker.model.return_value = _make_mock_results(1)
+        self._worker.process(_make_frame())
+        self._worker.model.side_effect = RuntimeError('again')
+        with self.assertLogs(_mod.logger, 'WARNING'):
+            self._worker.process(_make_frame())
+
     def test_detect_dataframe_has_expected_columns(self):
         self._worker.model.return_value = _make_mock_results(1)
         spy = record(self._worker.newData)

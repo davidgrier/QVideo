@@ -129,6 +129,32 @@ class TestTrackpyWorkerLocate(unittest.TestCase):
         self.assertEqual(len(spy), 1)
         self.assertIsNone(spy[0][0])
 
+    def test_the_first_failure_is_logged_with_its_traceback(self):
+        self.addCleanup(setattr, mock_tp.locate, 'side_effect', None)
+        mock_tp.locate.side_effect = RuntimeError('oops')
+        with self.assertLogs(_mod.logger, 'WARNING') as logs:
+            self._worker.process(_make_frame())
+        self.assertEqual(len(logs.records), 1)
+        self.assertIsNotNone(logs.records[0].exc_info)
+
+    def test_the_failures_that_follow_are_not_warnings(self):
+        self.addCleanup(setattr, mock_tp.locate, 'side_effect', None)
+        mock_tp.locate.side_effect = RuntimeError('oops')
+        self._worker.process(_make_frame())
+        with self.assertNoLogs(_mod.logger, 'WARNING'):
+            self._worker.process(_make_frame())
+
+    def test_a_failure_after_a_success_is_reported_again(self):
+        self.addCleanup(setattr, mock_tp.locate, 'side_effect', None)
+        mock_tp.locate.side_effect = RuntimeError('oops')
+        self._worker.process(_make_frame())
+        mock_tp.locate.side_effect = None
+        mock_tp.locate.return_value = _make_features()
+        self._worker.process(_make_frame())
+        mock_tp.locate.side_effect = RuntimeError('again')
+        with self.assertLogs(_mod.logger, 'WARNING'):
+            self._worker.process(_make_frame())
+
 
 # ---------------------------------------------------------------------------
 # QTrackpyOverlay

@@ -107,8 +107,16 @@ class QVivaCamera(QCamera):
             self._updateLevels()
             with suppress(Exception):
                 self._modelName = self._device.get_string('DeviceModelName')
-            with suppress(Exception):  # maps frame times to the host clock
+            try:  # maps frame times to the host clock
                 self._device.time_calibrate()
+            except Exception as ex:
+                # Only GigE Vision cameras can be calibrated, so a USB3
+                # Vision camera always lands here, and its frames have no
+                # host timestamp: that is no failure to warn of.
+                level = (logging.WARNING if self._device.transport == 'gige'
+                         else logging.DEBUG)
+                logger.log(level, f'Could not calibrate the camera clock: '
+                           f'{ex}; the frames have no hardware timestamp')
             self._startStream()
             self._findStreamLocked()
         except Exception:

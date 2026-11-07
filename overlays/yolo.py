@@ -207,6 +207,7 @@ class _YoloWorker(QtCore.QObject):
         if backend == 'auto':
             backend = ('opencv' if str(model_name).lower().endswith('.onnx')
                        else 'ultralytics')
+        self._failing = False
         if backend not in ('ultralytics', 'opencv'):
             raise ValueError(f'Unknown YOLO backend {backend!r}: '
                              "use 'auto', 'ultralytics' or 'opencv'")
@@ -255,8 +256,17 @@ class _YoloWorker(QtCore.QObject):
                 features = self._detectOpenCV(image)
             else:
                 features = self._detectUltralytics(image)
+            self._failing = False
         except Exception as exc:
-            logger.warning(f'YOLO detection failed: {exc}')
+            # The traceback of the first failure: a bug in the detection
+            # looks like any other failure without it.  The failures that
+            # follow, one for each frame, are only counted in the log.
+            if self._failing:
+                logger.debug(f'YOLO detection failed again: {exc}')
+            else:
+                logger.warning(f'YOLO detection failed: {exc}',
+                               exc_info=True)
+                self._failing = True
             features = None
         self.newData.emit(features)
 

@@ -164,6 +164,49 @@ class TestOpen(unittest.TestCase):
 
 
 @unittest.skipIf(vg is None, 'viva-genicam is not installed')
+class NoClock:
+
+    '''A device whose clock cannot be calibrated.'''
+
+    def __init__(self, device, transport):
+        self._device = device
+        self.transport = transport
+
+    def __getattr__(self, name):
+        return getattr(self._device, name)
+
+    def time_calibrate(self, *args, **kwargs):
+        raise vg.GenicamError('no timestamp counter')
+
+
+class TestClock(unittest.TestCase):
+
+    def camera(self, transport):
+        class Camera(FakeCamera):
+            def _connect(self):
+                return NoClock(super()._connect(), transport)
+
+        return Camera()
+
+    def test_a_gige_clock_that_cannot_be_calibrated_is_reported(self):
+        with self.assertLogs('QVideo.cameras.Viva._camera',
+                             'WARNING') as logs:
+            camera = self.camera('gige')
+        self.addCleanup(camera.close)
+        self.assertTrue(camera.isOpen())
+        self.assertIn('no hardware timestamp', logs.output[0])
+
+    def test_a_usb_camera_has_no_clock_to_calibrate_and_no_warning(self):
+        with self.assertNoLogs('QVideo.cameras.Viva._camera', 'WARNING'):
+            with self.camera('u3v'):
+                pass
+
+    def test_the_fake_usb_camera_is_not_reported(self):
+        with self.assertNoLogs('QVideo.cameras.Viva._camera', 'WARNING'):
+            with FakeCamera():
+                pass
+
+
 class TestUsbLink(unittest.TestCase):
 
     def check(self, speed):

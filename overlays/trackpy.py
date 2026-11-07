@@ -82,6 +82,7 @@ class _TrackpyWorker(QtCore.QObject):
             raise ImportError(
                 'trackpy is required for QTrackpyWidget.'
                 '\n\tInstall it with: pip install trackpy') from _importError
+        self._failing = False
         self.diameter = diameter
         self._opts = {'minmass': minmass, 'separation': separation,
                       'noise_size': noiseSize, 'characterize': False,
@@ -112,8 +113,16 @@ class _TrackpyWorker(QtCore.QObject):
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 features = tp.locate(frame, self._diameter, **self._opts)
+            self._failing = False
         except Exception as exc:
-            logger.warning(f'trackpy.locate() failed: {exc}')
+            # The traceback of the first failure; the failures that follow,
+            # one for each frame, are only counted in the log.
+            if self._failing:
+                logger.debug(f'trackpy.locate() failed again: {exc}')
+            else:
+                logger.warning(f'trackpy.locate() failed: {exc}',
+                               exc_info=True)
+                self._failing = True
             features = None
         self.newData.emit(features)
 

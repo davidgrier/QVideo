@@ -780,12 +780,15 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
 1,000,000 reads a second at 100% of a core with one line in the log.
 `close()` of the dead device returns at once.
 
-- [ ] **Verify the whole path on the camera.**  Run `python -m QVideo -g`,
+- [x] **Verify the whole path on the camera** (closed 2026-11-08 at the
+  user's request).  Run `python -m QVideo -g`,
   unplug the cable, and look: the dialog, the status bar, the disabled
   tree, the last frame, an idle core.  (The parts were tested with a fake
   and with a script; not the window.)  Tried 2026-11-08 by the user: the
   screen stops updating, one error is logged and the warning dialog
-  appears.  Not yet looked at: the status bar, the disabled tree, the core.
+  appears.  Not looked at when it was closed: the status bar, the disabled
+  tree, the core (the Harvesters path was measured on 2026-11-08 with a
+  script: the worker ended and nothing spun).
 - [x] **OpenCV** (2026-11-07): a live camera (not a video file) that sends no
   frame for `lossTimeout` seconds (2) is lost; a closed `VideoCapture` is lost
   at once.  Tested with a mock, on the built-in camera (no false loss: 181

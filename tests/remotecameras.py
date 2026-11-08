@@ -12,7 +12,7 @@ from QVideo.cameras.Noise import QNoiseCamera
 from QVideo.lib.errors import QDriverError
 
 __all__ = ('DeepCamera FailingCamera FloatCamera StatesCamera '
-           'ShrinkingCamera RefusingCamera ChangingCamera').split()
+           'ShrinkingCamera RefusingCamera ChangingCamera LosingCamera').split()
 
 
 class RefusingCamera(QNoiseCamera):
@@ -71,6 +71,20 @@ class ShrinkingCamera(QNoiseCamera):
         if ok and self._frames > self.FRAMES:
             frame = np.ascontiguousarray(frame[::2, ::2])
         return ok, frame
+
+
+class LosingCamera(QNoiseCamera):
+
+    '''A camera whose device goes after a few frames.'''
+
+    FRAMES = 5
+
+    def read(self):
+        self._reads = getattr(self, '_reads', 0) + 1
+        if self._reads > self.FRAMES:
+            self._deviceLost('the cable is out')
+            return False, None
+        return super().read()
 
 
 class ChangingCamera(StatesCamera):

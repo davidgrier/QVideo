@@ -28,6 +28,7 @@ FAILING = 'QVideo.tests.remotecameras:FailingCamera'
 FLOATING = 'QVideo.tests.remotecameras:FloatCamera'
 STATES = 'QVideo.tests.remotecameras:StatesCamera'
 CHANGING = 'QVideo.tests.remotecameras:ChangingCamera'
+LOSING = 'QVideo.tests.remotecameras:LosingCamera'
 SHRINKING = 'QVideo.tests.remotecameras:ShrinkingCamera'
 
 # A camera in a process of its own needs file descriptors to pass to the
@@ -198,7 +199,7 @@ class TestRemoteCamera(unittest.TestCase):
             self.camera.get('fps')
         ok, frame = self.camera.saferead()
         self.assertFalse(ok)
-        self.assertTrue(wait_for(lambda: self.camera._lost))
+        self.assertTrue(wait_for(lambda: self.camera._lostReason))
 
     def test_a_worker_that_goes_while_a_frame_arrives_is_a_failed_read(self):
         # The announcement of a frame of a new ring is read, and the worker
@@ -499,14 +500,39 @@ class TestTheWorkerSpeaks(unittest.TestCase):
         self.addCleanup(camera.close)
         with self.assertLogs(LOGGER, 'ERROR') as logs:
             camera._process.kill()
-            self.assertTrue(wait_for(lambda: camera._lost))
+            self.assertTrue(wait_for(lambda: camera._lostReason))
         self.assertIn('ended', logs.output[0])
+
+    def test_a_camera_that_the_worker_loses_is_lost_here(self):
+        camera = QRemoteCamera(LOSING)
+        self.addCleanup(camera.close)
+        lost = record(camera.lost)
+        for _ in range(100):
+            camera.saferead()
+            if lost:
+                break
+        self.assertEqual([reason for (reason,) in lost],
+                         ['the cable is out'])
+        self.assertFalse(camera.isOpen())
+        self.assertEqual(camera.saferead(), (False, None))
+        self.assertEqual(len(lost), 1)
+
+    def test_a_worker_that_ends_makes_the_camera_lost_at_the_next_read(self):
+        camera = QRemoteCamera('noise')
+        self.addCleanup(camera.close)
+        lost = record(camera.lost)
+        camera._process.kill()
+        self.assertTrue(wait_for(lambda: camera._lostReason))
+        camera.saferead()
+        self.assertEqual(len(lost), 1)
+        self.assertIn('ended', lost[0][0])
+        self.assertFalse(camera.isOpen())
 
     def test_closing_is_not_a_loss(self):
         camera = QRemoteCamera('noise')
         with self.assertNoLogs(LOGGER, 'ERROR'):
             camera.close()
-        self.assertFalse(camera._lost)
+        self.assertIsNone(camera._lostReason)
 
     def test_a_camera_that_does_not_open_leaves_nothing_behind(self):
         # Compare the threads, not their number: a thread of an earlier test

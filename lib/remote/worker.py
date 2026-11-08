@@ -77,6 +77,8 @@ class Worker:
         # call would never run.
         camera.propertiesChanged.connect(
             self.changed, QtCore.Qt.ConnectionType.DirectConnection)
+        camera.lost.connect(
+            self.lostCamera, QtCore.Qt.ConnectionType.DirectConnection)
 
     # ------------------------------------------------------------------
     # What the worker says
@@ -161,6 +163,8 @@ class Worker:
                 ok, frame = self.camera.saferead()
                 if ok:
                     self.publish(frame)
+                elif not self.camera.isOpen():
+                    time.sleep(RETRY_DELAY)     # a lost camera has nothing
             except Exception as ex:
                 self.failed(ex)
 
@@ -171,6 +175,10 @@ class Worker:
         frames, so the interface never waits for the camera to find out.
         '''
         self.notify('changes', values)
+
+    def lostCamera(self, reason: str) -> None:
+        '''Tell the proxy that the camera has gone, and why.'''
+        self.notify('lost', reason)
 
     def failed(self, ex: Exception) -> None:
         '''Report a failure to read or to publish a frame.

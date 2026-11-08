@@ -85,14 +85,14 @@ class QRemoteCamera(QCamera):
         self._closing = False
         self._opened = False
         self._events = {'error': self._onError, 'changes': self._onChanges,
-                        'shape': self._changed}
+                        'shape': self._changed, 'lost': self._onLost}
         self._shapeLock = threading.Lock()
         self._ring: SharedMemory | None = None
         self._generation = -1
         self._capacity = 0
         self._remoteName = 'QRemoteCamera'
         self._shape = (0, 0)
-        self._lost = False
+        self._lostReason: str | None = None
         self.open()
 
     # ------------------------------------------------------------------
@@ -200,7 +200,7 @@ class QRemoteCamera(QCamera):
         self._rpc = self._frames = None
         self._process = None
         self._generation = -1       # the next worker makes a ring of its own
-        self._lost = False
+        self._lostReason = None
 
     # ------------------------------------------------------------------
     # Requests
@@ -273,6 +273,14 @@ class QRemoteCamera(QCamera):
         '''Pass on the properties that the camera changed by itself.'''
         self.propertiesChanged.emit(values)
 
+    def _onLost(self, reason: str) -> None:
+        '''Remember that the camera of the worker has gone.
+
+        The next read says so (``_deviceLost``), in the thread that reads,
+        as a camera that is not remote does.
+        '''
+        self._lostReason = reason
+
     def _onError(self, message: str) -> None:
         logger.error(f'{self._remoteName}: {message}')
 
@@ -289,7 +297,7 @@ class QRemoteCamera(QCamera):
             code = process.wait(self.LISTENING)
         except subprocess.TimeoutExpired:
             code = 'not known'
-        self._lost = True
+        self._lostReason = f'the camera process ended with code {code}'
         logger.error(f'The {self._key} camera process ended '
                      f'with code {code}')
 
@@ -365,6 +373,10 @@ class QRemoteCamera(QCamera):
         Returns ``(False, None)`` if none comes within :attr:`TIMEOUT`,
         so that the caller can look at whether it should go on.
         '''
+        reason = self._lostReason
+        if reason is not None:          # the worker says it, or has ended
+            self._deviceLost(reason)
+            return False, None
         if self._frames is None:
             return False, None
         try:

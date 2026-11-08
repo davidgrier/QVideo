@@ -19,6 +19,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **A lost camera in a process of its own is lost here too.**
+  `QRemoteCamera` did not hear that the camera of its worker had called
+  `_deviceLost`, and a worker that ended only logged an error.  Now both
+  make the next read close the proxy and emit `lost`, so `QCamcorder` and
+  the control tree say so.  The worker no longer reads a closed camera at
+  full speed.
 - **A crash of the interpreter in the filter pipeline.**  Pipelines that were
   made while another thread emitted frames crashed the interpreter in about
   one run in three on a development machine (inside a `QMutexLocker`), and

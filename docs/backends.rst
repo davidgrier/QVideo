@@ -244,6 +244,12 @@ sent no frame for ``lossTimeout`` seconds (2, or ``None`` for never) is
 lost.  Find the signal that your library gives, and test it by pulling a
 cable.
 
+A camera in a process of its own (:class:`~QVideo.lib.remote.camera.QRemoteCamera`,
+which the Harvesters backends use on macOS and Linux) is lost in either of two
+ways: its camera in the worker calls ``_deviceLost``, and the worker says
+so; or the worker itself ends.  The proxy then does what any camera does: its
+next read closes it, logs one error and emits ``lost``.
+
 ----
 
 A complete example

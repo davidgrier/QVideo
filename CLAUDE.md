@@ -309,6 +309,14 @@ they share one filtered stream.  The screen applies no filters.  A filter
 overrides `process(frame)` if it is stateless, or `add`/`get` if it keeps
 state; none of them owns a thread.
 
+## Threads
+
+The threads of QVideo wait on Python's `threading.Condition` and
+`threading.Lock`, never on `QMutex`, `QMutexLocker` or `QWaitCondition`: the
+wrappers of those, taken by several threads at a rate, crashed the
+interpreter (the filter pipeline, 2026-11-08).  A `QThread` is for running
+Qt code; the locks around its state are Python's.
+
 ## Test conventions
 
 - Tests use `unittest` with `unittest.mock`; each file has a module-level `app`

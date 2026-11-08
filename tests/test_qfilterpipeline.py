@@ -317,6 +317,36 @@ class TestFailure(PipelineTestCase):
         self.assertIn('_Boom', cm.output[0])
 
 
+class TestWhileFramesArrive(PipelineTestCase):
+    '''Pipelines that are made and stopped while another thread emits.
+
+    With ``QMutexLocker`` and ``QWaitCondition`` in the pipeline this
+    crashed the interpreter about one run in three on a macOS development
+    machine, and once in CI.
+    '''
+
+    def test_pipelines_come_and_go_while_frames_arrive(self):
+        source = _Source()
+        done = threading.Event()
+
+        def emit():
+            index = 0
+            while not done.is_set():
+                source.send(index % 200)
+                index += 1
+        thread = threading.Thread(target=emit)
+        thread.start()
+        try:
+            for _ in range(15):
+                pipeline = QFilterPipeline(source, [])
+                pipeline.newFrame.connect(lambda frame, info: None)
+                QtTest.QTest.qWait(2)
+                pipeline.stop()
+        finally:
+            done.set()
+            thread.join()
+
+
 class TestSourceInterface(PipelineTestCase):
     '''The pipeline can stand in for a QVideoSource.'''
 

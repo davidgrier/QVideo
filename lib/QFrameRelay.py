@@ -1,4 +1,6 @@
 '''Latest-frame handoff from a capture thread to the thread of a consumer.'''
+import threading
+
 import numpy as np
 from qtpy import QtCore
 from QVideo.lib.videotypes import Image, FrameInfo
@@ -47,7 +49,7 @@ class QFrameRelay(QtCore.QObject):
 
     def __init__(self, source) -> None:
         super().__init__()
-        self._mutex = QtCore.QMutex()
+        self._lock = threading.Lock()
         self._latest: tuple[Image, FrameInfo | None] | None = None
         self._wake.connect(self._deliver)
         source.newFrame.connect(
@@ -57,7 +59,7 @@ class QFrameRelay(QtCore.QObject):
     @QtCore.Slot(np.ndarray, object)
     def _offer(self, frame: Image, info: FrameInfo | None = None) -> None:
         '''Keep *frame*; runs in the thread that emitted ``newFrame``.'''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._lock:
             idle, self._latest = self._latest is None, (frame, info)
         if idle:
             self._wake.emit()
@@ -65,7 +67,7 @@ class QFrameRelay(QtCore.QObject):
     @QtCore.Slot()
     def _deliver(self) -> None:
         '''Pass the kept frame on; runs in the thread of the relay.'''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._lock:
             latest, self._latest = self._latest, None
         if latest is not None:      # a wake can outlive its frame
             self.newFrame.emit(*latest)

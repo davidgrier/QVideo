@@ -1,5 +1,6 @@
 '''QThread wrapper that drives a QCamera and emits newFrame signals.'''
 import logging
+import threading
 from time import perf_counter
 from typing import Any, Protocol, TypeAlias, cast
 
@@ -100,8 +101,9 @@ class QVideoSource(QtCore.QThread):
         if isinstance(source, QCamera):     # a file cannot be lost
             source.lost.connect(self.lost)
         source.moveToThread(self)
-        self._mutex = QtCore.QMutex()
-        self._waitCondition = QtCore.QWaitCondition()
+        # Python's own lock, not QMutex and QMutexLocker: the wrappers of
+        # those, taken by several threads at a rate, crashed the interpreter.
+        self._cond = threading.Condition()
         self._paused = False
         self._running = True
         self._seek: int | None = None
@@ -146,9 +148,9 @@ class QVideoSource(QtCore.QThread):
         self._frames = 0
         with self.source:
             while True:
-                with QtCore.QMutexLocker(self._mutex):
+                with self._cond:
                     while self._paused and self._seek is None:
-                        self._waitCondition.wait(self._mutex)
+                        self._cond.wait()
                     if not self._running:
                         break
                     target, self._seek = self._seek, None
@@ -170,9 +172,9 @@ class QVideoSource(QtCore.QThread):
         again at once keeps a core busy for nothing.  :meth:`stop` wakes
         the wait, and a camera that is opened again is read again.
         '''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             if self._running:
-                self._waitCondition.wait(self._mutex, _CLOSED_WAIT_MS)
+                self._cond.wait(_CLOSED_WAIT_MS / 1000)
 
     def _frameInfo(self) -> FrameInfo:
         '''Return the metadata of the frame just read.
@@ -209,7 +211,7 @@ class QVideoSource(QtCore.QThread):
             e.g. ``src = QVideoSource(cam).start()``.
         '''
         logger.debug('starting')
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._running = True
             self._paused = False
         super().start()
@@ -224,10 +226,10 @@ class QVideoSource(QtCore.QThread):
         stops itself does not wait for itself.
         '''
         logger.debug('stopping')
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._running = False
             self._paused = False
-        self._waitCondition.wakeAll()
+            self._cond.notify_all()
         self._wakeSource()
         if QtCore.QThread.currentThread() is not self:
             self.wait()
@@ -244,16 +246,16 @@ class QVideoSource(QtCore.QThread):
         to continue.
         '''
         logger.debug('pausing')
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             if self._running:
                 self._paused = True
 
     @QtCore.Slot()
     def resume(self) -> None:
         '''Resume frame readout after :meth:`pause`.'''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._paused = False
-        self._waitCondition.wakeAll()
+            self._cond.notify_all()
 
     @QtCore.Slot(int)
     def seek(self, framenumber: int) -> None:
@@ -269,9 +271,9 @@ class QVideoSource(QtCore.QThread):
         framenumber : int
             Index of the frame to read next (zero-based).
         '''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._seek = framenumber
-        self._waitCondition.wakeAll()
+            self._cond.notify_all()
 
     def isPaused(self) -> bool:
         '''Return ``True`` if the capture loop is currently paused.'''

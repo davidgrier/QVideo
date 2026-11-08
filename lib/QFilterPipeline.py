@@ -3,6 +3,7 @@ from collections import deque
 from collections.abc import Iterable
 from dataclasses import replace
 import logging
+import threading
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -39,8 +40,7 @@ class _FilterStage(QtCore.QObject):
 
     def __init__(self, filters: Iterable[VideoFilter], depth: int) -> None:
         super().__init__()
-        self._mutex = QtCore.QMutex()
-        self._wait = QtCore.QWaitCondition()
+        self._cond = threading.Condition()
         self._queue: deque[tuple[Image, FrameInfo]] = deque(maxlen=depth)
         self._dropped = 0
         self._open = True
@@ -73,7 +73,7 @@ class _FilterStage(QtCore.QObject):
 
     @filters.setter
     def filters(self, filters: Iterable[VideoFilter]) -> None:
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._filters = tuple(filters)
 
     @property
@@ -94,7 +94,7 @@ class _FilterStage(QtCore.QObject):
 
     def reopen(self) -> None:
         '''Accept frames again after :meth:`close`.'''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._open = True
 
     def __enter__(self) -> '_FilterStage':
@@ -105,21 +105,21 @@ class _FilterStage(QtCore.QObject):
 
     def close(self) -> None:
         '''Discard waiting frames and wake a ``saferead`` that waits.'''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             self._open = False
             self._queue.clear()
-        self._wait.wakeAll()
+            self._cond.notify_all()
 
     @QtCore.Slot(np.ndarray, object)
     def _deliver(self, frame: Image, info: FrameInfo) -> None:
         '''Queue a frame; runs in the thread that emitted ``newFrame``.'''
-        with QtCore.QMutexLocker(self._mutex):
+        with self._cond:
             if not self._open:
                 return
             if len(self._queue) == self._queue.maxlen:
                 self._dropped += 1
             self._queue.append((frame, info))
-        self._wait.wakeOne()
+            self._cond.notify()
 
     def saferead(self) -> tuple[bool, Image | None]:
         '''Return the next filtered frame; ``False`` once closed.
@@ -128,9 +128,9 @@ class _FilterStage(QtCore.QObject):
         collects frames) is not a result: the call waits for the next one.
         '''
         while True:
-            with QtCore.QMutexLocker(self._mutex):
+            with self._cond:
                 while self._open and not self._queue:
-                    self._wait.wait(self._mutex)
+                    self._cond.wait()
                 if not self._open:
                     return False, None
                 frame, info = self._queue.popleft()

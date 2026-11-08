@@ -6,11 +6,12 @@ Ideas for upgrades and extensions, in no particular order.
 
 ## Flaky CI jobs
 
-- Python 3.14 / PyQt6 on Ubuntu segfaulted once (2026-11-08, about 27% into
-  the suite, in Qt event delivery near the splash-screen tests) and passed
-  on a rerun, with six clean runs of those tests here.  If it comes back at
-  the same place, bisect with `pytest -p no:randomly` over `test_jupyter`
-  to `test_splash`.
+- Python 3.14 and 3.13 / PyQt6 on Ubuntu each segfaulted once (2026-11-08,
+  about 27% into the suite).  Reproduced here with a stress script (pipelines
+  made and stopped while a thread emits frames): the crash was inside
+  `QMutexLocker`, and the pipeline, `QVideoSource` and `QFrameRelay` now use
+  Python's locks (0 crashes in 160 runs, from about one in three).  The CI
+  runs `pytest -v` until a few runs have passed; then go back to `-q`.
 - Python 3.11 / PyQt5 has failed intermittently.
 
 ---

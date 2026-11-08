@@ -11,6 +11,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [4.22.0] — 2026-11-08
 
+### Fixed
+
+- **A crash of the interpreter in the filter pipeline.**  Pipelines that were
+  made while another thread emitted frames crashed the interpreter in about
+  one run in three on a development machine (inside a `QMutexLocker`), and
+  the tests crashed twice in CI.  The pipeline, `QVideoSource` and
+  `QFrameRelay` now wait on Python's `threading.Condition` and `Lock`, not on
+  `QMutex` and `QWaitCondition`.  160 runs of the stress that crashed before
+  ended cleanly.
+
 ### Changed
 
 - **One way to stop at quit.**  The pipeline, recorder, player, camera

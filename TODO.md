@@ -4,6 +4,17 @@ Ideas for upgrades and extensions, in no particular order.
 
 ---
 
+## Flaky CI jobs
+
+- Python 3.14 / PyQt6 on Ubuntu segfaulted once (2026-11-08, about 27% into
+  the suite, in Qt event delivery near the splash-screen tests) and passed
+  on a rerun, with six clean runs of those tests here.  If it comes back at
+  the same place, bisect with `pytest -p no:randomly` over `test_jupyter`
+  to `test_splash`.
+- Python 3.11 / PyQt5 has failed intermittently.
+
+---
+
 ## Polish after the review of 2026-11-03
 
 The review of 2026-11-03 kept to what the CI then checked (`ruff` with

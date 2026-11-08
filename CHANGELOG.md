@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.22.0] — 2026-11-08
+
 ### Changed
 
 - **One way to stop at quit.**  The pipeline, recorder, player, camera

@@ -59,7 +59,9 @@ class QSnapshot(QtCore.QObject):
         Keyboard shortcut for :meth:`screenshotAs`.
         Default: ``'Ctrl+Shift+Alt+P'``.
 
-    The file is written by :attr:`saver`, a
+    The directory of the last file is remembered from session to session
+    (see :class:`~QVideo.lib.QImageSaver.QImageSaver`).  The file is
+    written by :attr:`saver`, a
     :class:`~QVideo.lib.QImageSaver.QImageSaver`, whose ``message`` signal
     reports each outcome.
 
@@ -93,7 +95,7 @@ class QSnapshot(QtCore.QObject):
         self.levels: tuple[float, float] | None = None
         #: Writes the files and reports the outcome (``saver.message``).
         self.saver = QImageSaver(self, Path.home(), 'snapshot',
-                                 title='Save Snapshot')
+                                 title='Save Snapshot', key='images')
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), parent)
         shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut.activated.connect(self.snap)

@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
-from QVideo.lib import clickable, QVideoSource
+from QVideo.lib import clickable, QVideoSource, _settings
 from . import formats
 from .QRecorder import QRecorder
 from .QPlayer import QPlayer
@@ -61,6 +61,11 @@ class QDVRWidget(QtWidgets.QFrame):
     filename : str or None
         Default file path for saving.  If ``None``, defaults to
         ``~/default.mkv``.
+    key : str, optional
+        Remember the file of the last recording or playback under
+        ``<key>/filename`` and offer it in the next session.  Only an
+        application with a name of its own remembers anything.  Default:
+        remember nothing.
     stopWhenBehind, lagLimit, maxMemory :
         Passed to the :class:`~QVideo.dvr.QRecorder.QRecorder`, which
         explains them and which is available as :attr:`recorder`.
@@ -117,8 +122,10 @@ class QDVRWidget(QtWidgets.QFrame):
                  stopWhenBehind: bool = True,
                  lagLimit: float = 1.,
                  maxMemory: float | None = None,
+                 key: str | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self._key = key
         #: The recorder that this widget controls.
         self.recorder = QRecorder(stopWhenBehind=stopWhenBehind,
                                   lagLimit=lagLimit, maxMemory=maxMemory,
@@ -129,7 +136,20 @@ class QDVRWidget(QtWidgets.QFrame):
         self._setupUi()
         self._connectSignals()
         self.source = source
-        self.filename = filename or str(Path.home() / self.FILENAME)
+        self.filename = filename or self._lastFilename()
+
+    def _lastFilename(self) -> str:
+        '''Return the file of the last session, or the default file.'''
+        if self._key:
+            last = _settings.recall(f'{self._key}/filename')
+            if last and Path(last).parent.is_dir():
+                return last
+        return str(Path.home() / self.FILENAME)
+
+    def _remember(self) -> None:
+        '''Remember the file that was used, for the next session.'''
+        if self._key:
+            _settings.remember(f'{self._key}/filename', self.filename)
 
     def _button(self,
                 tip: str,
@@ -393,6 +413,7 @@ class QDVRWidget(QtWidgets.QFrame):
         if not (self._accepts(formats.Writer) and self._mayRecord()):
             return
         logger.debug(f'Recording: {self.filename}')
+        self._remember()
         self.recorder.start(self.filename, self.nframes.value(),
                             self.nskip.value(), overwrite=True)
         self._display(0, self.recorder.nframes, self.recorder.rate)
@@ -431,6 +452,7 @@ class QDVRWidget(QtWidgets.QFrame):
                        'to play.')
             return
         logger.debug(f'Starting Playback: {self.filename}')
+        self._remember()
         with contextlib.suppress(OSError):  # the reader has said why
             self.playback.start(self.filename)
 

@@ -270,7 +270,10 @@ def launch(widget: type[QtWidgets.QWidget],
         its first argument, as :class:`~QVideo.demos.demo.Demo` and
         :class:`~QVideo.QCamcorder.QCamcorder` expect.
     title : str, optional
-        Name of the application and title of the window.
+        Name of the application and title of the window.  The name is also
+        where the application keeps what it remembers from one session to
+        the next (the directory of its snapshots and the file of its
+        recordings); without one, it remembers nothing.
     **kwargs :
         Further keyword arguments for *widget*.
 

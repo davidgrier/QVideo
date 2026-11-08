@@ -2,6 +2,7 @@
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import save_image
+from QVideo.lib import _settings
 from pathlib import Path
 import datetime
 import logging
@@ -34,6 +35,11 @@ class QImageSaver(QtCore.QObject):
         End of a generated name; it sets the format.  Default: ``'.png'``.
     title : str
         Title of the file dialog.  Default: ``'Save Image'``.
+    key : str, optional
+        Remember the directory of the last file written under this name
+        (``<key>/directory``) and start there in the next session.  Only an
+        application with a name of its own remembers anything.  Default:
+        remember nothing.
 
     Signals
     -------
@@ -55,9 +61,15 @@ class QImageSaver(QtCore.QObject):
                  directory: str | Path | None = None,
                  prefix: str = 'image',
                  extension: str = '.png',
-                 title: str = 'Save Image') -> None:
+                 title: str = 'Save Image',
+                 key: str | None = None) -> None:
         super().__init__(parent)
         self.directory = Path(directory) if directory else Path.cwd()
+        self._key = key
+        if key:
+            last = _settings.recall(f'{key}/directory')
+            if last and Path(last).is_dir():
+                self.directory = Path(last)
         self.prefix = prefix
         self.extension = extension
         self.title = title
@@ -118,6 +130,10 @@ class QImageSaver(QtCore.QObject):
             logger.warning(f'Could not save {path!r}: {error}')
             self.message.emit(f'Could not save {path}: {error}')
             return None
+        if self._key:
+            self.directory = Path(path).resolve().parent
+            _settings.remember(f'{self._key}/directory',
+                               str(self.directory))
         logger.info(f'Saved {path!r}')
         self.message.emit(f'Saved {path}')
         return path

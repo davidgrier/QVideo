@@ -109,7 +109,7 @@ class QCamcorder(QtWidgets.QWidget):
 
     def _setupUi(self) -> None:
         self.screen = QVideoScreen(self)
-        self.dvr = QDVRWidget(self)
+        self.dvr = QDVRWidget(self, key='dvr')
         self.screen.source = self.source
         self.dvr.source = self.source
 

@@ -44,6 +44,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   screen, the pattern of a modulator), so it is no longer tied to the
   frames that `QSnapshot` caches.  `QSnapshot` now uses it, and `QCamcorder`
   shows "Saved ..." in its status bar after a snapshot.
+- **An application remembers where it saved.**  `QSnapshot` starts in the
+  directory of the last snapshot or screenshot, and the DVR panel of
+  `QCamcorder` offers the file of the last recording or playback (so the
+  format too).  The memory is the platform's own (`QSettings`: a property
+  list on macOS, a file on Linux, the registry on Windows), is written when a
+  file is actually written or opened, and ignores a directory that has gone.
+  Only an application with a name of its own remembers anything: `launch()`
+  names it from its title, an embedding program calls
+  `QCoreApplication.setApplicationName`, and a bare script (named `Python`
+  by Qt) gets nothing.  `QImageSaver(key=...)` and `QDVRWidget(key=...)`
+  opt in; without a key they behave as before.
 - **A screenshot of what the screen shows.**  `QVideoScreen.screenshot()`
   (it was the private `_renderComposite`) renders the video with its filters,
   color map and overlays when it is called.  `QSnapshot(parent, screen=...)`

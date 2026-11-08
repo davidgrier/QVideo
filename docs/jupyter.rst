@@ -265,6 +265,26 @@ Acquiring a sequence of frames
 Both apply ``camera.filters``, as ``camera.read()`` does.  A stack is held
 in memory: 100 frames of 1920 x 1200 at 16 bits take about 460 MB.
 
+Recording a video
+-----------------
+
+.. code-block:: python
+
+   camera.record('run1.mkv', n=300)          # 300 frames
+   camera.record('run2.mkv', seconds=10)     # ten seconds
+   camera.record('run3.h5', n=1000, seconds=60)   # whichever comes first
+
+``camera.record()`` returns the path when the recording is complete, so the
+next line of the cell runs on a finished file.  The extension chooses the
+format, as in the DVR panel: ``.mkv`` and ``.avi`` are lossless, ``.mp4``
+is lossy and holds 8 bits (a deep camera is scaled between its levels), and
+``.h5`` also keeps the time of every frame.  ``camera.filters`` are applied,
+the file declares the frame rate that the camera reports (``fps=`` sets it),
+and an existing file is an error unless you pass ``overwrite=True``.  The
+interrupt button of the notebook stops a recording and leaves a file that
+can be read.  Read the video back with
+``QVideo.dvr.formats.openVideo('run1.mkv')``.
+
 Saving a frame
 --------------
 

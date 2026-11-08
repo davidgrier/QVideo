@@ -6,6 +6,7 @@ import importlib
 import io
 import logging
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -419,6 +420,177 @@ class TestCameraFramesAndSave(unittest.TestCase):
         proxy, _ = self.make(self.counted(1))
         with self.assertRaises(OSError):
             proxy.save('/nonexistent-folder/g.png')
+
+
+class TestCameraRecord(unittest.TestCase):
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.folder = Path(folder.name)
+
+    def make(self, shape=(16, 16), dtype=np.uint8, levels=None, fps=20.):
+        cam = make_mock_noise_camera()
+        cam.levels = levels
+        cam.fps = fps
+        self.count = 0
+
+        def read():
+            self.count += 1
+            return True, np.full(shape, self.count, dtype)
+        cam.saferead.side_effect = read
+        proxy = _CameraProxy([('noise', 0)])
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
+            proxy._ensure_open()
+        return proxy, cam
+
+    def video(self, path):
+        from QVideo.dvr import formats
+        return formats.openVideo(path)
+
+    def test_n_frames_are_recorded_and_the_path_returned(self):
+        proxy, _ = self.make()
+        name = str(self.folder / 'a.mkv')
+        self.assertEqual(proxy.record(name, n=5), name)
+        video = self.video(name)
+        self.assertEqual(len(video), 5)
+        self.assertEqual(int(video[3][0, 0, 0]) if video[3].ndim == 3
+                         else int(video[3][0, 0]), 4)
+
+    def test_it_takes_a_path(self):
+        proxy, _ = self.make()
+        name = self.folder / 'b.mkv'
+        self.assertEqual(proxy.record(name, n=2), str(name))
+        self.assertTrue(name.exists())
+
+    def test_it_stops_after_the_seconds(self):
+        proxy, cam = self.make()
+        cam.saferead.side_effect = (
+            lambda: (time.sleep(0.01), (True, np.zeros((16, 16), np.uint8)))[1])
+        start = time.perf_counter()
+        proxy.record(self.folder / 'c.mkv', seconds=0.1)
+        self.assertLess(time.perf_counter() - start, 1.)
+        self.assertGreaterEqual(len(self.video(str(self.folder / 'c.mkv'))),
+                                2)
+
+    def test_the_first_limit_ends_it(self):
+        proxy, _ = self.make()
+        proxy.record(self.folder / 'd.mkv', n=3, seconds=60)
+        self.assertEqual(len(self.video(str(self.folder / 'd.mkv'))), 3)
+
+    def test_the_filters_are_applied(self):
+        proxy, _ = self.make()
+        proxy.filters = [lambda f: f + 100]
+        name = str(self.folder / 'e.h5')
+        proxy.record(name, n=2)
+        self.assertEqual(int(np.asarray(self.video(name)[0]).flat[0]), 101)
+
+    def test_the_file_declares_the_frame_rate_of_the_camera(self):
+        proxy, _ = self.make(fps=25.)
+        with patch('QVideo.dvr.formats.writerClass') as lookup:
+            writer = lookup.return_value.return_value
+            writer.finished = MagicMock()
+            proxy.record(self.folder / 'f.mkv', n=1)
+        self.assertEqual(lookup.return_value.call_args.kwargs['fps'], 25.)
+
+    def test_fps_can_be_given(self):
+        proxy, _ = self.make(fps=25.)
+        with patch('QVideo.dvr.formats.writerClass') as lookup:
+            lookup.return_value.return_value.finished = MagicMock()
+            proxy.record(self.folder / 'g.mkv', n=1, fps=10)
+        self.assertEqual(lookup.return_value.call_args.kwargs['fps'], 10)
+
+    def test_a_deep_frame_keeps_its_counts_in_a_lossless_file(self):
+        proxy, _ = self.make(dtype=np.uint16, levels=(0., 4095.))
+        name = str(self.folder / 'h.h5')
+        proxy.record(name, n=2)
+        self.assertEqual(self.video(name)[0].dtype, np.uint16)
+
+    def test_the_levels_travel_with_a_deep_frame(self):
+        proxy, _ = self.make(dtype=np.uint16, levels=(0., 4095.))
+        with patch('QVideo.dvr.formats.writerClass') as lookup:
+            writer = lookup.return_value.return_value
+            writer.finished = MagicMock()
+            proxy.record(self.folder / 'i.mkv', n=1)
+        info = writer.write.call_args.args[1]
+        self.assertEqual(info.levels, (0., 4095.))
+
+    def test_it_needs_a_limit(self):
+        proxy, _ = self.make()
+        with self.assertRaises(ValueError):
+            proxy.record(self.folder / 'j.mkv')
+
+    def test_the_limits_must_be_positive(self):
+        proxy, _ = self.make()
+        with self.assertRaises(ValueError):
+            proxy.record(self.folder / 'k.mkv', n=0)
+        with self.assertRaises(ValueError):
+            proxy.record(self.folder / 'k.mkv', seconds=0)
+
+    def test_an_unsupported_extension_raises(self):
+        proxy, cam = self.make()
+        with self.assertRaises(ValueError):
+            proxy.record(self.folder / 'l.xyz', n=1)
+        cam.saferead.assert_not_called()
+
+    def test_an_existing_file_is_not_replaced(self):
+        proxy, _ = self.make()
+        name = self.folder / 'm.mkv'
+        name.write_bytes(b'old')
+        with self.assertRaises(FileExistsError):
+            proxy.record(name, n=1)
+        self.assertEqual(name.read_bytes(), b'old')
+
+    def test_overwrite_replaces_it(self):
+        proxy, _ = self.make()
+        name = self.folder / 'n.mkv'
+        name.write_bytes(b'old')
+        proxy.record(name, n=2, overwrite=True)
+        self.assertEqual(len(self.video(str(name))), 2)
+
+    def test_a_failed_read_raises_and_closes_the_file(self):
+        proxy, cam = self.make()
+        good = cam.saferead.side_effect
+        calls = iter(range(100))
+
+        def read():
+            if next(calls) >= 2:
+                return False, None
+            return good()
+        cam.saferead.side_effect = read
+        name = str(self.folder / 'o.h5')
+        with self.assertRaises(RuntimeError):
+            proxy.record(name, n=5)
+        self.assertEqual(len(self.video(name)), 2)
+
+    def test_an_interrupt_closes_the_file(self):
+        proxy, cam = self.make()
+        good = cam.saferead.side_effect
+        calls = iter(range(100))
+
+        def read():
+            if next(calls) >= 3:
+                raise KeyboardInterrupt
+            return good()
+        cam.saferead.side_effect = read
+        name = str(self.folder / 'p.h5')
+        with self.assertRaises(KeyboardInterrupt):
+            proxy.record(name, n=10)
+        self.assertEqual(len(self.video(name)), 3)
+
+    def test_a_writer_that_stops_raises_with_the_reason(self):
+        proxy, cam = self.make()
+        good = cam.saferead.side_effect
+        calls = iter(range(100))
+
+        def read():
+            if next(calls) >= 2:
+                return True, np.zeros((8, 8), np.uint8)  # a new size
+            return good()
+        cam.saferead.side_effect = read
+        with self.assertRaises(RuntimeError) as caught:
+            proxy.record(self.folder / 'q.mkv', n=5)
+        self.assertIn('size changed', str(caught.exception))
 
 
 class TestApplication(unittest.TestCase):

@@ -19,6 +19,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   camera goes to a 16 bit PNG or TIFF stretched by its levels).  It raises
   `ValueError` or `OSError` where the Qt saver reports them in the status
   bar.
+- **`camera.record(filename, n=None, seconds=None)` in the notebook.**  It
+  records filtered frames to a video file in any format of the DVR panel
+  (`.mkv`, `.avi`, `.mp4`, `.h5`) and returns the path when the recording is
+  complete, so a cell can run an experiment without a window.  It stops at
+  `n` frames or after `seconds`, whichever comes first, declares the frame
+  rate of the camera (or `fps=`), refuses to replace a file unless
+  `overwrite=True`, closes the file on an interrupt, and raises
+  `RuntimeError` with the reason if the writer stops early.
 
 ---
 

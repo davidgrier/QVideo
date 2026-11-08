@@ -13,6 +13,8 @@ is used.
 '''
 import importlib
 import logging
+import time
+from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -23,9 +25,9 @@ from QVideo.cameras.chooser import BACKENDS, available_cameras, discover
 from QVideo.lib.QVideoFilter import prepare
 from QVideo.lib.QImageSaver import QImageSaver
 from QVideo.lib.imageops import save_image
+from QVideo.lib.videotypes import FrameInfo
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from QVideo.interactive.widgets import LiveView
     from QVideo.lib.videotypes import Image
 
@@ -268,6 +270,97 @@ class _CameraProxy:
         path = str(filename) if filename else \
             QImageSaver(prefix='camera').defaultPath()
         save_image(image, path, getattr(self._camera, 'levels', None))
+        return path
+
+    def record(self, filename: 'str | Path', n: int | None = None,
+               seconds: float | None = None, fps: float | None = None,
+               overwrite: bool = False) -> str:
+        '''Record filtered frames to a video file and return its path.
+
+        The call returns when the recording is complete, so a cell can run
+        an experiment and move on.  It reads in the thread of the caller,
+        and the interrupt button of the notebook stops it with the file
+        closed and readable.
+
+        Parameters
+        ----------
+        filename : str or Path
+            The file to write; its extension chooses the format, as in the
+            DVR panel (``.mkv`` and ``.avi`` are lossless, ``.mp4`` is
+            lossy, ``.h5`` keeps the time of every frame).
+        n : int, optional
+            Stop after this many frames.
+        seconds : float, optional
+            Stop after this many seconds.  Give *n*, *seconds* or both
+            (the first limit that is reached ends the recording).
+        fps : float, optional
+            The frame rate that the file declares.  Default: the frame
+            rate that the camera reports, or 30.  A video plays back at
+            this rate, whatever the speed of the filters.
+        overwrite : bool
+            Replace *filename* if it exists.  By default an existing file
+            is an error.
+
+        Returns
+        -------
+        str
+            The path that was written.
+
+        Raises
+        ------
+        ValueError
+            If neither *n* nor *seconds* is given, or one of them is less
+            than 1 frame or 0 seconds, or the extension is not supported.
+        FileExistsError
+            If *filename* exists and *overwrite* is ``False``.
+        RuntimeError
+            If the camera fails to deliver a frame, or the writer stops
+            early (a frame whose size changed, a disk that is full).  The
+            frames written until then stay in the file.
+
+        Notes
+        -----
+        A frame of more than 8 bits goes to a lossless ``.mkv``, ``.avi``
+        or ``.h5`` file as it is.  An ``.mp4`` file holds 8 bits, so the
+        frames are scaled between the levels of the camera, and the log
+        says so.
+        '''
+        from QVideo.dvr import formats
+        if n is None and seconds is None:
+            raise ValueError('give n, the number of frames, or seconds')
+        if n is not None and n < 1:
+            raise ValueError(f'n must be at least 1, not {n}')
+        if seconds is not None and seconds <= 0:
+            raise ValueError(f'seconds must be positive, not {seconds}')
+        path = str(filename)
+        writer_class = formats.writerClass(path)
+        if not overwrite and Path(path).exists():
+            raise FileExistsError(
+                f'{path!r} exists; use overwrite=True to replace it')
+        self._ensure_open()
+        rate = fps or getattr(self._camera, 'fps', None) or 30.
+        writer = writer_class(path, fps=rate, nframes=n or 2**31)
+        reasons: list[str] = []
+        writer.finished.connect(reasons.append)
+        start = time.perf_counter()
+        count = 0
+        try:
+            while not reasons and (n is None or count < n) and (
+                    seconds is None
+                    or time.perf_counter() - start < seconds):
+                frame = self.read()
+                levels = (getattr(self._camera, 'levels', None)
+                          if frame.dtype == np.uint16 else None)
+                writer.write(frame, FrameInfo(count, time.perf_counter(),
+                                              levels=levels))
+                count += 1
+        finally:
+            writer.close()
+        if any(reasons):
+            raise RuntimeError(f'recording stopped after {writer.framenumber}'
+                               f' frames: {reasons[0]}')
+        logger.info(f'Recorded {count} frames to {path!r} '
+                    f'in {time.perf_counter() - start:.1f} s')
         return path
 
     def __getattr__(self, name: str):

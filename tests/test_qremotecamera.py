@@ -520,11 +520,13 @@ class TestTheWorkerSpeaks(unittest.TestCase):
         self.assertFalse(camera._lost)
 
     def test_a_camera_that_does_not_open_leaves_nothing_behind(self):
-        threads = threading.active_count()
+        # Compare the threads, not their number: a thread of an earlier test
+        # may end meanwhile.
+        before = set(threading.enumerate())
         with self.assertNoLogs(LOGGER, 'ERROR'):
             with self.assertRaises(QCameraError):
                 QRemoteCamera('nothing')
-        self.assertEqual(threading.active_count(), threads)
+        self.assertEqual(set(threading.enumerate()) - before, set())
 
 
 @not_on_windows

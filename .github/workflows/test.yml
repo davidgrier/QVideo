@@ -21,8 +21,9 @@ jobs:
   types:
     name: Types (pyright on lib/)
     runs-on: ubuntu-latest
-    # Informational until the report is short: it does not fail the workflow.
-    continue-on-error: true
+    # The report is empty, so a type error fails the workflow.  Pyright is
+    # pinned: a newer version finds new things, and they are for us to fix
+    # when we choose to move (change the pin and the report together).
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
@@ -30,7 +31,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev-pyqt6]" pyright
+      - run: pip install -e ".[dev-pyqt6]" pyright==1.1.414
       - run: pyright
 
   test:

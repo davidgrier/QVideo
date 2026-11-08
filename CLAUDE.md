@@ -19,7 +19,7 @@ python -m pytest tests/test_qgenicamcamera.py::TestRead::test_frame_shape
 # when running only some of the tests)
 python -m pytest --cov --cov-report=term-missing
 
-# Type-check lib/ (the CI job is informational; configured in pyproject.toml)
+# Type-check lib/ (a CI job; configured in pyproject.toml)
 pyright
 
 # Build HTML documentation  (output: docs/_build/html/index.html)
@@ -399,15 +399,16 @@ The `-c` CLI flag opens `QOpenCVTree` in quality mode.
   normalise), *center* (not centre), *gray* (not grey), *behavior* (not
   behaviour), etc.
 
-CI also runs `pyright` on `lib/` as an informational job (`Types`; it does
-not fail the workflow; the report is empty, so keep it so) and one test job with a coverage floor of 95%
+CI also runs `pyright` on `lib/` (the `Types` job; the report is empty and a
+type error fails the workflow, with the version of pyright pinned in
+`.github/workflows/test.yml`) and one test job with a coverage floor of 95%
 (`fail_under` in `pyproject.toml`; the suite measures 96%).  Keep the floor
 below the measured value: it makes a regression visible and is no target.
 
 Run `pyright` in an environment with PyQt6 and no other Qt binding, as CI
-does (`pip install -e ".[dev-pyqt6]" pyright` in a new virtual environment):
-with PyQt5 installed beside it, pyright reads the PyQt5 stubs and reports
-errors that CI does not.  The Qt stubs, `pyqtgraph` and OpenCV are loosely
+does (`pip install -e ".[dev-pyqt6]" pyright==1.1.414` in a new virtual
+environment): with PyQt5 installed beside it, pyright reads the PyQt5 stubs
+and reports errors that CI does not.  The Qt stubs, `pyqtgraph` and OpenCV are loosely
 typed, so a line that is right at run time sometimes carries a
 `# pyright: ignore[rule]`; use the narrowest rule that names the problem,
 and prefer a `cast` or an annotation where it says something true.

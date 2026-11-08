@@ -11,9 +11,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
-- **The type check of `lib/` is clean.**  `pyright` reports no error in the
-  environment that CI uses (PyQt6 alone), where it reported 106.  The
-  reports were mostly a project setting (`extraPaths`, so that `QVideo.*`
+- **The type check of `lib/` is clean, and CI enforces it.**  `pyright`
+  reports no error in the environment that CI uses (PyQt6 alone), where it
+  reported 106, and the `Types` job now fails the workflow on one (pyright
+  is pinned to 1.1.414).  The reports were mostly a project setting (`extraPaths`, so that `QVideo.*`
   resolves in CI) and annotations that said less than the code knows:
   `QReferenceFilter.videoFilter` is a `ReferenceFilter`, the pending frame
   of `QVideoScreen` is a frame and its information, overlays are graphics

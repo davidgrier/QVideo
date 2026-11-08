@@ -10,6 +10,7 @@ from pyqtgraph import GraphicsLayoutWidget, ImageItem
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFrameRelay import QFrameRelay
 from QVideo.lib.videotypes import FrameInfo, Image
+from QVideo.lib.imageops import AutoLevels
 
 
 logger = logging.getLogger(__name__)
@@ -19,9 +20,6 @@ __all__ = ['QVideoScreen']
 
 #: Frames between the estimates of the levels of ``autoLevels``.
 _AUTO_EVERY = 5
-
-#: About how many pixels of a frame make the estimate.
-_AUTO_SAMPLE = 20000
 
 
 class QVideoScreen(GraphicsLayoutWidget):
@@ -103,9 +101,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._colormap: str | None = None
         self._levels: tuple[float, float] | None = None
         self._shownLevels: tuple[float, float] | None = None
-        self._auto: tuple[float, float] | None = None
-        self._autoLevels: tuple[float, float] | None = None
-        self._autoCount = 0
+        self._auto: AutoLevels | None = None
         self._ready = True
         self._pending: Image | None = None
         self._overlays: list[object] = []
@@ -235,42 +231,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         ValueError
             If the percentiles are not ``0 <= low < high <= 100``.
         '''
-        return self._auto
+        return self._auto.percentiles if self._auto else None
 
     @autoLevels.setter
     def autoLevels(self, percentiles: tuple[float, float] | None) -> None:
-        if percentiles is not None:
-            low, high = percentiles
-            if not 0 <= low < high <= 100:
-                raise ValueError(
-                    'the percentiles must satisfy 0 <= low < high <= 100: '
-                    f'{percentiles}')
-            percentiles = (float(low), float(high))
-        self._auto = percentiles
-        self._autoLevels = None
-        self._autoCount = 0
-
-    def _estimateLevels(self, image: Image) -> tuple[float, float] | None:
-        '''Return the levels of the percentiles of *image*, smoothed.
-
-        The percentiles come from a subsample of every few frames; the
-        result moves a third of the way to each new estimate.
-        '''
-        assert self._auto is not None
-        self._autoCount += 1
-        if self._autoLevels is None or self._autoCount % _AUTO_EVERY == 0:
-            step = max(1, int(np.sqrt(image.shape[0] * image.shape[1]
-                                      / _AUTO_SAMPLE)))
-            low, high = np.percentile(image[::step, ::step], self._auto)
-            if high <= low:
-                high = low + 1
-            if self._autoLevels is None:
-                self._autoLevels = (float(low), float(high))
-            else:
-                old = self._autoLevels
-                self._autoLevels = (old[0] + (low - old[0]) / 3,
-                                    old[1] + (high - old[1]) / 3)
-        return self._autoLevels
+        self._auto = (None if percentiles is None
+                      else AutoLevels(percentiles, every=_AUTO_EVERY))
 
     def _followLevels(self, image: Image, info: FrameInfo | None) -> None:
         '''Show the frame between the levels that it comes with.
@@ -281,7 +247,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''
         wanted = self._levels
         if wanted is None and self._auto is not None:
-            wanted = self._estimateLevels(image)
+            wanted = self._auto(image)
         if wanted is None and info:
             wanted = info.levels
         if wanted != self._shownLevels:

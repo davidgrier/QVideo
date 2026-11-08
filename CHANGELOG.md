@@ -19,6 +19,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   camera goes to a 16 bit PNG or TIFF stretched by its levels).  It raises
   `ValueError` or `OSError` where the Qt saver reports them in the status
   bar.
+- **`camera.show()` and a levels control for the notebook live view.**
+  `camera.show(image=None, contrast='auto')` displays one frame as a PNG
+  (auto contrast, `'camera'`, `'full'` or `(black, white)` for a deep frame).
+  `camera.live_view()` of a camera of more than 8 bits adds a **Levels**
+  drop-down under the picture (camera range, auto contrast, full 16 bits);
+  it used to hand the `uint16` frame to the JPEG encoder.  The percentile
+  rule is `imageops.AutoLevels`, which `QVideoScreen.autoLevels` now uses
+  too, so that the window and the notebook scale a frame alike.
 - **`camera.record(filename, n=None, seconds=None)` in the notebook.**  It
   records filtered frames to a video file in any format of the DVR panel
   (`.mkv`, `.avi`, `.mp4`, `.h5`) and returns the path when the recording is

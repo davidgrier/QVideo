@@ -7,7 +7,7 @@ from qtpy import QtGui
 from QVideo.lib.videotypes import Image
 
 
-__all__ = ['grayscale', 'to8bit', 'stretch16', 'save_image']
+__all__ = ['grayscale', 'to8bit', 'stretch16', 'save_image', 'AutoLevels']
 
 try:
     _Fmt = QtGui.QImage.Format
@@ -145,3 +145,63 @@ def save_image(image: Image, filename: str,
         fmt, step = _Fmt.Format_RGBA8888, 4 * w
     if not QtGui.QImage(image.tobytes(), w, h, step, fmt).save(str(filename)):
         raise OSError(f'cannot write {str(filename)!r}')
+
+
+class AutoLevels:
+    '''Black and white levels from the percentiles of the frames shown.
+
+    The percentiles come from a subsample of every few frames, and the
+    levels move a third of the way to each new estimate, so that a picture
+    does not flicker.  The screen and the notebook display use the same
+    rule.
+
+    Parameters
+    ----------
+    percentiles : tuple[float, float]
+        The percentiles that are black and white: ``0 <= low < high <= 100``.
+    every : int
+        Frames between estimates.
+    sample : int
+        About how many pixels of a frame make an estimate.
+
+    Raises
+    ------
+    ValueError
+        If the percentiles are not ``0 <= low < high <= 100``.
+    '''
+
+    def __init__(self, percentiles: tuple[float, float] = (1., 99.),
+                 every: int = 5, sample: int = 20000) -> None:
+        low, high = percentiles
+        if not 0 <= low < high <= 100:
+            raise ValueError(
+                'the percentiles must satisfy 0 <= low < high <= 100: '
+                f'{percentiles}')
+        self.percentiles = (float(low), float(high))
+        self.every = every
+        self.sample = sample
+        self._levels: tuple[float, float] | None = None
+        self._count = 0
+
+    def reset(self) -> None:
+        '''Forget the levels, so that the next frame sets them.'''
+        self._levels = None
+        self._count = 0
+
+    def __call__(self, image: Image) -> tuple[float, float]:
+        '''Return the levels for *image*, smoothed over the frames.'''
+        self._count += 1
+        if self._levels is None or self._count % self.every == 0:
+            step = max(1, int(np.sqrt(image.shape[0] * image.shape[1]
+                                      / self.sample)))
+            low, high = np.percentile(image[::step, ::step],
+                                      self.percentiles)
+            if high <= low:
+                high = low + 1
+            if self._levels is None:
+                self._levels = (float(low), float(high))
+            else:
+                old = self._levels
+                self._levels = (old[0] + (low - old[0]) / 3,
+                                old[1] + (high - old[1]) / 3)
+        return self._levels

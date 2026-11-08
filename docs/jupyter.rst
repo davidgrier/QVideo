@@ -180,11 +180,33 @@ Pass ``fps`` to control the display update rate (default 30):
 
    live = camera.live_view(fps=10.0)
 
+A browser shows 8 bits.  For a camera of more than 8 bits, a **Levels**
+drop-down appears under the picture and chooses how the counts are scaled:
+the range of the camera (the default), auto contrast (the 1st and 99th
+percentiles of the frames, smoothed so that the picture does not flicker),
+or the full 16 bits.  It changes the display only, not the frames that
+``camera.read()`` returns.
+
 .. note::
 
    :mod:`ipywidgets` must be installed (included in the ``jupyter`` extra)::
 
        pip install "QVideo[jupyter]"
+
+Looking at one frame
+--------------------
+
+.. code-block:: python
+
+   camera.show()                    # a new frame, in the cell
+   camera.show(stack.mean(axis=0))  # any image of your own
+   camera.show(contrast='camera')   # 'auto' (default), 'camera', 'full'
+   camera.show(contrast=(100, 900)) # or the black and white you choose
+
+``camera.show()`` displays one frame as a PNG, without a live feed.  A
+camera of more than 8 bits is scaled to the display by ``contrast`` (auto
+contrast by default, so that a 12 bit frame is not nearly black); an 8 bit
+frame is shown as it is.
 
 Filtering frames
 ----------------

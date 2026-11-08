@@ -409,6 +409,10 @@ class _CameraProxy:
 
         Notes
         -----
+        A camera of more than 8 bits gets a drop-down under the picture
+        that scales its counts for the browser: the range of the camera,
+        auto contrast or the full 16 bits.
+
         The proxy keeps an internal reference to the handle, so you can
         stop the feed from any cell via :meth:`stop_live_view`::
 
@@ -424,9 +428,39 @@ class _CameraProxy:
         '''
         jupyter = _notebook('live_view()')
         self._ensure_open()
-        lv = jupyter.live_view(self.read, fps)
+        lv = jupyter.live_view(
+            self.read, fps,
+            levels=lambda: getattr(self._camera, 'levels', None))
         object.__setattr__(self, '_live_view', lv)
         return lv
+
+    def show(self, image: 'Image | None' = None,
+             contrast: 'str | tuple[float, float]' = 'auto') -> None:
+        '''Show one frame in the cell.
+
+        Parameters
+        ----------
+        image : numpy.ndarray, optional
+            What to show.  Default: a new frame from :meth:`read`.
+        contrast : str or tuple
+            How a frame of more than 8 bits is scaled to the 8 bits of the
+            display: ``'auto'`` (the 1st and 99th percentiles, the
+            default), ``'camera'`` (the range of the camera), ``'full'``
+            (0 to 65535) or ``(black, white)``.  An 8 bit frame is shown as
+            it is.
+
+        Raises
+        ------
+        ImportError
+            If :mod:`ipywidgets` is not installed.
+        ValueError
+            If *contrast* is not one of these.
+        '''
+        jupyter = _notebook('show()')
+        if image is None:
+            image = self.read()
+        jupyter.show(image, contrast,
+                     getattr(self._camera, 'levels', None))
 
     def stop_live_view(self) -> None:
         '''Stop the live video feed started by :meth:`live_view`.

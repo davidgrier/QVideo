@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 from qtpy import QtGui, QtWidgets
 from QVideo.lib.imageops import (grayscale, to8bit, stretch16,
-                                 save_image)
+                                 save_image, AutoLevels)
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -171,6 +171,50 @@ class TestSaveImage(unittest.TestCase):
         with self.assertRaises(OSError):
             save_image(np.zeros((4, 6), np.uint8),
                        '/nonexistent-folder/image.png')
+
+
+class TestAutoLevels(unittest.TestCase):
+
+    def ramp(self, top=1000):
+        return np.tile(np.linspace(0, top, 100), (100, 1)).astype(np.uint16)
+
+    def test_the_first_frame_gives_its_percentiles(self):
+        low, high = AutoLevels((1, 99))(self.ramp())
+        self.assertAlmostEqual(low, 10, delta=2)
+        self.assertAlmostEqual(high, 990, delta=2)
+
+    def test_the_levels_move_a_third_of_the_way_to_a_new_scene(self):
+        auto = AutoLevels((0, 100), every=1)
+        auto(self.ramp(1000))
+        low, high = auto(self.ramp(4000))
+        self.assertAlmostEqual(high, 1000 + 3000 / 3, delta=1)
+
+    def test_the_estimate_is_made_every_few_frames(self):
+        auto = AutoLevels((0, 100), every=3)
+        first = auto(self.ramp(1000))
+        self.assertEqual(auto(self.ramp(4000)), first)
+        self.assertNotEqual(auto(self.ramp(4000)), first)
+
+    def test_reset_forgets_the_levels(self):
+        auto = AutoLevels((0, 100), every=1)
+        auto(self.ramp(1000))
+        auto.reset()
+        self.assertAlmostEqual(auto(self.ramp(4000))[1], 4000, delta=1)
+
+    def test_a_flat_frame_still_has_a_range(self):
+        low, high = AutoLevels()(np.full((10, 10), 5, np.uint16))
+        self.assertGreater(high, low)
+
+    def test_a_large_frame_is_subsampled(self):
+        big = np.zeros((2000, 2000), np.uint16)
+        big[:, 1000:] = 100
+        low, high = AutoLevels((0, 100), sample=1000)(big)
+        self.assertEqual((low, high), (0, 100))
+
+    def test_bad_percentiles_raise(self):
+        for bad in ((50, 50), (-1, 99), (1, 101), (99, 1)):
+            with self.assertRaises(ValueError):
+                AutoLevels(bad)
 
 
 if __name__ == '__main__':  # pragma: no cover

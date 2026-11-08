@@ -10,6 +10,7 @@ import time
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+import cv2
 import numpy as np
 from qtpy import QtGui, QtWidgets
 
@@ -294,7 +295,8 @@ class TestCameraFilters(unittest.TestCase):
         proxy, cam = self._make_proxy()
         proxy.filters = [lambda f: f + 7]
         shown = []
-        fake = MagicMock(side_effect=lambda read, fps: shown.append(read()))
+        fake = MagicMock(
+            side_effect=lambda read, fps, levels=None: shown.append(read()))
         with patch.object(_jupyter(), 'live_view', fake):
             proxy.live_view()
         self.assertTrue((shown[0] == 7).all())
@@ -591,6 +593,146 @@ class TestCameraRecord(unittest.TestCase):
         with self.assertRaises(RuntimeError) as caught:
             proxy.record(self.folder / 'q.mkv', n=5)
         self.assertIn('size changed', str(caught.exception))
+
+
+class TestShowAndLevels(unittest.TestCase):
+
+    def png(self, call):
+        shown = []
+        with patch('QVideo.interactive.widgets._display', shown.append):
+            call()
+        data = shown[0].data
+        self.assertTrue(data.startswith(b'\x89PNG'))
+        return cv2.imdecode(np.frombuffer(data, np.uint8),
+                            cv2.IMREAD_UNCHANGED)
+
+    def deep(self, white=4095):
+        frame = np.zeros((20, 20), np.uint16)
+        frame[:, 10:] = white
+        return frame
+
+    def test_an_8_bit_frame_is_shown_as_it_is(self):
+        frame = np.arange(400, dtype=np.uint8).reshape(20, 20)
+        picture = self.png(lambda: _jupyter().show(frame))
+        np.testing.assert_array_equal(picture, frame)
+
+    def test_a_deep_frame_is_stretched_by_its_percentiles(self):
+        picture = self.png(lambda: _jupyter().show(self.deep()))
+        self.assertEqual(int(picture[0, 0]), 0)
+        self.assertEqual(int(picture[0, 19]), 255)
+
+    def test_camera_contrast_uses_the_levels_of_the_camera(self):
+        frame = self.deep(2000)
+        picture = self.png(lambda: _jupyter().show(
+            frame, 'camera', (0., 4000.)))
+        self.assertAlmostEqual(int(picture[0, 19]), 127, delta=2)
+
+    def test_full_contrast_uses_the_whole_16_bits(self):
+        picture = self.png(lambda: _jupyter().show(self.deep(), 'full'))
+        self.assertLess(int(picture[0, 19]), 20)
+
+    def test_contrast_can_be_a_pair_of_levels(self):
+        picture = self.png(lambda: _jupyter().show(
+            self.deep(1000), (0, 2000)))
+        self.assertAlmostEqual(int(picture[0, 19]), 127, delta=2)
+
+    def test_a_color_frame_is_shown_in_color(self):
+        frame = np.zeros((8, 8, 3), np.uint8)
+        frame[..., 0] = 200
+        picture = self.png(lambda: _jupyter().show(frame))
+        self.assertEqual(int(picture[0, 0, 2]), 200)  # OpenCV is BGR
+
+    def test_a_contrast_that_is_unknown_raises(self):
+        with self.assertRaises(ValueError):
+            _jupyter().show(self.deep(), 'bright')
+
+    def make_proxy(self, frame, levels=(0., 4095.)):
+        cam = make_mock_noise_camera()
+        cam.levels = levels
+        cam.saferead.return_value = (True, frame)
+        proxy = _CameraProxy([('noise', 0)])
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
+            proxy._ensure_open()
+        return proxy, cam
+
+    def test_the_proxy_shows_a_new_frame_with_the_levels_of_the_camera(self):
+        frame = self.deep()
+        proxy, _ = self.make_proxy(frame)
+        with patch.object(_jupyter(), 'show') as show:
+            proxy.show()
+        shown, contrast, levels = show.call_args.args
+        np.testing.assert_array_equal(shown, frame)
+        self.assertEqual((contrast, levels), ('auto', (0., 4095.)))
+
+    def test_the_proxy_shows_the_image_it_is_given(self):
+        proxy, cam = self.make_proxy(self.deep())
+        image = np.zeros((4, 4), np.uint8)
+        cam.saferead.reset_mock()
+        with patch.object(_jupyter(), 'show') as show:
+            proxy.show(image, 'full')
+        cam.saferead.assert_not_called()
+        self.assertIs(show.call_args.args[0], image)
+        self.assertEqual(show.call_args.args[1], 'full')
+
+    def run_live(self, frame, levels=None, mode=None, reads=3):
+        """Run a live view over *reads* frames; return (shown, widget)."""
+        from QVideo.interactive.widgets import live_view
+        shown = []
+        calls = []
+
+        def read():
+            calls.append(1)
+            if len(calls) > reads:
+                raise RuntimeError('done')
+            return frame
+
+        async def run():
+            with patch('QVideo.interactive.widgets._display', shown.append):
+                task = live_view(read, fps=1000, levels=levels)._task
+                if mode is not None:
+                    shown[0].children[1].value = mode
+                await asyncio.wait_for(task, timeout=5)
+
+        with self.assertLogs('QVideo.interactive.widgets', 'WARNING'):
+            asyncio.run(run())
+        return shown
+
+    def test_an_8_bit_live_view_has_no_levels_control(self):
+        import ipywidgets
+        shown = self.run_live(np.zeros((8, 8), np.uint8))
+        self.assertIsInstance(shown[0], ipywidgets.Image)
+
+    def test_a_deep_live_view_offers_the_levels(self):
+        import ipywidgets
+        shown = self.run_live(self.deep(), lambda: (0., 4095.))
+        box = shown[0]
+        self.assertIsInstance(box, ipywidgets.VBox)
+        dropdown = box.children[1]
+        self.assertEqual([v for _, v in dropdown.options],
+                         ['camera', 'auto', 'full'])
+        self.assertEqual(dropdown.value, 'camera')
+
+    def jpeg(self, widget):
+        return cv2.imdecode(np.frombuffer(widget.value, np.uint8),
+                            cv2.IMREAD_GRAYSCALE)
+
+    def test_the_choice_changes_what_is_shown(self):
+        camera = self.run_live(self.deep(), lambda: (0., 4095.))
+        full = self.run_live(self.deep(), lambda: (0., 4095.), mode='full')
+        self.assertGreater(int(self.jpeg(camera[0].children[0])[0, 19]), 240)
+        self.assertLess(int(self.jpeg(full[0].children[0])[0, 19]), 20)
+
+    def test_a_deep_live_view_without_levels_uses_the_full_range(self):
+        shown = self.run_live(self.deep(65535))
+        self.assertGreater(int(self.jpeg(shown[0].children[0])[0, 19]), 240)
+
+    def test_the_proxy_gives_the_live_view_the_levels_of_the_camera(self):
+        proxy, cam = self.make_proxy(self.deep())
+        with patch.object(_jupyter(), 'live_view') as live:
+            proxy.live_view()
+        self.assertEqual(live.call_args.kwargs['levels'](), (0., 4095.))
+        cam.levels = (0., 1023.)
+        self.assertEqual(live.call_args.kwargs['levels'](), (0., 1023.))
 
 
 class TestApplication(unittest.TestCase):

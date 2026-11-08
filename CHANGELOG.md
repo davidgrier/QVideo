@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [4.19.0] — 2026-11-08
+
 ### Added
 
 - **`camera.frames(n)`, `camera.stack(n)` and `camera.save()` in the

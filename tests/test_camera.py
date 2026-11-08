@@ -448,7 +448,9 @@ class TestCameraRecord(unittest.TestCase):
 
     def video(self, path):
         from QVideo.dvr import formats
-        return formats.openVideo(path)
+        video = formats.openVideo(path)
+        self.addCleanup(video.close)  # Windows cannot delete an open file
+        return video
 
     def test_n_frames_are_recorded_and_the_path_returned(self):
         proxy, _ = self.make()

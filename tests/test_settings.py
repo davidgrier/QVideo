@@ -80,7 +80,9 @@ class TestRememberRecall(Remembering):
         self.assertEqual(_settings.recall('number', 'x'), 'x')
 
     def test_a_file_that_cannot_be_written_is_logged_not_raised(self):
-        self.ini = '/nonexistent-folder/settings.ini'
+        blocker = self.folder / 'blocker'
+        blocker.touch()  # a folder cannot be made inside a file
+        self.ini = str(blocker / 'settings.ini')
         with self.assertLogs('QVideo.lib._settings', 'WARNING'):
             _settings.remember('a', 'b')
 

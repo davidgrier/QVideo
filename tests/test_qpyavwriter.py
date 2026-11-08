@@ -198,3 +198,13 @@ class TestQPyAVImport(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestRemedy(unittest.TestCase):
+
+    def test_16_bit_mkv_suggests_avi_or_hdf5(self):
+        writer = QPyAVWriter('x.mkv')
+        writer._format = 'gray16le'
+        self.assertIn('.avi or .h5', writer.remedy())
+        writer._format = 'gray'
+        self.assertNotIn('.avi or .h5', writer.remedy())

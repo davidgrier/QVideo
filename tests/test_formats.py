@@ -93,6 +93,38 @@ class TestLookup(unittest.TestCase):
             self.assertIs(formats.writerClass('x.fake'), object)
 
 
+class TestOpenWriter(unittest.TestCase):
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.folder = Path(folder.name)
+
+    def test_the_extension_chooses_the_class(self):
+        writer = formats.openWriter(str(self.folder / 'a.mkv'), 20.,
+                                    nframes=5, nskip=2)
+        self.assertIsInstance(writer, formats.writerClass('a.mkv'))
+        self.assertEqual((writer.fps, writer.target, writer.nskip),
+                         (20., 5, 2))
+
+    def test_an_unsupported_extension_raises(self):
+        with self.assertRaises(ValueError):
+            formats.openWriter(str(self.folder / 'a.xyz'), 20.)
+
+    def test_an_existing_file_is_not_replaced(self):
+        path = self.folder / 'b.mkv'
+        path.write_bytes(b'old')
+        with self.assertRaisesRegex(FileExistsError, 'overwrite=True'):
+            formats.openWriter(str(path), 20.)
+        self.assertEqual(path.read_bytes(), b'old')
+
+    def test_overwrite_allows_an_existing_file(self):
+        path = self.folder / 'c.mkv'
+        path.write_bytes(b'old')
+        writer = formats.openWriter(str(path), 20., overwrite=True)
+        self.assertEqual(writer.filename, str(path))
+
+
 class TestOpenVideo(unittest.TestCase):
 
     def setUp(self):

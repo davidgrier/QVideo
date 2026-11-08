@@ -2,7 +2,7 @@
 import logging
 import threading
 from abc import abstractmethod
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator, MutableMapping
 from functools import wraps
 from typing import Any, cast, overload
 from types import TracebackType
@@ -15,7 +15,7 @@ from QVideo.lib.videotypes import Image
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['QCamera']
+__all__ = ['QCamera', 'PropertySpec']
 
 
 class _Auto:
@@ -24,6 +24,95 @@ class _Auto:
 
 
 _AUTO = _Auto()
+
+
+class PropertySpec(MutableMapping):
+
+    '''What a camera says about one of its properties.
+
+    Made by :meth:`QCamera.registerProperty`, kept in
+    :attr:`QCamera.properties`, and read by the trees, the notebook controls
+    and the proxy of a remote camera.
+
+    Parameters
+    ----------
+    getter : callable
+        Reads the value; holds the device lock when called.  May answer
+        ``None`` for a property that cannot be read just now.
+    setter : callable or None
+        Applies a value, holding the device lock; ``None`` for a property
+        that is read-only.
+    ptype : type
+        The Python type of the value (``bool``, ``int``, ``float``, ``str``).
+    **meta :
+        Describe the values: ``minimum``, ``maximum`` and ``step`` for a
+        number, ``limits`` (the allowed values, shown as a drop-down) for a
+        ``str``, ``hidden`` for a property that the interfaces leave out.
+        Anything else is kept in :attr:`extra`.
+
+    Notes
+    -----
+    A spec also behaves as the ``dict`` that earlier versions kept
+    (``spec['getter']``, ``spec.get('limits')``, ``spec['hidden'] = True``),
+    where a key that was not given is missing.  New code uses the
+    attributes.
+    '''
+
+    _META = ('minimum', 'maximum', 'step', 'limits', 'hidden')
+
+    def __init__(self,
+                 getter: Callable[[], Any],
+                 setter: Callable[[Any], None] | None,
+                 ptype: type = float,
+                 **meta: Any) -> None:
+        self.getter = getter
+        self.setter = setter
+        self.ptype = ptype
+        self.minimum: float | None = meta.pop('minimum', None)
+        self.maximum: float | None = meta.pop('maximum', None)
+        self.step: float | None = meta.pop('step', None)
+        self.limits: list[str] | None = meta.pop('limits', None)
+        self.hidden: bool = bool(meta.pop('hidden', False))
+        self.extra: dict[str, Any] = meta
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        '''The metadata that were given, by name.'''
+        values = {key: getattr(self, key) for key in self._META}
+        given = {key: value for key, value in values.items()
+                 if value is not None and value is not False}
+        return given | self.extra
+
+    def _asdict(self) -> dict[str, Any]:
+        return dict(getter=self.getter, setter=self.setter,
+                    ptype=self.ptype) | self.meta
+
+    def __getitem__(self, key: str) -> Any:
+        return self._asdict()[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in self._META or key in ('getter', 'setter', 'ptype'):
+            setattr(self, key, value)
+        else:
+            self.extra[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        if key in self._META:
+            setattr(self, key, False if key == 'hidden' else None)
+        elif key in self.extra:
+            del self.extra[key]
+        else:
+            raise KeyError(key)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._asdict())
+
+    def __len__(self) -> int:
+        return len(self._asdict())
+
+    def __repr__(self) -> str:
+        return (f'PropertySpec(ptype={self.ptype.__name__}, '
+                f'writable={self.setter is not None}, {self.meta})')
 
 
 class QCamera(QtCore.QObject, metaclass=QABCMeta):
@@ -148,10 +237,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         #: shares (``width``) here.  They work as attributes and in
         #: :meth:`get` and :meth:`set`, but they are not properties.
         self.aliases: dict[str, str] = {}
-        #: The registered properties: each name maps to its spec (getter,
-        #: setter, type and limits).  Iterate it for the names, which are
-        #: the keys of :attr:`settings`.
-        self.properties: dict[str, dict[str, Any]] = {}
+        #: The registered properties: each name maps to its
+        #: :class:`PropertySpec` (getter, setter, type and limits).
+        #: Iterate it for the names, which are the keys of
+        #: :attr:`settings`.
+        self.properties: dict[str, PropertySpec] = {}
         self._methods: dict[str, Callable[[], object]] = {}
         self._watched: frozenset[str] = frozenset()
         self._isOpen = False
@@ -188,7 +278,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         if 'properties' in self.__dict__:
             key = self._canonical(name)
             if key in self.properties:
-                return self.properties[key]['getter']()
+                return self.properties[key].getter()
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'")
 
@@ -266,10 +356,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             getter = readBacking
         if isinstance(setter, _Auto):
             setter = writeBacking
-        self.properties[name] = dict(
-            getter=self._serialized(getter),
-            setter=self._serialized(setter),
-            ptype=ptype, **meta)
+        self.properties[name] = PropertySpec(
+            self._serialized(getter), self._serialized(setter),
+            ptype, **meta)
 
     def registerMethod(self, name: str, method: Callable[[], object]) -> None:
         '''Register a named callable method.
@@ -414,7 +503,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         :attr:`propertyValue` for each property.  Assigning a dict applies
         each name→value pair through :meth:`set`, in the order of the dict.
         '''
-        return {name: spec['getter']()
+        return {name: spec.getter()
                 for name, spec in self.properties.items()}
 
     @settings.setter
@@ -445,7 +534,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         if not self._isOpen:
             logger.warning(f'The camera is closed: {key} was not set')
             return
-        setter = self.properties[key]['setter']
+        setter = self.properties[key].setter
         if setter is None:
             logger.warning(f'Property {key!r} is read-only')
             return
@@ -488,7 +577,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         if not self._isOpen:
             logger.debug(f'The camera is closed: {key} was not read')
             return None
-        value = self.properties[key]['getter']()
+        value = self.properties[key].getter()
         self.propertyValue.emit(key, value)
         return value
 
@@ -518,7 +607,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             for name in names:
                 key = self._canonical(name)
                 if key in self.properties:
-                    value = self.properties[key]['getter']()
+                    value = self.properties[key].getter()
                     if value is not None:
                         values[name] = value
         return values
@@ -641,8 +730,8 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         feature that the camera does not allow to read just now).
         '''
         try:
-            width = self.properties[self._canonical('width')]['getter']()
-            height = self.properties[self._canonical('height')]['getter']()
+            width = self.properties[self._canonical('width')].getter()
+            height = self.properties[self._canonical('height')].getter()
         except KeyError:
             return QtCore.QSize(0, 0)
         if width is None or height is None:

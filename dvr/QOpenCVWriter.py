@@ -4,6 +4,7 @@ from QVideo.lib.videotypes import Image, FrameInfo
 from QVideo.lib.imageops import to8bit
 from pathlib import Path
 import cv2
+import importlib.util
 import logging
 import numpy as np
 from typing import ClassVar
@@ -79,6 +80,12 @@ class QOpenCVWriter(QVideoWriter):
                              self.COLOR_CODEC_MAP.get(suffix, self._codecs))
         self._writer = None
         self._to8bit = False
+
+    def remedy(self) -> str:
+        '''Suggest what to try when the encoder cannot keep up.'''
+        if importlib.util.find_spec('av') is None:
+            return 'install QVideo[av], or lower the frame size or rate'
+        return super().remedy()
 
     def open(self, frame: Image) -> bool:
         '''Open the video file using the first available codec.

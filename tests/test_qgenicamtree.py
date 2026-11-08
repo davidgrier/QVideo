@@ -102,17 +102,18 @@ from QVideo.cameras.Genicam._camera import QGenicamCamera  # noqa: E402
 from QVideo.cameras.Genicam._tree import QGenicamTree      # noqa: E402
 
 _cam_module  = sys.modules['QVideo.cameras.Genicam._camera']
+_nodes_module = sys.modules['QVideo.cameras.Genicam._nodes']
 _tree_module = sys.modules['QVideo.cameras.Genicam._tree']
 
 # Use the exact class objects that the loaded modules reference.
-_ICategory    = _cam_module.ICategory
-_ICommand     = _cam_module.ICommand
-_IEnumeration = _cam_module.IEnumeration
-_IBoolean     = _cam_module.IBoolean
-_IInteger     = _cam_module.IInteger
-_IFloat       = _cam_module.IFloat
-_IString      = _cam_module.IString
-_IRegister    = _cam_module.IRegister
+_ICategory    = _nodes_module.ICategory
+_ICommand     = _nodes_module.ICommand
+_IEnumeration = _nodes_module.IEnumeration
+_IBoolean     = _nodes_module.IBoolean
+_IInteger     = _nodes_module.IInteger
+_IFloat       = _nodes_module.IFloat
+_IString      = _nodes_module.IString
+_IRegister    = _nodes_module.IRegister
 _EAccessMode  = _cam_module.EAccessMode
 _EVisibility  = _tree_module.EVisibility
 
@@ -275,13 +276,13 @@ class TestDescribe(unittest.TestCase):
 
     def test_describe_returns_name_and_title(self):
         f = _int_feature('Width')
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['name'], 'Width')
         self.assertEqual(d['title'], 'Width')
 
     def test_describe_integer(self):
         f = _int_feature('Width', value=640, min=64, max=1920, inc=4)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'int')
         self.assertEqual(d['value'], 640)
         self.assertEqual(d['default'], 640)
@@ -292,7 +293,7 @@ class TestDescribe(unittest.TestCase):
     def test_describe_float_with_inc(self):
         f = _float_feature('Gamma', value=1.0, min=0.1, max=4.0,
                            unit='dB', has_inc=True, inc=0.1)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'float')
         self.assertEqual(d['value'], 1.0)
         self.assertEqual(d['unit'], 'dB')
@@ -300,13 +301,13 @@ class TestDescribe(unittest.TestCase):
 
     def test_describe_float_without_inc(self):
         f = _float_feature('Gamma', has_inc=False)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'float')
         self.assertNotIn('step', d)
 
     def test_describe_boolean(self):
         f = _bool_feature('ReverseX', value=False)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'bool')
         self.assertEqual(d['value'], False)
         self.assertEqual(d['default'], False)
@@ -314,52 +315,52 @@ class TestDescribe(unittest.TestCase):
     def test_describe_enumeration(self):
         f = _enum_feature('PixelFormat', value='Mono8',
                           entries=('Mono8', 'RGB8'))
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'list')
         self.assertEqual(d['value'], 'Mono8')
         self.assertEqual(d['limits'], ['Mono8', 'RGB8'])
 
     def test_describe_string(self):
         f = _str_feature('DeviceUserID', value='cam0')
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'str')
         self.assertEqual(d['value'], 'cam0')
 
     def test_describe_register_is_read_only_text(self):
         f = _make_feature(_IRegister, 'UserData', length=2, address=0)
         f.get.return_value = b'\x01\x02'
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'str')
         self.assertEqual(d['value'], '01 02')
         self.assertTrue(d['readonly'])
 
     def test_describe_command(self):
         f = _cmd_feature('AcquisitionStop')
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'action')
         self.assertNotIn('value', d)
 
     def test_describe_category_creates_group(self):
         child = _int_feature('Width')
         f = _cat_feature('ImageFormat', features=[child])
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['type'], 'group')
         self.assertIn('children', d)
         self.assertEqual(len(d['children']), 1)
 
     def test_describe_ni_mode_omits_type(self):
         f = _int_feature('Width', mode=_EAccessMode.NI)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertNotIn('type', d)
 
     def test_describe_wo_mode_omits_type(self):
         f = _int_feature('Width', mode=_EAccessMode.WO)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertNotIn('type', d)
 
     def test_describe_stores_visibility_in_dict(self):
         f = _int_feature('Width', visibility=_EVisibility.Expert)
-        d = self.cam._describeNode(f)
+        d = _nodes_module.describe(f)
         self.assertEqual(d['visibility'], _EVisibility.Expert)
 
 

@@ -3,10 +3,16 @@ import importlib.util
 import unittest
 from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets
+from QVideo.lib.QCamera import PropertySpec
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 _HAS_IPYWIDGETS = importlib.util.find_spec('ipywidgets') is not None
+
+
+def specs(table):
+    '''Turn a table of dicts into the PropertySpec that a camera keeps.'''
+    return {name: PropertySpec(**spec) for name, spec in table.items()}
 
 
 @unittest.skipUnless(_HAS_IPYWIDGETS, 'ipywidgets not installed')
@@ -47,7 +53,7 @@ class TestCameraControls(unittest.TestCase):
 
         self.camera = MagicMock()
         self.camera.name = 'TestCamera'
-        self.camera.properties = {
+        self.camera.properties = specs({
             'fps': {
                 'getter': lambda: 30.0,
                 'setter': self.float_setter,
@@ -88,7 +94,7 @@ class TestCameraControls(unittest.TestCase):
                 'setter': self.str_setter,
                 'ptype': str,
             },
-        }
+        })
 
     def _make(self):
         return self.CameraControls(self.camera)
@@ -280,11 +286,11 @@ class TestCameraControls(unittest.TestCase):
         from QVideo.interactive.widgets import CameraControls
         cam = MagicMock()
         cam.name = 'Test'
-        cam.properties = {
+        cam.properties = specs({
             'visible': {'getter': lambda: 1.0, 'setter': None, 'ptype': float},
             'hidden':  {'getter': lambda: 2.0, 'setter': None, 'ptype': float,
                         'hidden': True},
-        }
+        })
         ctrl = CameraControls(cam)
         self.assertIn('visible', ctrl._widgets)
         self.assertNotIn('hidden', ctrl._widgets)

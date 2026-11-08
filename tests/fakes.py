@@ -59,6 +59,9 @@ class FakeWriter(QtCore.QObject):
         self.written += 1
         self.frameNumber.emit(self.written)
 
+    def remedy(self):
+        return 'lower the frame size or rate'
+
     @QtCore.Slot()
     def shutdown(self):
         self.closed = True

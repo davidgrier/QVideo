@@ -6,7 +6,7 @@ import numpy as np
 from unittest.mock import MagicMock, PropertyMock, patch
 from qtpy import QtCore, QtWidgets
 from QVideo.tests.signals import record
-from QVideo.lib.QCamera import QCamera
+from QVideo.lib.QCamera import QCamera, PropertySpec
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -201,6 +201,71 @@ class TestContextManager(unittest.TestCase):
             pass
         with cam:
             self.assertTrue(cam.isOpen())
+
+
+class TestPropertySpec(unittest.TestCase):
+
+    def spec(self, **meta):
+        return PropertySpec(lambda: 1., lambda v: None, float, **meta)
+
+    def test_the_fields_are_attributes(self):
+        spec = self.spec(minimum=0., maximum=9., step=.5, limits=['a'],
+                         hidden=True)
+        self.assertEqual((spec.minimum, spec.maximum, spec.step),
+                         (0., 9., .5))
+        self.assertEqual(spec.limits, ['a'])
+        self.assertTrue(spec.hidden)
+        self.assertIs(spec.ptype, float)
+
+    def test_a_field_that_was_not_given_has_a_default(self):
+        spec = self.spec()
+        self.assertIsNone(spec.minimum)
+        self.assertIsNone(spec.limits)
+        self.assertFalse(spec.hidden)
+
+    def test_other_metadata_is_kept(self):
+        spec = self.spec(unit='mm')
+        self.assertEqual(spec.extra, {'unit': 'mm'})
+        self.assertEqual(spec['unit'], 'mm')
+
+    def test_meta_has_only_what_was_given(self):
+        self.assertEqual(self.spec().meta, {})
+        self.assertEqual(self.spec(minimum=0., hidden=True, unit='mm').meta,
+                         {'minimum': 0., 'hidden': True, 'unit': 'mm'})
+
+    def test_it_reads_like_the_dict_that_it_replaces(self):
+        spec = self.spec(minimum=0.)
+        self.assertEqual(spec['getter'](), 1.)
+        self.assertIs(spec['ptype'], float)
+        self.assertEqual(spec.get('minimum'), 0.)
+        self.assertIsNone(spec.get('maximum'))
+        self.assertIn('minimum', spec)
+        self.assertNotIn('maximum', spec)
+        self.assertEqual(set(spec), {'getter', 'setter', 'ptype', 'minimum'})
+        with self.assertRaises(KeyError):
+            spec['maximum']
+
+    def test_it_can_be_written_like_the_dict_that_it_replaces(self):
+        spec = self.spec()
+        spec['hidden'] = True
+        spec['maximum'] = 5.
+        spec['getter'] = lambda: 2.
+        self.assertTrue(spec.hidden)
+        self.assertEqual(spec.maximum, 5.)
+        self.assertEqual(spec.getter(), 2.)
+        del spec['maximum']
+        self.assertIsNone(spec.maximum)
+        with self.assertRaises(KeyError):
+            del spec['nonsense']
+
+    def test_registerProperty_makes_one(self):
+        camera = _FakeCamera()
+        camera.registerProperty('gain', ptype=float, minimum=0.)
+        self.assertIsInstance(camera.properties['gain'], PropertySpec)
+        self.assertEqual(camera.properties['gain'].minimum, 0.)
+
+    def test_the_description_is_readable(self):
+        self.assertIn('ptype=float', repr(self.spec(minimum=0.)))
 
 
 class TestRegistration(unittest.TestCase):

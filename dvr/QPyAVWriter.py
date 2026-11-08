@@ -81,6 +81,14 @@ class QPyAVWriter(QVideoWriter):
         self._to8bit = False
         self._index = 0
 
+    def remedy(self) -> str:
+        '''Suggest what to try when the encoder cannot keep up.'''
+        if (self._format == 'gray16le'
+                and str(self.filename).endswith('.mkv')):
+            return ('record 16-bit video to an .avi or .h5 file, '
+                    'which is faster, or lower the frame size or rate')
+        return super().remedy()
+
     def open(self, frame: Image) -> bool:
         '''Open the video file using the encoder of its extension.
 

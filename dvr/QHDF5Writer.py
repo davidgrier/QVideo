@@ -118,6 +118,10 @@ class QHDF5Writer(QVideoWriter):
         self._t0 = None
         self._flushed = 0.
 
+    def remedy(self) -> str:
+        '''Suggest what to try when the disk cannot keep up.'''
+        return 'use a faster disk, or lower the frame size or rate'
+
     def open(self, frame: Image) -> bool:
         '''Create the HDF5 file.
 

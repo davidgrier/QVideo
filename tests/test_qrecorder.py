@@ -203,6 +203,14 @@ class TestFallingBehind(RecorderCase):
             self.capture(recorder, 12.)
         self.assertFalse(recorder.isRecording())
 
+    def test_the_writer_says_what_to_try(self):
+        recorder = self.watching()
+        self.writer.remedy = lambda: 'try the other thing'
+        reasons = record(recorder.stopped)
+        with self.assertLogs('QVideo.dvr.QRecorder', 'ERROR'):
+            self.capture(recorder, 12.)
+        self.assertIn('try the other thing', reasons[0][0])
+
     def test_the_reason_says_how_far_and_what_to_try(self):
         recorder = self.watching()
         reasons = record(recorder.stopped)
@@ -251,32 +259,6 @@ class TestFallingBehind(RecorderCase):
         recorder = self.watching()
         recorder.stop()
         self.capture(recorder, 99.)
-
-
-class TestRemedy(RecorderCase):
-
-    def test_a_video_writer_without_pyav_suggests_installing_it(self):
-        with patch.object(formats, 'pyav_available', False):
-            self.assertIn('install QVideo[av]', self.recorder._remedy())
-        with patch.object(formats, 'pyav_available', True):
-            self.assertNotIn('QVideo[av]', self.recorder._remedy())
-
-    def test_an_hdf5_recording_suggests_a_faster_disk(self):
-        self.recorder._writer = QHDF5Writer('test.h5', fps=30)
-        remedy = self.recorder._remedy()
-        self.recorder._writer = None
-        self.assertIn('faster disk', remedy)
-
-    def test_16_bit_mkv_suggests_avi_or_hdf5(self):
-        writer = Mock(filename='x.mkv', _format='gray16le')
-        self.recorder._writer = writer
-        with patch.object(formats, 'pyav_available', True):
-            remedy = self.recorder._remedy()
-            writer._format = 'gray'
-            other = self.recorder._remedy()
-        self.recorder._writer = None
-        self.assertIn('.avi or .h5', remedy)
-        self.assertNotIn('.avi or .h5', other)
 
 
 class TestFrameSize(RecorderCase):

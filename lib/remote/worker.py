@@ -198,11 +198,9 @@ class Worker:
         camera = self.camera
         properties = {}
         for name, spec in camera.properties.items():
-            meta = {k: v for k, v in spec.items()
-                    if k not in ('getter', 'setter', 'ptype')}
-            properties[name] = dict(ptype=spec['ptype'].__name__,
-                                    writable=spec['setter'] is not None,
-                                    meta=meta)
+            properties[name] = dict(ptype=spec.ptype.__name__,
+                                    writable=spec.setter is not None,
+                                    meta=spec.meta)
         return dict(name=camera.name,
                     modelName=camera.modelName,
                     properties=properties,

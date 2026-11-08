@@ -129,9 +129,11 @@ methods:
 - `_deinitialize()` — release the device
 - `read() -> (bool, ndarray | None)` — capture one frame
 
-`registerProperty(name, getter, setter, ptype, **meta)` stores a property spec
-in `self.properties` (a dict). The base-class `get` / `set` / `execute` all
-route through this dict. One reentrant lock (`camera._mutex`, a
+`registerProperty(name, getter, setter, ptype, **meta)` stores a
+`PropertySpec` (`spec.getter`, `.setter`, `.ptype`, `.minimum`, `.maximum`,
+`.step`, `.limits`, `.hidden`; it also reads like the dict it replaced) in
+`self.properties` (a dict by name). The base-class `get` / `set` / `execute`
+all route through this dict. One reentrant lock (`camera._mutex`, a
 `threading.RLock`) serializes all device access: `registerProperty` and
 `registerMethod` wrap every getter, setter and method in it and `saferead`
 holds it per frame, so nothing is read or written during a frame read and
@@ -232,7 +234,8 @@ used as a model for tests and for verifying the framework.
 **`cameras/Genicam`** uses the
 [Harvesters](https://github.com/genicam/harvesters) library and a GenTL
 producer `.cti` file to communicate with GenICam-compliant cameras. Producer
-files live in `cameras/Genicam/producer/`. The `protected` list tracks features
+files live in `cameras/Genicam/producer/`; `_nodes.py` is the one module
+that knows the types of nodes. The `protected` list tracks features
 whose access mode changes after `device.start()` (i.e. features that require
 stopping acquisition to reconfigure).
 
@@ -260,7 +263,8 @@ to writer and reader classes (HDF5 lossless with timestamps, PyAV, OpenCV);
 `QRecorder` and `QPlayer` are the headless objects that record a source and
 play a file, each on a thread of its own, and `QDVRWidget` is their control
 panel (`dvr.recorder` and `dvr.playback`; it holds the user dialogs and
-nothing else).  `formats.openVideo`
+nothing else).  `formats.openWriter` is the one place that opens a writer
+(extension, overwrite rule), and `formats.openVideo`
 returns a reader that is indexed and iterated like a list of frames.
 
 ### Filters (`filters/`)

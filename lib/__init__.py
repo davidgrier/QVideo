@@ -7,6 +7,9 @@ Classes
 -------
 QCamera
     Abstract base class for all camera backends.
+PropertySpec
+    What a camera says about one of its properties (getter, setter, type
+    and limits).
 QCameraError
     Base class for failures to open a camera (see also
     ``QDriverError`` and ``QDeviceError``).
@@ -52,7 +55,7 @@ QImageSaver
 '''
 from .videotypes import Image, FrameInfo
 from .clickable import clickable
-from .QCamera import QCamera
+from .QCamera import QCamera, PropertySpec
 from .errors import QCameraError, QDriverError, QDeviceError
 from .QVideoSource import QVideoSource
 from .remote import QRemoteCamera
@@ -74,7 +77,7 @@ from .QSnapshot import QSnapshot
 __all__ = [
     'Image', 'FrameInfo',
     'clickable', 'launch',
-    'QCamera', 'QCameraError', 'QDriverError', 'QDeviceError',
+    'QCamera', 'PropertySpec', 'QCameraError', 'QDriverError', 'QDeviceError',
     'QVideoSource', 'QCameraTree', 'QRemoteCamera', 'QCameraOpener',
     'QFilterRack', 'QFilterPipeline', 'QFrameRelay',
     'QVideoReader', 'QVideoWriter', 'QVideoScreen',

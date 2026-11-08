@@ -343,13 +343,10 @@ class _CameraProxy:
         if seconds is not None and seconds <= 0:
             raise ValueError(f'seconds must be positive, not {seconds}')
         path = str(filename)
-        writer_class = formats.writerClass(path)
-        if not overwrite and Path(path).exists():
-            raise FileExistsError(
-                f'{path!r} exists; use overwrite=True to replace it')
         self._ensure_open()
         rate = fps or getattr(self._camera, 'fps', None) or 30.
-        writer = writer_class(path, fps=rate, nframes=n or 2**31)
+        writer = formats.openWriter(path, rate, n or 2**31,
+                                    overwrite=overwrite)
         reasons: list[str] = []
         writer.finished.connect(reasons.append)
         start = first = last = time.perf_counter()

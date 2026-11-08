@@ -78,7 +78,7 @@ from QVideo.cameras.Basler._camera import QBaslerCamera
 
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
 _MODULE = sys.modules['QVideo.cameras.Basler._camera']
-_ICategory = _cam_module.ICategory
+_ICategory = sys.modules['QVideo.cameras.Genicam._nodes'].ICategory
 _PRODUCER = '/fake/ProducerU3V.cti'
 
 

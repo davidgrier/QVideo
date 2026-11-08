@@ -265,7 +265,7 @@ class QOpenCVCamera(QCamera):
         if 'resolution' in self.properties:
             for name in ('width', 'height', 'fps'):
                 if name in self.properties:
-                    self.properties[name]['hidden'] = True
+                    self.properties[name].hidden = True
 
     def _probeProperties(self) -> None:
         '''Register device properties that the camera actually supports.

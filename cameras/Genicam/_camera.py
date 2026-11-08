@@ -31,14 +31,11 @@ lock of the node map, so a thread that touches the map without the camera
 lock can deadlock with a thread that holds the map and calls back into
 Python.  A new method that reads or writes a node must take the lock.
 
-**The types of nodes.**  ``_nodeKind`` is the one place that tests the
-types of nodes (enumeration, boolean, integer, float, string, register,
-and the groups and commands that hold no value).  ``_limits`` says what
-bounds a node, and ``_featureSpec``, ``_describeNode`` and ``_snapshot``
-are built on the two.  Only reading (``_value``) and writing
-(``_setFeature``) differ for every kind.  To teach the camera a new type,
-add it to ``_VALUE_KINDS`` and to those two.  In Spinnaker's binding an
-enumeration is also an integer, so ``_VALUE_KINDS`` lists it first.
+**The types of nodes.**  The module ``_nodes`` is the one place that
+knows them (enumeration, boolean, integer, float, string, register, and the
+groups and commands that hold no value): what a node is, what bounds it,
+how to read and write it, and how to describe it as plain data.  The camera
+decides when, and holds the lock.
 '''
 import logging
 import os
@@ -49,7 +46,6 @@ from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-import numpy as np
 
 from QVideo.lib import QCamera
 from QVideo.lib.errors import QDeviceError, QDriverError
@@ -61,17 +57,8 @@ if TYPE_CHECKING:
 
 try:
     from harvesters.core import Harvester
-    from genicam.genapi import (IValue, EAccessMode, ICategory, ICommand,
-                                IEnumeration, IBoolean, IInteger, IFloat,
-                                IString, IRegister)
+    from genicam.genapi import IValue, EAccessMode
     from genicam.gentl import TimeoutException
-    #: The kinds of node that hold a value, in the order to test them,
-    #: with the Python type of the property that each becomes.  An
-    #: enumeration comes first: in Spinnaker's binding it is also an integer.
-    _VALUE_KINDS = (('enum', IEnumeration, str), ('bool', IBoolean, bool),
-                    ('int', IInteger, int), ('float', IFloat, float),
-                    ('str', IString, str), ('register', IRegister, str))
-    _PTYPES = {kind: ptype for kind, _, ptype in _VALUE_KINDS}
 except ImportError as exc:
     raise ImportError(
         f"QGenicamCamera could not import 'genicam': {exc}\n"
@@ -81,30 +68,12 @@ except ImportError as exc:
     ) from exc
 
 
+from QVideo.cameras.Genicam import _nodes  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 
 __all__ = ['QGenicamCamera']
-
-#: The kinds of node that a snapshot names; every other kind is ``'other'``.
-_STATE_KINDS = frozenset({'enum', 'int', 'float', 'register'})
-
-#: Registers longer than this many bytes are reported by size, not content.
-MAX_REGISTER_BYTES = 256
-
-
-def registerText(feature: IRegister) -> str:
-    '''Return the bytes of a register node as hexadecimal text.
-
-    A register is a raw block of the camera's memory.  Short registers
-    read as ``'0a 1b ...'``; long ones (lookup tables, firmware) as
-    ``'<4096 bytes>'``, which avoids reading them.
-    '''
-    length = feature.length
-    if length > MAX_REGISTER_BYTES:
-        return f'<{length} bytes>'
-    return bytes(feature.get(length)).hex(' ')
-
 
 _DEEP_FORMAT = re.compile(r'(?:Mono|Bayer[A-Z]{2})(\d+)')
 
@@ -119,23 +88,6 @@ def _pixelLevels(pixelFormat: str | None) -> tuple[int, int] | None:
     match = _DEEP_FORMAT.match(str(pixelFormat))
     bits = int(match[1]) if match else 8
     return (0, 2**bits - 1) if 8 < bits < 16 else None
-
-
-def _nodeKind(feature: IValue) -> str:
-    '''Return the kind of node that *feature* is.
-
-    ``'group'`` is a category and ``'action'`` a command.  A node that holds
-    a value is ``'enum'``, ``'bool'``, ``'int'``, ``'float'``, ``'str'`` or
-    ``'register'``.  Anything else is ``'other'``.
-    '''
-    if isinstance(feature, ICategory):
-        return 'group'
-    if isinstance(feature, ICommand):
-        return 'action'
-    for kind, node_type, _ in _VALUE_KINDS:
-        if isinstance(feature, node_type):
-            return kind
-    return 'other'
 
 
 class QGenicamCamera(QCamera):
@@ -409,11 +361,11 @@ class QGenicamCamera(QCamera):
     def _scanModes(feature: IValue) -> dict[str, object]:
         '''Return a dict mapping property node names to their access modes.'''
         modes = {}
-        kind = _nodeKind(feature)
+        kind = _nodes.nodeKind(feature)
         if kind == 'group':
             for f in feature.features:
                 modes.update(QGenicamCamera._scanModes(f))
-        elif kind in _PTYPES and kind != 'register':
+        elif kind in _nodes.PTYPES and kind != 'register':
             modes[feature.node.name] = feature.node.get_access_mode()
         return modes
 
@@ -539,7 +491,7 @@ class QGenicamCamera(QCamera):
         for name in self._ACTUAL_FPS_NODES:
             if name in self.properties:
                 try:
-                    value = float(self.properties[name]['getter']())
+                    value = float(self.properties[name].getter())
                 except Exception as ex:
                     logger.debug(f'cannot read {name}: {ex}')
                     continue
@@ -553,18 +505,18 @@ class QGenicamCamera(QCamera):
 
     def _registerFeatures(self, feature: IValue) -> None:
         '''Recurse the node tree to register properties and methods.'''
-        kind = _nodeKind(feature)
+        kind = _nodes.nodeKind(feature)
         if kind == 'group':
             for f in feature.features:
                 self._registerFeatures(f)
         elif kind == 'action':
             self.registerMethod(feature.node.name, feature.execute)
-        elif kind in _PTYPES:
+        elif kind in _nodes.PTYPES:
             mode = feature.node.get_access_mode()
             if mode not in (EAccessMode.RO, EAccessMode.RW):
                 return
             name = feature.node.name
-            ptype, meta = self._featureSpec(feature, kind)
+            ptype, meta = _nodes.spec(feature, kind)
             setter = (None if kind == 'register'
                       else self._makeSetter(feature, name))
             self.registerProperty(name,
@@ -572,47 +524,6 @@ class QGenicamCamera(QCamera):
                                   setter=setter,
                                   ptype=ptype,
                                   **meta)
-
-    @staticmethod
-    def _limits(feature: IValue, kind: str) -> dict[str, object]:
-        '''Return what bounds a node of the given *kind*.
-
-        An enumeration has ``entries``, the names of its values.  A number
-        has ``min``, ``max`` and ``inc``, which is ``None`` if the node has
-        no increment.  Any other node has no limits.
-        '''
-        if kind == 'enum':
-            return {'entries': [v.symbolic for v in feature.entries]}
-        if kind == 'int':
-            return {'min': feature.min, 'max': feature.max,
-                    'inc': feature.inc}
-        if kind == 'float':
-            return {'min': feature.min, 'max': feature.max,
-                    'inc': feature.inc if feature.has_inc() else None}
-        return {}
-
-    @staticmethod
-    def _featureSpec(feature: IValue,
-                     kind: str) -> tuple[type, dict[str, object]]:
-        '''Return the Python type and registerProperty metadata of a node.'''
-        limits = QGenicamCamera._limits(feature, kind)
-        if kind == 'enum':
-            return str, {'limits': limits['entries']}
-        meta = {}
-        if limits:
-            meta = {'minimum': limits['min'], 'maximum': limits['max']}
-            if limits['inc'] is not None:
-                meta['step'] = limits['inc']
-        return _PTYPES[kind], meta
-
-    @staticmethod
-    def _value(feature: IValue, kind: str) -> object:
-        '''Read the value of a node of the given *kind*.'''
-        if kind == 'enum':
-            return feature.to_string()
-        if kind == 'register':
-            return registerText(feature)
-        return feature.value
 
     @staticmethod
     def _makeGetter(feature: IValue, kind: str) -> Callable[[], object]:
@@ -627,7 +538,7 @@ class QGenicamCamera(QCamera):
             mode = feature.node.get_access_mode()
             if mode not in (EAccessMode.RO, EAccessMode.RW):
                 return None
-            return QGenicamCamera._value(feature, kind)
+            return _nodes.read(feature, kind)
         return getter
 
     def _makeSetter(self,
@@ -649,33 +560,10 @@ class QGenicamCamera(QCamera):
             restart = name in self._protected and self._device.is_acquiring()
             if restart:
                 self._device.stop()
-            QGenicamCamera._setFeature(feature, value)
+            _nodes.write(feature, value)
             if restart:
                 self._device.start()
         return setter
-
-    @staticmethod
-    def _setFeature(feature: IValue,
-                    value: QCamera.PropertyValue) -> None:
-        '''Set the value of a feature node.'''
-        logger.debug(f'Setting {feature.node.name}: {value}')
-        kind = _nodeKind(feature)
-        if kind == 'enum':
-            if value in QGenicamCamera._limits(feature, kind)['entries']:
-                feature.from_string(value)
-            else:
-                logger.warning(f'{value} is not in {feature.node.name}')
-        elif kind == 'bool':
-            feature.value = bool(value)
-        elif kind == 'int':
-            lo, hi, inc = feature.min, feature.max, feature.inc
-            value = int(np.clip(value, lo, hi))
-            steps = round((value - lo) / inc)
-            feature.value = int(np.clip(steps * inc + lo, lo, hi))
-        elif kind == 'float':
-            feature.value = float(np.clip(value, feature.min, feature.max))
-        elif kind == 'str':
-            feature.value = str(value)
 
     # ------------------------------------------------------------------
     # The node map
@@ -749,50 +637,7 @@ class QGenicamCamera(QCamera):
         if root is None:
             return {}
         with self._mutex:
-            return self._describeNode(root)
-
-    def _describeNode(self, feature: 'IValue') -> dict:
-        '''Return the description of *feature* and of what it contains.'''
-        this = dict(name=feature.node.name,
-                    title=feature.node.display_name,
-                    visibility=int(feature.node.visibility))
-        mode = feature.node.get_access_mode()
-        kind = _nodeKind(feature)
-        if mode == EAccessMode.NI:
-            pass
-        elif kind == 'group':
-            this['type'] = 'group'
-            this['children'] = [self._describeNode(f)
-                                for f in feature.features]
-        elif kind == 'action':
-            this['type'] = 'action'
-        elif mode in (EAccessMode.RW, EAccessMode.RO):
-            if kind in _PTYPES:
-                this.update(self._describeValue(feature, kind))
-            else:
-                logger.debug(f'Unsupported node type: {feature.node.name}: '
-                             f'{type(feature)}')
-        return this
-
-    def _describeValue(self, feature: IValue, kind: str) -> dict:
-        '''Describe a readable node that holds a value.'''
-        value = self._value(feature, kind)
-        this = dict(type='list' if kind == 'enum' else _PTYPES[kind].__name__,
-                    value=value, default=value)
-        limits = self._limits(feature, kind)
-        if kind == 'enum':
-            this['limits'] = limits['entries']
-        elif limits:
-            this.update(min=limits['min'], max=limits['max'])
-            if limits['inc'] is not None:
-                this['step'] = limits['inc']
-        if kind == 'float':
-            this['unit'] = feature.unit
-        elif kind == 'register':
-            # A register is a raw block of the camera's memory: show its
-            # bytes as read-only text.
-            this['readonly'] = True
-        return this
+            return _nodes.describe(root)
 
     # ------------------------------------------------------------------
     # Snapshots of the nodes, for a tree to refresh from
@@ -917,22 +762,9 @@ class QGenicamCamera(QCamera):
         '''
         with self._mutex:
             nodes = {name: self.node(name) for name in names}
-            return {name: self._snapshot(name, node)
+            return {name: _nodes.snapshot(node, name in self._protected)
                     for name, node in nodes.items()}
 
-    def _snapshot(self, name: str, node: IValue) -> dict[str, object]:
-        '''Read *node*; the caller holds the device lock.'''
-        mode = node.node.get_access_mode()
-        kind = _nodeKind(node)
-        state = {'access': mode,
-                 'kind': kind if kind in _STATE_KINDS else 'other',
-                 'writable': mode == EAccessMode.RW or name in self._protected}
-        state.update(self._limits(node, kind))
-        if kind == 'register':
-            state.update(length=node.length, address=node.address)
-        if kind in _PTYPES and mode in (EAccessMode.RO, EAccessMode.RW):
-            state['value'] = self._value(node, kind)
-        return state
 
 
 if __name__ == '__main__':  # pragma: no cover

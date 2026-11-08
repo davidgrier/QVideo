@@ -94,21 +94,22 @@ from QVideo.lib.errors import QDeviceError, QDriverError
 # Retrieve the module object directly — the `import ... as` form resolves
 # through attribute access and lands on the class (shadowed by __init__.py).
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
+_nodes_module = sys.modules['QVideo.cameras.Genicam._nodes']
 
 # Use the exact class objects that the loaded camera module references.
 # If test_qgenicamtree.py ran first it may have placed different stubs in
 # sys.modules; reading back from the module ensures isinstance() checks in
 # the camera code and in our helpers agree on the same type objects.
-_IValue       = _cam_module.IValue
-_ICategory    = _cam_module.ICategory
-_ICommand     = _cam_module.ICommand
-_IEnumeration = _cam_module.IEnumeration
-_IBoolean     = _cam_module.IBoolean
-_IInteger     = _cam_module.IInteger
-_IFloat       = _cam_module.IFloat
-_IString      = _cam_module.IString
-_IRegister    = _cam_module.IRegister
-_EAccessMode  = _cam_module.EAccessMode
+_IValue       = _nodes_module.IValue
+_ICategory    = _nodes_module.ICategory
+_ICommand     = _nodes_module.ICommand
+_IEnumeration = _nodes_module.IEnumeration
+_IBoolean     = _nodes_module.IBoolean
+_IInteger     = _nodes_module.IInteger
+_IFloat       = _nodes_module.IFloat
+_IString      = _nodes_module.IString
+_IRegister    = _nodes_module.IRegister
+_EAccessMode  = _nodes_module.EAccessMode
 
 
 # ---------------------------------------------------------------------------
@@ -711,7 +712,7 @@ class TestNodeMapUnderTheLock(unittest.TestCase):
         self.assertTrue(all(self.held))
 
     def test_states_looks_up_its_nodes_under_the_lock(self):
-        with patch.object(self.cam, '_snapshot', return_value={}):
+        with patch.object(_nodes_module, 'snapshot', return_value={}):
             self.cam.states(['Width', 'Height'])
         self.assertTrue(self.held)
         self.assertTrue(all(self.held))
@@ -839,7 +840,7 @@ class TestSet(unittest.TestCase):
         entry.symbolic = 'Mono8'
         feature.entries = [entry]
         cam, _, _ = make_camera_with_node(feature)
-        with self.assertLogs('QVideo.cameras.Genicam._camera',
+        with self.assertLogs('QVideo.cameras.Genicam._nodes',
                              level='WARNING'):
             cam.set('PixelFormat', 'BadValue')
 
@@ -1118,7 +1119,7 @@ class TestNodeKind(unittest.TestCase):
     '''One place decides what kind of node a feature is.'''
 
     def kind(self, ftype):
-        return _cam_module._nodeKind(_make_feature(ftype))
+        return _nodes_module.nodeKind(_make_feature(ftype))
 
     def test_each_type_of_node_has_its_kind(self):
         kinds = {_ICategory: 'group', _ICommand: 'action',
@@ -1137,7 +1138,7 @@ class TestNodeKind(unittest.TestCase):
         self.assertEqual(self.kind(SpinnakerEnumeration), 'enum')
 
     def test_every_value_kind_has_a_python_type(self):
-        self.assertEqual(_cam_module._PTYPES,
+        self.assertEqual(_nodes_module.PTYPES,
                          {'enum': str, 'bool': bool, 'int': int,
                           'float': float, 'str': str, 'register': str})
 

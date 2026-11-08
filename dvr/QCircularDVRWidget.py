@@ -179,11 +179,11 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         if not frames:
             return False
         try:
-            writer_class = formats.writerClass(filename)
+            writer = formats.openWriter(filename, fps, len(frames),
+                                        overwrite=True)
         except ValueError as error:
             logger.error(error)
             return False
-        writer = writer_class(filename, fps=fps, nframes=len(frames))
         failed = []
         writer.finished.connect(
             lambda reason: reason and failed.append(reason))

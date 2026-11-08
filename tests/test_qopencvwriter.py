@@ -369,3 +369,13 @@ class TestQOpenCVWriterClose(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestRemedy(unittest.TestCase):
+
+    def test_without_pyav_installing_it_is_suggested(self):
+        writer = QOpenCVWriter('x.avi')
+        with patch('importlib.util.find_spec', return_value=None):
+            self.assertIn('install QVideo[av]', writer.remedy())
+        with patch('importlib.util.find_spec', return_value=object()):
+            self.assertNotIn('QVideo[av]', writer.remedy())

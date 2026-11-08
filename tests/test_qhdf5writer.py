@@ -351,3 +351,10 @@ class TestClose(WriterCase):
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
+
+
+class TestRemedy(WriterCase):
+
+    def test_a_faster_disk_is_suggested(self):
+        writer = QHDF5Writer(self.path, fps=30)
+        self.assertIn('faster disk', writer.remedy())

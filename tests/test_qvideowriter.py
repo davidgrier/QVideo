@@ -417,3 +417,10 @@ class TestQVideoWriterAbstractBodies(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestRemedy(unittest.TestCase):
+
+    def test_the_default_advice_is_to_lower_the_load(self):
+        self.assertEqual(_ConcreteWriter('x.avi').remedy(),
+                         'lower the frame size or rate')

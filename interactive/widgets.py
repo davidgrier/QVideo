@@ -15,6 +15,7 @@ import numpy as np
 from IPython.display import display as _display, Image as _PNG
 
 from QVideo.lib.imageops import AutoLevels, to8bit
+from QVideo.lib.QCamera import PropertySpec
 
 if TYPE_CHECKING:
     from QVideo.lib.videotypes import Image
@@ -87,7 +88,7 @@ def _initial(value, ptype: type):
     return value
 
 
-def _control(ptype: type, value, spec: dict,
+def _control(ptype: type, value, spec: PropertySpec,
              disabled: bool) -> widgets.Widget:
     '''Return the widget that edits a property of type *ptype*.
 
@@ -95,8 +96,8 @@ def _control(ptype: type, value, spec: dict,
     text box.  A number with finite limits is a slider and any other number
     a text box.
     '''
-    minimum, maximum = spec.get('minimum'), spec.get('maximum')
-    step, limits = spec.get('step'), spec.get('limits')
+    minimum, maximum = spec.minimum, spec.maximum
+    step, limits = spec.step, spec.limits
     layout = widgets.Layout(flex='1 1 auto')
     common = dict(disabled=disabled, layout=layout)
     slider = dict(common, continuous_update=False,
@@ -293,24 +294,24 @@ class CameraControls:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _make_widget(self, name: str, spec: dict) -> widgets.Widget:
+    def _make_widget(self, name: str, spec: PropertySpec) -> widgets.Widget:
         '''Create an appropriate widget for a single registered property.
 
         Parameters
         ----------
         name : str
             Property name (used to key ``self._widgets``).
-        spec : dict
-            Property spec dict from ``camera.properties``.
+        spec : PropertySpec
+            Property spec from ``camera.properties``.
 
         Returns
         -------
         widgets.Widget
             A configured, observable widget bound to the property.
         '''
-        ptype = spec.get('ptype', float)
-        setter = spec['setter']
-        value = _initial(spec['getter'](), ptype)
+        ptype = spec.ptype
+        setter = spec.setter
+        value = _initial(spec.getter(), ptype)
         w = _control(ptype, value, spec, disabled=setter is None)
         if setter is not None:
             def _on_change(change):
@@ -329,7 +330,7 @@ class CameraControls:
 
         rows = []
         for name, spec in self._camera.properties.items():
-            if spec.get('hidden'):
+            if spec.hidden:
                 continue
             w = self._make_widget(name, spec)
             w.layout = widget_layout
@@ -371,7 +372,7 @@ class CameraControls:
         self._updating = True
         try:
             for name, w in self._widgets.items():
-                value = self._camera.properties[name]['getter']()
+                value = self._camera.properties[name].getter()
                 if value is None:
                     continue
                 try:

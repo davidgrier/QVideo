@@ -1,11 +1,9 @@
 '''Headless recorder: records the frames of a source to a file.'''
 import logging
-from pathlib import Path
 from qtpy import QtCore
 from QVideo.lib import QVideoSource
 from . import formats
 from .QBacklogMonitor import QBacklogMonitor
-from .QHDF5Writer import QHDF5Writer
 
 
 __all__ = ['QRecorder']
@@ -186,13 +184,9 @@ class QRecorder(QtCore.QObject):
             raise RuntimeError('there is no source to record')
         if self.isRecording():
             raise RuntimeError('a recording is already running')
-        writer_class = formats.writerClass(filename)
-        if not overwrite and Path(filename).exists():
-            raise FileExistsError(
-                f'{filename!r} exists; use overwrite=True to replace it')
         fps = self._source.fps
-        writer = writer_class(filename, fps=fps,
-                              nframes=nframes, nskip=nskip)
+        writer = formats.openWriter(filename, fps, nframes, nskip,
+                                    overwrite)
         self._writer = writer
         self._nframes, self._rate = writer.target, fps / nskip
         self._monitor.start(writer, fps, self.lagLimit, self.maxMemory)
@@ -244,19 +238,7 @@ class QRecorder(QtCore.QObject):
         '''Stop the recording, if that is the policy, as it falls behind.'''
         if self.stopWhenBehind:
             reason = (f'recording fell {lag:.1f} s behind the camera; '
-                      + self._remedy())
+                      + self._writer.remedy())
             logger.error(reason)
             self.stopped.emit(reason)
             self.stop()
-
-    def _remedy(self) -> str:
-        '''Suggest what to try when the writer cannot keep up.'''
-        if isinstance(self._writer, QHDF5Writer):
-            return 'use a faster disk, or lower the frame size or rate'
-        if formats.pyav_available:
-            if getattr(self._writer, '_format', None) == 'gray16le' \
-                    and str(self._writer.filename).endswith('.mkv'):
-                return ('record 16-bit video to an .avi or .h5 file, '
-                        'which is faster, or lower the frame size or rate')
-            return 'lower the frame size or rate'
-        return 'install QVideo[av], or lower the frame size or rate'

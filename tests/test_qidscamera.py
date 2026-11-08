@@ -78,7 +78,7 @@ from QVideo.cameras.IDS._camera import QIDSCamera
 
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
 _MODULE = sys.modules['QVideo.cameras.IDS._camera']
-_ICategory = _cam_module.ICategory
+_ICategory = sys.modules['QVideo.cameras.Genicam._nodes'].ICategory
 _PRODUCER = '/fake/ids_u3vgentl.cti'
 
 

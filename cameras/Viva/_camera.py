@@ -242,7 +242,7 @@ class QVivaCamera(QCamera):
         writable before it started and are not now.'''
         self._streamLocked = {
             name for name, spec in self.properties.items()
-            if spec['setter'] is not None
+            if spec.setter is not None
             and self._device.feature_state(name).access != 'RW'}
 
     def updateAccess(self, names: Iterable[str] | None = None) -> None:
@@ -268,7 +268,7 @@ class QVivaCamera(QCamera):
         for name, kind in kinds.items():
             state = self._device.feature_state(name)
             writable = self._isWritable(state, name)
-            if writable != (self.properties[name]['setter'] is not None):
+            if writable != (self.properties[name].setter is not None):
                 self._registerFeature(name, kind)
 
     #: Seconds between asking the camera what to read again.  The XML of a
@@ -408,7 +408,7 @@ class QVivaCamera(QCamera):
         '''
         for name in self._ACTUAL_FPS_NODES:
             if name in self.properties:
-                value = self.properties[name]['getter']()
+                value = self.properties[name].getter()
                 if value and value > 0.:
                     return float(value)
         return self.fps

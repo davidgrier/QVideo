@@ -19,6 +19,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   reader or a filter stage (`VideoSourceType` is its alias).  A stopped
   `QFilterPipeline` runs again on `start()`, like every other source, and
   has a `depth` property.
+- **`QCamera.properties` holds `PropertySpec` objects.**  Each property's
+  getter, setter, type and limits are attributes (`spec.getter`,
+  `spec.limits`, `spec.hidden`) in place of the keys of a dict.  The spec
+  still reads and writes like the dict it replaces (`spec['getter']`,
+  `spec.get('limits')`, `spec['hidden'] = True`), where a key that was not
+  given is missing, so code that reads `camera.properties` keeps working.
+  The trees, the notebook controls and the proxy of a remote camera use
+  the attributes.
+- **One place opens a writer.**  `dvr.formats.openWriter(filename, fps, ...)`
+  chooses the class by extension, refuses to replace a file unless
+  `overwrite=True`, and builds the writer.  `QRecorder`, the circular
+  buffer and the notebook's `record()` use it, so they agree on the errors.
+  A writer says what to try when it cannot keep up (`QVideoWriter.remedy()`,
+  which the recorder used to work out by looking inside the writer).
+- **The Genicam node code is a module of its own.**
+  `cameras/Genicam/_nodes.py` knows the types of nodes (what a node is,
+  what bounds it, how to read, write and describe it as plain data), and
+  `_camera.py`, 170 lines shorter, decides when.  No change in behavior.
 
 ## [4.21.0] — 2026-11-08
 

@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from qtpy import QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
+from QVideo.lib.QCamera import PropertySpec
 from QVideo.cameras.Noise._camera import QNoiseCamera
 from QVideo.lib import QVideoSource
 
@@ -329,7 +330,7 @@ class TestQCameraTreeDefaultDescriptionNone(unittest.TestCase):
     def test_skips_properties_with_none_getter(self):
         '''_defaultDescription omits entries whose getter returns None.'''
         cam = make_camera()
-        cam.properties['_fake'] = {'getter': lambda: None, 'setter': None}
+        cam.properties['_fake'] = PropertySpec(lambda: None, None)
         try:
             desc = QCameraTree._defaultDescription(cam)
             names = [e['name'] for e in desc]

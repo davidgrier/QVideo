@@ -12,7 +12,7 @@ the widgets, so an entry that is changed or added applies to all of them::
 '''
 import importlib.util
 from pathlib import Path
-from QVideo.lib import QVideoReader
+from QVideo.lib import QVideoReader, QVideoWriter
 from .QOpenCVWriter import QOpenCVWriter
 from .QOpenCVReader import QOpenCVReader
 from .QPyAVWriter import QPyAVWriter
@@ -22,7 +22,7 @@ from .QHDF5Reader import QHDF5Reader
 
 
 __all__ = ['Writer', 'Reader', 'Groups', 'writerClass', 'readerClass',
-           'openVideo', 'fileFilter']
+           'openWriter', 'openVideo', 'fileFilter']
 
 #: Whether PyAV is installed.
 pyav_available = importlib.util.find_spec('av') is not None
@@ -65,6 +65,45 @@ def writerClass(filename: str) -> type:
         If the extension of *filename* is not in :data:`Writer`.
     '''
     return _lookup(Writer, filename)
+
+
+def openWriter(filename: str,
+               fps: float,
+               nframes: int = 10_000,
+               nskip: int = 1,
+               overwrite: bool = False) -> QVideoWriter:
+    '''Return a writer for *filename*, to which frames are written.
+
+    The one place that checks a recording before it starts: the extension
+    chooses the class (:data:`Writer`), and an existing file is an error
+    unless *overwrite* is given, so that a recording cannot destroy
+    another.
+
+    Parameters
+    ----------
+    filename : str
+        The file to write.
+    fps : float
+        The frame rate that the file declares.
+    nframes : int
+        The number of frames to write; the writer then finishes.
+    nskip : int
+        Write every *nskip*-th frame.
+    overwrite : bool
+        Replace *filename* if it exists.
+
+    Raises
+    ------
+    ValueError
+        If the extension of *filename* is not in :data:`Writer`.
+    FileExistsError
+        If *filename* exists and *overwrite* is ``False``.
+    '''
+    writer_class = writerClass(filename)
+    if not overwrite and Path(filename).exists():
+        raise FileExistsError(
+            f'{filename!r} exists; use overwrite=True to replace it')
+    return writer_class(filename, fps=fps, nframes=nframes, nskip=nskip)
 
 
 def readerClass(filename: str) -> type:

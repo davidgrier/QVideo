@@ -158,6 +158,9 @@ class QGenicamCamera(QCamera):
         self._nextPoll = 0.
         self._lastPoll = 0.
         self._autos: set[str] = set()
+        #: The properties that can change by themselves, or ``None`` if the
+        #: camera does not say; see :func:`_nodes.selfChanging`.
+        self._changing: frozenset[str] | None = None
         self._reported: dict[str, QCamera.PropertyValue] = {}
         self.open()
 
@@ -182,6 +185,7 @@ class QGenicamCamera(QCamera):
             with suppress(Exception):
                 self._modelName = str(self._nodeMap.DeviceModelName.value)
             self._registerAliases()
+            self._changing = self._findChanging()
             self._updateLevels()
             self._checkLink()
         except Exception:
@@ -697,6 +701,17 @@ class QGenicamCamera(QCamera):
         self._reported = QCamera.snapshot(self, self._watched)
         self._arm()
 
+    def _findChanging(self) -> frozenset[str] | None:
+        '''Find which properties the camera can change by itself.
+
+        These are the only ones that :meth:`_changes` reads, so a poll costs
+        what they cost and not what all the watched nodes do.
+        '''
+        changing = _nodes.selfChanging(self._nodeMap)
+        if changing is None:
+            return None
+        return frozenset(changing & self.properties.keys())
+
     def _arm(self) -> None:
         '''Start asking the camera what changed.'''
         self._armed = True
@@ -710,11 +725,12 @@ class QGenicamCamera(QCamera):
         nodes are watched arms it, and an automatic mode that is not off
         keeps it armed.  Then the node map is told how long it has been
         (``NodeMap.poll``, which refreshes the nodes whose polling time has
-        passed) and the watched nodes are read, in the hold of the camera
-        that the frame was read in.  A value that differs from the last one
-        is returned.  After :attr:`QUIET` polls without news from the nodes
-        that do not :attr:`FREE_RUNNING`, and with no automatic mode on,
-        the camera is left alone again.
+        passed) and the watched nodes that can change by themselves
+        (:meth:`_findChanging`; all of them if the camera does not say) are
+        read, in the hold of the camera that the frame was read in.  A value
+        that differs from the last one is returned.  After :attr:`QUIET`
+        polls without news from the nodes that do not :attr:`FREE_RUNNING`,
+        and with no automatic mode on, the camera is left alone again.
         '''
         now = time.monotonic()
         if not self._armed or now < self._nextPoll:
@@ -727,7 +743,9 @@ class QGenicamCamera(QCamera):
         except Exception as ex:
             logger.debug(f'poll failed: {ex}')
             return None
-        values = QCamera.snapshot(self, self._watched)
+        names = (self._watched if self._changing is None
+                 else self._watched & self._changing)
+        values = QCamera.snapshot(self, names)
         changed = {name: value for name, value in values.items()
                    if self._reported.get(name) != value}
         self._reported.update(values)

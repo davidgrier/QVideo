@@ -139,11 +139,17 @@ returns the camera's value only after that time.
   (`devel/genicamfollow.py`).  Without `NodeMap.poll`, `ExposureAuto`
   stays `Once` for ever, so the Genicam tree did have the bug in a
   weaker form (it went stale until something else moved).
-- [ ] Genicam: read only what is due.  With `polling_time` at -1 the
-  binding gives no list; the XML has `PollingTime` on private nodes
-  (`ExposureTime_FloatVal`) and `pInvalidator`/`pDependent` link them to
-  the features: walking that graph would cut the 15 to 35 ms that a read
-  of every shown node costs, twice a second while armed.
+- [x] Genicam: read only what can change (2026-11-08).  `node.polling_time`
+  is 500 or 1000 on the 24 private nodes that the camera polls (the
+  earlier probe looked at public nodes only, and found -1), and their
+  `pDependent` names the features that depend on them.  The camera scans
+  the map once at open (35 ms) and `_changes` reads only the watched
+  properties among them: 27 of 201 on the Blackfly S, 12.9 ms a poll
+  against 25.3 ms, twice a second while armed.  The saving is a half, not
+  more: the polled nodes are real reads from the device.  What is left
+  is to leave the free-running ones (uptime, counters; 16 of the 27) out
+  of the poll that keeps it armed, which would freeze their display while
+  armed; not done.
 - [x] Share the arm, quiet and automatic-mode policy of Viva and Genicam in
   a helper: **decided against** (2026-11-08).  The two backends stay
   independent, even where they are interoperable, because one of them may be

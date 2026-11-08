@@ -9,7 +9,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-## [4.22.0] — 2026-11-08
+### Changed
+
+- **A Genicam camera reads less when it asks what changed.**  The
+  camera asks the node map which nodes the camera polls (they have a
+  `PollingTime`) and which features depend on them, once, at open, and
+  `_changes()` reads only the watched properties among those: 27 of 201 on a
+  Blackfly S, 13 ms a poll in place of 25 ms.
 
 ### Fixed
 
@@ -20,6 +26,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `QFrameRelay` now wait on Python's `threading.Condition` and `Lock`, not on
   `QMutex` and `QWaitCondition`.  160 runs of the stress that crashed before
   ended cleanly.
+
+## [4.22.0] — 2026-11-08
 
 ### Changed
 

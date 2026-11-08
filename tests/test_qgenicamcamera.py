@@ -1385,6 +1385,28 @@ class TestChanges(unittest.TestCase):
         self.assertIsNone(self.tick())
         self.poll.assert_called_once()
 
+    def test_only_what_can_change_by_itself_is_read(self):
+        reads = []
+        for name in ('Gain', 'DeviceUptime'):
+            self.cam.properties[name].getter = (
+                lambda name=name: reads.append(name) or self.values[name])
+        self.cam._changing = frozenset({'Gain'})
+        self.cam.watch(['Gain', 'DeviceUptime'])
+        reads.clear()
+        self.tick()
+        self.assertEqual(reads, ['Gain'])
+
+    def test_everything_watched_is_read_when_the_camera_does_not_say(self):
+        reads = []
+        for name in ('Gain', 'DeviceUptime'):
+            self.cam.properties[name].getter = (
+                lambda name=name: reads.append(name) or self.values[name])
+        self.cam._changing = None
+        self.cam.watch(['Gain', 'DeviceUptime'])
+        reads.clear()
+        self.tick()
+        self.assertCountEqual(reads, ['Gain', 'DeviceUptime'])
+
     def test_a_value_the_camera_changed_is_reported(self):
         self.cam.watch(['Gain'])
         self.tick()
@@ -1492,3 +1514,47 @@ class TestNewestFrames(unittest.TestCase):
         cam, _, device = make_camera()
         device.data_streams = []
         cam._keepNewestFrames()
+
+
+# ---------------------------------------------------------------------------
+# TestSelfChanging
+# ---------------------------------------------------------------------------
+
+class _FakeNode:
+    def __init__(self, polling, dependent=None):
+        self.polling_time = polling
+        self._properties = ({'pDependent': [dependent, '']}
+                            if dependent is not None else {})
+
+    @property
+    def property_names(self):
+        return tuple(self._properties)
+
+    def get_property(self, name):
+        return self._properties[name]
+
+
+class TestSelfChanging(unittest.TestCase):
+
+    def nodeMap(self, *nodes):
+        return SimpleNamespace(
+            nodes=[SimpleNamespace(node=node) for node in nodes])
+
+    def test_what_depends_on_a_polled_node_can_change(self):
+        nodeMap = self.nodeMap(
+            _FakeNode(500, 'ExposureTime\tGain'),
+            _FakeNode(1000, 'DeviceUptime'),
+            _FakeNode(-1, 'Width'))
+        self.assertEqual(_nodes_module.selfChanging(nodeMap),
+                         {'ExposureTime', 'Gain', 'DeviceUptime'})
+
+    def test_a_polled_node_nothing_depends_on_adds_nothing(self):
+        nodeMap = self.nodeMap(_FakeNode(500), _FakeNode(500, 'Gain'))
+        self.assertEqual(_nodes_module.selfChanging(nodeMap), {'Gain'})
+
+    def test_no_polled_node_means_that_nothing_is_known(self):
+        nodeMap = self.nodeMap(_FakeNode(-1, 'Width'))
+        self.assertIsNone(_nodes_module.selfChanging(nodeMap))
+
+    def test_a_node_map_that_cannot_be_read_means_that_nothing_is_known(self):
+        self.assertIsNone(_nodes_module.selfChanging(object()))

@@ -9,6 +9,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **The type check of `lib/` is clean.**  `pyright` reports no error in the
+  environment that CI uses (PyQt6 alone), where it reported 106.  The
+  reports were mostly a project setting (`extraPaths`, so that `QVideo.*`
+  resolves in CI) and annotations that said less than the code knows:
+  `QReferenceFilter.videoFilter` is a `ReferenceFilter`, the pending frame
+  of `QVideoScreen` is a frame and its information, overlays are graphics
+  items, and `lib.__all__` is a list.  Qt enums are spelled in full
+  (`Qt.ConnectionType.DirectConnection`), which works under PyQt5 too.
+  `ReferenceFilter.add` names its argument `data`, like `VideoFilter.add`.
+  The rest are casts of OpenCV and Qt results and a few
+  `# pyright: ignore[rule]` where the stubs are too narrow.
+
 ---
 
 ## [4.19.0] — 2026-11-08

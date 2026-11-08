@@ -1,6 +1,8 @@
 '''Base classes for filters that correct frames with a stored reference.'''
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
+from typing import cast
+
 import numpy as np
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
@@ -104,28 +106,28 @@ class ReferenceFilter(VideoFilter):
         self._accumulator = None
         self._captureCount = 0
 
-    def add(self, image: Image) -> None:
+    def add(self, data: Image) -> None:
         '''Take in a new frame, and average it into the reference if a
         capture is in progress.
 
         Parameters
         ----------
-        image : Image
+        data : Image
             Input frame.
         '''
         if self._captureCount > 0:
             if self._accumulator is None:
-                self._accumulator = image.astype(np.float32)
+                self._accumulator = data.astype(np.float32)
             else:
-                self._accumulator += image.astype(np.float32)
+                self._accumulator += data.astype(np.float32)
             self._captureCount -= 1
             if self._captureCount == 0:
                 mean = self._accumulator / self._nFrames
                 self._accumulator = None
-                self._referenceType = image.dtype
+                self._referenceType = data.dtype
                 self._reference = self._makeReference(mean)
                 self.captured.emit()
-        self.data = image
+        self.data = data
 
     def get(self) -> Image | None:
         '''Return the corrected frame.
@@ -188,6 +190,11 @@ class QReferenceFilter(QVideoFilter):
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent, self.display_name, self.filterClass())
+
+    @property
+    def videoFilter(self) -> ReferenceFilter:
+        '''The :class:`ReferenceFilter` that this widget controls.'''
+        return cast(ReferenceFilter, super().videoFilter)
 
     def _setupUi(self) -> None:
         super()._setupUi()

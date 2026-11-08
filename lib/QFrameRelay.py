@@ -50,7 +50,8 @@ class QFrameRelay(QtCore.QObject):
         self._mutex = QtCore.QMutex()
         self._latest: tuple[Image, FrameInfo | None] | None = None
         self._wake.connect(self._deliver)
-        source.newFrame.connect(self._offer, QtCore.Qt.DirectConnection)
+        source.newFrame.connect(
+            self._offer, QtCore.Qt.ConnectionType.DirectConnection)
 
     @QtCore.Slot(np.ndarray)
     @QtCore.Slot(np.ndarray, object)

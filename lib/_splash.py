@@ -36,7 +36,7 @@ def _hologram(width: int, height: int) -> QtGui.QImage:
     brightness = (1. + _CONTRAST * (fringes - 1.)) * (1. - 0.8 * edge**2)
     rgb = np.clip(_PURPLE * brightness[..., None] * 1.15, 0., 1.)
     pixels = np.ascontiguousarray(255 * rgb, dtype=np.uint8)
-    image = QtGui.QImage(pixels.data, width, height, 3 * width,
+    image = QtGui.QImage(pixels.tobytes(), width, height, 3 * width,
                          QtGui.QImage.Format.Format_RGB888)
     return image.copy()  # the copy owns its pixels
 

@@ -1,5 +1,5 @@
 '''Image operations shared by filters and widgets.'''
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -9,10 +9,8 @@ from QVideo.lib.videotypes import Image
 
 __all__ = ['grayscale', 'to8bit', 'stretch16', 'save_image', 'AutoLevels']
 
-try:
-    _Fmt = QtGui.QImage.Format
-except AttributeError:
-    _Fmt = QtGui.QImage
+#: The image formats: ``QImage.Format`` in PyQt6, ``QImage`` in PyQt5.
+_Fmt: Any = getattr(QtGui.QImage, 'Format', QtGui.QImage)
 
 #: The file types that hold 16 bit gray.
 _DEEP_FORMATS = ('.png', '.tif', '.tiff')
@@ -37,8 +35,8 @@ def grayscale(image: Image) -> Image:
     Image
         Gray frame of shape ``(H, W)``.
     '''
-    return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 \
-        else image
+    return cast(Image, cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)) \
+        if image.ndim == 3 else image
 
 
 def to8bit(image: Image, levels: tuple[float, float] | None = None) -> Image:
@@ -59,8 +57,10 @@ def to8bit(image: Image, levels: tuple[float, float] | None = None) -> Image:
     '''
     black, white = levels or (0, 65535)
     if black:
-        image = cv2.subtract(image, black)      # saturates at zero
-    return cv2.convertScaleAbs(image, alpha=255. / (white - black))
+        # saturates at zero
+        image = cv2.subtract(image, black)  # pyright: ignore[reportCallIssue, reportArgumentType]
+    return cast(Image, cv2.convertScaleAbs(
+        image, alpha=255. / (white - black)))
 
 
 def stretch16(image: Image, levels: tuple[float, float] | None = None

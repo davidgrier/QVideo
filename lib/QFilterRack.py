@@ -437,7 +437,7 @@ class QFilterRack(QtWidgets.QWidget):
         klass = self.availableFilters().get(name)
         if klass is None:
             raise ValueError(f'{name!r} is not a known filter')
-        self.add(klass())
+        self.add(klass())  # pyright: ignore[reportCallIssue]
 
     def exportPipeline(self) -> str:
         '''Generate Python source that implements the current enabled pipeline.

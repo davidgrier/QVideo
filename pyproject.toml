@@ -143,11 +143,18 @@ testpaths = ["tests"]
 
 [tool.pyright]
 # Type checking of lib/, the best-typed part, as an allowed-to-fail job in
-# CI.  qtpy does not declare Slot and Signal as exports of its modules,
-# which pyright reports 72 times and which says nothing about our code.
+# CI.  Run it in an environment with PyQt6 and no other Qt binding, as CI
+# does: with PyQt5 beside it, pyright reads the stubs of PyQt5.  qtpy does
+# not declare Slot and Signal as exports of its modules, which pyright
+# reports and which says nothing about our code (reportPrivateImportUsage).
+# The Qt stubs type the arguments of event handlers as Optional, so every
+# override of closeEvent, resizeEvent, mousePressEvent and the like would
+# be reported (reportIncompatibleMethodOverride).
 include = ["lib"]
 pythonVersion = "3.11"
+extraPaths = [".."]
 reportPrivateImportUsage = "none"
+reportIncompatibleMethodOverride = "none"
 
 [tool.coverage.run]
 source = ["QVideo"]

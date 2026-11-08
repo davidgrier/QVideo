@@ -97,17 +97,17 @@ class QSnapshot(QtCore.QObject):
         self.saver = QImageSaver(self, Path.home(), 'snapshot',
                                  title='Save Snapshot', key='images')
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), parent)
-        shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+        shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
         shortcut.activated.connect(self.snap)
         shortcut_as = QtWidgets.QShortcut(QtGui.QKeySequence(key_as), parent)
-        shortcut_as.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+        shortcut_as.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
         shortcut_as.activated.connect(self.snapAs)
         if screen is not None:
             for sequence, slot in ((key_screen, self.screenshot),
                                    (key_screen_as, self.screenshotAs)):
                 shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(sequence),
                                                parent)
-                shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+                shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
                 shortcut.activated.connect(slot)
 
     @QtCore.Slot(np.ndarray, object)

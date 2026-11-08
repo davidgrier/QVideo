@@ -381,6 +381,6 @@ class QVideoFilter(QtWidgets.QGroupBox):
         own ``__init__`` defaults, not on :class:`QVideoFilter` directly.
         '''
         pg.mkQApp()
-        widget = cls()
+        widget = cls()  # pyright: ignore[reportCallIssue]
         widget.show()
         pg.exec()

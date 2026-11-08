@@ -113,7 +113,7 @@ class Worker:
         self.capacity = slot_bytes(nbytes)
         ring = self.ring = SharedMemory(create=True,
                                         size=SLOTS * self.capacity)
-        ring.buf[:] = bytes(ring.size)
+        ring.buf[:] = bytes(ring.size)  # pyright: ignore[reportOptionalSubscript]
         self.generation += 1
         if old is not None:
             old.close()

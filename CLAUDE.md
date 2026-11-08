@@ -400,9 +400,17 @@ The `-c` CLI flag opens `QOpenCVTree` in quality mode.
   behaviour), etc.
 
 CI also runs `pyright` on `lib/` as an informational job (`Types`; it does
-not fail the workflow) and one test job with a coverage floor of 95%
+not fail the workflow; the report is empty, so keep it so) and one test job with a coverage floor of 95%
 (`fail_under` in `pyproject.toml`; the suite measures 96%).  Keep the floor
 below the measured value: it makes a regression visible and is no target.
+
+Run `pyright` in an environment with PyQt6 and no other Qt binding, as CI
+does (`pip install -e ".[dev-pyqt6]" pyright` in a new virtual environment):
+with PyQt5 installed beside it, pyright reads the PyQt5 stubs and reports
+errors that CI does not.  The Qt stubs, `pyqtgraph` and OpenCV are loosely
+typed, so a line that is right at run time sometimes carries a
+`# pyright: ignore[rule]`; use the narrowest rule that names the problem,
+and prefer a `cast` or an annotation where it says something true.
 
 `ruff check .` (configured in `pyproject.toml`: pyflakes, bugbear, the
 79-character limit, and for the package, not the tests, `SIM` without

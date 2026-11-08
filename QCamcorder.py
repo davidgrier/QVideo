@@ -141,9 +141,10 @@ class QCamcorder(QtWidgets.QWidget):
         self.dvr.backlog.connect(self._showBacklog)
         # Queued, so that the reason follows the end of the recording,
         # which clears the message.
-        self.dvr.stopped.connect(self.message, QtCore.Qt.QueuedConnection)
+        self.dvr.stopped.connect(
+            self.message, QtCore.Qt.ConnectionType.QueuedConnection)
         self.dvr.stopped.connect(self._showStopped,
-                                 QtCore.Qt.QueuedConnection)
+                                 QtCore.Qt.ConnectionType.QueuedConnection)
         self.source.lost.connect(self._showLost)
         self.screen.newFrame.connect(self._snapshot.newFrame)
         self._snapshot.saver.message.connect(self.message)

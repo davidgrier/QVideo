@@ -277,7 +277,7 @@ class QCameraTree(ParameterTree):
     @property
     def camera(self) -> QCamera:
         '''The :class:`~QVideo.lib.QCamera.QCamera` driven by this tree.'''
-        return self.source.source
+        return cast(QCamera, self.source.source)
 
     @QtCore.Slot()
     def start(self) -> 'QCameraTree':
@@ -306,6 +306,6 @@ class QCameraTree(ParameterTree):
         import pyqtgraph as pg
 
         app = pg.mkQApp(f'{cls.__name__} Example')
-        tree = cls().start()
+        tree = cls().start()  # pyright: ignore[reportCallIssue]
         tree.show()
         app.exec()

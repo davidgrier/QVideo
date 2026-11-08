@@ -1,6 +1,6 @@
 '''Live video display widget with mouse-aware graphical overlay support.'''
 import logging
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
@@ -103,8 +103,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._shownLevels: tuple[float, float] | None = None
         self._auto: AutoLevels | None = None
         self._ready = True
-        self._pending: Image | None = None
-        self._overlays: list[object] = []
+        self._pending: tuple[Image, FrameInfo | None] | None = None
+        self._overlays: list[QtWidgets.QGraphicsItem] = []
         self._composite = False
         self._videoShape: QtCore.QSize | None = None
         self._source: QVideoSource | None = None
@@ -116,9 +116,10 @@ class QVideoScreen(GraphicsLayoutWidget):
 
     def _setupUi(self) -> None:
         '''Make the view, which keeps the aspect ratio, and the image.'''
-        self.ci.layout.setContentsMargins(0, 0, 0, 0)
-        self.view = self.addViewBox(enableMenu=False,
-                                    enableMouse=False)
+        self.ci.layout.setContentsMargins(  # pyright: ignore[reportAttributeAccessIssue]
+            0, 0, 0, 0)
+        self.view = self.addViewBox(  # pyright: ignore[reportAttributeAccessIssue]
+            enableMenu=False, enableMouse=False)
         self.view.invertY(True)
         self.view.setAspectLocked(True)
         self.view.setDefaultPadding(0)
@@ -179,7 +180,7 @@ class QVideoScreen(GraphicsLayoutWidget):
                 colormap = pg.colormap.get(name, source='matplotlib')
             except (KeyError, FileNotFoundError, ImportError):
                 colormap = pg.colormap.get(name)
-            self.image.setColorMap(colormap)
+            self.image.setColorMap(cast(pg.ColorMap, colormap))
         self._colormap = name       # only once the colormap is in use
 
     @property
@@ -200,7 +201,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         ValueError
             If the white level is not above the black level.
         '''
-        levels = self.image.levels
+        levels = cast('tuple[float, float] | None', self.image.levels)
         if levels is None:
             return None
         low, high = levels
@@ -342,20 +343,18 @@ class QVideoScreen(GraphicsLayoutWidget):
         pixmap = self.grab()
         if pixmap.isNull():
             return np.empty((0, 0, 3), dtype=np.uint8)
-        try:
-            fmt = QtGui.QImage.Format.Format_RGBA8888
-        except AttributeError:
-            fmt = QtGui.QImage.Format_RGBA8888
+        fmt = cast(Any, getattr(QtGui.QImage, 'Format',
+                                QtGui.QImage)).Format_RGBA8888
         qimage = pixmap.toImage().convertToFormat(fmt)
         w, h = qimage.width(), qimage.height()
-        ptr = qimage.bits()
+        ptr = cast(Any, qimage.bits())
         if hasattr(ptr, 'setsize'):
             ptr.setsize(h * w * 4)
         scene = np.frombuffer(ptr, np.uint8).reshape(h, w, 4)
         # H.264 cannot encode an odd number of pixels
         return scene[:h // 2 * 2, :w // 2 * 2, :3].copy()
 
-    def addOverlay(self, item: object) -> None:
+    def addOverlay(self, item: QtWidgets.QGraphicsItem) -> None:
         '''Add a graphics item to the view
 
         Register overlays for visibility control.
@@ -368,7 +367,7 @@ class QVideoScreen(GraphicsLayoutWidget):
         self.view.addItem(item)
         self._overlays.append(item)
 
-    def removeOverlay(self, item: object) -> None:
+    def removeOverlay(self, item: QtWidgets.QGraphicsItem) -> None:
         '''Remove a previously added graphics item from the view.
 
         Parameters
@@ -443,8 +442,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         if shape is None:
             return
         window = cast(QtWidgets.QWidget, self.window())
-        screen = (QtWidgets.QApplication.screenAt(window.pos())
-                  or QtWidgets.QApplication.primaryScreen())
+        screen = cast(QtGui.QScreen,
+                      QtWidgets.QApplication.screenAt(window.pos())
+                      or QtWidgets.QApplication.primaryScreen())
         available = screen.availableGeometry()
         frame = window.frameGeometry()
         sh = window.sizeHint()

@@ -27,7 +27,7 @@ import sys
 import textwrap
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 # qtpy comes first: it selects the Qt binding (QT_API), and pyqtgraph then
 # uses whichever binding is loaded.  Imported first, pyqtgraph would choose
@@ -152,8 +152,10 @@ class _Launcher:
             return
         self.opener.camera = None       # the interface has it now
         self.window.setCentralWidget(central)
-        if hasattr(central, 'message'):
-            central.message.connect(self.window.statusBar().showMessage)
+        message = getattr(central, 'message', None)
+        if message is not None:
+            bar = cast(QtWidgets.QStatusBar, self.window.statusBar())
+            message.connect(bar.showMessage)
         self.window.show()
         self.screen.finish(self.window)
 

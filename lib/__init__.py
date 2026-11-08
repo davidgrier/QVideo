@@ -71,13 +71,14 @@ from ._launch import launch
 from .QImageSaver import QImageSaver
 from .QSnapshot import QSnapshot
 
-__all__ = '''Image
-           FrameInfo
-clickable launch
-QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
-QRemoteCamera QCameraOpener
-QFilterRack QFilterPipeline QFrameRelay
-QVideoReader QVideoWriter QVideoScreen
-QSnapshot QImageSaver
-VideoFilter QVideoFilter ReferenceFilter QReferenceFilter
-QOverlayWidget'''.split()
+__all__ = [
+    'Image', 'FrameInfo',
+    'clickable', 'launch',
+    'QCamera', 'QCameraError', 'QDriverError', 'QDeviceError',
+    'QVideoSource', 'QCameraTree', 'QRemoteCamera', 'QCameraOpener',
+    'QFilterRack', 'QFilterPipeline', 'QFrameRelay',
+    'QVideoReader', 'QVideoWriter', 'QVideoScreen',
+    'QSnapshot', 'QImageSaver',
+    'VideoFilter', 'QVideoFilter', 'ReferenceFilter', 'QReferenceFilter',
+    'QOverlayWidget',
+]

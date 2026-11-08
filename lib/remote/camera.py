@@ -443,9 +443,10 @@ class QRemoteCamera(QCamera):
 def _attach(name: str) -> SharedMemory:
     '''Attach to the ring of the worker, which unlinks it.'''
     try:
-        return SharedMemory(name=name, track=False)
+        return SharedMemory(name=name, track=False)  # pyright: ignore[reportCallIssue]
     except TypeError:                       # before Python 3.13
         ring = SharedMemory(name=name)
         from multiprocessing import resource_tracker
-        resource_tracker.unregister(ring._name, 'shared_memory')
+        resource_tracker.unregister(
+            ring._name, 'shared_memory')  # pyright: ignore[reportAttributeAccessIssue]
         return ring

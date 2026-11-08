@@ -143,7 +143,8 @@ class QFilterPipeline(QtCore.QThread):
         self._source = source
         if source is None:
             return
-        source.newFrame.connect(self._deliver, QtCore.Qt.DirectConnection)
+        source.newFrame.connect(
+            self._deliver, QtCore.Qt.ConnectionType.DirectConnection)
         source.shapeChanged.connect(self.shapeChanged)
 
     @property

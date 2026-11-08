@@ -14,6 +14,7 @@ source, or another runtime.
 '''
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 import cv2
 import numpy as np
 from QVideo.lib.imageops import to8bit
@@ -39,9 +40,9 @@ def prepare(image: Image) -> Image:
     if image.dtype == np.uint16:
         image = to8bit(image)
     if image.ndim == 2:
-        return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        return cast(Image, cv2.cvtColor(image, cv2.COLOR_GRAY2RGB))
     if image.shape[2] == 4:
-        return cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+        return cast(Image, cv2.cvtColor(image, cv2.COLOR_RGBA2RGB))
     return image
 
 
@@ -84,7 +85,7 @@ def letterbox(image: Image,
     padded = cv2.copyMakeBorder(
         resized, top, height - nh - top, left, width - nw - left,
         cv2.BORDER_CONSTANT, value=(color,) * 3)
-    return padded, scale, (float(left), float(top))
+    return cast(Image, padded), float(scale), (float(left), float(top))
 
 
 class DNN:

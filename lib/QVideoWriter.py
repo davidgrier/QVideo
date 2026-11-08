@@ -1,5 +1,6 @@
 '''Abstract base class for video file writers.'''
 from abc import abstractmethod
+from typing import cast
 from qtpy import QtCore
 from QVideo.lib._qabc import QABCMeta
 from QVideo.lib.videotypes import Image, FrameInfo
@@ -233,4 +234,4 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         in a worker thread.
         '''
         self.close()
-        self.thread().quit()
+        cast(QtCore.QThread, self.thread()).quit()

@@ -71,8 +71,9 @@ class QOverlayWidget(QtWidgets.QGroupBox):
         self._worker = worker
         self._thread = QtCore.QThread(self)
         worker.moveToThread(self._thread)
-        self._process.connect(worker.process)
-        worker.newData.connect(self._onNewData)
+        # the worker and the item are duck-typed, as the class says
+        self._process.connect(worker.process)  # pyright: ignore[reportAttributeAccessIssue]
+        worker.newData.connect(self._onNewData)  # pyright: ignore[reportAttributeAccessIssue]
         self._thread.start()
         thread = self._thread
         self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
@@ -116,7 +117,7 @@ class QOverlayWidget(QtWidgets.QGroupBox):
     @QtCore.Slot(object)
     def _onNewData(self, features) -> None:
         self._ready = True
-        self._overlay.setFeatures(features)
+        self._overlay.setFeatures(features)  # pyright: ignore[reportAttributeAccessIssue]
         self.newData.emit(features)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:

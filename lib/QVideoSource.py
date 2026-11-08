@@ -118,7 +118,7 @@ class QVideoSource(QtCore.QThread):
                         break
                     target, self._seek = self._seek, None
                 if target is not None:
-                    self.source.seek(target)
+                    self.source.seek(target)  # pyright: ignore[reportCallIssue]
                 ok, frame = self.source.saferead()
                 if ok:
                     info = FrameInfo(self._frames, perf_counter(),

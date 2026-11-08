@@ -48,8 +48,10 @@ logic stays separate from UI concerns.
 
 :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`
    Runs :class:`~QVideo.lib.QVideoFilter.VideoFilter` objects, in order, on
-   a worker thread between a source and its consumers.  A screen or a
-   recorder uses the pipeline as its source.
+   a worker thread between a source and its consumers.  The pipeline is a
+   :class:`~QVideo.lib.QVideoSource.QVideoSource` that filters the frames of
+   its ``upstream`` source, so a screen or a recorder uses it as its
+   source.
 
 :class:`~QVideo.lib.QFilterRack.QFilterRack`
    A rack widget that owns a pipeline.  The pipeline runs the filters that

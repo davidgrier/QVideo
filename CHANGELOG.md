@@ -9,6 +9,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **`QFilterPipeline` is a `QVideoSource`.**  It had a thread loop, a
+  `stop()` and a `__del__` of its own; now a small private stage filters
+  the frames (`saferead`), and `QVideoSource` runs it, so the pipeline can
+  be paused and resumed, and capture and filtering share one teardown.
+  The `FrameInfo` still passes through unchanged.  *Breaking:* the source
+  that the pipeline filters is `pipeline.upstream`, no longer
+  `pipeline.source` (that is the stage, as for every `QVideoSource`).
+  `QFilterRack.source` is unchanged.
+
 ## [4.20.0] — 2026-11-08
 
 ### Added

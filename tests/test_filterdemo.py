@@ -40,7 +40,7 @@ class TestFilterDemo(unittest.TestCase):
     def test_pipeline_reads_the_camera_source(self):
         tree = QNoiseTree()
         widget = self._make_demo(tree=tree)
-        self.assertIs(widget.rack.pipeline.source, tree.source)
+        self.assertIs(widget.rack.pipeline.upstream, tree.source)
 
     def test_screen_displays_the_pipeline(self):
         widget = self._make_demo()

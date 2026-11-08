@@ -320,6 +320,23 @@ class TestFailure(PipelineTestCase):
 class TestSourceInterface(PipelineTestCase):
     '''The pipeline can stand in for a QVideoSource.'''
 
+    def test_the_pipeline_is_a_video_source(self):
+        from QVideo.lib.QVideoSource import QVideoSource
+        self.make()
+        self.assertIsInstance(self.pipeline, QVideoSource)
+        self.assertIs(self.pipeline.upstream, self.source)
+
+    def test_pause_holds_back_the_frames_until_resume(self):
+        self.make()
+        self.pipeline.pause()
+        self.source.send(1)         # the read that was waiting takes it
+        self.assertTrue(wait_until(lambda: self.values() == [1]))
+        self.source.send(2)
+        QtTest.QTest.qWait(50)
+        self.assertEqual(self.values(), [1])
+        self.pipeline.resume()
+        self.assertTrue(wait_until(lambda: self.values() == [1, 2]))
+
     def test_fps_comes_from_the_source(self):
         self.make()
         self.assertEqual(self.pipeline.fps, 30.)
@@ -338,7 +355,7 @@ class TestSourceInterface(PipelineTestCase):
     def test_changing_the_source_reroutes_frames(self):
         self.make()
         other = _Source()
-        self.pipeline.source = other
+        self.pipeline.upstream = other
         self.source.send(1)
         other.send(2)
         self.assertTrue(wait_until(lambda: self.out))
@@ -418,16 +435,16 @@ class TestNoSource(PipelineTestCase):
 
     def test_source_can_be_cleared(self):
         self.make()
-        self.pipeline.source = None
+        self.pipeline.upstream = None
         self.source.send(1)
         QtTest.QTest.qWait(50)
         self.assertEqual(self.out, [])
-        self.assertIsNone(self.pipeline.source)
+        self.assertIsNone(self.pipeline.upstream)
 
     def test_source_can_be_set_again_after_clearing(self):
         self.make()
-        self.pipeline.source = None
-        self.pipeline.source = self.source
+        self.pipeline.upstream = None
+        self.pipeline.upstream = self.source
         self.source.send(3)
         self.assertTrue(wait_until(lambda: self.out))
         self.assertEqual(self.values(), [3])

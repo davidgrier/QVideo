@@ -278,7 +278,9 @@ NumPy expressions on whole float images; QVideo does not import numba
 five times faster with it).
 
 Filters are applied by `QFilterPipeline` (`lib/QFilterPipeline.py`), a
-worker thread between a source and its consumers (screen, DVR, overlays).
+`QVideoSource` whose source is a private stage that filters the frames of
+its `upstream` source, between that source and its consumers (screen, DVR,
+overlays).
 It takes `VideoFilter` objects or a rack widget (`rack=`), passes the
 `FrameInfo` of each frame through unchanged, keeps up to `depth` waiting
 frames (the default `depth=1` always processes the newest), removes and

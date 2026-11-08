@@ -36,7 +36,7 @@ class TestPipelineGivesLevels(unittest.TestCase):
     def apply(self, video_filter, frame, levels):
         pipeline = QFilterPipeline(None, filters=[video_filter])
         self.addCleanup(pipeline.stop)
-        return pipeline._apply(frame, levels)
+        return pipeline._stage._apply(frame, levels)
 
     def test_a_deep_filter_is_given_the_levels(self):
         video_filter = InvertFilter()

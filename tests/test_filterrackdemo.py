@@ -53,7 +53,7 @@ class TestFilterRackDemoInit(unittest.TestCase):
 
     def test_pipeline_reads_the_camera_source(self):
         widget = make_demo()
-        self.assertIs(widget.rack.pipeline.source, widget.source)
+        self.assertIs(widget.rack.pipeline.upstream, widget.source)
 
     def test_screen_displays_the_pipeline(self):
         widget = make_demo()
@@ -101,7 +101,7 @@ class TestFilterRackDemoDvrPlayback(unittest.TestCase):
 
     def test_playback_points_the_pipeline_at_the_player(self):
         self.widget.dvrPlayback(True)
-        self.assertIs(self.widget.rack.pipeline.source,
+        self.assertIs(self.widget.rack.pipeline.upstream,
                       self.widget.dvr.playback.source)
 
     def test_playback_keeps_the_screen_on_the_pipeline(self):

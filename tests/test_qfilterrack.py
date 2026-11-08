@@ -684,7 +684,7 @@ class TestStructure(RackTestCase):
         self.assertIs(rack.pipeline.rack, rack)
 
     def test_without_a_source_the_pipeline_is_idle(self):
-        self.assertIsNone(self.make().pipeline.source)
+        self.assertIsNone(self.make().pipeline.upstream)
 
     def test_parent_and_editable_keep_their_positions(self):
         parent = QtWidgets.QWidget()
@@ -694,20 +694,20 @@ class TestStructure(RackTestCase):
 
     def test_depth_reaches_the_pipeline(self):
         rack = self.make(depth=8)
-        self.assertEqual(rack.pipeline._queue.maxlen, 8)
+        self.assertEqual(rack.pipeline._stage._queue.maxlen, 8)
 
 
 class TestSource(RackTestCase):
 
     def test_the_constructor_gives_the_pipeline_its_source(self):
         source = _Source()
-        self.assertIs(self.make(source=source).pipeline.source, source)
+        self.assertIs(self.make(source=source).pipeline.upstream, source)
 
     def test_source_reads_and_sets_the_pipeline_source(self):
         rack = self.make()
         source = _Source()
         rack.source = source
-        self.assertIs(rack.pipeline.source, source)
+        self.assertIs(rack.pipeline.upstream, source)
         self.assertIs(rack.source, source)
 
 

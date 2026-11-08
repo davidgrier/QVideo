@@ -1,4 +1,4 @@
-'''Worker thread that runs a pipeline of video filters.'''
+'''Video source that runs a pipeline of video filters.'''
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import replace
@@ -9,11 +9,11 @@ import numpy as np
 from qtpy import QtCore
 
 from QVideo.lib.QVideoFilter import VideoFilter, prepare
+from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.videotypes import Image, FrameInfo
 
 if TYPE_CHECKING:
     from QVideo.lib.QFilterRack import QFilterRack
-    from QVideo.lib.QVideoSource import QVideoSource
 
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,144 @@ logger = logging.getLogger(__name__)
 __all__ = ['QFilterPipeline']
 
 
-class QFilterPipeline(QtCore.QThread):
+class _FilterStage(QtCore.QObject):
+
+    '''The source that a :class:`QFilterPipeline` runs.
+
+    It stands where a camera stands for a
+    :class:`~QVideo.lib.QVideoSource.QVideoSource`: ``saferead`` waits for
+    a frame from the upstream source, filters it and returns it.  Frames
+    that arrive while it is busy wait in a queue of *depth* frames, and the
+    oldest is dropped when the queue is full.
+    '''
+
+    shapeChanged = QtCore.Signal(QtCore.QSize)
+    framesDropped = QtCore.Signal(int)
+    filterFailed = QtCore.Signal(object, object)
+
+    def __init__(self, filters: Iterable[VideoFilter], depth: int) -> None:
+        super().__init__()
+        self._mutex = QtCore.QMutex()
+        self._wait = QtCore.QWaitCondition()
+        self._queue: deque[tuple[Image, FrameInfo]] = deque(maxlen=depth)
+        self._dropped = 0
+        self._open = True
+        self._filters = tuple(filters)
+        self._upstream: QVideoSource | None = None
+        #: Metadata of the frame that ``saferead`` returned last.
+        self.info = FrameInfo(0, 0.)
+
+    @property
+    def upstream(self) -> 'QVideoSource | None':
+        return self._upstream
+
+    @upstream.setter
+    def upstream(self, source: 'QVideoSource | None') -> None:
+        if self._upstream is not None:
+            self._upstream.newFrame.disconnect(self._deliver)
+            self._upstream.shapeChanged.disconnect(self.shapeChanged)
+        self._upstream = source
+        if source is None:
+            return
+        # The stage lives in a thread without an event loop: a queued
+        # connection to it would never be delivered.
+        direct = QtCore.Qt.ConnectionType.DirectConnection
+        source.newFrame.connect(self._deliver, direct)
+        source.shapeChanged.connect(self.shapeChanged, direct)
+
+    @property
+    def filters(self) -> tuple[VideoFilter, ...]:
+        return self._filters
+
+    @filters.setter
+    def filters(self, filters: Iterable[VideoFilter]) -> None:
+        with QtCore.QMutexLocker(self._mutex):
+            self._filters = tuple(filters)
+
+    @property
+    def actualFps(self) -> float:
+        return self._upstream.fps if self._upstream is not None else 0.
+
+    @property
+    def shape(self) -> QtCore.QSize:
+        return (self._upstream.shape if self._upstream is not None
+                else QtCore.QSize())
+
+    def isOpen(self) -> bool:
+        return self._open
+
+    def __enter__(self) -> '_FilterStage':
+        return self
+
+    def __exit__(self, *exc) -> None:
+        pass
+
+    def close(self) -> None:
+        '''Discard waiting frames and wake a ``saferead`` that waits.'''
+        with QtCore.QMutexLocker(self._mutex):
+            self._open = False
+            self._queue.clear()
+        self._wait.wakeAll()
+
+    @QtCore.Slot(np.ndarray, object)
+    def _deliver(self, frame: Image, info: FrameInfo) -> None:
+        '''Queue a frame; runs in the thread that emitted ``newFrame``.'''
+        with QtCore.QMutexLocker(self._mutex):
+            if not self._open:
+                return
+            if len(self._queue) == self._queue.maxlen:
+                self._dropped += 1
+            self._queue.append((frame, info))
+        self._wait.wakeOne()
+
+    def saferead(self) -> tuple[bool, Image | None]:
+        '''Return the next filtered frame; ``False`` once closed.
+
+        A frame for which a filter has no result yet (a filter that
+        collects frames) is not a result: the call waits for the next one.
+        '''
+        while True:
+            with QtCore.QMutexLocker(self._mutex):
+                while self._open and not self._queue:
+                    self._wait.wait(self._mutex)
+                if not self._open:
+                    return False, None
+                frame, info = self._queue.popleft()
+                dropped, self._dropped = self._dropped, 0
+            if dropped:
+                self.framesDropped.emit(dropped)
+            result, levels = self._apply(frame, info.levels)
+            if result is not None:
+                self.info = (info if levels == info.levels
+                             else replace(info, levels=levels))
+                return True, result
+
+    def _apply(self, frame: Image, levels: tuple | None
+               ) -> tuple[Image | None, tuple | None]:
+        '''Run *frame*, whose pixels have *levels*, through the filters.
+
+        Returns the result and its levels: ``(None, levels)`` if a filter
+        has no result yet.
+        '''
+        for video_filter in self._filters:
+            frame, levels = prepare(video_filter, frame, levels)
+            try:
+                result = video_filter(frame)
+            except Exception as error:
+                logger.exception(f'{type(video_filter).__name__} failed '
+                                 'and was removed from the filter pipeline')
+                self.filters = [f for f in self._filters
+                                if f is not video_filter]
+                self.filterFailed.emit(video_filter, error)
+                continue
+            if result is None:
+                return None, levels
+            frame = result
+        return frame, levels
+
+
+class QFilterPipeline(QVideoSource):
+
 
     '''Apply a pipeline of filters to a video source on a worker thread.
 
@@ -41,9 +178,10 @@ class QFilterPipeline(QtCore.QThread):
     scaled to ``uint8`` between those levels, and the frames after it have
     no levels.  Filters that are ``deep`` see the counts and keep the levels.
 
-    The pipeline can stand in for a
-    :class:`~QVideo.lib.QVideoSource.QVideoSource`: it has ``newFrame``,
-    ``shapeChanged``, ``fps`` and ``shape``.
+    The pipeline is a :class:`~QVideo.lib.QVideoSource.QVideoSource`
+    whose source is the stage that filters, so it has ``newFrame``,
+    ``shapeChanged``, ``fps`` and ``shape``, and it is paused, resumed and
+    stopped like any other.  :attr:`upstream` is the source that it filters.
 
     **Frames that arrive while the worker is busy.**  The worker holds up
     to *depth* waiting frames.  With the default ``depth=1`` only the
@@ -70,8 +208,9 @@ class QFilterPipeline(QtCore.QThread):
 
     Parameters
     ----------
-    source : QVideoSource
-        Provider of ``newFrame(ndarray, FrameInfo)``.
+    source : QVideoSource or None
+        Provider of ``newFrame(ndarray, FrameInfo)``: the
+        :attr:`upstream` of the pipeline.
     filters : iterable of VideoFilter
         Filters to apply, in order.
     depth : int
@@ -86,7 +225,7 @@ class QFilterPipeline(QtCore.QThread):
     would let Qt delete the thread while it runs.  Keep a reference to
     the pipeline for as long as it is needed.  The thread stops on
     :meth:`stop`, when the application quits, and when the last
-    reference is dropped.
+    reference is dropped.  A stopped pipeline stays stopped.
 
     Signals
     -------
@@ -100,30 +239,17 @@ class QFilterPipeline(QtCore.QThread):
         A filter and the exception it raised.
     '''
 
-    #: A filtered frame and its info.
-    newFrame = QtCore.Signal(np.ndarray, object)
-    #: The source's frame shape changed.
-    shapeChanged = QtCore.Signal(QtCore.QSize)
-    #: Number of frames dropped since the previous report.
-    framesDropped = QtCore.Signal(int)
-    #: A filter and the exception that made the pipeline remove it.
-    filterFailed = QtCore.Signal(object, object)
-
     def __init__(self,
                  source: 'QVideoSource | None',
                  filters: Iterable[VideoFilter] = (),
                  depth: int = 1,
                  rack: 'QFilterRack | None' = None) -> None:
-        super().__init__()
-        self._mutex = QtCore.QMutex()
-        self._wait = QtCore.QWaitCondition()
-        self._queue: deque[tuple[Image, FrameInfo]] = deque(maxlen=depth)
-        self._dropped = 0
-        self._running = True
-        self._filters = tuple(filters)
-        self._source: QVideoSource | None = None
+        self._stage = _FilterStage(filters, depth)
+        super().__init__(self._stage)  # pyright: ignore[reportArgumentType]
+        self.framesDropped = self._stage.framesDropped
+        self.filterFailed = self._stage.filterFailed
         self._rack: QFilterRack | None = None
-        self.source = source
+        self.upstream = source
         self.rack = rack
         self.start()
         app = QtCore.QCoreApplication.instance()
@@ -131,21 +257,13 @@ class QFilterPipeline(QtCore.QThread):
             app.aboutToQuit.connect(self.stop)
 
     @property
-    def source(self) -> 'QVideoSource | None':
+    def upstream(self) -> 'QVideoSource | None':
         '''The source whose frames are filtered.'''
-        return self._source
+        return self._stage.upstream
 
-    @source.setter
-    def source(self, source: 'QVideoSource | None') -> None:
-        if self._source is not None:
-            self._source.newFrame.disconnect(self._deliver)
-            self._source.shapeChanged.disconnect(self.shapeChanged)
-        self._source = source
-        if source is None:
-            return
-        source.newFrame.connect(
-            self._deliver, QtCore.Qt.ConnectionType.DirectConnection)
-        source.shapeChanged.connect(self.shapeChanged)
+    @upstream.setter
+    def upstream(self, source: 'QVideoSource | None') -> None:
+        self._stage.upstream = source
 
     @property
     def rack(self) -> 'QFilterRack | None':
@@ -172,91 +290,19 @@ class QFilterPipeline(QtCore.QThread):
     @property
     def filters(self) -> tuple[VideoFilter, ...]:
         '''The filters currently applied, in order.'''
-        return self._filters
+        return self._stage.filters
 
     @filters.setter
     def filters(self, filters: Iterable[VideoFilter]) -> None:
-        with QtCore.QMutexLocker(self._mutex):
-            self._filters = tuple(filters)
+        self._stage.filters = filters
 
-    @property
-    def fps(self) -> float:
-        '''Frame rate of the source [frames per second].'''
-        return self._source.fps if self._source is not None else 0.
-
-    @property
-    def shape(self) -> QtCore.QSize:
-        '''Shape of the source frames as ``QSize(width, height)``.'''
-        return (self._source.shape if self._source is not None
-                else QtCore.QSize())
-
-    @QtCore.Slot(np.ndarray, object)
-    def _deliver(self, frame: Image, info: FrameInfo) -> None:
-        '''Queue a frame; runs in the thread that emitted ``newFrame``.'''
-        with QtCore.QMutexLocker(self._mutex):
-            if not self._running:
-                return
-            if len(self._queue) == self._queue.maxlen:
-                self._dropped += 1
-            self._queue.append((frame, info))
-        self._wait.wakeOne()
-
-    def run(self) -> None:
-        '''Take waiting frames, filter them, and emit the results.'''
-        while True:
-            with QtCore.QMutexLocker(self._mutex):
-                while self._running and not self._queue:
-                    self._wait.wait(self._mutex)
-                if not self._running:
-                    return
-                frame, info = self._queue.popleft()
-                dropped, self._dropped = self._dropped, 0
-            if dropped:
-                self.framesDropped.emit(dropped)
-            frame, levels = self._apply(frame, info.levels)
-            if frame is not None:
-                if levels != info.levels:
-                    info = replace(info, levels=levels)
-                self.newFrame.emit(frame, info)
-
-    def _apply(self, frame: Image, levels: tuple | None
-               ) -> tuple[Image | None, tuple | None]:
-        '''Run *frame*, whose pixels have *levels*, through the filters.
-
-        Returns the result and its levels: ``(None, levels)`` if a filter
-        has no result yet.
-        '''
-        for video_filter in self._filters:
-            frame, levels = prepare(video_filter, frame, levels)
-            try:
-                result = video_filter(frame)
-            except Exception as error:
-                logger.exception(f'{type(video_filter).__name__} failed '
-                                 'and was removed from the filter pipeline')
-                self.filters = [f for f in self._filters
-                                if f is not video_filter]
-                self.filterFailed.emit(video_filter, error)
-                continue
-            if result is None:
-                return None, levels
-            frame = result
-        return frame, levels
-
-    def __del__(self) -> None:
-        # The garbage collector may get here after Qt has deleted the C++
-        # object (or before it was built): then there is no thread to stop.
-        try:
-            running = self.isRunning()
-        except RuntimeError:
-            return
-        if running:
-            self.stop()
+    def _frameInfo(self) -> FrameInfo:
+        '''Return the metadata of the frame that was filtered.'''
+        return self._stage.info
 
     @QtCore.Slot()
     def stop(self) -> None:
         '''Stop the worker thread, discarding waiting frames.'''
-        with QtCore.QMutexLocker(self._mutex):
-            self._running = False
-            self._queue.clear()
-        self._wait.wakeAll()
+        super().stop()
+        self._stage.close()
         self.wait()

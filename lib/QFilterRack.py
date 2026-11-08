@@ -249,11 +249,11 @@ class QFilterRack(QtWidgets.QWidget):
     @property
     def source(self) -> 'QVideoSource | None':
         '''The source whose frames are filtered.'''
-        return self.pipeline.source
+        return self.pipeline.upstream
 
     @source.setter
     def source(self, source: 'QVideoSource | None') -> None:
-        self.pipeline.source = source
+        self.pipeline.upstream = source
 
     def _setupUi(self) -> None:
         outer = QtWidgets.QVBoxLayout(self)

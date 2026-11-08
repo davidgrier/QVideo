@@ -121,9 +121,7 @@ class QVideoSource(QtCore.QThread):
                     self.source.seek(target)  # pyright: ignore[reportCallIssue]
                 ok, frame = self.source.saferead()
                 if ok:
-                    info = FrameInfo(self._frames, perf_counter(),
-                                     self._hardwareTimestamp(),
-                                     getattr(self.source, 'levels', None))
+                    info = self._frameInfo()
                     self._frames += 1
                     self.newFrame.emit(frame, info)
                 elif not self.source.isOpen():
@@ -141,9 +139,15 @@ class QVideoSource(QtCore.QThread):
             if self._running:
                 self._waitCondition.wait(self._mutex, _CLOSED_WAIT_MS)
 
-    def _hardwareTimestamp(self) -> float | None:
-        '''Return the camera's timestamp for the frame just read, if any.'''
-        return getattr(self.source, 'hardwareTimestamp', None)
+    def _frameInfo(self) -> FrameInfo:
+        '''Return the metadata of the frame just read.
+
+        The index counts the frames of this source, the time is now, and
+        the hardware timestamp and levels are the camera's, if it has them.
+        '''
+        return FrameInfo(self._frames, perf_counter(),
+                         getattr(self.source, 'hardwareTimestamp', None),
+                         getattr(self.source, 'levels', None))
 
     def __del__(self) -> None:
         # The garbage collector may get here after Qt has deleted the C++

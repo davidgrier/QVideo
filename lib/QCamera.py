@@ -527,14 +527,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         value : PropertyValue
             New value to assign.
         '''
-        key = self._canonical(key)
-        if key not in self.properties:
-            logger.error(f'Unknown property: {key}')
+        found = self._lookup(key, 'set', logging.WARNING)
+        if found is None:
             return
-        if not self._isOpen:
-            logger.warning(f'The camera is closed: {key} was not set')
-            return
-        setter = self.properties[key].setter
+        key, spec = found
+        setter = spec.setter
         if setter is None:
             logger.warning(f'Property {key!r} is read-only')
             return
@@ -548,6 +545,26 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             after = self.shape
         if after != before:
             self.shapeChanged.emit(after)
+
+    def _lookup(self, key: str, verb: str,
+                closedLevel: int) -> tuple[str, PropertySpec] | None:
+        '''Return the name and spec of property *key*, or say why not.
+
+        An unknown property is an error.  A camera that is closed answers
+        quietly, at *closedLevel*: ``'The camera is closed: gain was not
+        set'`` (a lost camera is closed, and the reads and writes that
+        follow are no news).
+        '''
+        key = self._canonical(key)
+        spec = self.properties.get(key)
+        if spec is None:
+            logger.error(f'Unknown property: {key}')
+            return None
+        if not self._isOpen:
+            logger.log(closedLevel,
+                       f'The camera is closed: {key} was not {verb}')
+            return None
+        return key, spec
 
     def _affectsShape(self, key: str) -> bool:
         '''Return whether setting the property *key* can change the shape.'''
@@ -570,14 +587,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         PropertyValue or None
             Current value, or ``None`` if the property is unknown.
         '''
-        key = self._canonical(key)
-        if key not in self.properties:
-            logger.error(f'Unknown property: {key}')
+        found = self._lookup(key, 'read', logging.DEBUG)
+        if found is None:
             return None
-        if not self._isOpen:
-            logger.debug(f'The camera is closed: {key} was not read')
-            return None
-        value = self.properties[key].getter()
+        key, spec = found
+        value = spec.getter()
         self.propertyValue.emit(key, value)
         return value
 
@@ -691,8 +705,8 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
             if not self._isOpen:
                 return False, None
             result = self.read()
-            changes = self._changes() if self._watched and result[0] \
-                else None
+            changes = (self._changes() if result[0] and self._watched
+                       else None)
         if changes:
             self.propertiesChanged.emit(changes)
         return result

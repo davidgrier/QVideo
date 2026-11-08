@@ -79,24 +79,57 @@ The saver takes the image as an argument, so any array can be saved.
 
 ---
 
-## The tree shows what the camera did on its own  **Open; found 2026-11-03**
+## The tree shows what the camera did on its own  **Done for Viva 2026-11-08**
 
-`QCameraTree` reads the camera back only after a change made in the tree.
-A camera that changes by itself is not followed:
+`QCameraTree` read the camera back only after a change made in the tree, so
+a camera that changes by itself was not followed: `ExposureAuto = Once`
+resets to `Off` within a second but the tree kept showing `Once` (and
+choosing `Once` again did nothing), and the exposure time and gain after an
+automatic sweep were the old ones.
 
-- `ExposureAuto = Once` resets to `Off` within a second, but the tree
-  keeps showing `Once`.  Choosing `Once` again then does nothing (no
-  change, no signal) until `Off` is chosen first.
-- `Once` takes several frames to settle, so the tree may show the exposure
-  time from before the camera converged.  A report of the value reverting
-  after `Off` is not explained: the measurement
-  (`vivatree.py`, steady scene) showed the tree and the camera agreeing,
-  but the exposure did not change in that run.
+The first idea was a timer in the tree.  The better one (David's) is to ask
+the camera: viva-genicam tracks the invalidator map (`changed_since` after a
+write) and the `PollingTime` that the XML declares for features that change
+by themselves (`poll()` names those that are due).  Measured on the
+Blackfly S (`devel/vivaprobe.py`): `ExposureAuto`, `ExposureTime`,
+`GainAuto` and `AcquisitionResultingFrameRate` declare 0.5 s, and a read
+returns the camera's value only after that time.
 
-Idea: refresh the displayed values about once a second, with the same
-read-back that `_sync` does (the Genicam tree already polls), in the base
-class so that every backend follows.  Measure first with a scene that
-changes during `Once`.
+- [x] `QCamera.watch(names)`, `_changes()` (called by `saferead` after each
+  frame, holding the lock) and the signal `propertiesChanged(dict)`.
+- [x] `QVivaCamera._changes`: asks only when something can change (a write
+  that touches a watched feature, directly or through `changed_since`, or an
+  `...Auto` mode that is not `Off`); then `poll()` twice a second, the
+  watched features that are due, one hold of the camera, only values that
+  differ; it looks again at what is writable; it stops after two polls
+  without news and no automatic mode on.
+- [x] `QCameraTree` watches what it shows, applies the signal without
+  sending it back, and reads its properties with `QCamera.snapshot` (one
+  hold) after an edit.
+- [x] **On the camera** (`devel/vivafollow.py`, 2026-11-08): with the
+  signal, the tree shows `Off` and 14998 µs, writable, half a second after
+  `Once`; without it the tree stays at `Once` and 2001 µs.  The frame rate
+  is the same (67.8 against 68.0 a second while settling, 66.2 against 66.0
+  idle).  `devel/vivaidle.py` counts the polls: none idle, 2 or 3 after a
+  write, 2 a second under `Continuous`, none again after `Off`.
+- [ ] Use the invalidator map after the user's own writes
+  (`changed_since`): the tree reads back all that it shows, which one
+  snapshot makes cheap; the map would name only the dependents.  Not needed
+  yet.
+- [ ] **Genicam (Harvesters), conditional on keeping it** (see "Retire the
+  Harvesters backends that nobody has tested?"): the model is backend
+  neutral, so `QGenicamCamera` can adopt it without touching `Viva`.  The
+  `genicam` binding has the GenApi equivalents: `INode.polling_time`,
+  `NodeMap.poll(elapsed)`, `register_callback`, `parents`/`children`.  It
+  would replace the 200 ms GUI-thread poll of `QGenicamTree._pollCamera`
+  (idle: no traffic).  The cost is the worker: `_changes()` runs in the
+  worker process, so the remote protocol needs an event message that the
+  `QRemoteCamera` proxy re-emits as `propertiesChanged`.  The Blackfly S
+  can verify it through the Flir path.  The Genicam tree does not have the
+  stale-display bug (it follows the camera already), so this is cleanup, not
+  a fix: decide the fate of the Harvesters backends first.
+
+---
 
 ## Limit the work of the filter pipeline  **Idea; not sure how**
 

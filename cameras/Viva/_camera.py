@@ -1,8 +1,10 @@
 '''GenICam cameras and sources, driven through viva-genicam.'''
+from collections.abc import Iterable
 from contextlib import suppress
 from functools import partial
 import logging
 import re
+import time
 from QVideo.lib import QCamera
 from QVideo.lib.errors import QDeviceError
 from typing import ClassVar
@@ -96,6 +98,11 @@ class QVivaCamera(QCamera):
         self._stream: vg.FrameStream | None = None
         self._kinds: dict[str, str] = {}
         self._streamLocked: set[str] = set()
+        self._armed = False
+        self._quiet = 0
+        self._nextPoll = 0.
+        self._autos: set[str] = set()
+        self._reported: dict[str, QCamera.PropertyValue] = {}
         #: Why the last read failed; the reason when the stream then ends.
         self._readError: str | None = None
         self.open()
@@ -128,10 +135,20 @@ class QVivaCamera(QCamera):
         return True
 
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
-        '''Set a property; a new pixel format changes the levels.'''
+        '''Set a property; a new pixel format changes the levels.
+
+        A write that touches a watched feature, directly or through the
+        features that depend on it, starts asking the camera what changed
+        (see :meth:`_changes`).
+        '''
+        generation = self._device.generation() if self._isOpen else 0
         super().set(key, value)
         if self._canonical(key) == 'PixelFormat':
             self._updateLevels()
+        if self._isOpen:
+            touched, _ = self._device.changed_since(generation)
+            if self._watched.intersection(touched):
+                self._arm()
 
     def _updateLevels(self) -> None:
         '''Read the pixel format and keep the levels that it implies.
@@ -228,7 +245,7 @@ class QVivaCamera(QCamera):
             if spec['setter'] is not None
             and self._device.feature_state(name).access != 'RW'}
 
-    def updateAccess(self) -> None:
+    def updateAccess(self, names: Iterable[str] | None = None) -> None:
         '''Give a setter to the features that are writable now, and take
         it from those that are not.
 
@@ -236,14 +253,98 @@ class QVivaCamera(QCamera):
         exposure time is read-only while the exposure is automatic.  Call
         this after a change, and each property is writable exactly when
         it has a setter.
+
+        Parameters
+        ----------
+        names : iterable of str, optional
+            The features to look at.  Default: all of them, which asks the
+            camera about each one; a tree that shows a few asks about those.
         '''
         if not self.isOpen():
             return
-        for name, kind in self._kinds.items():
+        kinds = (self._kinds if names is None
+                 else {name: self._kinds[name]
+                       for name in names if name in self._kinds})
+        for name, kind in kinds.items():
             state = self._device.feature_state(name)
             writable = self._isWritable(state, name)
             if writable != (self.properties[name]['setter'] is not None):
                 self._registerFeature(name, kind)
+
+    #: Seconds between asking the camera what to read again.  The XML of a
+    #: camera declares a ``PollingTime`` for the features that change by
+    #: themselves (0.5 s for the exposure, its mode, the gain mode and the
+    #: frame rate of a Blackfly S), and a read gives the value from the
+    #: camera only after that time has passed.
+    POLL_PERIOD = 0.5
+
+    #: Polls without news after which the camera stops asking, unless a
+    #: feature is in an automatic mode.
+    QUIET = 2
+
+    def watch(self, names: Iterable[str]) -> None:
+        '''Name the features to report, and look at them once.
+
+        The automatic modes among them (SFNC names them ``...Auto``, with
+        ``Off`` for manual) keep the camera asking while they are not off.
+        '''
+        super().watch(names)
+        self._autos = {name for name in self._watched
+                       if name.endswith('Auto')}
+        self._reported = QCamera.snapshot(self, self._watched)
+        self._arm()
+
+    def _arm(self) -> None:
+        '''Start asking the camera what changed.'''
+        self._armed = True
+        self._quiet = 0
+        self._nextPoll = 0.
+
+    def _changes(self) -> QCamera.Settings | None:
+        '''Return the watched features that the camera changed on its own.
+
+        The camera is not asked until something can change: a write to a
+        watched feature (or to one that invalidates it) arms it, and an
+        automatic mode that is not off keeps it armed.  Then :meth:`poll`
+        names the features whose polling time has passed, with everything
+        that depends on them; of those only the watched ones are read, in
+        the hold of the camera that the frame was read in.  A value that
+        differs from the last one is returned, and what is writable is
+        looked at again (the exposure time while the exposure is
+        automatic).  After :attr:`QUIET` polls without news, and with no
+        automatic mode on, the camera is left alone again.
+        '''
+        now = time.monotonic()
+        if not self._armed or now < self._nextPoll:
+            return None
+        self._nextPoll = now + self.POLL_PERIOD
+        try:
+            due = set(self._device.poll())
+        except vg.GenicamError as ex:
+            logger.debug(f'poll failed: {ex}')
+            return None
+        names = {name for name in self._watched if name in due} | self._autos
+        values = QCamera.snapshot(self, names)
+        changed = {name: value for name, value in values.items()
+                   if self._reported.get(name) != value}
+        self._reported.update(values)
+        self._quiet = 0 if changed else self._quiet + 1
+        automatic = any(values.get(name, 'Off') != 'Off'
+                        for name in self._autos)
+        if self._quiet >= self.QUIET and not automatic:
+            self._armed = False
+        if changed:
+            self.updateAccess(self._watched)
+        return changed or None
+
+    def snapshot(self, names: Iterable[str]
+                 ) -> dict[str, QCamera.PropertyValue]:
+        '''Read the values of *names* at once, after updating what is
+        writable among them, under the same hold of the camera.'''
+        names = list(names)
+        with self._mutex:
+            self.updateAccess(names)
+            return super().snapshot(names)
 
     def _getter(self, name: str, call: str):
         '''Return a reader of feature *name*, ``None`` when it is not

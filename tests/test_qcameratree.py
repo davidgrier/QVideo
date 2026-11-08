@@ -495,5 +495,82 @@ class TestQCameraTreeAdaptiveStepIntegration(unittest.TestCase):
         self.assertAlmostEqual(step, 100.0)
 
 
+class TestQCameraTreeFollowsTheCamera(unittest.TestCase):
+
+    '''The tree shows what the camera changes on its own.'''
+
+    def make(self, camera=None):
+        camera = camera or make_camera()
+        tree = QCameraTree(make_source(camera))
+        self.addCleanup(tree.stop)
+        return tree, camera
+
+    def test_it_asks_the_camera_to_report_what_it_shows(self):
+        tree, camera = self.make()
+        self.assertEqual(camera._watched, frozenset(tree._parameters))
+
+    def test_it_shows_what_the_camera_did_by_itself(self):
+        tree, camera = self.make()
+        camera.propertiesChanged.emit({'height': 100})
+        self.assertEqual(tree.get('height'), 100)
+
+    def test_it_does_not_send_what_it_is_told_back_to_the_camera(self):
+        tree, camera = self.make()
+        with patch.object(camera, 'set') as send:
+            camera.propertiesChanged.emit({'height': 100})
+        send.assert_not_called()
+
+    def test_it_changes_only_what_differs(self):
+        tree, camera = self.make()
+        height = tree.get('height')
+        with patch.object(tree, 'set') as show:
+            camera.propertiesChanged.emit({'height': height, 'width': 321})
+        show.assert_called_once_with('width', 321)
+
+    def test_a_property_that_it_does_not_show_is_ignored(self):
+        tree, camera = self.make()
+        with patch.object(tree, 'set') as show:
+            camera.propertiesChanged.emit({'nothing': 1})
+        show.assert_not_called()
+
+    def test_it_shows_which_controls_can_be_written(self):
+        tree, camera = self.make()
+        with patch.object(tree, '_showAccess') as show:
+            camera.propertiesChanged.emit({'height': 100})
+        show.assert_called_once()
+
+    def test_a_setting_that_resets_itself_can_be_chosen_again(self):
+        # ExposureAuto = Once turns itself off when the camera has settled;
+        # the tree used to go on showing Once, and choosing it again changed
+        # nothing, so no command reached the camera.
+        state = {'value': 'Off'}
+        camera = make_camera()
+        camera.registerProperty(
+            'Auto', getter=lambda: state['value'],
+            setter=lambda value: state.update(value=value), ptype=str,
+            limits=['Off', 'Once'])
+        tree, _ = self.make(camera)
+        tree._parameters['Auto'].setValue('Once')
+        self.assertEqual(state['value'], 'Once')
+        state['value'] = 'Off'                  # the camera has settled
+        camera.propertiesChanged.emit({'Auto': 'Off'})
+        self.assertEqual(tree.get('Auto'), 'Off')
+        tree._parameters['Auto'].setValue('Once')
+        self.assertEqual(state['value'], 'Once')
+
+    def test_an_edit_reads_the_camera_in_one_request(self):
+        tree, camera = self.make()
+        with patch.object(camera, 'snapshot',
+                          wraps=camera.snapshot) as snapshot:
+            tree._parameters['width'].setValue(320)
+        snapshot.assert_called_once()
+
+    def test_floats_that_agree_are_not_a_difference(self):
+        self.assertFalse(QCameraTree._differs(1., 1. + 1e-12))
+        self.assertTrue(QCameraTree._differs(1., 1.1))
+        self.assertTrue(QCameraTree._differs('Once', 'Off'))
+        self.assertFalse(QCameraTree._differs(3, 3))
+
+
 if __name__ == '__main__':
     unittest.main()

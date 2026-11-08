@@ -11,6 +11,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **The Viva tree follows a camera that changes by itself.**
+  `ExposureAuto = Once` turns itself off when the camera has settled, and an
+  automatic exposure or gain changes the exposure time and the gain, but the
+  tree read the camera only after its own changes, so it went on showing
+  `Once` and the old exposure (and choosing `Once` again changed nothing,
+  because the value did not change).  The camera now tells the tree.  The
+  tree names what it shows (`QCamera.watch(names)`), `saferead` calls the
+  hook `QCamera._changes()` after each frame, and the camera emits
+  `propertiesChanged(dict)` from the thread that reads the frames, so no
+  window waits for it.  `QVivaCamera` asks only when something can change:
+  a write to a shown feature, or to one that invalidates it (viva-genicam's
+  `changed_since`), or an automatic mode (`...Auto`) that is not `Off`.  It
+  then asks viva-genicam's `poll()` twice a second, which names the features
+  whose XML `PollingTime` has passed (the exposure, its mode, the gain mode
+  and the frame rate declare 0.5 s on a Blackfly S), reads only those that
+  the tree shows, in the same hold of the camera, and reports a value that
+  differs; it also looks again at what is writable (the exposure time while
+  the exposure is automatic).  After two polls without news and with no
+  automatic mode on, it stops asking.  Measured on a Blackfly S: idle, no
+  poll at all; after a write, two or three polls; `Continuous`, two a
+  second until it is `Off`; the tree shows `Off` and the settled exposure
+  time half a second after `Once`, and the frame rate does not change (68
+  frames a second).  Other backends can override `_changes()` in the same
+  way.
+- **The tree reads the properties it shows in one request.**  After an edit
+  it asked the camera for each of its properties in turn, and each waited for
+  the frame that the capture thread was waiting for; `QCamera.snapshot(names)`
+  reads them all under one hold of the camera, so the edit waits for at most
+  one frame.  `QVivaCamera.updateAccess(names)` can look at a few features,
+  not all of them.
 - **`camera.record()` warns when the frames do not arrive at the declared
   rate.**  If `fps=` was not given and the frames arrived more than 10% off
   the rate the file declares (a webcam slows down in dim light, a slow

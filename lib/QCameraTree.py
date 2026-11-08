@@ -135,6 +135,8 @@ class QCameraTree(ParameterTree):
     def _connectSignals(self) -> None:
         self._tree.sigTreeStateChanged.connect(self._sync)
         self._source.lost.connect(self._disable)
+        self.camera.watch(self._parameters)
+        self.camera.propertiesChanged.connect(self._showChanges)
         cast(QtCore.QCoreApplication,
              QtCore.QCoreApplication.instance()).aboutToQuit.connect(
                  self.stop)
@@ -196,6 +198,38 @@ class QCameraTree(ParameterTree):
         finally:
             self._ignoreSync = ignoring
 
+    @QtCore.Slot(object)
+    def _showChanges(self, values: dict) -> None:
+        '''Show the values that the camera changed on its own.
+
+        The camera reports them (see :meth:`QCamera.watch`): an automatic
+        exposure settled, or a mode that turns itself off did.  They are
+        not sent back.  The tree also shows which controls the camera lets
+        us write now.
+        '''
+        with self._syncIgnored():
+            for key, value in values.items():
+                if (key in self._parameters
+                        and self._differs(self._parameters[key].value(),
+                                          value)):
+                    self.set(key, value)
+        self._showAccess()
+
+    @staticmethod
+    def _differs(shown: object, value: object) -> bool:
+        '''Return whether the tree shows something other than *value*.'''
+        if isinstance(shown, float) and isinstance(value, float):
+            return not math.isclose(shown, value, rel_tol=1e-9, abs_tol=1e-12)
+        return shown != value
+
+    def _showAccess(self) -> None:
+        '''Show which of the controls the camera lets us write.
+
+        A camera changes what can be written as its settings change (the
+        exposure time while the exposure is automatic), so a tree whose
+        camera does that follows it.  The default does nothing.
+        '''
+
     @QtCore.Slot(str)
     def _disable(self, reason: str) -> None:
         '''Disable the controls of a camera that is not there any more.
@@ -214,7 +248,9 @@ class QCameraTree(ParameterTree):
         slows the frame rate), so the tree reads back the properties that
         it shows, and only those: a camera has many more properties than a
         tree has controls.  A property that cannot be read at the moment
-        keeps its value in the tree.
+        keeps its value in the tree.  They are read in one request
+        (:meth:`QCamera.snapshot`), which waits for at most one frame: the
+        capture thread holds the camera while it waits for one.
         '''
         if self._ignoreSync:
             return
@@ -224,13 +260,10 @@ class QCameraTree(ParameterTree):
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
                 self._updateStep(param)
-        properties = self.camera.properties
+        values = self.camera.snapshot(self._parameters)
         with self._syncIgnored():
-            for key in self._parameters:
-                if key in properties:
-                    value = properties[key]['getter']()
-                    if value is not None:
-                        self.set(key, value)
+            for key, value in values.items():
+                self.set(key, value)
 
     @QtCore.Slot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:

@@ -151,7 +151,16 @@ and every frame read through ``saferead``, runs holding one lock.  So:
 - Never take the lock from code above the camera, and do not call camera
   getters from the GUI thread once per frame.  A backend that must be
   polled by a GUI offers a snapshot method, as
-  :meth:`~QVideo.cameras.Genicam.QGenicamCamera.state` does.
+  :meth:`~QVideo.cameras.Genicam.QGenicamCamera.state` does; the base class
+  has :meth:`~QVideo.lib.QCamera.QCamera.snapshot`, which reads several
+  properties under one hold of the lock.
+- A camera that changes some of its properties by itself (an automatic
+  exposure settles) tells the GUI instead of waiting to be asked.  A tree
+  names what it shows with :meth:`~QVideo.lib.QCamera.QCamera.watch`, and
+  the camera overrides ``_changes()``, which :meth:`saferead` calls after
+  each frame it read, holding the lock; the changes it returns go out in
+  the signal :attr:`~QVideo.lib.QCamera.QCamera.propertiesChanged`.  Keep
+  ``_changes()`` quick, and return ``None`` when nothing changed.
 
 Timestamps
 ~~~~~~~~~~

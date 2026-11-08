@@ -1,6 +1,7 @@
 '''Unit tests for the viva-genicam camera, on the fake devices of the
 package.'''
 import sys
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 from qtpy import QtWidgets
@@ -488,6 +489,291 @@ class TestAccess(unittest.TestCase):
                 self.assertTrue(tree._parameters['Height'].opts['enabled'])
             finally:
                 tree.stop()
+
+
+class Polled:
+
+    '''A device whose poll() names the features *due* to be read again.'''
+
+    def __init__(self, device):
+        self._device = device
+        self.due = []
+        self.fails = False
+        self.polls = 0
+
+    def __getattr__(self, name):
+        return getattr(self._device, name)
+
+    def poll(self):
+        self.polls += 1
+        if self.fails:
+            raise vg.GenicamError('no answer')
+        return list(self.due)
+
+
+class PolledCamera(FakeCamera):
+
+    def _connect(self):
+        return Polled(super()._connect())
+
+
+@unittest.skipIf(vg is None, 'viva-genicam is not installed')
+class TestChanges(unittest.TestCase):
+
+    '''The camera tells the tree what changed on its own.'''
+
+    def setUp(self):
+        self.camera = PolledCamera()
+        self.addCleanup(self.camera.close)
+        self.heard = record(self.camera.propertiesChanged)
+        clock = patch.object(MODULE, 'time',
+                             types.SimpleNamespace(monotonic=self.now))
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.time = 100.
+        self.camera.watch(['AcquisitionFrameRate'])
+
+    def now(self):
+        return self.time
+
+    def change(self, name, value):
+        """The camera changes a feature by itself."""
+        device = self.camera._device._device
+        (device.set_bool if isinstance(value, bool)
+         else device.set_float)(name, value)
+
+    def test_a_feature_that_is_due_and_changed_is_reported(self):
+        self.camera._device.due = ['AcquisitionFrameRate']
+        self.change('AcquisitionFrameRate', 20.)
+        self.camera.saferead()
+        self.assertEqual(self.heard, [({'AcquisitionFrameRate': 20.},)])
+
+    def test_only_the_watched_features_that_are_due_are_read(self):
+        self.camera._device.due = ['AcquisitionFrameRate', 'ChunkModeActive',
+                                   'Nothing']
+        self.change('ChunkModeActive', True)
+        self.change('AcquisitionFrameRate', 12.)
+        self.camera.saferead()
+        self.assertEqual(self.heard, [({'AcquisitionFrameRate': 12.},)])
+
+    def test_nothing_is_read_when_nothing_is_due(self):
+        self.change('AcquisitionFrameRate', 20.)
+        self.camera.saferead()
+        self.assertEqual(self.heard, [])
+
+    def test_a_value_that_was_reported_is_not_reported_again(self):
+        self.camera._device.due = ['AcquisitionFrameRate']
+        self.change('AcquisitionFrameRate', 20.)
+        self.camera.saferead()
+        self.time += 1.
+        self.camera.saferead()
+        self.assertEqual(len(self.heard), 1)
+
+    def test_a_new_value_is_reported(self):
+        self.camera._device.due = ['AcquisitionFrameRate']
+        self.change('AcquisitionFrameRate', 20.)
+        self.camera.saferead()
+        self.time += 1.
+        self.change('AcquisitionFrameRate', 10.)
+        self.camera.saferead()
+        self.assertEqual(self.heard, [({'AcquisitionFrameRate': 20.},), ({'AcquisitionFrameRate': 10.},)])
+
+    def test_the_camera_is_asked_twice_a_second_at_most(self):
+        self.camera._device.due = ['AcquisitionFrameRate']
+        self.change('AcquisitionFrameRate', 20.)
+        self.camera.saferead()
+        self.change('AcquisitionFrameRate', 10.)
+        self.time += 0.2
+        self.camera.saferead()
+        self.assertEqual(len(self.heard), 1)
+        self.time += 0.4
+        self.camera.saferead()
+        self.assertEqual(len(self.heard), 2)
+
+    def test_what_is_writable_is_looked_at_again_when_something_changed(self):
+        self.camera._device.due = ['AcquisitionFrameRate']
+        self.change('AcquisitionFrameRate', 20.)
+        with patch.object(self.camera, 'updateAccess') as look:
+            self.camera.saferead()
+        look.assert_called_once_with(frozenset({'AcquisitionFrameRate'}))
+
+    def test_nothing_is_looked_at_when_nothing_changed(self):
+        self.camera._device.due = ['AcquisitionFrameRate']
+        self.camera.saferead()
+        self.heard.clear()
+        self.time += 1.
+        with patch.object(self.camera, 'updateAccess') as look:
+            self.camera.saferead()
+        look.assert_not_called()
+        self.assertEqual(self.heard, [])
+
+    def test_a_camera_that_does_not_answer_is_left_alone(self):
+        self.camera._device.fails = True
+        self.camera.saferead()
+        self.assertEqual(self.heard, [])
+
+
+@unittest.skipIf(vg is None, 'viva-genicam is not installed')
+class TestOnlyWhenNeeded(unittest.TestCase):
+
+    '''The camera is asked what changed only when something can change.'''
+
+    def setUp(self):
+        self.camera = PolledCamera()
+        self.addCleanup(self.camera.close)
+        self.device = self.camera._device
+        clock = patch.object(MODULE, 'time',
+                             types.SimpleNamespace(monotonic=self.now))
+        clock.start()
+        self.addCleanup(clock.stop)
+        self.time = 100.
+
+    def now(self):
+        return self.time
+
+    def frames(self, n):
+        """Read *n* frames, half a second apart."""
+        for _ in range(n):
+            self.camera.saferead()
+            self.time += 0.6
+
+    def settle(self):
+        """Watch, and read until the camera stops asking."""
+        self.camera.watch(['AcquisitionFrameRate'])
+        self.frames(self.camera.QUIET + 1)
+        self.assertFalse(self.camera._armed)
+        self.device.polls = 0
+
+    def test_nothing_is_asked_before_anything_is_watched(self):
+        self.frames(5)
+        self.assertEqual(self.device.polls, 0)
+
+    def test_watching_starts_the_asking(self):
+        self.camera.watch(['AcquisitionFrameRate'])
+        self.frames(1)
+        self.assertEqual(self.device.polls, 1)
+
+    def test_it_stops_after_the_quiet_polls(self):
+        self.camera.watch(['AcquisitionFrameRate'])
+        self.frames(self.camera.QUIET)
+        self.assertEqual(self.device.polls, self.camera.QUIET)
+        self.assertFalse(self.camera._armed)
+        self.frames(5)
+        self.assertEqual(self.device.polls, self.camera.QUIET)
+
+    def test_news_keeps_it_asking(self):
+        self.camera.watch(['AcquisitionFrameRate'])
+        self.device.due = ['AcquisitionFrameRate']
+        for rate in (11., 12., 13., 14., 15.):
+            self.device._device.set_float('AcquisitionFrameRate', rate)
+            self.frames(1)
+        self.assertTrue(self.camera._armed)
+        self.assertEqual(self.device.polls, 5)
+
+    def test_a_write_to_a_watched_feature_starts_the_asking(self):
+        self.settle()
+        self.camera.set('AcquisitionFrameRate', 15.)
+        self.assertTrue(self.camera._armed)
+        self.frames(1)
+        self.assertEqual(self.device.polls, 1)
+
+    def test_a_write_to_a_feature_that_is_not_watched_does_not(self):
+        self.settle()
+        self.camera.set('ChunkModeActive', True)
+        self.assertFalse(self.camera._armed)
+        self.frames(3)
+        self.assertEqual(self.device.polls, 0)
+
+    def test_a_write_to_a_feature_that_invalidates_a_watched_one_does(self):
+        self.settle()
+        with patch.object(self.device, 'changed_since', create=True,
+                          return_value=(['AcquisitionFrameRate'], 1)):
+            self.camera.set('ChunkModeActive', True)
+        self.assertTrue(self.camera._armed)
+
+    def test_the_automatic_modes_are_found_by_name(self):
+        self.camera.registerProperty('ExposureAuto', getter=lambda: 'Off',
+                                     setter=None, ptype=str)
+        self.camera.watch(['ExposureAuto', 'AcquisitionFrameRate'])
+        self.assertEqual(self.camera._autos, {'ExposureAuto'})
+
+    def test_an_automatic_mode_that_is_on_keeps_it_asking(self):
+        mode = {'value': 'Continuous'}
+        self.camera.registerProperty('ExposureAuto',
+                                     getter=lambda: mode['value'],
+                                     setter=None, ptype=str)
+        self.camera.watch(['ExposureAuto'])
+        self.frames(self.camera.QUIET + 4)
+        self.assertTrue(self.camera._armed)
+        self.assertEqual(self.device.polls, self.camera.QUIET + 4)
+
+    def test_an_automatic_mode_that_turns_off_lets_it_stop(self):
+        mode = {'value': 'Once'}
+        self.camera.registerProperty('ExposureAuto',
+                                     getter=lambda: mode['value'],
+                                     setter=None, ptype=str)
+        self.camera.watch(['ExposureAuto'])
+        self.frames(self.camera.QUIET + 2)
+        self.assertTrue(self.camera._armed)
+        mode['value'] = 'Off'
+        self.frames(1)                          # the news
+        self.assertTrue(self.camera._armed)
+        self.frames(self.camera.QUIET)
+        self.assertFalse(self.camera._armed)
+
+    def test_a_closed_camera_can_be_written_to(self):
+        self.camera.close()
+        self.camera.set('AcquisitionFrameRate', 15.)       # does not raise
+
+
+@unittest.skipIf(vg is None, 'viva-genicam is not installed')
+class TestSnapshot(unittest.TestCase):
+
+    def test_a_snapshot_updates_what_is_writable_before_it_reads(self):
+        with AccessCamera() as camera:
+            camera._device.names.add('Height')
+            values = camera.snapshot(['Height', 'Width'])
+            self.assertIsNone(camera.properties['Height']['setter'])
+            self.assertEqual(set(values), {'Height', 'Width'})
+
+    def test_a_snapshot_looks_only_at_the_features_it_is_given(self):
+        with AccessCamera() as camera:
+            with patch.object(camera, 'updateAccess') as look:
+                camera.snapshot(['Height'])
+            look.assert_called_once_with(['Height'])
+
+    def test_update_access_can_look_at_a_few_features(self):
+        with AccessCamera() as camera:
+            camera._device.names.update(('Height', 'Width'))
+            camera.updateAccess(['Height'])
+            self.assertIsNone(camera.properties['Height']['setter'])
+            self.assertIsNotNone(camera.properties['Width']['setter'])
+
+    def test_an_edit_in_the_tree_updates_what_is_writable(self):
+        with AccessCamera() as camera:
+            tree = QVivaTree(camera=camera, controls=['Height', 'Width'])
+            try:
+                camera._device.names.add('Height')
+                tree._parameters['Width'].setValue(320)
+                self.assertFalse(tree._parameters['Height'].opts['enabled'])
+            finally:
+                tree.stop()
+
+    def test_a_change_of_its_own_enables_the_controls_the_camera_allows(self):
+        with AccessCamera() as camera:
+            tree = QVivaTree(camera=camera, controls=['Height', 'Width'])
+            try:
+                camera._device.names.add('Height')
+                camera.updateAccess(['Height'])
+                camera.propertiesChanged.emit({})
+                self.assertFalse(tree._parameters['Height'].opts['enabled'])
+                camera._device.names.clear()
+                camera.updateAccess(['Height'])
+                camera.propertiesChanged.emit({})
+                self.assertTrue(tree._parameters['Height'].opts['enabled'])
+            finally:
+                tree.stop()
+
 
 
 if __name__ == '__main__':  # pragma: no cover

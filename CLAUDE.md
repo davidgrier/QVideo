@@ -136,10 +136,16 @@ route through this dict. One reentrant lock (`camera._mutex`, a
 `registerMethod` wrap every getter, setter and method in it and `saferead`
 holds it per frame, so nothing is read or written during a frame read and
 backends need no locking of their own.  The lock is private: code above a
-camera never takes it.  A GUI that must poll the hardware asks the camera for
-snapshots (`QGenicamCamera.states`), read under one hold of the lock: the
-capture thread holds it while it waits for a frame, so a GUI that asks for the
-lock once per node stalls. `__getattr__`
+camera never takes it.  A GUI that must read several properties asks the
+camera for `snapshot(names)` (or `QGenicamCamera.states`), read under one
+hold of the lock: the capture thread holds it while it waits for a frame, so
+a GUI that asks for the lock once per property stalls.  A GUI does not poll
+for what a camera changes by itself: it calls `camera.watch(names)`, and a
+backend that can tell overrides `_changes()`, which `saferead` calls after
+each frame (holding the lock, in the capture thread), and the camera emits
+`propertiesChanged(dict)`; `QVivaCamera` asks viva-genicam's `poll()`, which
+names the features whose `PollingTime` has passed, only after a write to a
+watched feature and while an `...Auto` mode is on. `__getattr__`
 delegates attribute access (`camera.fps`) to registered getters, so subclasses
 do not need explicit Python properties for every camera parameter.  A
 backend whose properties have the names of a standard (GenICam's `Width`)

@@ -2,7 +2,7 @@
 import logging
 import threading
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from functools import wraps
 from typing import Any, cast, overload
 from types import TracebackType
@@ -68,6 +68,11 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         that changes them in some other way.
     propertyValue(str, object)
         Emitted by :meth:`get` with the property name and current value.
+    propertiesChanged(object)
+        Emitted with a dict of name and value when properties named in
+        :meth:`watch` have changed without a :meth:`set` (an automatic
+        exposure settled).  A backend that can tell reports them from
+        :meth:`_changes`.  Emitted in the thread that reads the frames.
 
     Type Aliases
     ------------
@@ -103,6 +108,9 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
     shapeChanged = QtCore.Signal(QtCore.QSize)
     #: Emitted by :meth:`get` with the property name and current value.
     propertyValue = QtCore.Signal(str, object)
+    #: Emitted with a dict of name and value when watched properties
+    #: changed on their own; see :meth:`watch`.
+    propertiesChanged = QtCore.Signal(object)
     #: Emitted once, with the reason, when the device has gone (a USB cable
     #: that was pulled).  The camera is closed by then; see
     #: :meth:`_deviceLost`.
@@ -145,6 +153,7 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         #: the keys of :attr:`settings`.
         self.properties: dict[str, dict[str, Any]] = {}
         self._methods: dict[str, Callable[[], object]] = {}
+        self._watched: frozenset[str] = frozenset()
         self._isOpen = False
         self._modelName: str | None = None
 
@@ -483,6 +492,69 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         self.propertyValue.emit(key, value)
         return value
 
+    def snapshot(self, names: Iterable[str]) -> dict[str, PropertyValue]:
+        '''Return the current values of several properties, read at once.
+
+        The camera is held once for all of them, so a caller that polls
+        waits for at most one frame, not one frame for each property (the
+        capture thread holds the camera while it waits for a frame).  A
+        property that is unknown, or cannot be read now, is left out.
+
+        Parameters
+        ----------
+        names : iterable of str
+            Property names.
+
+        Returns
+        -------
+        dict
+            The value of each property that could be read; empty if the
+            camera is closed.
+        '''
+        values: dict[str, QCamera.PropertyValue] = {}
+        with self._mutex:
+            if not self._isOpen:
+                return values
+            for name in names:
+                key = self._canonical(name)
+                if key in self.properties:
+                    value = self.properties[key]['getter']()
+                    if value is not None:
+                        values[name] = value
+        return values
+
+    def watch(self, names: Iterable[str]) -> None:
+        '''Name the properties whose changes on their own are wanted.
+
+        A tree that shows some of the properties asks for them here.  A
+        camera that changes by itself (an automatic exposure and gain, a
+        temperature) reports the watched ones with :attr:`propertiesChanged`
+        after a frame, in the thread that reads the frames, so that nothing
+        waits for the camera.  A backend that cannot tell does not report.
+
+        Parameters
+        ----------
+        names : iterable of str
+            Property names; those that are unknown are ignored.
+        '''
+        self._watched = frozenset(
+            key for key in map(self._canonical, names)
+            if key in self.properties)
+
+    def _changes(self) -> Settings | None:
+        '''Return the watched properties that changed on their own.
+
+        Called holding the camera, after each frame that was read, so it
+        must be quick.  A backend that is told by the device what changed
+        overrides it; the default knows nothing.
+
+        Returns
+        -------
+        dict or None
+            The new values by name, or ``None`` for no change.
+        '''
+        return None
+
     @QtCore.Slot(str)
     def execute(self, key: str) -> None:
         '''Call a registered method by name.
@@ -529,7 +601,12 @@ class QCamera(QtCore.QObject, metaclass=QABCMeta):
         with self._mutex:
             if not self._isOpen:
                 return False, None
-            return self.read()
+            result = self.read()
+            changes = self._changes() if self._watched and result[0] \
+                else None
+        if changes:
+            self.propertiesChanged.emit(changes)
+        return result
 
     # ------------------------------------------------------------------
     # Derived properties

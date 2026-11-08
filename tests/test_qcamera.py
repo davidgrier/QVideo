@@ -807,5 +807,121 @@ class TestOpening(unittest.TestCase):
         self.assertFalse(camera.isOpen())
 
 
+class TestSnapshot(unittest.TestCase):
+
+    '''Several properties at once, read under one hold of the camera.'''
+
+    def setUp(self):
+        self.camera = open_camera()
+        self.addCleanup(self.camera.close)
+
+    def test_it_returns_the_values_by_name(self):
+        values = self.camera.snapshot(['width', 'height', 'fps'])
+        self.assertEqual(values, {'width': 640, 'height': 480, 'fps': 30.})
+
+    def test_a_name_that_is_unknown_is_left_out(self):
+        self.assertEqual(self.camera.snapshot(['width', 'nothing']),
+                         {'width': 640})
+
+    def test_a_property_that_cannot_be_read_now_is_left_out(self):
+        self.camera.properties['height']['getter'] = lambda: None
+        self.assertEqual(self.camera.snapshot(['width', 'height']),
+                         {'width': 640})
+
+    def test_the_camera_is_held_once_for_all_the_properties(self):
+        held = []
+        for name in ('width', 'height'):
+            getter = self.camera.properties[name]['getter']
+            self.camera.properties[name]['getter'] = (
+                lambda getter=getter: (
+                    held.append(self.camera._mutex._is_owned()),
+                    getter())[1])
+        self.camera.snapshot(['width', 'height'])
+        self.assertEqual(held, [True, True])
+
+    def test_a_closed_camera_has_no_values(self):
+        self.camera.close()
+        self.assertEqual(self.camera.snapshot(['width']), {})
+
+    def test_it_does_not_announce_the_values(self):
+        seen = []
+        self.camera.propertyValue.connect(
+            lambda *args: seen.append(args))
+        self.camera.snapshot(['width'])
+        self.assertEqual(seen, [])
+
+
+class _ChangingCamera(_FakeCamera):
+
+    '''A camera that reports a change of its own after a frame.'''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reports = []
+
+    def _changes(self):
+        return self.reports.pop(0) if self.reports else None
+
+
+class TestWatch(unittest.TestCase):
+
+    def setUp(self):
+        self.camera = _ChangingCamera().open()
+        self.addCleanup(self.camera.close)
+        self.heard = record(self.camera.propertiesChanged)
+
+    def test_nothing_is_watched_at_first(self):
+        self.assertEqual(self.camera._watched, frozenset())
+
+    def test_watch_takes_the_names_of_properties_and_aliases(self):
+        self.camera.aliases['w'] = 'width'
+        self.camera.watch(['w', 'height', 'nothing'])
+        self.assertEqual(self.camera._watched,
+                         frozenset({'width', 'height'}))
+
+    def test_the_default_knows_of_no_change(self):
+        self.assertIsNone(_FakeCamera()._changes())
+
+    def test_a_change_after_a_frame_is_announced(self):
+        self.camera.watch(['width'])
+        self.camera.reports.append({'width': 320})
+        self.camera.saferead()
+        self.assertEqual(self.heard, [({'width': 320},)])
+
+    def test_nothing_is_asked_when_nothing_is_watched(self):
+        self.camera.reports.append({'width': 320})
+        self.camera.saferead()
+        self.assertEqual(self.heard, [])
+        self.assertEqual(len(self.camera.reports), 1)
+
+    def test_nothing_is_announced_when_there_is_no_change(self):
+        self.camera.watch(['width'])
+        self.camera.saferead()
+        self.assertEqual(self.heard, [])
+
+    def test_a_frame_that_failed_asks_for_no_change(self):
+        self.camera.watch(['width'])
+        self.camera.reports.append({'width': 320})
+        with patch.object(self.camera, 'read', return_value=(False, None)):
+            self.camera.saferead()
+        self.assertEqual(self.heard, [])
+
+    def test_the_change_is_announced_after_the_camera_is_released(self):
+        held = []
+        self.camera.propertiesChanged.connect(
+            lambda values: held.append(self.camera._mutex._is_owned()))
+        self.camera.watch(['width'])
+        self.camera.reports.append({'width': 320})
+        self.camera.saferead()
+        self.assertEqual(held, [False])
+
+    def test_the_frame_is_still_returned(self):
+        self.camera.watch(['width'])
+        self.camera.reports.append({'width': 320})
+        ok, frame = self.camera.saferead()
+        self.assertTrue(ok)
+        self.assertIsNotNone(frame)
+
+
 if __name__ == '__main__':
     unittest.main()

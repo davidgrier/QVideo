@@ -81,6 +81,7 @@ class QVivaTree(QCameraTree):
         description = [entry for entry in self._defaultDescription(camera)
                        if entry['name'] in controls]
         super().__init__(camera, description, *args, **kwargs)
+        camera.updateAccess()
         self._showAccess()
 
     def _showAccess(self) -> None:
@@ -88,9 +89,10 @@ class QVivaTree(QCameraTree):
 
         The camera changes what is writable as its settings change (the
         exposure time while the exposure is automatic), so the controls
-        follow it.
+        follow it.  The camera has already looked at the shown features:
+        its snapshot does so after a change in :meth:`_sync`, and it does so
+        when it reports a change of its own.
         '''
-        self.camera.updateAccess()
         properties = self.camera.properties
         for key, param in self._parameters.items():
             if key in properties:
@@ -100,7 +102,8 @@ class QVivaTree(QCameraTree):
     def _sync(self, root: Parameter, changes) -> None:
         '''Send the changes to the camera, then show what it allows.'''
         super()._sync(root, changes)
-        self._showAccess()
+        if not self._ignoreSync:
+            self._showAccess()
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -783,7 +783,9 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
 - [ ] **Verify the whole path on the camera.**  Run `python -m QVideo -g`,
   unplug the cable, and look: the dialog, the status bar, the disabled
   tree, the last frame, an idle core.  (The parts were tested with a fake
-  and with a script; not the window.)
+  and with a script; not the window.)  Tried 2026-11-08 by the user: the
+  screen stops updating, one error is logged and the warning dialog
+  appears.  Not yet looked at: the status bar, the disabled tree, the core.
 - [x] **OpenCV** (2026-11-07): a live camera (not a video file) that sends no
   frame for `lossTimeout` seconds (2) is lost; a closed `VideoCapture` is lost
   at once.  Tested with a mock, on the built-in camera (no false loss: 181

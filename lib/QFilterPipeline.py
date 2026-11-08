@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from qtpy import QtCore
 
+from QVideo.lib._qapp import stopAtQuit
 from QVideo.lib.QVideoFilter import VideoFilter, prepare
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.videotypes import Image, FrameInfo
@@ -262,9 +263,7 @@ class QFilterPipeline(QVideoSource):
         self.upstream = source
         self.rack = rack
         self.start()
-        app = QtCore.QCoreApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(self.stop)
+        stopAtQuit(self.stop)
 
     @property
     def upstream(self) -> 'QVideoSource | None':

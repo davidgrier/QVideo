@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **One way to stop at quit.**  The pipeline, recorder, player, camera
+  tree, camera chooser, overlay widget and circular buffer each connected
+  to `aboutToQuit` in a style of their own (guarded, cast, or assuming an
+  application).  They share `lib._qapp.stopAtQuit(slot)`, which connects
+  to the standard Qt signal and does nothing in a program without an
+  application, so QVideo objects work in any Qt program.
 - **`QVideoSource.stop()` waits for the thread, and `FrameSource` says
   what a source is.**  Every caller already followed `stop()` with
   `wait()`, and `QFilterPipeline.stop()` waited; now they all do (a thread

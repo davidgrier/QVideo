@@ -2,6 +2,7 @@
 import logging
 from qtpy import QtCore
 from QVideo.lib import QVideoSource
+from QVideo.lib._qapp import stopAtQuit
 from . import formats
 from .QBacklogMonitor import QBacklogMonitor
 
@@ -110,9 +111,7 @@ class QRecorder(QtCore.QObject):
         self._monitor.backlog.connect(self.backlog)
         self._monitor.behind.connect(self.behind)
         self._monitor.behind.connect(self._fellBehind)
-        app = QtCore.QCoreApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(self.stop)
+        stopAtQuit(self.stop)
 
     @property
     def source(self) -> QVideoSource | None:

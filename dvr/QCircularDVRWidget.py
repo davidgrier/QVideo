@@ -5,6 +5,7 @@ from qtpy import QtCore, QtWidgets
 import logging
 
 from QVideo.lib.QVideoSource import QVideoSource
+from QVideo.lib._qapp import stopAtQuit
 from .QCircularBuffer import QCircularBuffer
 from . import formats
 
@@ -93,10 +94,8 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         # Qt deletes children after it emits destroyed, so wait for a
         # save in progress here: a running thread must not be deleted
         self.destroyed.connect(lambda: saver.wait())
-        app = QtCore.QCoreApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(saver.wait)
-            app.aboutToQuit.connect(self._buffer.clear)
+        stopAtQuit(saver.wait)
+        stopAtQuit(self._buffer.clear)
 
     def _setupUi(self) -> None:
         layout = QtWidgets.QVBoxLayout(self)

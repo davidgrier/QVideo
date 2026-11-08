@@ -2,6 +2,7 @@
 import logging
 import numpy as np
 from qtpy import QtCore
+from QVideo.lib._qapp import stopAtQuit
 from QVideo.lib import QVideoSource
 from . import formats
 
@@ -76,9 +77,7 @@ class QPlayer(QtCore.QObject):
         self._length = 0
         self._fps = 1.
         self._position = 0
-        app = QtCore.QCoreApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(self.stop)
+        stopAtQuit(self.stop)
 
     @property
     def source(self) -> QVideoSource | None:

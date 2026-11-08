@@ -8,6 +8,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib._qapp import stopAtQuit
 
 
 __all__ = ['QCameraTree']
@@ -137,9 +138,7 @@ class QCameraTree(ParameterTree):
         self._source.lost.connect(self._disable)
         self.camera.watch(self._parameters)
         self.camera.propertiesChanged.connect(self._showChanges)
-        cast(QtCore.QCoreApplication,
-             QtCore.QCoreApplication.instance()).aboutToQuit.connect(
-                 self.stop)
+        stopAtQuit(self.stop)
 
     def _setupUi(self) -> None:
         header = cast(QtWidgets.QHeaderView, self.header())

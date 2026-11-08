@@ -1,6 +1,7 @@
 '''A combo box of the cameras that can be opened.'''
 from qtpy import QtCore, QtWidgets
 from QVideo.cameras.chooser import available_cameras
+from QVideo.lib._qapp import stopAtQuit
 
 
 __all__ = ['QCameraChooser']
@@ -67,7 +68,7 @@ class QCameraChooser(QtWidgets.QComboBox):
         super().__init__(parent)
         self._scanner: _Scanner | None = None
         self.activated.connect(self._onActivated)
-        QtCore.QCoreApplication.instance().aboutToQuit.connect(self.stop)
+        stopAtQuit(self.stop)
         if scan:
             self.refresh()
 

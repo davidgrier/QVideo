@@ -1,8 +1,8 @@
 '''Base class for the control widgets of overlays that analyze frames.'''
-from typing import cast
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
+from QVideo.lib._qapp import stopAtQuit
 from QVideo.lib.videotypes import Image
 
 
@@ -78,9 +78,7 @@ class QOverlayWidget(QtWidgets.QGroupBox):
         thread = self._thread
         self.destroyed.connect(lambda: (thread.quit(), thread.wait()))
         self._setupUi()
-        cast(QtCore.QCoreApplication,
-             QtCore.QCoreApplication.instance()).aboutToQuit.connect(
-                 self.stop)
+        stopAtQuit(self.stop)
 
     def _setupUi(self) -> None:
         self.setCheckable(True)

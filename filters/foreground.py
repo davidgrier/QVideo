@@ -99,7 +99,7 @@ class ForegroundEstimator(VideoFilter):
         Parameters
         ----------
         image : Image
-            Input frame (grayscale or BGR ``uint8``).
+            Input frame (gray or RGB ``uint8``).
 
         Returns
         -------

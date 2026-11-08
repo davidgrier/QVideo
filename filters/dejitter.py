@@ -2,6 +2,7 @@
 from qtpy import QtCore, QtWidgets
 from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
+from QVideo.lib.imageops import grayscale
 from QVideo.lib.videotypes import Image
 import numpy as np
 import cv2
@@ -94,7 +95,7 @@ class DejitterFilter(VideoFilter):
         Parameters
         ----------
         image : Image
-            Input frame (grayscale or BGR ``uint8``).
+            Input frame (gray or RGB ``uint8``).
 
         Returns
         -------
@@ -102,14 +103,14 @@ class DejitterFilter(VideoFilter):
             Stabilized frame with the same shape and dtype as *image*.
         '''
         h, w = image.shape[:2]
-        gray = (cv2.cvtColor(image, cv2.COLOR_BGR2GRAY).astype(np.float32)
-                if image.ndim == 3 else image.astype(np.float32))
+        gray = grayscale(image).astype(np.float32)
 
         if self._reference is None or self._reference.shape != gray.shape:
-            self._reference = gray.copy()
+            self._reference = gray
             self._window = cv2.createHanningWindow((w, h), cv2.CV_32F)
             return image
 
+        # phaseCorrelate windows its arguments in place
         (dx, dy), _ = cv2.phaseCorrelate(self._reference.copy(), gray.copy(),
                                           self._window.copy())
 

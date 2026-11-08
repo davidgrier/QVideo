@@ -132,8 +132,10 @@ returns the camera's value only after that time.
   (`ExposureTime_FloatVal`) and `pInvalidator`/`pDependent` link them to
   the features: walking that graph would cut the 15 to 35 ms that a read
   of every shown node costs, twice a second while armed.
-- [ ] Share the arm, quiet and automatic-mode policy of Viva and Genicam in
-  a helper (two real users now).
+- [x] Share the arm, quiet and automatic-mode policy of Viva and Genicam in
+  a helper: **decided against** (2026-11-08).  The two backends stay
+  independent, even where they are interoperable, because one of them may be
+  dropped; each keeps its own `_changes`, and likewise `_pixelLevels`.
 
 ---
 

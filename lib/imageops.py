@@ -7,10 +7,11 @@ from qtpy import QtGui
 from QVideo.lib.videotypes import Image
 
 
-__all__ = ['grayscale', 'to8bit', 'stretch16', 'save_image', 'AutoLevels']
+__all__ = ['grayscale', 'to8bit', 'stretch16', 'save_image', 'AutoLevels',
+           'ImageFormat']
 
 #: The image formats: ``QImage.Format`` in PyQt6, ``QImage`` in PyQt5.
-_Fmt: Any = getattr(QtGui.QImage, 'Format', QtGui.QImage)
+ImageFormat: Any = getattr(QtGui.QImage, 'Format', QtGui.QImage)
 
 #: The file types that hold 16 bit gray.
 _DEEP_FORMATS = ('.png', '.tif', '.tiff')
@@ -136,13 +137,13 @@ def save_image(image: Image, filename: str,
     image = np.ascontiguousarray(image)
     h, w = image.shape[:2]
     if deep:
-        fmt, step = _Fmt.Format_Grayscale16, 2 * w
+        fmt, step = ImageFormat.Format_Grayscale16, 2 * w
     elif image.ndim == 2:
-        fmt, step = _Fmt.Format_Grayscale8, w
+        fmt, step = ImageFormat.Format_Grayscale8, w
     elif image.shape[2] == 3:
-        fmt, step = _Fmt.Format_RGB888, 3 * w
+        fmt, step = ImageFormat.Format_RGB888, 3 * w
     else:
-        fmt, step = _Fmt.Format_RGBA8888, 4 * w
+        fmt, step = ImageFormat.Format_RGBA8888, 4 * w
     if not QtGui.QImage(image.tobytes(), w, h, step, fmt).save(str(filename)):
         raise OSError(f'cannot write {str(filename)!r}')
 

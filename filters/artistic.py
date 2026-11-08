@@ -11,13 +11,13 @@ __all__ = ['PencilSketchFilter', 'QPencilSketchFilter',
 
 
 #: The lines of a :class:`FilterCode` that make ``image`` three channels.
-_BGR_LINES = ('if image.ndim == 2:',
-              '    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)')
+_COLOR_LINES = ('if image.ndim == 2:',
+              '    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)')
 
 
-def _ensure_bgr(image: Image) -> Image:
+def _ensure_color(image: Image) -> Image:
     if image.ndim == 2:
-        return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     return image
 
 
@@ -27,7 +27,7 @@ class PencilSketchFilter(VideoFilter):
 
     Applies ``cv2.pencilSketch`` to produce a
     hand-drawn pencil look without blocking the GUI.  Grayscale input
-    is promoted to BGR before processing.
+    is promoted to three channels before processing.
 
     Parameters
     ----------
@@ -62,16 +62,16 @@ class PencilSketchFilter(VideoFilter):
         Parameters
         ----------
         image : Image
-            Input frame (grayscale or BGR uint8).
+            Input frame (gray or RGB uint8).
 
         Returns
         -------
         Image
             uint8 pencil-sketch frame.
         '''
-        bgr = _ensure_bgr(image)
+        color = _ensure_color(image)
         gray_out, color_out = cv2.pencilSketch(
-            bgr,
+            color,
             sigma_s=self.sigma_s,
             sigma_r=self.sigma_r,
             shade_factor=self.shade_factor,
@@ -83,7 +83,7 @@ class PencilSketchFilter(VideoFilter):
         target = 'image, _' if self.gray else '_, image'
         return FilterCode(
             imports={'import cv2'},
-            lines=[*_BGR_LINES,
+            lines=[*_COLOR_LINES,
                    f'{target} = cv2.pencilSketch(image, sigma_s={ss}, '
                    f'sigma_r={sr}, shade_factor={sf})'],
             comment=f'pencil sketch, σ_s={ss}, σ_r={sr}, shade={sf}',
@@ -97,7 +97,7 @@ class CartoonFilter(VideoFilter):
 
     Applies ``cv2.stylization``, smoothing
     low-contrast regions while preserving edges to produce a
-    watercolor/cartoon look.  Grayscale input is promoted to BGR before
+    watercolor/cartoon look.  Grayscale input is promoted to three channels before
     processing.
 
     Parameters
@@ -123,21 +123,21 @@ class CartoonFilter(VideoFilter):
         Parameters
         ----------
         image : Image
-            Input frame (grayscale or BGR uint8).
+            Input frame (gray or RGB uint8).
 
         Returns
         -------
         Image
-            uint8 BGR stylized frame.
+            uint8 RGB stylized frame.
         '''
-        bgr = _ensure_bgr(image)
-        return cv2.stylization(bgr, sigma_s=self.sigma_s, sigma_r=self.sigma_r)
+        color = _ensure_color(image)
+        return cv2.stylization(color, sigma_s=self.sigma_s, sigma_r=self.sigma_r)
 
     def to_code(self) -> FilterCode:
         ss, sr = self.sigma_s, self.sigma_r
         return FilterCode(
             imports={'import cv2'},
-            lines=[*_BGR_LINES,
+            lines=[*_COLOR_LINES,
                    f'image = cv2.stylization(image, sigma_s={ss}, '
                    f'sigma_r={sr})'],
             comment=f'cartoon stylization, σ_s={ss}, σ_r={sr}',

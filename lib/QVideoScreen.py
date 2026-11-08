@@ -10,7 +10,7 @@ from pyqtgraph import GraphicsLayoutWidget, ImageItem
 from QVideo.lib.QVideoSource import QVideoSource
 from QVideo.lib.QFrameRelay import QFrameRelay
 from QVideo.lib.videotypes import FrameInfo, Image
-from QVideo.lib.imageops import AutoLevels
+from QVideo.lib.imageops import AutoLevels, ImageFormat
 
 
 logger = logging.getLogger(__name__)
@@ -343,9 +343,8 @@ class QVideoScreen(GraphicsLayoutWidget):
         pixmap = self.grab()
         if pixmap.isNull():
             return np.empty((0, 0, 3), dtype=np.uint8)
-        fmt = cast(Any, getattr(QtGui.QImage, 'Format',
-                                QtGui.QImage)).Format_RGBA8888
-        qimage = pixmap.toImage().convertToFormat(fmt)
+        qimage = pixmap.toImage().convertToFormat(
+            ImageFormat.Format_RGBA8888)
         w, h = qimage.width(), qimage.height()
         ptr = cast(Any, qimage.bits())
         if hasattr(ptr, 'setsize'):

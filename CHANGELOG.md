@@ -9,6 +9,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`camera.frames(n)`, `camera.stack(n)` and `camera.save()` in the
+  notebook.**  `frames` reads `n` filtered frames as a list and `stack` joins
+  them in one array (`(n, H, W)`); `save(filename=None, image=None)` writes a
+  new frame, or the image that it is given, and returns the path (a
+  timestamped `camera_*.png` in the current directory by default; a deep
+  camera goes to a 16 bit PNG or TIFF stretched by its levels).  It raises
+  `ValueError` or `OSError` where the Qt saver reports them in the status
+  bar.
+
 ---
 
 ## [4.18.0] — 2026-11-07

@@ -259,10 +259,27 @@ Acquiring a sequence of frames
 
 .. code-block:: python
 
-   import numpy as np
+   frames = camera.frames(50)   # a list of 50 frames
+   stack  = camera.stack(50)    # one array, shape (50, height, width, ...)
 
-   frames = [camera.read() for _ in range(50)]
-   stack  = np.stack(frames)   # shape: (50, height, width, ...)
+Both apply ``camera.filters``, as ``camera.read()`` does.  A stack is held
+in memory: 100 frames of 1920 x 1200 at 16 bits take about 460 MB.
+
+Saving a frame
+--------------
+
+.. code-block:: python
+
+   path = camera.save()                 # camera_20261107_101500.png
+   camera.save('background.tiff')       # the format follows the extension
+   camera.save('mean.png', stack.mean(axis=0).astype('uint8'))
+
+``camera.save()`` writes a new frame, or the image that you give it, and
+returns the path.  It does not replace a file with a generated name.  A
+camera of more than 8 bits is saved to a 16 bit PNG or TIFF, stretched so
+that its black and white levels run from 0 to 65535; a JPEG gets 8 bits.
+It raises ``ValueError`` for an image that cannot be saved and ``OSError``
+for a file that cannot be written.
 
 .. _jupyter-widgets:
 

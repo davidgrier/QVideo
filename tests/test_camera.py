@@ -5,10 +5,12 @@ import copy
 import importlib
 import io
 import logging
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 import numpy as np
-from qtpy import QtWidgets
+from qtpy import QtGui, QtWidgets
 
 import QVideo.cameras.chooser as chooser_module
 import QVideo.interactive.camera as camera_module
@@ -295,6 +297,128 @@ class TestCameraFilters(unittest.TestCase):
         with patch.object(_jupyter(), 'live_view', fake):
             proxy.live_view()
         self.assertTrue((shown[0] == 7).all())
+
+
+class TestCameraFramesAndSave(unittest.TestCase):
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.folder = Path(folder.name)
+
+    def make(self, frames=None, levels=None):
+        cam = make_mock_noise_camera()
+        cam.levels = levels
+        if frames is not None:
+            cam.saferead.side_effect = [(True, f) for f in frames]
+        proxy = _CameraProxy([('noise', 0)])
+        with patch('QVideo.cameras.chooser.create_camera', return_value=cam):
+            proxy._ensure_open()
+        return proxy, cam
+
+    def counted(self, n, shape=(4, 6)):
+        return [np.full(shape, i, np.uint8) for i in range(n)]
+
+    def test_frames_reads_n_frames_in_order(self):
+        proxy, _ = self.make(self.counted(3))
+        frames = proxy.frames(3)
+        self.assertEqual([int(f[0, 0]) for f in frames], [0, 1, 2])
+
+    def test_frames_applies_the_filters(self):
+        proxy, _ = self.make(self.counted(2))
+        proxy.filters = [lambda f: f + 10]
+        self.assertEqual([int(f[0, 0]) for f in proxy.frames(2)], [10, 11])
+
+    def test_frames_takes_another_frame_for_a_filter_with_no_result(self):
+        proxy, cam = self.make(self.counted(4))
+        results = iter([None, 'a', None, 'b'])
+        proxy.filters = [lambda f: next(results)]
+        self.assertEqual(proxy.frames(2), ['a', 'b'])
+        self.assertEqual(cam.saferead.call_count, 4)
+
+    def test_n_must_be_at_least_one(self):
+        proxy, _ = self.make()
+        for n in (0, -1):
+            with self.assertRaises(ValueError):
+                proxy.frames(n)
+            with self.assertRaises(ValueError):
+                proxy.stack(n)
+
+    def test_stack_joins_the_frames_on_a_new_first_axis(self):
+        proxy, _ = self.make(self.counted(3))
+        stack = proxy.stack(3)
+        self.assertEqual(stack.shape, (3, 4, 6))
+        self.assertEqual(int(stack[2, 0, 0]), 2)
+
+    def test_stack_of_color_frames(self):
+        proxy, _ = self.make(self.counted(2, (4, 6, 3)))
+        self.assertEqual(proxy.stack(2).shape, (2, 4, 6, 3))
+
+    def test_a_failed_read_raises(self):
+        proxy, cam = self.make()
+        cam.saferead.return_value = (False, None)
+        with self.assertRaises(RuntimeError):
+            proxy.frames(2)
+
+    def test_save_writes_a_new_frame_to_the_named_file(self):
+        frame = np.arange(24, dtype=np.uint8).reshape(4, 6)
+        proxy, _ = self.make([frame])
+        name = str(self.folder / 'a.png')
+        self.assertEqual(proxy.save(name), name)
+        loaded = QtGui.QImage(name)
+        self.assertEqual(loaded.pixelColor(3, 2).red(), frame[2, 3])
+
+    def test_save_accepts_a_path(self):
+        proxy, _ = self.make(self.counted(1))
+        name = self.folder / 'b.png'
+        self.assertEqual(proxy.save(name), str(name))
+        self.assertTrue(name.exists())
+
+    def test_save_without_a_name_makes_one_in_the_current_directory(self):
+        proxy, _ = self.make(self.counted(2))
+        with contextlib.chdir(self.folder):
+            first = proxy.save()
+            second = proxy.save()
+        self.assertEqual(Path(first).parent.resolve(), self.folder.resolve())
+        self.assertTrue(Path(first).name.startswith('camera_'))
+        self.assertNotEqual(first, second)
+        self.assertEqual(len(list(self.folder.glob('camera_*.png'))), 2)
+
+    def test_save_writes_the_image_that_it_is_given(self):
+        proxy, cam = self.make()
+        image = np.full((4, 6), 77, np.uint8)
+        cam.saferead.reset_mock()
+        name = str(self.folder / 'c.png')
+        proxy.save(name, image)
+        cam.saferead.assert_not_called()
+        self.assertEqual(QtGui.QImage(name).pixelColor(0, 0).red(), 77)
+
+    def test_save_applies_the_filters_to_the_frame_it_reads(self):
+        proxy, _ = self.make(self.counted(1))
+        proxy.filters = [lambda f: f + 9]
+        name = str(self.folder / 'd.png')
+        proxy.save(name)
+        self.assertEqual(QtGui.QImage(name).pixelColor(0, 0).red(), 9)
+
+    def test_a_deep_frame_is_stretched_by_the_levels_of_the_camera(self):
+        frame = np.full((4, 6), 4095, np.uint16)
+        proxy, _ = self.make([frame], levels=(0., 4095.))
+        name = str(self.folder / 'e.png')
+        proxy.save(name)
+        loaded = QtGui.QImage(name)
+        self.assertEqual(loaded.depth(), 16)
+        self.assertEqual(loaded.pixelColor(0, 0).red(), 255)
+
+    def test_save_raises_for_an_image_that_cannot_be_saved(self):
+        proxy, _ = self.make()
+        with self.assertRaises(ValueError):
+            proxy.save(str(self.folder / 'f.png'),
+                       np.zeros((4, 6), np.float32))
+
+    def test_save_raises_for_a_file_that_cannot_be_written(self):
+        proxy, _ = self.make(self.counted(1))
+        with self.assertRaises(OSError):
+            proxy.save('/nonexistent-folder/g.png')
 
 
 class TestApplication(unittest.TestCase):

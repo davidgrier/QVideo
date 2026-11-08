@@ -16,11 +16,16 @@ import logging
 from types import ModuleType
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from QVideo.cameras import chooser
 from QVideo.cameras.chooser import BACKENDS, available_cameras, discover
 from QVideo.lib.QVideoFilter import prepare
+from QVideo.lib.QImageSaver import QImageSaver
+from QVideo.lib.imageops import save_image
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from QVideo.interactive.widgets import LiveView
     from QVideo.lib.videotypes import Image
 
@@ -183,6 +188,87 @@ class _CameraProxy:
                            getattr(camera, 'levels', None))
             if frame is not None:
                 return frame
+
+    def frames(self, n: int) -> list['Image']:
+        '''Read *n* consecutive frames, with :attr:`filters` applied.
+
+        Parameters
+        ----------
+        n : int
+            The number of frames, at least 1.
+
+        Returns
+        -------
+        list
+            *n* arrays, each as :meth:`read` returns it.
+
+        Raises
+        ------
+        ValueError
+            If *n* is less than 1.
+        '''
+        if n < 1:
+            raise ValueError(f'n must be at least 1, not {n}')
+        return [self.read() for _ in range(n)]
+
+    def stack(self, n: int) -> 'Image':
+        '''Read *n* consecutive frames as one array.
+
+        Returns
+        -------
+        numpy.ndarray
+            The frames along a new first axis: ``(n, height, width)`` for
+            a gray camera, ``(n, height, width, 3)`` for a color one.
+            Memory grows with *n*: 100 frames of 1920 x 1200 at 16 bits
+            take about 460 MB.
+
+        Raises
+        ------
+        ValueError
+            If *n* is less than 1.
+        '''
+        return np.stack(self.frames(n))
+
+    def save(self, filename: 'str | Path | None' = None,
+             image: 'Image | None' = None) -> str:
+        '''Save a frame to a file and return its path.
+
+        Parameters
+        ----------
+        filename : str or Path, optional
+            Where to save it; the extension sets the format (``.png``,
+            ``.tiff`` and ``.jpg`` among others).  Default:
+            ``camera_<YYYYMMDD>_<HHMMSS>.png`` in the current directory,
+            without replacing a file that exists.
+        image : numpy.ndarray, optional
+            What to save, such as a result of your own analysis.  Default:
+            a new frame from :meth:`read`.
+
+        Returns
+        -------
+        str
+            The path that was written.
+
+        Raises
+        ------
+        ValueError
+            If the type or the shape of the image cannot be saved.
+        OSError
+            If the file cannot be written.
+
+        Notes
+        -----
+        A gray frame of more than 8 bits goes to a 16 bit PNG or TIFF,
+        stretched so that the levels of the camera run from 0 to 65535;
+        in any other format it gets 8 bits.  See
+        :func:`~QVideo.lib.imageops.save_image`.
+        '''
+        if image is None:
+            image = self.read()
+        path = str(filename) if filename else \
+            QImageSaver(prefix='camera').defaultPath()
+        save_image(image, path, getattr(self._camera, 'levels', None))
+        return path
 
     def __getattr__(self, name: str):
         # IPython probes a displayed object for names such as

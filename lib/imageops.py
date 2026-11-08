@@ -3,10 +3,19 @@ from typing import cast
 
 import cv2
 import numpy as np
+from qtpy import QtGui
 from QVideo.lib.videotypes import Image
 
 
-__all__ = ['grayscale', 'to8bit', 'stretch16']
+__all__ = ['grayscale', 'to8bit', 'stretch16', 'save_image']
+
+try:
+    _Fmt = QtGui.QImage.Format
+except AttributeError:
+    _Fmt = QtGui.QImage
+
+#: The file types that hold 16 bit gray.
+_DEEP_FORMATS = ('.png', '.tif', '.tiff')
 
 
 def grayscale(image: Image) -> Image:
@@ -81,3 +90,58 @@ def stretch16(image: Image, levels: tuple[float, float] | None = None
         return image
     scaled = (image.astype(np.float32) - black) * (65535. / (white - black))
     return cast(Image, np.rint(np.clip(scaled, 0, 65535)).astype(np.uint16))
+
+
+def save_image(image: Image, filename: str,
+               levels: tuple[float, float] | None = None) -> None:
+    '''Write *image* to *filename*, in the format of its extension.
+
+    Parameters
+    ----------
+    image : Image
+        Gray ``(H, W)``, color ``(H, W, 3)`` or ``(H, W, 4)``; ``uint8``,
+        or ``uint16`` from a camera of more than 8 bits.
+    filename : str
+        Destination path.  Qt infers the format from the extension.
+    levels : tuple[float, float], optional
+        The pixel values of a ``uint16`` image that are black and white.
+        The default is the whole range.
+
+    Raises
+    ------
+    ValueError
+        If the type or the shape of *image* cannot be saved.
+    OSError
+        If the file cannot be written.
+
+    Notes
+    -----
+    A gray ``uint16`` image is saved with 16 bits to a PNG or TIFF file,
+    stretched so that *levels* run from 0 to 65535 (a 12 bit image would look
+    black otherwise).  Any other file, and a color image, gets 8 bits
+    between *levels*.
+    '''
+    if image.dtype not in (np.uint8, np.uint16):
+        raise ValueError(f'unsupported dtype {image.dtype}; '
+                         'expected uint8 or uint16')
+    if not (image.ndim == 2
+            or (image.ndim == 3 and image.shape[2] in (3, 4))):
+        raise ValueError(f'unsupported image shape {image.shape}')
+    deep = False
+    if image.dtype == np.uint16:
+        deep = (image.ndim == 2
+                and str(filename).lower().endswith(_DEEP_FORMATS))
+        image = (stretch16(image, levels) if deep
+                 else to8bit(image, levels))
+    image = np.ascontiguousarray(image)
+    h, w = image.shape[:2]
+    if deep:
+        fmt, step = _Fmt.Format_Grayscale16, 2 * w
+    elif image.ndim == 2:
+        fmt, step = _Fmt.Format_Grayscale8, w
+    elif image.shape[2] == 3:
+        fmt, step = _Fmt.Format_RGB888, 3 * w
+    else:
+        fmt, step = _Fmt.Format_RGBA8888, 4 * w
+    if not QtGui.QImage(image.tobytes(), w, h, step, fmt).save(str(filename)):
+        raise OSError(f'cannot write {str(filename)!r}')

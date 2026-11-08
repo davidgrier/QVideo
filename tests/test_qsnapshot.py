@@ -3,10 +3,12 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 import tempfile
-import os
 import numpy as np
-from qtpy import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.QSnapshot import QSnapshot
+from QVideo.lib.QVideoScreen import QVideoScreen
+from QVideo.lib.videotypes import FrameInfo
+from QVideo.tests.signals import record
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -87,48 +89,38 @@ class TestSnap(unittest.TestCase):
         with self.assertLogs('QVideo.lib.QSnapshot', level='WARNING'):
             snap.snap()
 
-    def test_snap_calls_save_with_frame(self):
+    def test_snap_saves_the_frame_and_its_levels(self):
         snap = make_snapshot()
         frame = gray_frame()
-        snap.newFrame(frame)
-        with patch.object(snap, '_save') as mock_save:
+        snap.newFrame(frame, FrameInfo(0, 0., levels=(0., 4095.)))
+        with patch.object(snap.saver, 'save') as save:
             snap.snap()
-        mock_save.assert_called_once()
-        self.assertIs(mock_save.call_args[0][0], frame)
+        save.assert_called_once_with(frame, levels=(0., 4095.))
 
-    def test_snap_filename_contains_snapshot(self):
+    def test_the_name_is_made_by_the_saver_in_the_home_directory(self):
         snap = make_snapshot()
-        snap.newFrame(gray_frame())
-        with patch.object(snap, '_save') as mock_save:
-            snap.snap()
-        filename = mock_save.call_args[0][1]
-        self.assertIn('snapshot', filename)
+        self.assertEqual(snap.saver.directory, Path.home())
+        self.assertEqual(snap.saver.prefix, 'snapshot')
 
-    def test_snap_filename_ends_with_png(self):
-        snap = make_snapshot()
+    def snapTo(self, folder):
+        parent = make_parent()
+        snap = QSnapshot(parent)
+        snap.saver.directory = Path(folder)
         snap.newFrame(gray_frame())
-        with patch.object(snap, '_save') as mock_save:
-            snap.snap()
-        filename = mock_save.call_args[0][1]
-        self.assertTrue(filename.endswith('.png'))
+        messages = record(snap.saver.message)
+        snap.snap()
+        return messages
 
-    def test_snap_filename_contains_timestamp(self):
-        snap = make_snapshot()
-        snap.newFrame(gray_frame())
-        with patch.object(snap, '_save') as mock_save:
-            with patch('datetime.datetime') as mock_dt:
-                mock_dt.now.return_value.strftime.return_value = '20260511_120000'
-                snap.snap()
-        filename = mock_save.call_args[0][1]
-        self.assertIn('20260511_120000', filename)
+    def test_snap_writes_a_file(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.snapTo(folder)
+            self.assertEqual(len(list(Path(folder).glob('snapshot_*.png'))),
+                             1)
 
-    def test_snap_saves_to_home_directory(self):
-        snap = make_snapshot()
-        snap.newFrame(gray_frame())
-        with patch.object(snap, '_save') as mock_save:
-            snap.snap()
-        filename = mock_save.call_args[0][1]
-        self.assertTrue(filename.startswith(str(Path.home())))
+    def test_the_saver_reports_to_message(self):
+        with tempfile.TemporaryDirectory() as folder:
+            messages = self.snapTo(folder)
+        self.assertTrue(messages[0][0].startswith('Saved '))
 
 
 class TestSnapAs(unittest.TestCase):
@@ -138,144 +130,79 @@ class TestSnapAs(unittest.TestCase):
         with self.assertLogs('QVideo.lib.QSnapshot', level='WARNING'):
             snap.snapAs()
 
-    def test_snapas_calls_save_when_filename_chosen(self):
-        snap = make_snapshot()
-        snap.newFrame(gray_frame())
-        with patch('qtpy.QtWidgets.QFileDialog.getSaveFileName',
-                   return_value=('/tmp/test.png', 'PNG Images (*.png)')):
-            with patch.object(snap, '_save') as mock_save:
-                snap.snapAs()
-        mock_save.assert_called_once()
-        self.assertEqual(mock_save.call_args[0][1], '/tmp/test.png')
-
-    def test_snapas_prefills_default_path(self):
-        snap = make_snapshot()
-        snap.newFrame(gray_frame())
-        default = snap._defaultPath()
-        with patch('qtpy.QtWidgets.QFileDialog.getSaveFileName',
-                   return_value=('', '')) as mock_dialog:
-            snap.snapAs()
-        initial_path = mock_dialog.call_args[0][2]
-        self.assertTrue(initial_path.startswith(str(Path.home())))
-        self.assertIn('snapshot', initial_path)
-
-    def test_snapas_does_not_save_when_dialog_cancelled(self):
-        snap = make_snapshot()
-        snap.newFrame(gray_frame())
-        with patch('qtpy.QtWidgets.QFileDialog.getSaveFileName',
-                   return_value=('', '')):
-            with patch.object(snap, '_save') as mock_save:
-                snap.snapAs()
-        mock_save.assert_not_called()
-
-
-class TestSave(unittest.TestCase):
-
-    def _save_to_tmp(self, frame, suffix='.png'):
-        snap = make_snapshot()
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
-            path = f.name
-        try:
-            snap._save(frame, path)
-            return path
-        except Exception:
-            os.unlink(path)
-            raise
-
-    def test_saves_grayscale_frame(self):
-        path = self._save_to_tmp(gray_frame())
-        self.assertGreater(os.path.getsize(path), 0)
-        os.unlink(path)
-
-    def test_saves_rgb_frame(self):
-        path = self._save_to_tmp(rgb_frame())
-        self.assertGreater(os.path.getsize(path), 0)
-        os.unlink(path)
-
-    def test_saves_rgba_frame(self):
-        path = self._save_to_tmp(rgba_frame())
-        self.assertGreater(os.path.getsize(path), 0)
-        os.unlink(path)
-
-    def test_unsupported_dtype_logs_warning(self):
-        snap = make_snapshot()
-        frame = np.zeros((4, 6), dtype=np.float32)
-        with self.assertLogs('QVideo.lib.QSnapshot', level='WARNING'):
-            snap._save(frame, '/tmp/unused.png')
-
-    def test_unsupported_shape_logs_warning(self):
-        snap = make_snapshot()
-        frame = np.zeros((4, 6, 2), dtype=np.uint8)
-        with self.assertLogs('QVideo.lib.QSnapshot', level='WARNING'):
-            snap._save(frame, '/tmp/unused.png')
-
-    def test_failed_save_logs_warning(self):
+    def test_snapas_asks_the_saver_for_a_dialog(self):
         snap = make_snapshot()
         frame = gray_frame()
-        with patch('qtpy.QtGui.QImage.save', return_value=False):
-            with self.assertLogs('QVideo.lib.QSnapshot', level='WARNING'):
-                snap._save(frame, '/tmp/unused.png')
+        snap.newFrame(frame)
+        with patch.object(snap.saver, 'save') as save:
+            snap.snapAs()
+        save.assert_called_once_with(frame, ask=True, levels=None)
 
-    def test_successful_save_logs_info(self):
+
+class TestScreenshot(unittest.TestCase):
+
+    def setUp(self):
+        self.parent = make_parent()
+        self.screen = QVideoScreen(self.parent)
+        self.snap = QSnapshot(self.parent, screen=self.screen)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.folder = Path(folder.name)
+        self.snap.saver.directory = self.folder
+        self.picture = np.zeros((4, 6, 3), np.uint8)
+
+    def test_the_shortcuts_exist_only_with_a_screen(self):
+        keys = {sc.key().toString() for sc in
+                self.parent.findChildren(QtWidgets.QShortcut)}
+        for key in ('Ctrl+Shift+P', 'Ctrl+Shift+Alt+P'):
+            self.assertIn(QtGui.QKeySequence(key).toString(), keys)
+        bare = make_parent()
+        QSnapshot(bare)
+        self.assertEqual(len(bare.findChildren(QtWidgets.QShortcut)), 2)
+
+    def test_the_keys_can_be_chosen(self):
+        parent = make_parent()
+        QSnapshot(parent, screen=QVideoScreen(parent), key_screen='F9',
+                  key_screen_as='F10')
+        keys = {sc.key().toString() for sc in
+                parent.findChildren(QtWidgets.QShortcut)}
+        self.assertLessEqual({'F9', 'F10'}, keys)
+
+    def test_screenshot_saves_what_the_screen_shows(self):
+        messages = record(self.snap.saver.message)
+        with patch.object(self.screen, 'screenshot',
+                          return_value=self.picture):
+            self.snap.screenshot()
+        files = list(self.folder.glob('screenshot_*.png'))
+        self.assertEqual(len(files), 1)
+        self.assertTrue(messages[0][0].startswith('Saved '))
+
+    def test_screenshotas_asks_for_a_name(self):
+        with patch.object(self.screen, 'screenshot',
+                          return_value=self.picture), \
+                patch.object(self.snap.saver, 'save') as save:
+            self.snap.screenshotAs()
+        save.assert_called_once_with(self.picture, ask=True,
+                                     prefix='screenshot')
+
+    def test_a_screen_without_size_saves_nothing(self):
+        with patch.object(self.screen, 'screenshot',
+                          return_value=np.empty((0, 0, 3), np.uint8)):
+            with self.assertLogs('QVideo.lib.QSnapshot', 'WARNING'):
+                self.snap.screenshot()
+        self.assertEqual(list(self.folder.iterdir()), [])
+
+    def test_without_a_screen_it_warns(self):
         snap = make_snapshot()
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
-            path = f.name
-        try:
-            with self.assertLogs('QVideo.lib.QSnapshot', level='INFO'):
-                snap._save(gray_frame(), path)
-        finally:
-            os.unlink(path)
+        with self.assertLogs('QVideo.lib.QSnapshot', 'WARNING'):
+            snap.screenshot()
 
-    def test_grayscale_content_roundtrip(self):
-        frame = np.arange(24, dtype=np.uint8).reshape(4, 6)
-        path = self._save_to_tmp(frame)
-        loaded = QtGui.QImage(path)
-        self.assertEqual(loaded.width(), 6)
-        self.assertEqual(loaded.height(), 4)
-        os.unlink(path)
-
-
-class TestSaveDeep(unittest.TestCase):
-
-    '''A frame of more than 8 bits keeps its bits where the file can.'''
-
-    def save(self, frame, suffix='.png', levels=(0., 4095.)):
-        snap = make_snapshot()
-        snap.levels = levels
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
-            path = f.name
-        self.addCleanup(os.unlink, path)
-        snap._save(frame, path)
-        return path
-
-    def test_gray_is_saved_with_16_bits_stretched_to_the_levels(self):
-        frame = np.zeros((4, 6), dtype=np.uint16)
-        frame[:, 3:] = 4095
-        image = QtGui.QImage(self.save(frame))
-        self.assertEqual(image.depth(), 16)
-        self.assertEqual(image.pixelColor(5, 0).red(), 255)
-        self.assertEqual(image.pixelColor(0, 0).red(), 0)
-
-    def test_tiff_holds_16_bits(self):
-        frame = np.full((4, 6), 2048, dtype=np.uint16)
-        image = QtGui.QImage(self.save(frame, '.tiff'))
-        self.assertEqual(image.depth(), 16)
-
-    def test_jpeg_gets_8_bits(self):
-        frame = np.full((4, 6), 4095, dtype=np.uint16)
-        image = QtGui.QImage(self.save(frame, '.jpg'))
-        self.assertGreater(image.width(), 0)
-        self.assertEqual(image.pixelColor(0, 0).red(), 255)
-
-    def test_color_gets_8_bits(self):
-        frame = np.full((4, 6, 3), 4095, dtype=np.uint16)
-        image = QtGui.QImage(self.save(frame))
-        self.assertEqual(image.pixelColor(0, 0).red(), 255)
-
-    def test_without_levels_the_whole_range_is_used(self):
-        frame = np.full((4, 6), 65535, dtype=np.uint16)
-        image = QtGui.QImage(self.save(frame, levels=None))
-        self.assertEqual(image.pixelColor(0, 0).red(), 255)
+    def test_the_real_screen_gives_a_picture(self):
+        self.screen.resize(64, 48)
+        self.screen.show()
+        app.processEvents()
+        self.snap.screenshot()
+        self.assertEqual(len(list(self.folder.glob('screenshot_*.png'))), 1)
 
 
 if __name__ == '__main__':

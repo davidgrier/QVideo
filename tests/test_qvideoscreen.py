@@ -383,7 +383,7 @@ class TestRenderComposite(unittest.TestCase):
     def test_the_grab_becomes_an_rgb_array_of_its_size(self):
         screen = make_screen()
         screen.resize(64, 48)
-        picture = screen._renderComposite()
+        picture = screen.screenshot()
         self.assertEqual(picture.dtype, np.uint8)
         self.assertEqual(picture.ndim, 3)
         self.assertEqual(picture.shape[2], 3)
@@ -394,20 +394,20 @@ class TestRenderComposite(unittest.TestCase):
     def test_the_size_is_even_so_that_video_encoders_accept_it(self):
         screen = make_screen()
         screen.resize(61, 47)
-        height, width = screen._renderComposite().shape[:2]
+        height, width = screen.screenshot().shape[:2]
         self.assertEqual((height % 2, width % 2), (0, 0))
 
     def test_the_array_does_not_share_the_memory_of_the_image(self):
         screen = make_screen()
         screen.resize(32, 32)
-        first = screen._renderComposite()
+        first = screen.screenshot()
         first[...] = 7
-        self.assertFalse(np.all(screen._renderComposite() == 7))
+        self.assertFalse(np.all(screen.screenshot() == 7))
 
     def test_a_widget_without_size_gives_an_empty_array(self):
         screen = make_screen()
         with patch.object(screen, 'grab', return_value=QtGui.QPixmap()):
-            picture = screen._renderComposite()
+            picture = screen.screenshot()
         self.assertEqual(picture.shape, (0, 0, 3))
 
 
@@ -779,7 +779,7 @@ class TestFrameInfo(unittest.TestCase):
         screen._composite = True
         spy = _spy(screen)
         with patch.object(screen.image, 'setImage'), \
-             patch.object(screen, '_renderComposite', return_value=_FRAME):
+             patch.object(screen, 'screenshot', return_value=_FRAME):
             screen.setImage(_FRAME, self.INFO)
         self.assertIs(spy[0][1], self.INFO)
 
@@ -818,7 +818,7 @@ class TestNewFrame(unittest.TestCase):
     def test_setimage_does_not_call_render_composite_when_not_composite(self):
         screen = make_screen()
         with patch.object(screen.image, 'setImage'):
-            with patch.object(screen, '_renderComposite') as mock_render:
+            with patch.object(screen, 'screenshot') as mock_render:
                 screen.setImage(_FRAME)
         mock_render.assert_not_called()
 
@@ -826,7 +826,7 @@ class TestNewFrame(unittest.TestCase):
         screen = make_screen()
         screen._composite = True
         with patch.object(screen.image, 'setImage'):
-            with patch.object(screen, '_renderComposite', return_value=_FRAME) as mock_render:
+            with patch.object(screen, 'screenshot', return_value=_FRAME) as mock_render:
                 screen.setImage(_FRAME)
         mock_render.assert_called_once()
 

@@ -67,10 +67,16 @@ class QCamcorder(QtWidgets.QWidget):
     window, as :func:`~QVideo.lib.launch` does.
 
     A :class:`~QVideo.lib.QSnapshot.QSnapshot` is wired to the screen's
-    ``newFrame`` signal, enabling still-frame capture via two hotkeys:
+    ``newFrame`` signal and to the screen itself.  Four hotkeys save a still
+    frame, and the status bar says where it went:
 
-    - ``Ctrl+Shift+S`` — save a timestamped PNG to the home directory
-    - ``Ctrl+Shift+Alt+S`` — open a file dialog pre-filled with the same name
+    - ``Ctrl+Shift+S`` — save the frame (the data) to a timestamped PNG in
+      the home directory
+    - ``Ctrl+Shift+Alt+S`` — the same, in a file dialog pre-filled with the
+      name
+    - ``Ctrl+Shift+P`` — save what the screen shows (filters, color map and
+      overlays) to a timestamped PNG
+    - ``Ctrl+Shift+Alt+P`` — the same, in a file dialog
 
     Parameters
     ----------
@@ -98,7 +104,7 @@ class QCamcorder(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
         self._setupUi()
-        self._snapshot = QSnapshot(self)
+        self._snapshot = QSnapshot(self, screen=self.screen)
         self._connectSignals()
 
     def _setupUi(self) -> None:
@@ -140,6 +146,7 @@ class QCamcorder(QtWidgets.QWidget):
                                  QtCore.Qt.QueuedConnection)
         self.source.lost.connect(self._showLost)
         self.screen.newFrame.connect(self._snapshot.newFrame)
+        self._snapshot.saver.message.connect(self.message)
         self.screen.newFrame.connect(self._offerLevels)
         self.levelsBox.currentIndexChanged.connect(self._setLevels)
 

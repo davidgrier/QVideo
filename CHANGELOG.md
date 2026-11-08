@@ -34,6 +34,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   changes.  `prepare(filter, frame, levels)` is the one rule, used by the
   pipeline, by `QFilterRack.__call__(frame, levels)` and by the notebook
   `Camera()`, which scaled nothing before.
+- **`QImageSaver` and `imageops.save_image` save any image.**
+  `save_image(image, filename, levels=None)` writes a gray, RGB or RGBA
+  array of `uint8` (or `uint16`, as `QSnapshot` did) and raises
+  `ValueError` or `OSError` when it cannot.  `QImageSaver.save(image,
+  filename=None, ask=False)` adds a timestamped name that never overwrites a
+  file, an optional file dialog and a `message(str)` signal for the status
+  bar, and returns the path.  An application passes the image in (the
+  screen, the pattern of a modulator), so it is no longer tied to the
+  frames that `QSnapshot` caches.  `QSnapshot` now uses it, and `QCamcorder`
+  shows "Saved ..." in its status bar after a snapshot.
+- **A screenshot of what the screen shows.**  `QVideoScreen.screenshot()`
+  (it was the private `_renderComposite`) renders the video with its filters,
+  color map and overlays when it is called.  `QSnapshot(parent, screen=...)`
+  adds `screenshot()` and `screenshotAs()`, on `Ctrl+Shift+P` (silent,
+  timestamped) and `Ctrl+Shift+Alt+P` (file dialog), which `QCamcorder`
+  turns on beside the data snapshot.  Without a `screen` nothing changes.
 - **A deep frame is saved and recorded honestly.**  `QSnapshot` saves a gray
   `uint16` frame to PNG or TIFF with 16 bits, stretched so that the levels
   of the camera run from 0 to 65535 (it refused such a frame before), and

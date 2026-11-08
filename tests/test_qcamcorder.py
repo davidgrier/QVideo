@@ -117,6 +117,17 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
         self.widget.dvrPlayback(False)  # should not raise
 
 
+class TestQCamcorderSnapshotMessage(unittest.TestCase):
+
+    def test_a_saved_snapshot_is_said_in_the_status_bar(self):
+        widget = make_camcorder()
+        self.addCleanup(widget.cameraWidget.stop)
+        messages = []
+        widget.message.connect(messages.append)
+        widget._snapshot.saver.message.emit('Saved here.png')
+        self.assertEqual(messages, ['Saved here.png'])
+
+
 class TestQCamcorderLevels(unittest.TestCase):
 
     '''The choice of levels appears with a camera of more than 8 bits.'''

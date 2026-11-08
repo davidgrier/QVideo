@@ -47,6 +47,8 @@ QVideoWriter
     Abstract base class for video file writers.
 QSnapshot
     Hotkey-triggered still-frame capture from any ``newFrame`` signal.
+QImageSaver
+    Saves any image to a file, with a timestamped default name and a report.
 '''
 from .videotypes import Image, FrameInfo
 from .clickable import clickable
@@ -66,6 +68,7 @@ from .QVideoReader import QVideoReader
 from .QVideoWriter import QVideoWriter
 from .QCameraOpener import QCameraOpener
 from ._launch import launch
+from .QImageSaver import QImageSaver
 from .QSnapshot import QSnapshot
 
 __all__ = '''Image
@@ -75,6 +78,6 @@ QCamera QCameraError QDriverError QDeviceError QVideoSource QCameraTree
 QRemoteCamera QCameraOpener
 QFilterRack QFilterPipeline QFrameRelay
 QVideoReader QVideoWriter QVideoScreen
-QSnapshot
+QSnapshot QImageSaver
 VideoFilter QVideoFilter ReferenceFilter QReferenceFilter
 QOverlayWidget'''.split()

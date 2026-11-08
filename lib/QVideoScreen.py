@@ -319,7 +319,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             self._followLevels(image, info)
             self.image.setImage(image, autoLevels=False)
             self.newFrame.emit(
-                self._renderComposite() if self._composite else image, info)
+                self.screenshot() if self._composite else image, info)
             self._ready = False
             self._pending = None
             self._timer.start(self._interval)
@@ -352,8 +352,12 @@ class QVideoScreen(GraphicsLayoutWidget):
     def composite(self, value: bool) -> None:
         self._composite = bool(value)
 
-    def _renderComposite(self) -> Image:
+    def screenshot(self) -> Image:
         '''Capture the widget (video + overlays) as an RGB numpy array.
+
+        This is what the screen shows, with its filters, color map and
+        overlays.  It is rendered when called, so it costs nothing until
+        then (unlike :attr:`composite`, which renders every frame).
 
         Uses :meth:`QWidget.grab` to snapshot the widget's current visual
         state.  This avoids painter conflicts that arise from rendering the

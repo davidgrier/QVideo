@@ -1,7 +1,13 @@
 '''Unit tests for QVideo.lib.imageops.'''
+import os
+import tempfile
 import unittest
 import numpy as np
-from QVideo.lib.imageops import grayscale, to8bit, stretch16
+from qtpy import QtGui, QtWidgets
+from QVideo.lib.imageops import (grayscale, to8bit, stretch16,
+                                 save_image)
+
+app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 class TestGrayscale(unittest.TestCase):
@@ -84,6 +90,87 @@ class TestStretch16(unittest.TestCase):
         result = stretch16(frame, (0, 4095))
         self.assertEqual(result.dtype, np.uint16)
         self.assertEqual(result.shape, frame.shape)
+
+
+class TestSaveImage(unittest.TestCase):
+
+    def path(self, suffix='.png'):
+        f = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+        f.close()
+        self.addCleanup(os.unlink, f.name)
+        return f.name
+
+    def roundtrip(self, image, suffix='.png', levels=None):
+        path = self.path(suffix)
+        save_image(image, path, levels)
+        return QtGui.QImage(path)
+
+    def test_gray_pixels_read_back_equal(self):
+        image = np.arange(24, dtype=np.uint8).reshape(4, 6) * 10
+        loaded = self.roundtrip(image)
+        self.assertEqual((loaded.height(), loaded.width()), (4, 6))
+        for y in range(4):
+            for x in range(6):
+                self.assertEqual(loaded.pixelColor(x, y).red(), image[y, x])
+
+    def test_rgb_pixels_read_back_equal(self):
+        image = np.zeros((3, 5, 3), dtype=np.uint8)
+        image[1, 2] = (10, 20, 30)
+        color = self.roundtrip(image).pixelColor(2, 1)
+        self.assertEqual((color.red(), color.green(), color.blue()),
+                         (10, 20, 30))
+
+    def test_rgba_pixels_read_back_equal(self):
+        image = np.zeros((3, 5, 4), dtype=np.uint8)
+        image[1, 2] = (10, 20, 30, 128)
+        color = self.roundtrip(image).pixelColor(2, 1)
+        self.assertEqual((color.red(), color.green(), color.blue(),
+                          color.alpha()), (10, 20, 30, 128))
+
+    def test_an_image_that_is_not_contiguous_is_saved(self):
+        image = np.arange(48, dtype=np.uint8).reshape(6, 8)[::2, ::2]
+        loaded = self.roundtrip(image)
+        self.assertEqual(loaded.pixelColor(1, 1).red(), image[1, 1])
+
+    def test_gray_16_bit_keeps_16_bits_stretched_to_the_levels(self):
+        image = np.zeros((4, 6), dtype=np.uint16)
+        image[:, 3:] = 4095
+        loaded = self.roundtrip(image, levels=(0., 4095.))
+        self.assertEqual(loaded.depth(), 16)
+        self.assertEqual(loaded.pixelColor(5, 0).red(), 255)
+        self.assertEqual(loaded.pixelColor(0, 0).red(), 0)
+
+    def test_tiff_holds_16_bits(self):
+        image = np.full((4, 6), 2048, dtype=np.uint16)
+        loaded = self.roundtrip(image, '.tiff', (0., 4095.))
+        self.assertEqual(loaded.depth(), 16)
+
+    def test_jpeg_gets_8_bits(self):
+        image = np.full((4, 6), 4095, dtype=np.uint16)
+        loaded = self.roundtrip(image, '.jpg', (0., 4095.))
+        self.assertEqual(loaded.pixelColor(0, 0).red(), 255)
+
+    def test_color_16_bit_gets_8_bits(self):
+        image = np.full((4, 6, 3), 4095, dtype=np.uint16)
+        loaded = self.roundtrip(image, levels=(0., 4095.))
+        self.assertEqual(loaded.pixelColor(0, 0).red(), 255)
+
+    def test_without_levels_the_whole_range_is_used(self):
+        image = np.full((4, 6), 65535, dtype=np.uint16)
+        self.assertEqual(self.roundtrip(image).pixelColor(0, 0).red(), 255)
+
+    def test_a_dtype_that_cannot_be_saved_raises(self):
+        with self.assertRaises(ValueError):
+            save_image(np.zeros((4, 6), np.float32), self.path())
+
+    def test_a_shape_that_cannot_be_saved_raises(self):
+        with self.assertRaises(ValueError):
+            save_image(np.zeros((4, 6, 2), np.uint8), self.path())
+
+    def test_a_path_that_cannot_be_written_raises(self):
+        with self.assertRaises(OSError):
+            save_image(np.zeros((4, 6), np.uint8),
+                       '/nonexistent-folder/image.png')
 
 
 if __name__ == '__main__':  # pragma: no cover

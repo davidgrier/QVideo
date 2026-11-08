@@ -1,24 +1,16 @@
 '''Still-frame capture from a live video stream.'''
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.videotypes import Image
-from QVideo.lib.imageops import stretch16, to8bit
+from QVideo.lib.QImageSaver import QImageSaver
+from QVideo.lib.QVideoScreen import QVideoScreen
 from pathlib import Path
 import numpy as np
-import datetime
 import logging
 
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['QSnapshot']
-
-#: The file types that hold 16 bit gray.
-_DEEP_FORMATS = ('.png', '.tif', '.tiff')
-
-try:
-    _Fmt = QtGui.QImage.Format
-except AttributeError:
-    _Fmt = QtGui.QImage
 
 
 class QSnapshot(QtCore.QObject):
@@ -41,6 +33,12 @@ class QSnapshot(QtCore.QObject):
     that deliver BGR data (e.g. OpenCV), the saved PNG will have swapped
     red and blue channels compared to the on-screen display.
 
+    With a *screen*, the same object also saves what the screen shows
+    (:meth:`screenshot` and :meth:`screenshotAs`): the video with its
+    filters, color map and overlays, as an 8 bit color PNG whatever the
+    depth of the camera.  :meth:`snap` saves the data and :meth:`screenshot`
+    the display.
+
     Parameters
     ----------
     parent : QWidget
@@ -51,6 +49,19 @@ class QSnapshot(QtCore.QObject):
     key_as : str
         Keyboard shortcut that triggers :meth:`snapAs` (file-dialog save).
         Default: ``'Ctrl+Shift+Alt+S'``.
+    screen : QVideoScreen, optional
+        The screen that :meth:`screenshot` captures.  Without one, the
+        screenshot shortcuts are not registered.
+    key_screen : str
+        Keyboard shortcut for :meth:`screenshot`.
+        Default: ``'Ctrl+Shift+P'``.
+    key_screen_as : str
+        Keyboard shortcut for :meth:`screenshotAs`.
+        Default: ``'Ctrl+Shift+Alt+P'``.
+
+    The file is written by :attr:`saver`, a
+    :class:`~QVideo.lib.QImageSaver.QImageSaver`, whose ``message`` signal
+    reports each outcome.
 
     Slots
     -----
@@ -60,23 +71,42 @@ class QSnapshot(QtCore.QObject):
         Save the cached frame to a timestamped PNG in the home directory.
     snapAs()
         Prompt for a filename (pre-filled with the generated one), then save.
+    screenshot()
+        Save what the screen shows to a timestamped PNG.
+    screenshotAs()
+        Prompt for a filename, then save what the screen shows.
     '''
 
     def __init__(self, parent: QtWidgets.QWidget,
                  key: str = 'Ctrl+Shift+S',
-                 key_as: str = 'Ctrl+Shift+Alt+S') -> None:
+                 key_as: str = 'Ctrl+Shift+Alt+S',
+                 screen: QVideoScreen | None = None,
+                 key_screen: str = 'Ctrl+Shift+P',
+                 key_screen_as: str = 'Ctrl+Shift+Alt+P') -> None:
         super().__init__(parent)
+        #: The screen whose display :meth:`screenshot` saves, if any.
+        self.screen = screen
         self._frame: Image | None = None
         #: The pixel values of the cached frame, if it has more than 8 bits,
         #: that are black and white: those of its ``FrameInfo``; ``None`` is
         #: the whole range.
         self.levels: tuple[float, float] | None = None
+        #: Writes the files and reports the outcome (``saver.message``).
+        self.saver = QImageSaver(self, Path.home(), 'snapshot',
+                                 title='Save Snapshot')
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), parent)
         shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut.activated.connect(self.snap)
         shortcut_as = QtWidgets.QShortcut(QtGui.QKeySequence(key_as), parent)
         shortcut_as.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut_as.activated.connect(self.snapAs)
+        if screen is not None:
+            for sequence, slot in ((key_screen, self.screenshot),
+                                   (key_screen_as, self.screenshotAs)):
+                shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(sequence),
+                                               parent)
+                shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+                shortcut.activated.connect(slot)
 
     @QtCore.Slot(np.ndarray, object)
     def newFrame(self, frame: Image, info: object = None) -> None:
@@ -84,18 +114,13 @@ class QSnapshot(QtCore.QObject):
         self._frame = frame
         self.levels = getattr(info, 'levels', None)
 
-    def _defaultPath(self) -> str:
-        '''Return a timestamped PNG path in the user's home directory.'''
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        return str(Path.home() / f'snapshot_{timestamp}.png')
-
     @QtCore.Slot()
     def snap(self) -> None:
         '''Save the cached frame to a timestamped PNG in the home directory.'''
         if self._frame is None:
             logger.warning('snap: no frame available')
             return
-        self._save(self._frame, self._defaultPath())
+        self.saver.save(self._frame, levels=self.levels)
 
     @QtCore.Slot()
     def snapAs(self) -> None:
@@ -103,61 +128,24 @@ class QSnapshot(QtCore.QObject):
         if self._frame is None:
             logger.warning('snapAs: no frame available')
             return
-        filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-            None, 'Save Snapshot', self._defaultPath(),
-            'PNG Images (*.png);;TIFF Images (*.tiff);;JPEG Images (*.jpg)')
-        if filename:
-            self._save(self._frame, filename)
+        self.saver.save(self._frame, ask=True, levels=self.levels)
 
-    def _save(self, frame: Image, filename: str) -> None:
-        '''Write *frame* to *filename* using Qt image facilities.
+    @QtCore.Slot()
+    def screenshot(self) -> None:
+        '''Save what the screen shows to a timestamped PNG.'''
+        self._screenshot(ask=False)
 
-        Parameters
-        ----------
-        frame : Image
-            Frame to save: ``uint8``, or ``uint16`` from a camera of more
-            than 8 bits.
-        filename : str
-            Destination path.  The file format is inferred from the extension.
+    @QtCore.Slot()
+    def screenshotAs(self) -> None:
+        '''Prompt for a filename, pre-filled, then save the screenshot.'''
+        self._screenshot(ask=True)
 
-        Notes
-        -----
-        A gray ``uint16`` frame is saved with 16 bits to a PNG or TIFF
-        file, stretched so that :attr:`levels` run from 0 to 65535 (a 12 bit
-        image would look black otherwise).  Any other file, and a color
-        frame, gets 8 bits between :attr:`levels`.
-        '''
-        deep = False
-        if frame.dtype == np.uint16:
-            deep = (frame.ndim == 2
-                    and Path(filename).suffix.lower() in _DEEP_FORMATS)
-            frame = (stretch16(frame, self.levels) if deep
-                     else to8bit(frame, self.levels))
-        elif frame.dtype != np.uint8:
-            logger.warning(f'_save: unsupported dtype {frame.dtype}; '
-                           'expected uint8 or uint16')
+    def _screenshot(self, ask: bool) -> None:
+        if self.screen is None:
+            logger.warning('screenshot: no screen')
             return
-        frame = np.ascontiguousarray(frame)
-        if deep:
-            h, w = frame.shape
-            img = QtGui.QImage(frame.tobytes(), w, h, 2 * w,
-                               _Fmt.Format_Grayscale16)
-        elif frame.ndim == 2:
-            h, w = frame.shape
-            img = QtGui.QImage(frame.tobytes(), w, h, w,
-                               _Fmt.Format_Grayscale8)
-        elif frame.ndim == 3 and frame.shape[2] == 3:
-            h, w = frame.shape[:2]
-            img = QtGui.QImage(frame.tobytes(), w, h, 3 * w,
-                               _Fmt.Format_RGB888)
-        elif frame.ndim == 3 and frame.shape[2] == 4:
-            h, w = frame.shape[:2]
-            img = QtGui.QImage(frame.tobytes(), w, h, 4 * w,
-                               _Fmt.Format_RGBA8888)
-        else:
-            logger.warning(f'_save: unsupported frame shape {frame.shape}')
+        image = self.screen.screenshot()
+        if image.size == 0:
+            logger.warning('screenshot: the screen has no size')
             return
-        if not img.save(filename):
-            logger.warning(f'_save: failed to save {filename!r}')
-        else:
-            logger.info(f'Snapshot saved: {filename!r}')
+        self.saver.save(image, ask=ask, prefix='screenshot')

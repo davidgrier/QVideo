@@ -44,29 +44,38 @@ Things noticed, not changed:
 
 ---
 
-## One function that saves an image, for `QSnapshot` and for QHOT  **Idea; requested 2026-11-06**
+## An image saver for `QSnapshot` and for applications  **Built 2026-11-07**
 
-Found in the review of QHOT, which has its own copy of the part of
-`QSnapshot._save` that turns an array into a file (`QSaveFile._qimage` and
-`image`).  `QSnapshot` itself does not suit QHOT: it caches frames from a
-signal, writes to the home directory, only logs a failure and registers its
-own shortcuts, where QHOT pulls an image on demand (the video, the pattern
-on the SLM, or a task), keeps a data directory, never overwrites a file, and
-reports every outcome in the status bar.  The array to file part is the same.
+`QSnapshot._save` turns an array into a file, but only for frames that it
+caches from a signal, only in the home directory, and it only logs a failure.
+Other applications that import QVideo (QHOT saves the video and the pattern
+on its SLM) pull an image on demand and want every outcome in the status bar.
+The saver takes the image as an argument, so any array can be saved.
 
-- [ ] **`imageops.save_image(image, filename)`**: an `(H, W)`, `(H, W, 3)` or
-  `(H, W, 4)` array of `uint8` becomes a `QImage` (the format follows the
-  extension, as in Qt), which is copied so that it owns its pixels.  It
-  raises, and does not log: `ValueError` for a dtype or a shape that cannot be
-  saved, `OSError` if the file cannot be written.
-- [ ] **`QSnapshot._save` calls it** and keeps what is its own: the cache, the
-  shortcuts and the warnings.  It also settles the `uint16` question of
-  "Video deeper than 8 bits" in one place, instead of a refusal in each
-  consumer.
-- [ ] **Then QHOT calls it** (`QSaveFile.image`, in place of `_qimage`) and
-  raises its requirement (`QVideo[dvr]>=`) once the release is on PyPI.
+- [x] **`imageops.save_image(image, filename, levels=None)`**: the array to
+  file step, with no widgets.  `(H, W)`, `(H, W, 3)` and `(H, W, 4)` arrays of
+  `uint8` become a `QImage` (the format follows the extension), and `uint16`
+  gray is saved as it is now by `QSnapshot` (16 bit PNG or TIFF, stretched by
+  `levels`).  It raises and does not log: `ValueError` for a dtype or shape
+  that cannot be saved, `OSError` if the file cannot be written.
+- [x] **`QImageSaver`** (`lib/`, a `QObject`): `save(image, filename=None,
+  ask=False) -> str | None` returns the path, or `None` if the user cancelled.
+  - A filename is used as given.  Without one the name is
+    `<prefix>_YYYYMMDD_HHMMSS.png` in `directory`, and an existing file is
+    never overwritten (a suffix is added).
+  - `ask=True` opens the save dialog, with that timestamped name as the
+    default.
+  - `message(str)` reports each outcome ("Saved ...", "Could not save ...:
+    reason"), so that the status bar of a `QCamcorder` or `QMainWindow` shows
+    it.
+- [x] **`QSnapshot` uses it** and keeps what is its own: the cache and the
+  shortcuts (`snap` calls `save`, `snapAs` calls `save(ask=True)`).
+  `QCamcorder` connects `message` to its own.  This settles the `uint16`
+  question in one place.
 - Test: the pixels read back from the file equal the array, for gray, RGB and
-  RGBA; an array that is not contiguous; a path that cannot be written.
+  RGBA; an array that is not contiguous; a path that cannot be written; the
+  default name, the suffix when it exists, the cancelled dialog, and the
+  message of each outcome.
 
 ---
 
@@ -846,7 +855,7 @@ them:
   numpy/`cv2`-based rendering path per overlay (e.g. `cv2.rectangle`
   for `QYoloOverlay`), or (b) reusing the existing
   `QWidget.grab()`-based compositing machinery of
-  `QVideoScreen._renderComposite` to
+  `QVideoScreen.screenshot` to
   rasterize the live Qt screen + overlay into an image before
   streaming it to `ipywidgets.Image` — which still requires a real
   (if invisible) `QVideoScreen`/`QApplication` to exist even in the

@@ -58,6 +58,11 @@ roidemo
     A :class:`~QVideo.QCamcorder.QCamcorder` with a draggable region of
     interest; only the pixels inside it are recorded.
 
+webdemo
+    The video on the screen and, at the same time, in any browser on the
+    network that opens the address shown (a tablet, a phone).  Needs
+    ``QVideo[stream]``.
+
 Running
 -------
 Each demo can be launched directly::
@@ -73,6 +78,7 @@ Each demo can be launched directly::
     python -m QVideo.demos.yolodemo
     python -m QVideo.demos.compositedemo
     python -m QVideo.demos.combineddemo
+    python -m QVideo.demos.webdemo
 
 Camera selection
 ----------------
@@ -115,4 +121,5 @@ from .trackpydemo import TrackpyDemo
 from .yolodemo import YoloDemo
 from .compositedemo import CompositeDemo
 from .combineddemo import CombinedDemo
+from .webdemo import WebDemo
 

@@ -55,6 +55,7 @@ so when they do, but there is no deprecation period:
 * the overlays (``QTrackpyWidget``, ``QYoloWidget``) and the notebook
   widgets of ``QVideo.interactive`` (``live_view``, ``controls``), but not
   the three names listed first above;
+* ``QWebScreen`` and its protocol (:doc:`streaming`);
 * ``QRemoteCamera``, its protocol, and the node-map methods that only the
   GenICam backends have (``nodeTree``, ``states``, ``hasNode``);
 * a backend that the compatibility page lists as not tested, and PySide6.

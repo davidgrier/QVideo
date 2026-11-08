@@ -86,6 +86,7 @@ Replace `python3-pyqt6` with `python3-pyqt5` if you prefer PyQt5.
 | GenICam cameras, viva-genicam only | `pip install QVideo[viva]` | The preferred interface alone, without harvesters |
 | Raspberry Pi camera | `pip install QVideo[picamera]` | Requires `picamera2` |
 | Camera names for USB cameras | `pip install QVideo[opencv]` | Uses `cv2-enumerate-cameras`; without it the cameras are listed as "Camera 0" and so on |
+| Video in a web browser or on a tablet | `pip install QVideo[stream]` | Uses `aiohttp`; see the streaming page of the documentation |
 | HDF5 recording (compressed without loss) | `pip install QVideo[dvr]` | Requires `h5py` and `hdf5plugin` |
 | Faster lossless AVI/MKV, 16-bit gray | `pip install QVideo[av]` | Uses PyAV instead of OpenCV when installed |
 

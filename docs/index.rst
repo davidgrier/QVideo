@@ -20,6 +20,7 @@ Run the full camcorder application directly::
    stability
    performance
    jupyter
+   streaming
    rpihat
    architecture
    backends

@@ -60,6 +60,14 @@ QVideoScreen
 .. automodule:: QVideo.lib.QVideoScreen
    :members:
 
+QWebScreen
+----------
+
+Serves the video to web browsers (:doc:`../streaming`).
+
+.. automodule:: QVideo.lib.QWebScreen
+   :members:
+
 VideoFilter
 -----------
 

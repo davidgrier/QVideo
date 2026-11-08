@@ -256,6 +256,17 @@ both bases connect the camera before it runs; signal connections go in
 `_connectSignals()`.  Combining extensions is application code (see
 `demos/combineddemo.py`), not a framework feature.
 
+### Web screen (`lib/QWebScreen.py`)
+
+`QWebScreen` serves a source's frames to web browsers (a tablet): an aiohttp
+server in a thread of its own, one WebSocket message per frame (a 4 byte
+header length, a JSON header, a JPEG), the newest frame only for a slow
+browser, no encoding while nobody watches.  It needs the `stream` extra and
+imports `aiohttp` only in `start()`.  The page is `lib/_webpage.py`.  View
+only for now; overlays and touch will ride in the header and in messages
+from the page.  It is a consumer of `newFrame` like `QVideoScreen`, so both
+run on one source.
+
 ### DVR (`dvr/`)
 
 Self-contained recording subsystem. `dvr/formats.py` maps file extensions

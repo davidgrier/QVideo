@@ -9,6 +9,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`QWebScreen`: the video in a web browser.**  A counterpart of
+  `QVideoScreen` for a viewer that is not a Qt window, such as a tablet at the
+  bench: it serves a small page and a WebSocket (`pip install
+  "QVideo[stream]"`, which installs `aiohttp`), and runs at the same time as
+  a `QVideoScreen` on the same source.  Frames are scaled, shown between the
+  levels of the frame, encoded once as JPEG for all browsers (and not at all
+  while there are none), and each browser gets the newest frame and skips
+  the rest.  A message carries the frame with its metadata and a place for
+  overlays, so that what is drawn belongs to the frame.  View only, without
+  authentication: for a trusted network.  `python -m QVideo.demos.webdemo`
+  shows the window and the page together; the protocol is on the
+  "Video in a web browser" page.  Provisional (see Stability).
+
 ## [4.24.0] — 2026-11-08
 
 ### Added

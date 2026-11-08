@@ -705,6 +705,77 @@ while streaming included.
 
 ---
 
+## Web screen: video on a tablet  **Starter built 2026-11-08; not pushed**
+
+`QWebScreen` (`lib/QWebScreen.py`, `docs/streaming.rst`, `demos/webdemo.py`)
+serves a source to web browsers over a WebSocket: view only, JPEG frames,
+the newest frame for a slow browser, no encoding while nobody watches.  Tried
+on a desktop browser over the network (`http://utopia.local:8080`, 27 frames
+a second from a webcam).  Not yet tried on an iPad.
+
+**Do not push or release it until the access control below exists.**  It
+has no authentication and no encryption: anyone who can reach the port sees
+the video (decided 2026-11-08).
+
+- [ ] **Access by QR code** (next).  A capability link: the window shows a QR
+  code for `http://<name>.local:<port>/pair?code=<secret>`, so that only
+  those who can see the screen can connect (a random 128 bit secret; it is
+  exchanged for a session cookie and the page redirects, so the secret does
+  not stay in the address bar or the history).  The page and `/ws` refuse a
+  browser without a session; failed attempts are rate limited.  A panel
+  (a widget in `widgets/`, used by the web demo and `QCamcorder`) shows the QR
+  code, the address, the viewers (device, address, since) with Disconnect, and
+  New code, which revokes the old link.  On by default (`access=None` turns it
+  off).  Reusable until rotated; a strict mode accepts the code only for a
+  short time after "Add viewer".  `segno` (pure Python) draws the QR code
+  with `QPainter` and in a terminal, and goes in the `stream` extra.  About a
+  day with tests.
+- [ ] **Say what it does not do.**  A photographed or screen-shared QR code
+  works until it is rotated.  Without TLS a sniffer on the Wi-Fi can read the
+  cookie, so the panel says "not encrypted" in plain words until a
+  certificate is set.  The QR code authenticates; it does not encrypt.
+- [ ] **TLS, opt in** (`certfile`, `keyfile`; `url` becomes `https://`; the
+  page already uses `wss://` on https).  The hard part is trust on the
+  devices, not the code.  Recipes for the docs, best first: a private
+  certificate authority (`mkcert`; on an iPad: install the profile, then
+  Settings > General > About > Certificate Trust Settings), Tailscale
+  (`tailscale cert`; encrypted and trusted names), a reverse proxy (Caddy or
+  nginx terminates TLS and can add logins; QVideo listens on 127.0.0.1), a
+  certificate from the institution.  A self-signed certificate is for tests:
+  Safari shows a warning and, I believe, often refuses WebSockets to it
+  (not tried).  Https also gives the page secure-context APIs (WebCodecs).
+- [ ] **A privilege model** for when the page can send events: scanning the QR
+  code grants view; control needs the operator to answer a prompt in the
+  window ("Allow this device to control?").  Someone is at the instrument,
+  which suits a laser and an SLM.
+- [ ] **The iPad.**  A page added to the home screen has storage of its own on
+  iOS, apart from Safari, so a shortcut must pair again: give each paired
+  device its own long-lived token, and use it in the shortcut's start URL.
+  Check the canvas fit, reconnection when the screen sleeps, and fullscreen.
+- [ ] **Show the name as well as the address** (`utopia.local` worked where an
+  IP address would change with DHCP), and a frame rate on the Qt side to
+  compare with the page's readout (27 frames a second from a webcam is
+  probably the camera: it gave 24 an hour earlier).
+- [ ] **Controls from the tablet.**  `PropertySpec` gives each property's
+  type and limits, and `watch` / `propertiesChanged` push live changes, so
+  the page can build sliders for exposure and gain as `CameraControls` does
+  in a notebook.
+- [ ] **Overlays and touch.**  The header's `overlays` list carries
+  primitives (circle, cross, line, text, with an id, image coordinates and a
+  "draggable" flag) in the message of the frame they belong to; the page sends
+  pointer events back (id, image position, phase).  The client draws a
+  dragged handle at once and the server confirms it.  The adapter that turns
+  QHOT's trap overlay into primitives, and drags into its model, belongs in
+  QHOT, not here.
+- [ ] **Bandwidth.**  JPEG at 1280 by 1024 is about 130 KB a frame (31 Mb/s at
+  30 frames a second) for a smooth scene and several times that for speckle:
+  scale to the tablet, lower the quality, or use H.264 (WebRTC or WebCodecs,
+  which needs https).  Not needed yet.
+- [ ] **In a notebook:** the same page could embed in Jupyter (anywidget), for
+  a live view of a remote instrument.
+
+---
+
 ## Unified Camera Discovery and Selection
 
 `available_cameras()` lists the cameras of every installed backend that

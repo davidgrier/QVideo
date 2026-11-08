@@ -57,7 +57,7 @@ from .videotypes import Image, FrameInfo
 from .clickable import clickable
 from .QCamera import QCamera, PropertySpec
 from .errors import QCameraError, QDriverError, QDeviceError
-from .QVideoSource import QVideoSource
+from .QVideoSource import QVideoSource, FrameSource
 from .remote import QRemoteCamera
 from .QCameraTree import QCameraTree
 from .QVideoScreen import QVideoScreen
@@ -78,7 +78,8 @@ __all__ = [
     'Image', 'FrameInfo',
     'clickable', 'launch',
     'QCamera', 'PropertySpec', 'QCameraError', 'QDriverError', 'QDeviceError',
-    'QVideoSource', 'QCameraTree', 'QRemoteCamera', 'QCameraOpener',
+    'QVideoSource', 'FrameSource', 'QCameraTree', 'QRemoteCamera',
+    'QCameraOpener',
     'QFilterRack', 'QFilterPipeline', 'QFrameRelay',
     'QVideoReader', 'QVideoWriter', 'QVideoScreen',
     'QSnapshot', 'QImageSaver',

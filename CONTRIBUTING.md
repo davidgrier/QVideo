@@ -74,6 +74,17 @@ applications and `interactive/` the notebook interface.
 `docs/architecture.rst` describes the layers in more detail, and
 `CLAUDE.md` is a concise reference to the conventions of the code.
 
+## Changing the API
+
+What a program can count on when it upgrades is written down in
+**[Stability](docs/stability.rst)**: what is stable, what is provisional,
+what is private, and the rule for removing or renaming.  Before you change a
+public name, read it.  In short: keep the old name working for one minor
+release with a `DeprecationWarning` that names the replacement (and a test
+that checks it), add a CHANGELOG entry under **Deprecated** or **Breaking**,
+and let the demos and the documentation use the new name.  Make a new
+export or hook only when you mean to keep it.
+
 ## Adding a camera backend
 
 Read **[Writing a camera backend](docs/backends.rst)**.  It explains the

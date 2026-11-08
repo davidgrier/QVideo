@@ -9,6 +9,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.24.0] — 2026-11-08
+
+### Added
+
+- **A stability policy** (`docs/stability.rst`, and "Changing the API" in
+  `CONTRIBUTING.md`).  It says what is stable (the documented exports, what
+  a backend, filter, reader or writer subclasses, signals, the command line,
+  and the files that QVideo writes), what is provisional (`QCamcorder`, the
+  demos, the overlays, the notebook widgets, `QRemoteCamera`, the node-map
+  methods of the GenICam backends, PySide6) and what is private; that a
+  stable name is removed or renamed only in a major release, after a minor
+  release in which the old name works and warns; and what a contributor does
+  to change one.  It applies from this release.
+- `QVideo.lib.FrameSource`, the protocol that `QVideoSource` runs, is exported.
+
 ## [4.23.0] — 2026-11-08
 
 ### Changed

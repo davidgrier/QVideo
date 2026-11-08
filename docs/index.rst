@@ -17,6 +17,7 @@ Run the full camcorder application directly::
 
    quickstart
    compatibility
+   stability
    performance
    jupyter
    rpihat

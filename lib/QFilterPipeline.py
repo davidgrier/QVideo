@@ -84,13 +84,22 @@ class _FilterStage(QtCore.QObject):
         return (self._upstream.shape if self._upstream is not None
                 else QtCore.QSize())
 
+    @property
+    def depth(self) -> int:
+        return self._queue.maxlen or 1
+
     def isOpen(self) -> bool:
         return self._open
+
+    def reopen(self) -> None:
+        '''Accept frames again after :meth:`close`.'''
+        with QtCore.QMutexLocker(self._mutex):
+            self._open = True
 
     def __enter__(self) -> '_FilterStage':
         return self
 
-    def __exit__(self, *exc) -> None:
+    def __exit__(self, exc_type, exc, tb) -> None:
         pass
 
     def close(self) -> None:
@@ -225,7 +234,8 @@ class QFilterPipeline(QVideoSource):
     would let Qt delete the thread while it runs.  Keep a reference to
     the pipeline for as long as it is needed.  The thread stops on
     :meth:`stop`, when the application quits, and when the last
-    reference is dropped.  A stopped pipeline stays stopped.
+    reference is dropped.  A stopped pipeline runs again when it is
+    started.
 
     Signals
     -------
@@ -245,7 +255,7 @@ class QFilterPipeline(QVideoSource):
                  depth: int = 1,
                  rack: 'QFilterRack | None' = None) -> None:
         self._stage = _FilterStage(filters, depth)
-        super().__init__(self._stage)  # pyright: ignore[reportArgumentType]
+        super().__init__(self._stage)
         self.framesDropped = self._stage.framesDropped
         self.filterFailed = self._stage.filterFailed
         self._rack: QFilterRack | None = None
@@ -300,9 +310,18 @@ class QFilterPipeline(QVideoSource):
         '''Return the metadata of the frame that was filtered.'''
         return self._stage.info
 
+    @property
+    def depth(self) -> int:
+        '''Number of frames that may wait for the filters.'''
+        return self._stage.depth
+
     @QtCore.Slot()
-    def stop(self) -> None:
-        '''Stop the worker thread, discarding waiting frames.'''
-        super().stop()
+    def start(self) -> 'QFilterPipeline':
+        '''Start the thread; a pipeline that was stopped runs again.'''
+        self._stage.reopen()
+        super().start()
+        return self
+
+    def _wakeSource(self) -> None:
+        '''Discard waiting frames and wake the stage that waits.'''
         self._stage.close()
-        self.wait()

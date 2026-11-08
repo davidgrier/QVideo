@@ -339,6 +339,35 @@ class TestSourceInterface(PipelineTestCase):
         self.source.send(4)
         self.assertTrue(wait_until(lambda: 4 in self.values()))
 
+    def test_a_pipeline_can_filter_a_pipeline(self):
+        self.make([_Add(1)])
+        second = QFilterPipeline(self.pipeline, [_Add(10)])
+        self.addCleanup(second.stop)
+        out = []
+        second.newFrame.connect(
+            lambda frame, info: out.append((int(frame[0, 0]), info)))
+        info = self.source.send(5)
+        self.assertTrue(wait_until(lambda: len(out) == 1))
+        self.assertEqual(out[0][0], 16)
+        self.assertEqual(out[0][1], info)
+        self.assertEqual(second.fps, 30.)
+
+    def test_a_stopped_pipeline_runs_again_when_started(self):
+        self.make()
+        self.source.send(1)
+        self.assertTrue(wait_until(lambda: self.values() == [1]))
+        self.pipeline.stop()
+        self.assertFalse(self.pipeline.isRunning())
+        self.source.send(2)
+        QtTest.QTest.qWait(50)
+        self.assertEqual(self.values(), [1])
+        self.pipeline.start()
+        self.source.send(3)
+        self.assertTrue(wait_until(lambda: self.values() == [1, 3]))
+
+    def test_depth_is_what_the_pipeline_was_given(self):
+        self.assertEqual(self.make(depth=4).depth, 4)
+
     def test_fps_comes_from_the_source(self):
         self.make()
         self.assertEqual(self.pipeline.fps, 30.)

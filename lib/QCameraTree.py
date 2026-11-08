@@ -330,8 +330,6 @@ class QCameraTree(ParameterTree):
         '''Stop and join the video source thread.'''
         if self.source.isRunning():
             self.source.stop()
-            self.source.quit()
-            self.source.wait()
 
     @classmethod
     def example(cls: type['QCameraTree']) -> None:  # pragma: no cover

@@ -694,7 +694,7 @@ class TestStructure(RackTestCase):
 
     def test_depth_reaches_the_pipeline(self):
         rack = self.make(depth=8)
-        self.assertEqual(rack.pipeline._stage._queue.maxlen, 8)
+        self.assertEqual(rack.pipeline.depth, 8)
 
 
 class TestSource(RackTestCase):

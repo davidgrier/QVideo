@@ -1,14 +1,14 @@
 '''QThread wrapper that drives a QCamera and emits newFrame signals.'''
 import logging
 from time import perf_counter
-from typing import TypeAlias
+from typing import Any, Protocol, TypeAlias, cast
 
 import numpy as np
 from qtpy import QtCore
 
 from QVideo.lib.QCamera import QCamera
 from QVideo.lib.QVideoReader import QVideoReader
-from QVideo.lib.videotypes import FrameInfo
+from QVideo.lib.videotypes import FrameInfo, Image
 
 
 logger = logging.getLogger(__name__)
@@ -16,9 +16,43 @@ logger = logging.getLogger(__name__)
 #: How long the capture loop waits [ms] before it asks a closed camera again.
 _CLOSED_WAIT_MS = 50
 
-VideoSourceType: TypeAlias = QCamera | QVideoReader
 
-__all__ = ['QVideoSource', 'VideoSourceType']
+class FrameSource(Protocol):
+
+    '''What :class:`QVideoSource` needs of the object that it runs.
+
+    :class:`~QVideo.lib.QCamera.QCamera`,
+    :class:`~QVideo.lib.QVideoReader.QVideoReader` and the stage of a
+    :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline` provide it.  The
+    thread opens the source with its context manager, calls
+    :meth:`saferead` until it is stopped, and closes it.  A source may
+    also have ``seek(framenumber)`` (readers of files), ``lost`` (a signal
+    of cameras), ``hardwareTimestamp`` and ``levels``.
+    '''
+
+    #: Emitted when the shape of the frames changes (a signal).
+    shapeChanged: Any
+
+    @property
+    def shape(self) -> QtCore.QSize: ...
+
+    @property
+    def actualFps(self) -> float: ...
+
+    def isOpen(self) -> bool: ...
+
+    def saferead(self) -> tuple[bool, Image | None]: ...
+
+    def moveToThread(self, thread: QtCore.QThread | None, /) -> object: ...
+
+    def __enter__(self) -> object: ...
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any, /) -> object: ...
+
+
+VideoSourceType: TypeAlias = FrameSource
+
+__all__ = ['QVideoSource', 'FrameSource', 'VideoSourceType']
 
 
 class QVideoSource(QtCore.QThread):
@@ -28,9 +62,10 @@ class QVideoSource(QtCore.QThread):
 
     Parameters
     ----------
-    source : QCamera | QVideoReader
-        The video source to read frames from.  The capture thread opens
-        it (its context manager) and closes it when the loop ends.
+    source : FrameSource
+        The camera, video reader or filter stage to read frames from.
+        The capture thread opens it (its context manager) and closes it
+        when the loop ends.
 
     Signals
     -------
@@ -74,7 +109,7 @@ class QVideoSource(QtCore.QThread):
 
     @property
     def source(self) -> VideoSourceType:
-        '''The underlying QCamera or QVideoReader.'''
+        '''The underlying QCamera, QVideoReader or filter stage.'''
         return self._source
 
     def isOpen(self) -> bool:
@@ -118,7 +153,7 @@ class QVideoSource(QtCore.QThread):
                         break
                     target, self._seek = self._seek, None
                 if target is not None:
-                    self.source.seek(target)  # pyright: ignore[reportCallIssue]
+                    cast(QVideoReader, self.source).seek(target)
                 ok, frame = self.source.saferead()
                 if ok:
                     info = self._frameInfo()
@@ -158,7 +193,6 @@ class QVideoSource(QtCore.QThread):
             return
         if running:
             self.stop()
-            self.wait()
 
     @QtCore.Slot()
     def start(self) -> 'QVideoSource':
@@ -183,17 +217,23 @@ class QVideoSource(QtCore.QThread):
 
     @QtCore.Slot()
     def stop(self) -> None:
-        '''Stop the capture thread.
+        '''Stop the capture thread and wait for it to finish.
 
-        Sets ``_running`` to ``False`` and wakes any thread blocked in
-        :meth:`pause`, so that :meth:`run` exits cleanly at the next
-        loop iteration.
+        Wakes a loop that is paused, so that :meth:`run` exits at the next
+        iteration, and returns when the thread has ended.  A thread that
+        stops itself does not wait for itself.
         '''
         logger.debug('stopping')
         with QtCore.QMutexLocker(self._mutex):
             self._running = False
             self._paused = False
         self._waitCondition.wakeAll()
+        self._wakeSource()
+        if QtCore.QThread.currentThread() is not self:
+            self.wait()
+
+    def _wakeSource(self) -> None:
+        '''Wake a source that is blocked in ``saferead``; none is.'''
 
     @QtCore.Slot()
     def pause(self) -> None:

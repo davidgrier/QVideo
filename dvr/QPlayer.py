@@ -153,7 +153,6 @@ class QPlayer(QtCore.QObject):
         except (RuntimeError, TypeError):
             logger.debug('Playback signals were already disconnected')
         source.stop()
-        source.wait()
         self._source = None
         self.playing.emit(False)
 

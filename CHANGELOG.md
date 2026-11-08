@@ -9,6 +9,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **`QVideoSource.stop()` waits for the thread, and `FrameSource` says
+  what a source is.**  Every caller already followed `stop()` with
+  `wait()`, and `QFilterPipeline.stop()` waited; now they all do (a thread
+  that stops itself does not wait for itself).  The protocol
+  `QVideoSource.FrameSource` names what the thread needs of a camera, a
+  reader or a filter stage (`VideoSourceType` is its alias).  A stopped
+  `QFilterPipeline` runs again on `start()`, like every other source, and
+  has a `depth` property.
+
 ## [4.21.0] — 2026-11-08
 
 ### Changed

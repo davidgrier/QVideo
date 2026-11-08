@@ -175,9 +175,9 @@ What the evidence says:
   15 frames a second the longest gap in the main thread went from 7.8 ms
   to 55.7 ms.  The 1 ms polling is the least bad setting.
 - The work that the GUI thread does for the camera is also affected.
-  ``QGenicamTree`` polls the camera every 200 ms with ``states()``, which
-  takes 17 to 18 ms a call (up to 41 ms), five times a second, with the
-  lock held.
+  ``QGenicamTree`` once polled the camera every 200 ms with ``states()``,
+  which took 17 to 18 ms a call (up to 41 ms) with the lock held; it now
+  asks only when the camera reports a change.
 - Not the cause, measured: the overlay of the program (hiding it changed
   the stalls not at all), the number of buffers (3 or 32), the work that
   the capture thread does for each frame (0.45 ms of 15 ms), the frame

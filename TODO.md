@@ -116,18 +116,24 @@ returns the camera's value only after that time.
   (`changed_since`): the tree reads back all that it shows, which one
   snapshot makes cheap; the map would name only the dependents.  Not needed
   yet.
-- [ ] **Genicam (Harvesters), conditional on keeping it** (see "Retire the
-  Harvesters backends that nobody has tested?"): the model is backend
-  neutral, so `QGenicamCamera` can adopt it without touching `Viva`.  The
-  `genicam` binding has the GenApi equivalents: `INode.polling_time`,
-  `NodeMap.poll(elapsed)`, `register_callback`, `parents`/`children`.  It
-  would replace the 200 ms GUI-thread poll of `QGenicamTree._pollCamera`
-  (idle: no traffic).  The cost is the worker: `_changes()` runs in the
-  worker process, so the remote protocol needs an event message that the
-  `QRemoteCamera` proxy re-emits as `propertiesChanged`.  The Blackfly S
-  can verify it through the Flir path.  The Genicam tree does not have the
-  stale-display bug (it follows the camera already), so this is cleanup, not
-  a fix: decide the fate of the Harvesters backends first.
+- [x] **Genicam (Harvesters)** (2026-11-08): `QGenicamCamera._changes`
+  with the same arm, poll, quiet rule as Viva, `NodeMap.poll(ms)` in place
+  of `changed_since` (the binding reports neither `polling_time`, which is
+  -1 for every node, nor which nodes are due, so it reads every watched
+  node and ignores counters and temperatures when it decides whether
+  anything is going on); a `changes` event from the worker, re-emitted by
+  `QRemoteCamera`; the 200 ms GUI-thread poll and the worker's push are
+  gone.  Checked on the Blackfly S through the worker
+  (`devel/genicamfollow.py`).  Without `NodeMap.poll`, `ExposureAuto`
+  stays `Once` for ever, so the Genicam tree did have the bug in a
+  weaker form (it went stale until something else moved).
+- [ ] Genicam: read only what is due.  With `polling_time` at -1 the
+  binding gives no list; the XML has `PollingTime` on private nodes
+  (`ExposureTime_FloatVal`) and `pInvalidator`/`pDependent` link them to
+  the features: walking that graph would cut the 15 to 35 ms that a read
+  of every shown node costs, twice a second while armed.
+- [ ] Share the arm, quiet and automatic-mode policy of Viva and Genicam in
+  a helper (two real users now).
 
 ---
 
@@ -365,9 +371,8 @@ these is a reason not to make it the default today:
 
 Cheaper, and worth doing whatever else is decided:
 
-- [ ] `QGenicamTree._pollCamera` runs on the GUI thread every 200 ms and
-      holds the lock for 17 to 18 ms a call (41 ms at most): stop it while
-      the tree is hidden, or run it in the capture thread between frames.
+- [x] `QGenicamTree._pollCamera`: removed (2026-11-08); see the change
+      reporting above.
 - [ ] Add what we know to genicam/harvesters #508 (see
       `docs/compatibility.rst`): that `_gentl.so` and `_genapi.so` import no
       `PyEval_SaveThread`, that a longer wait is worse, and that the node

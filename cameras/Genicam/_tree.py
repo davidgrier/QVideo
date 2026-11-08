@@ -25,11 +25,13 @@ class QGenicamTree(QCameraTree):
     GenICam node map and exposes visibility and per-feature enable/disable
     controls.
 
-    A timer polls the camera periodically so that autonomous camera-side
-    changes (e.g. ``Gain`` being adjusted by auto-exposure, ``GainAuto``
-    reverting from ``"Once"`` to ``"Off"``) are reflected in the UI.
-    ``PyNodeCallback`` is not used because it only fires when the **host**
-    writes a node, not when the camera changes a value autonomously.
+    The tree follows a camera that changes by itself (``Gain`` adjusted by
+    auto-exposure, ``GainAuto`` reverting from ``"Once"`` to ``"Off"``):
+    it names the nodes that it shows to the camera
+    (:meth:`~QVideo.lib.QCamera.QCamera.watch`), which asks the device what
+    changed only when something can have, and the tree refreshes values,
+    limits and which nodes are writable when the camera reports a change
+    (``propertiesChanged``).  Nothing polls.
 
     Parameters
     ----------
@@ -87,9 +89,6 @@ class QGenicamTree(QCameraTree):
         GammaEnable=False,
     )
 
-    #: Parameters that one poll of the camera reads.
-    _pollChunk = 32
-
     def __init__(self, *args,
                  camera: QGenicamCamera | None = None,
                  cameraID: int = 0,
@@ -104,7 +103,6 @@ class QGenicamTree(QCameraTree):
         if settings:
             camera.settings = settings
         controls = controls or self._DEFAULT_CONTROLS
-        self._pollCursor = 0
         self._scaleFactors: dict[str, float] = {}
         self._decParams: set[str] = set()
         self._visibilities: dict[str, int] = {}
@@ -114,21 +112,6 @@ class QGenicamTree(QCameraTree):
         self.controls = controls
         self.visibility = visibility
         self._updateEnabled()
-        self._startTimer()
-
-    def _startTimer(self) -> None:
-        '''Start the timer to poll camera-side changes.'''
-        self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(200)
-        self._timer.timeout.connect(self._pollCamera)
-        self._timer.start()
-        instance = QtCore.QCoreApplication.instance()
-        quitting = instance.aboutToQuit
-        quitting.connect(self._timer.stop)
-
-    def closeEvent(self, event) -> None:
-        self._timer.stop()
-        super().closeEvent(event)
 
     def description(self,
                     camera: QGenicamCamera) -> list[dict]:
@@ -272,8 +255,7 @@ class QGenicamTree(QCameraTree):
         return [(p, name) for p, name in pairs
                 if p.opts.get('visible', False) and name in self._visibilities]
 
-    def _snapshot(self, params: list | None = None,
-                  cached: bool = False) -> tuple[list, dict]:
+    def _snapshot(self, params: list | None = None) -> tuple[list, dict]:
         '''Read the nodes of *params* together, under one lock.
 
         The camera thread holds the lock while it waits for a frame, so
@@ -281,8 +263,7 @@ class QGenicamTree(QCameraTree):
         '''
         if params is None:
             params = self._visibleParams()
-        states = self.camera.states([name for _, name in params],
-                                    cached=cached)
+        states = self.camera.states([name for _, name in params])
         return [(p, name) for p, name in params if name in states], states
 
     def _updateEnabled(self, params: list | None = None,
@@ -357,39 +338,23 @@ class QGenicamTree(QCameraTree):
             finally:
                 p.blockSignals(False)
 
-    def _pollCamera(self) -> None:
-        '''Refresh the next few Parameters from the camera.
+    @QtCore.Slot(object)
+    def _showChanges(self, values: dict) -> None:
+        '''Refresh the shown nodes: the camera changed something itself.
 
-        Called by the poll timer to pick up autonomous camera-side changes
-        that do not generate host-side notifications — e.g. ``Gain`` being
-        adjusted during auto-exposure, or ``GainAuto`` reverting from
-        ``"Once"`` to ``"Off"`` after the sweep completes.
+        The camera reports the values that changed (an automatic exposure
+        settled, or a mode that turns itself off did), and what they
+        change besides: the limits of other nodes, and which nodes can be
+        written now (``ExposureTime`` again once the exposure is manual).
+        All of it is read from the nodes that are shown, in one request.
+        Nothing is sent back to the camera.
 
-        Each call reads :attr:`_pollChunk` parameters in a single request
-        and the next call the following ones, so that no call holds the
-        camera from its frames for long; a full cycle takes
-        ``len(params) / _pollChunk`` calls.  Limits, values and enabled
-        states of the chunk are refreshed from the same snapshot.
-
-        Returns immediately if the camera is no longer open (e.g. during
-        application shutdown) to prevent accessing freed C++ genapi objects.
-
-        Signals are not blocked so that the visual widgets update and
-        :meth:`_handleItemChanges` fires when a value changes.
-        :meth:`_syncIgnored` is in force for the duration so that the resulting
-        ``sigTreeStateChanged`` emissions do not send values back to the
-        camera.  Access-mode changes (e.g. ``ExposureTime`` becoming
-        writable again after the sweep) are reflected even when the
-        controlling node value has not changed.
+        Does nothing if the camera is no longer open (application
+        shutdown), which would touch freed GenApi objects.
         '''
         if not self.camera.isOpen():
             return
-        params = self._visibleParams()
-        if self._pollCursor >= len(params):
-            self._pollCursor = 0
-        chunk = params[self._pollCursor:self._pollCursor + self._pollChunk]
-        self._pollCursor += self._pollChunk
-        params, states = self._snapshot(chunk, cached=True)
+        params, states = self._snapshot()
         with self._syncIgnored():
             self._updateLimits(params, states)
             for p, name in params:

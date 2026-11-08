@@ -525,46 +525,50 @@ class TestUpdateLimits(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# TestPollChunks
+# TestShowChanges
 # ---------------------------------------------------------------------------
 
-class TestPollChunks(unittest.TestCase):
-    '''A poll reads a few parameters in one request, then the next few.'''
+class TestShowChanges(unittest.TestCase):
+    '''The tree refreshes when the camera reports that it changed.'''
 
-    def make(self, n=5, chunk=2):
+    def make(self, n=5):
         features = [_float_feature(f'F{i}', value=1.0) for i in range(n)]
-        tree, cam, nm = make_tree(features=features)
-        tree._pollChunk = chunk
-        return tree, cam, nm
+        return make_tree(features=features)
 
-    def test_a_poll_asks_the_camera_once(self):
+    def test_a_report_asks_the_camera_once_for_every_shown_node(self):
         tree, cam, _ = self.make()
         with patch.object(cam, 'states', wraps=cam.states) as states:
-            tree._pollCamera()
+            tree._showChanges({'F0': 2.0})
         self.assertEqual(states.call_count, 1)
+        self.assertEqual(len(list(states.call_args[0][0])), 5)
 
-    def test_a_poll_reads_only_a_chunk(self):
-        tree, cam, _ = self.make()
-        with patch.object(cam, 'states', wraps=cam.states) as states:
-            tree._pollCamera()
-        self.assertEqual(len(list(states.call_args[0][0])), 2)
-
-    def test_successive_polls_cover_every_parameter(self):
+    def test_values_that_the_camera_changed_are_shown(self):
         tree, cam, nm = self.make()
         for i in range(5):
             nm.get_node(f'F{i}').value = 2.0
-        for _ in range(3):
-            tree._pollCamera()
+        tree._showChanges({'F0': 2.0})
         for i in range(5):
             self.assertAlmostEqual(tree._parameters[f'F{i}'].value(), 2.0)
 
-    def test_the_cycle_starts_again(self):
+    def test_nothing_is_sent_back_to_the_camera(self):
         tree, cam, nm = self.make()
-        for _ in range(3):
-            tree._pollCamera()
-        nm.get_node('F0').value = 3.0
-        tree._pollCamera()
-        self.assertAlmostEqual(tree._parameters['F0'].value(), 3.0)
+        nm.get_node('F0').value = 2.0
+        with patch.object(cam, 'set') as send:
+            tree._showChanges({'F0': 2.0})
+        send.assert_not_called()
+
+    def test_a_closed_camera_is_left_alone(self):
+        tree, cam, _ = self.make()
+        cam.close()
+        with patch.object(cam, 'states') as states:
+            tree._showChanges({})
+        states.assert_not_called()
+
+    def test_the_camera_signal_reaches_the_tree(self):
+        tree, cam, nm = self.make()
+        nm.get_node('F1').value = 3.0
+        cam.propertiesChanged.emit({'F1': 3.0})
+        self.assertAlmostEqual(tree._parameters['F1'].value(), 3.0)
 
     def test_a_change_of_a_property_reads_everything_at_once(self):
         tree, cam, _ = self.make()
@@ -572,6 +576,10 @@ class TestPollChunks(unittest.TestCase):
             tree._handleItemChanges()
         self.assertEqual(states.call_count, 1)
         self.assertEqual(len(list(states.call_args[0][0])), 5)
+
+    def test_no_timer_polls_the_camera(self):
+        tree, _, _ = self.make()
+        self.assertFalse(hasattr(tree, '_timer'))
 
 
 # ---------------------------------------------------------------------------
@@ -609,11 +617,11 @@ class TestUpdateValues(unittest.TestCase):
         tree._updateValues()
         self.assertAlmostEqual(tree._parameters['Gamma'].value(), 1.0)
 
-    def test_rw_node_value_refreshed_by_poll(self):
+    def test_rw_node_value_refreshed_by_a_report(self):
         feat = _float_feature('Gamma', value=1.0, mode=_EAccessMode.RW)
         tree, cam, nm = make_tree(features=[feat])
         nm.get_node('Gamma').value = 2.0
-        tree._pollCamera()
+        tree._showChanges({'Gamma': 2.0})
         self.assertAlmostEqual(tree._parameters['Gamma'].value(), 2.0)
 
     def test_invisible_node_skipped(self):

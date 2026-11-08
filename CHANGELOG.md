@@ -9,8 +9,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.20.0] — 2026-11-08
+
 ### Added
 
+- **The Genicam (Harvesters) backends follow a camera that changes by
+  itself, the same way.**  `QGenicamCamera` implements `_changes()`: a write
+  while nodes are watched, or an `...Auto` mode that is not `Off`, makes it
+  tell the node map how long it has been (`NodeMap.poll`, which refreshes
+  the nodes whose `PollingTime` has passed; without it `ExposureAuto` stays
+  `Once` for ever) twice a second, read the watched nodes in the hold of the
+  camera that the frame was read in, and report the values that differ.
+  Counters and temperatures (`QGenicamCamera.FREE_RUNNING`) are reported
+  but are no reason to keep asking.  After two polls without news it stops.
+  `QGenicamTree` refreshes values, limits and which nodes are writable when
+  the camera reports, and no longer has a 200 ms timer on the GUI thread
+  (which held the camera for 17 to 18 ms a call).  A camera in a worker
+  process reports through a `changes` event that `QRemoteCamera` re-emits
+  as `propertiesChanged`; the worker no longer pushes the states of the
+  watched nodes every 200 ms, and `QRemoteCamera.states` has no `cached`
+  argument.  Measured on a Blackfly S through the worker: the tree shows
+  `Off` and a writable exposure time half a second after `Once`, and the
+  frame rate does not change (66 to 69 frames a second).
 - **The Viva tree follows a camera that changes by itself.**
   `ExposureAuto = Once` turns itself off when the camera has settled, and an
   automatic exposure or gain changes the exposure time and the gain, but the

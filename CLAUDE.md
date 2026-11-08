@@ -144,8 +144,11 @@ for what a camera changes by itself: it calls `camera.watch(names)`, and a
 backend that can tell overrides `_changes()`, which `saferead` calls after
 each frame (holding the lock, in the capture thread), and the camera emits
 `propertiesChanged(dict)`; `QVivaCamera` asks viva-genicam's `poll()`, which
-names the features whose `PollingTime` has passed, only after a write to a
-watched feature and while an `...Auto` mode is on. `__getattr__`
+names the features whose `PollingTime` has passed, and `QGenicamCamera`
+tells the node map how long it has been (`NodeMap.poll(ms)`) and reads the
+watched nodes, both only after a write to a watched feature and while an
+`...Auto` mode is on; a camera in a worker reports through a `changes`
+event that `QRemoteCamera` re-emits. `__getattr__`
 delegates attribute access (`camera.fps`) to registered getters, so subclasses
 do not need explicit Python properties for every camera parameter.  A
 backend whose properties have the names of a standard (GenICam's `Width`)

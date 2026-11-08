@@ -6,6 +6,7 @@ import threading
 import logging
 import unittest
 import numpy as np
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from qtpy import QtCore, QtWidgets
 
@@ -1349,6 +1350,133 @@ class TestStates(unittest.TestCase):
         node = cam.node('Width')
         node.node.get_access_mode.return_value = _EAccessMode.RO
         self.assertTrue(cam.state('Width')['writable'])
+
+
+class TestChanges(unittest.TestCase):
+    '''The camera asks what changed only when something can have.'''
+
+    def setUp(self):
+        self.cam, _, _ = make_camera()
+        self.now = [100.]
+        self.values = {'ExposureAuto': 'Once', 'Gain': 1.,
+                       'DeviceUptime': 5}
+        clock = SimpleNamespace(monotonic=lambda: self.now[0],
+                                sleep=lambda s: None)
+        patcher = patch.object(_cam_module, 'time', clock)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        for name, value in self.values.items():
+            self.cam.registerProperty(
+                name, lambda name=name: self.values[name], None,
+                type(value))
+        self.poll = self.cam._nodeMap.poll
+
+    def tick(self, seconds=0.5):
+        self.now[0] += seconds
+        return self.cam._changes()
+
+    def test_nothing_is_asked_until_something_is_watched(self):
+        self.assertIsNone(self.tick())
+        self.poll.assert_not_called()
+
+    def test_watching_arms_the_camera_and_reports_nothing_new(self):
+        self.cam.watch(['Gain'])
+        self.assertIsNone(self.tick())
+        self.poll.assert_called_once()
+
+    def test_a_value_the_camera_changed_is_reported(self):
+        self.cam.watch(['Gain'])
+        self.tick()
+        self.values['Gain'] = 2.
+        self.assertEqual(self.tick(), {'Gain': 2.})
+
+    def test_only_watched_properties_are_reported(self):
+        self.cam.watch(['Gain'])
+        self.tick()
+        self.values['ExposureAuto'] = 'Off'
+        self.assertIsNone(self.tick())
+
+    def test_the_node_map_is_told_how_long_it_has_been(self):
+        self.cam.watch(['Gain'])
+        self.tick()
+        self.tick(0.5)
+        self.assertEqual(self.poll.call_args[0][0], 500)
+
+    def test_it_is_not_asked_more_often_than_the_period(self):
+        self.cam.watch(['Gain'])
+        self.tick()
+        self.tick(0.1)
+        self.assertEqual(self.poll.call_count, 1)
+
+    def test_it_stops_asking_after_quiet_polls(self):
+        self.cam.watch(['Gain'])
+        for _ in range(self.cam.QUIET):
+            self.tick()
+        self.poll.reset_mock()
+        self.tick()
+        self.poll.assert_not_called()
+
+    def test_an_automatic_mode_keeps_it_asking(self):
+        self.cam.watch(['ExposureAuto', 'Gain'])
+        for _ in range(self.cam.QUIET + 3):
+            self.tick()
+        self.poll.reset_mock()
+        self.tick()
+        self.poll.assert_called_once()
+
+    def test_it_stops_when_the_automatic_mode_ends(self):
+        self.cam.watch(['ExposureAuto', 'Gain'])
+        self.tick()
+        self.values['ExposureAuto'] = 'Off'
+        self.assertEqual(self.tick(), {'ExposureAuto': 'Off'})
+        for _ in range(self.cam.QUIET):
+            self.tick()
+        self.poll.reset_mock()
+        self.tick()
+        self.poll.assert_not_called()
+
+    def test_a_write_to_the_camera_arms_it_again(self):
+        self.cam.watch(['Gain'])
+        for _ in range(self.cam.QUIET):
+            self.tick()
+        self.cam.registerProperty('Other', lambda: 1, lambda v: None, int)
+        self.cam.set('Other', 2)
+        self.poll.reset_mock()
+        self.tick()
+        self.poll.assert_called_once()
+
+    def test_a_write_arms_nothing_when_nothing_is_watched(self):
+        self.cam.registerProperty('Other', lambda: 1, lambda v: None, int)
+        self.cam.set('Other', 2)
+        self.tick()
+        self.poll.assert_not_called()
+
+    def test_a_counter_that_runs_all_the_time_is_no_reason_to_ask(self):
+        self.cam.watch(['Gain', 'DeviceUptime'])
+        self.tick()
+        for _ in range(self.cam.QUIET):
+            self.values['DeviceUptime'] += 1
+            self.tick()
+        self.poll.reset_mock()
+        self.tick()
+        self.poll.assert_not_called()
+
+    def test_a_poll_that_fails_changes_nothing(self):
+        self.cam.watch(['Gain'])
+        self.poll.side_effect = RuntimeError('lost')
+        self.values['Gain'] = 3.
+        self.assertIsNone(self.tick())
+
+    def test_the_frame_read_reports_the_change(self):
+        self.cam.watch(['Gain'])
+        self.tick()
+        self.values['Gain'] = 4.
+        self.now[0] += 0.5
+        heard = record(self.cam.propertiesChanged)
+        with patch.object(self.cam, 'read',
+                          return_value=(True, np.zeros((2, 2)))):
+            self.cam.saferead()
+        self.assertEqual(heard, [({'Gain': 4.},)])
 
 
 class TestNewestFrames(unittest.TestCase):

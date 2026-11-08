@@ -19,7 +19,11 @@ The camera has four parts, in this order.
    the type and limits of the node, and every command becomes a method.
 4. **The node map**: the nodes themselves, as plain data
    (:meth:`~QGenicamCamera.nodeTree`) for a tree to build from and as
-   snapshots (:meth:`~QGenicamCamera.states`) for a tree that polls.
+   snapshots (:meth:`~QGenicamCamera.states`) for a tree to refresh from.
+5. **Changes on its own**: a camera that adjusts the exposure or the gain
+   is asked what changed, only when something can have
+   (:meth:`~QGenicamCamera._changes`), and the tree follows
+   (``propertiesChanged``).
 
 **The camera lock.**  Every access to the node map holds ``camera._mutex``.
 The ``genicam`` binding keeps the interpreter lock while it waits for the
@@ -39,6 +43,7 @@ enumeration is also an integer, so ``_VALUE_KINDS`` lists it first.
 import logging
 import os
 import re
+import time
 from collections.abc import Callable, Iterable
 from contextlib import suppress
 from pathlib import Path
@@ -196,6 +201,12 @@ class QGenicamCamera(QCamera):
         self._device: ImageAcquirer | None = None
         self._nodeMap: NodeMap | None = None
         self._protected: set[str] = set()
+        self._armed = False
+        self._quiet = 0
+        self._nextPoll = 0.
+        self._lastPoll = 0.
+        self._autos: set[str] = set()
+        self._reported: dict[str, QCamera.PropertyValue] = {}
         self.open()
 
     # ------------------------------------------------------------------
@@ -227,8 +238,15 @@ class QGenicamCamera(QCamera):
         return True
 
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
-        '''Set a property; a new pixel format changes the levels.'''
+        '''Set a property; a new pixel format changes the levels.
+
+        A write while properties are watched starts asking the camera what
+        changed (see :meth:`_changes`): the binding does not say which nodes
+        a write invalidates.
+        '''
         super().set(key, value)
+        if self._watched:
+            self._arm()
         if self._canonical(key) == 'PixelFormat':
             self._updateLevels()
 
@@ -777,7 +795,7 @@ class QGenicamCamera(QCamera):
         return this
 
     # ------------------------------------------------------------------
-    # Snapshots of the nodes, for a tree that polls
+    # Snapshots of the nodes, for a tree to refresh from
     # ------------------------------------------------------------------
 
     def state(self, name: str) -> dict[str, object]:
@@ -804,16 +822,81 @@ class QGenicamCamera(QCamera):
         '''
         return self.states([name])[name]
 
+    #: Seconds between asking the camera what changed.  The XML of a camera
+    #: declares a ``PollingTime`` for the nodes that change by themselves
+    #: (0.5 s for the exposure and its mode on a Blackfly S), and a read
+    #: gives the value of the camera only after :meth:`NodeMap.poll` has
+    #: been told that the time has passed.
+    POLL_PERIOD = 0.5
+
+    #: Polls without news after which the camera stops asking, unless a
+    #: node is in an automatic mode.
+    QUIET = 2
+
+    #: Parts of the names of nodes that change all the time (counters,
+    #: temperatures, the time since power-up).  They are reported, but they
+    #: are no reason to keep asking.
+    FREE_RUNNING = ('Uptime', 'Temperature', 'Voltage', 'Current',
+                    'Throughput', 'Timestamp', 'Counter', 'Queue',
+                    'Status', 'Count')
+
     def watch(self, names: Iterable[str]) -> None:
-        '''Say which nodes a tree will ask about; a local camera ignores it.
+        '''Name the nodes to report, and look at them once.
 
-        A :class:`~QVideo.lib.remote.camera.QRemoteCamera` reads the watched
-        nodes between frames and keeps the latest states for
-        :meth:`states` with ``cached=True``.
+        The automatic modes among them (SFNC names them ``...Auto``, with
+        ``Off`` for manual) keep the camera asking while they are not off.
         '''
+        super().watch(names)
+        self._autos = {name for name in self._watched
+                       if name.endswith('Auto')}
+        self._reported = QCamera.snapshot(self, self._watched)
+        self._arm()
 
-    def states(self, names: Iterable[str],
-               cached: bool = False) -> dict[str, dict[str, object]]:
+    def _arm(self) -> None:
+        '''Start asking the camera what changed.'''
+        self._armed = True
+        self._quiet = 0
+        self._nextPoll = 0.
+
+    def _changes(self) -> QCamera.Settings | None:
+        '''Return the watched nodes that the camera changed on its own.
+
+        The camera is not asked until something can change: a write while
+        nodes are watched arms it, and an automatic mode that is not off
+        keeps it armed.  Then the node map is told how long it has been
+        (``NodeMap.poll``, which refreshes the nodes whose polling time has
+        passed) and the watched nodes are read, in the hold of the camera
+        that the frame was read in.  A value that differs from the last one
+        is returned.  After :attr:`QUIET` polls without news from the nodes
+        that do not :attr:`FREE_RUNNING`, and with no automatic mode on,
+        the camera is left alone again.
+        '''
+        now = time.monotonic()
+        if not self._armed or now < self._nextPoll:
+            return None
+        elapsed = max(1, round((now - (self._lastPoll or now)) * 1000))
+        self._lastPoll = now
+        self._nextPoll = now + self.POLL_PERIOD
+        try:
+            self._nodeMap.poll(elapsed)
+        except Exception as ex:
+            logger.debug(f'poll failed: {ex}')
+            return None
+        values = QCamera.snapshot(self, self._watched)
+        changed = {name: value for name, value in values.items()
+                   if self._reported.get(name) != value}
+        self._reported.update(values)
+        news = any(not any(part in name for part in self.FREE_RUNNING)
+                   for name in changed)
+        self._quiet = 0 if news else self._quiet + 1
+        automatic = any(values.get(name, 'Off') != 'Off'
+                        for name in self._autos)
+        if self._quiet >= self.QUIET and not automatic:
+            self._armed = False
+            self._lastPoll = 0.
+        return changed or None
+
+    def states(self, names: Iterable[str]) -> dict[str, dict[str, object]]:
         '''Return snapshots of the named nodes, read under one lock.
 
         Read the device through this method, not through :meth:`node`,
@@ -827,10 +910,6 @@ class QGenicamCamera(QCamera):
         ----------
         names : iterable of str
             GenICam node names.  Each must exist (see :meth:`hasNode`).
-        cached : bool
-            Accepted for the sake of a remote camera, which answers from
-            the states that it was sent; a local camera always reads.
-
         Returns
         -------
         dict

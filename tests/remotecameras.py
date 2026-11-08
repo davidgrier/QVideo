@@ -12,7 +12,7 @@ from QVideo.cameras.Noise import QNoiseCamera
 from QVideo.lib.errors import QDriverError
 
 __all__ = ('DeepCamera FailingCamera FloatCamera StatesCamera '
-           'ShrinkingCamera RefusingCamera').split()
+           'ShrinkingCamera RefusingCamera ChangingCamera').split()
 
 
 class RefusingCamera(QNoiseCamera):
@@ -71,3 +71,14 @@ class ShrinkingCamera(QNoiseCamera):
         if ok and self._frames > self.FRAMES:
             frame = np.ascontiguousarray(frame[::2, ::2])
         return ok, frame
+
+
+class ChangingCamera(StatesCamera):
+
+    '''A camera that changes a watched property by itself, once.'''
+
+    def _changes(self):
+        if getattr(self, '_told', False):
+            return None
+        self._told = True
+        return {'fps': 7.}

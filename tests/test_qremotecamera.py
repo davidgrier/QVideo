@@ -27,6 +27,7 @@ DEEP = 'QVideo.tests.remotecameras:DeepCamera'
 FAILING = 'QVideo.tests.remotecameras:FailingCamera'
 FLOATING = 'QVideo.tests.remotecameras:FloatCamera'
 STATES = 'QVideo.tests.remotecameras:StatesCamera'
+CHANGING = 'QVideo.tests.remotecameras:ChangingCamera'
 SHRINKING = 'QVideo.tests.remotecameras:ShrinkingCamera'
 
 # A camera in a process of its own needs file descriptors to pass to the
@@ -355,48 +356,36 @@ class TestTheChooser(unittest.TestCase):
 @not_on_windows
 class TestStates(unittest.TestCase):
 
-    '''The worker pushes the states of watched nodes between frames.'''
+    '''A tree asks the worker for the states of nodes.'''
 
     def setUp(self):
         self.camera = QRemoteCamera(STATES)
         self.addCleanup(self.camera.close)
 
-    def test_nothing_is_cached_until_watched(self):
+    def test_a_request_reads_the_nodes_in_the_worker(self):
+        states = self.camera.states(['a', 'b'])
+        self.assertEqual(set(states), {'a', 'b'})
+        self.assertNotEqual(states['a']['value'], os.getpid())
+
+
+@not_on_windows
+class TestChanges(unittest.TestCase):
+
+    '''What the camera in the worker changes by itself reaches the proxy.'''
+
+    def setUp(self):
+        self.camera = QRemoteCamera(CHANGING)
+        self.addCleanup(self.camera.close)
+        self.heard = record(self.camera.propertiesChanged)
+
+    def test_nothing_is_reported_until_something_is_watched(self):
         time.sleep(0.5)
-        self.assertEqual(self.camera.states(['a'], cached=True), {})
+        self.assertEqual(self.heard, [])
 
-    def test_a_watched_node_is_pushed(self):
-        self.camera.watch(['a', 'b'])
-        self.assertTrue(wait_for(
-            lambda: len(self.camera.states(['a', 'b'], cached=True)) == 2))
-        state = self.camera.states(['a'], cached=True)['a']
-        self.assertNotEqual(state['value'], os.getpid())    # the worker's
-
-    def test_more_nodes_than_a_push_are_all_pushed(self):
-        names = [f'n{i}' for i in range(80)]
-        self.camera.watch(names)
-        self.assertTrue(wait_for(
-            lambda: len(self.camera.states(names, cached=True)) == 80))
-
-    def test_cached_states_do_not_ask_the_worker(self):
-        with unittest.mock.patch.object(self.camera, '_call') as call:
-            self.camera.states(['a'], cached=True)
-        call.assert_not_called()
-
-    def test_a_request_reads_and_remembers(self):
-        states = self.camera.states(['a'])
-        self.assertIn('a', states)
-        self.assertEqual(self.camera.states(['a'], cached=True), states)
-
-    def test_a_setting_discards_what_was_pushed(self):
-        self.camera.states(['a'])
-        self.camera.set('fps', 10)
-        self.assertEqual(self.camera.states(['a'], cached=True), {})
-
-    def test_applying_settings_discards_it_too(self):
-        self.camera.states(['a'])
-        self.camera.settings = {'fps': 10}
-        self.assertEqual(self.camera.states(['a'], cached=True), {})
+    def test_a_watched_property_that_changed_is_reported(self):
+        self.camera.watch(['fps'])
+        self.assertTrue(wait_for(lambda: self.heard))
+        self.assertEqual(self.heard[0], ({'fps': 7.},))
 
 
 @not_on_windows

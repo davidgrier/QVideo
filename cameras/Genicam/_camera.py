@@ -161,6 +161,9 @@ class QGenicamCamera(QCamera):
         #: The properties that can change by themselves, or ``None`` if the
         #: camera does not say; see :func:`_nodes.selfChanging`.
         self._changing: frozenset[str] | None = None
+        #: A property that the camera keeps itself (an uptime, a
+        #: temperature): a camera that stops answering its reads is gone.
+        self._probe: str | None = None
         self._reported: dict[str, QCamera.PropertyValue] = {}
         self.open()
 
@@ -186,6 +189,7 @@ class QGenicamCamera(QCamera):
                 self._modelName = str(self._nodeMap.DeviceModelName.value)
             self._registerAliases()
             self._changing = self._findChanging()
+            self._probe = self._findProbe()
             self._updateLevels()
             self._checkLink()
         except Exception:
@@ -480,8 +484,10 @@ class QGenicamCamera(QCamera):
             frame = frame.reshape(height, width, channels).squeeze()
         except TimeoutException:
             logger.warning('camera acquisition timed out')
+            self._checkDevice()
         except Exception as e:
             logger.warning(f'camera read failed: {e}')
+            self._checkDevice()
         return frame is not None, frame
 
     @property
@@ -711,6 +717,39 @@ class QGenicamCamera(QCamera):
         if changing is None:
             return None
         return frozenset(changing & self.properties.keys())
+
+    #: Parts of the names of properties that the camera keeps itself.  A read
+    #: of one of them asks the device, so it fails when the device is gone.
+    PROBES = ('Uptime', 'Temperature')
+
+    def _findProbe(self) -> str | None:
+        '''Find a property that tells whether the device still answers.
+
+        A timeout is not a loss: a camera that waits for a trigger or
+        exposes for seconds returns nothing too.  But the producer reports
+        a camera that has been unplugged as timeouts for ever, and the nodes
+        that the camera keeps itself (``DeviceUptime``) then raise on a
+        read, where the cached ones go on answering (tried by pulling the
+        cable of a Blackfly S).  Without such a node the camera cannot tell,
+        and is never lost.
+        '''
+        for name in sorted(self._changing or ()):
+            if any(part in name for part in self.PROBES):
+                return name
+        return None
+
+    def _checkDevice(self) -> None:
+        '''Say that the camera is lost if the device stopped answering.
+
+        Called after a read that failed, in the hold of the camera.
+        '''
+        if self._probe is None:
+            return
+        try:
+            self.properties[self._probe].getter()
+        except Exception as ex:
+            self._deviceLost(f'the camera does not answer '
+                             f'({type(ex).__name__}: {ex})')
 
     def _arm(self) -> None:
         '''Start asking the camera what changed.'''

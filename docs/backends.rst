@@ -244,6 +244,14 @@ sent no frame for ``lossTimeout`` seconds (2, or ``None`` for never) is
 lost.  Find the signal that your library gives, and test it by pulling a
 cable.
 
+``QGenicamCamera`` (Harvesters) gets no such signal either: the producer
+reports an unplugged camera as timeouts for ever.  What changes is that the
+nodes which the camera keeps itself (``DeviceUptime``, a temperature) raise
+on a read while the cached ones go on answering.  So after a read that fails
+it reads one of those, and a camera that does not answer is lost (tried by
+pulling the cable of a Blackfly S; the loss was reported 1.3 s after the last
+frame).  A camera with no such node cannot be told, and is never lost.
+
 A camera in a process of its own (:class:`~QVideo.lib.remote.camera.QRemoteCamera`,
 which the Harvesters backends use on macOS and Linux) is lost in either of two
 ways: its camera in the worker calls ``_deviceLost``, and the worker says

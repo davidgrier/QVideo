@@ -19,6 +19,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **A Genicam camera that is unplugged is lost.**  The producer reports it as
+  timeouts for ever, which a camera that waits for a trigger returns too.
+  After a read that fails, `QGenicamCamera` reads a node that the camera
+  keeps itself (an uptime, a temperature), which raises once the device is
+  gone, and calls `_deviceLost`.  Tried on a Blackfly S through the worker,
+  the proxy and the source: one `lost`, 1.3 s after the last frame, and the
+  worker ended.
 - **A lost camera in a process of its own is lost here too.**
   `QRemoteCamera` did not hear that the camera of its worker had called
   `_deviceLost`, and a worker that ended only logged an error.  Now both

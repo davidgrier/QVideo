@@ -809,11 +809,14 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   fit); a USB webcam's macOS
   id has no serial number (it holds the port and the vendor and product ids),
   so two cameras of one model are told apart by the port.
-- [ ] **The other backends** call `_deviceLost` where their library says the
-  device is gone, each tried by pulling a cable.  `QRemoteCamera` knows when
-  its worker has gone (`_lost`); Harvesters (`QGenicamCamera`) raises generic
-  errors, so classify them only if that backend stays; Picamera is cabled and
-  never needs it.
+- [x] **The other backends** (2026-11-08).  Harvesters: unplugging a Blackfly
+  S gives `TimeoutException` for ever from `fetch()`, and reads of nodes that
+  the camera keeps itself (`DeviceUptime`) raise `InvalidHandleException`
+  while cached nodes answer; so `QGenicamCamera` probes one such node after
+  a failed read.  `QRemoteCamera` passes the worker camera's `lost` on and
+  turns the end of its worker into a loss at the next read.  Tried by
+  pulling the cable through worker, proxy and source (`devel/genicamloss2.py`):
+  one `lost` after 1.3 s, worker gone.  Picamera is cabled and never needs it.
 - [ ] **Optional:** stop a running recording with "camera lost" (it stalls
   now; the dialog tells the user to stop it); a placard on the screen; a
   `launch()` option to quit on loss.

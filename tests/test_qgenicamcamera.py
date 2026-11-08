@@ -794,6 +794,73 @@ class TestRead(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# TestLoss
+# ---------------------------------------------------------------------------
+
+class TestLoss(unittest.TestCase):
+    '''A camera that is unplugged times out for ever and stops answering
+    the reads of the nodes that it keeps itself.'''
+
+    def setUp(self):
+        device = _make_device()
+        device.fetch.return_value.__enter__.side_effect = _TimeoutException
+        self.cam, _, _ = make_camera(device=device)
+        self.uptime = MagicMock(return_value=25.)
+        self.cam.registerProperty('DeviceUptime', self.uptime, None, int)
+        self.cam._changing = frozenset({'DeviceUptime', 'Gain'})
+        self.cam._probe = self.cam._findProbe()
+        self.lost = record(self.cam.lost)
+        patcher = patch.object(_cam_module.logger, 'warning')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_a_node_that_the_camera_keeps_is_the_probe(self):
+        self.assertEqual(self.cam._probe, 'DeviceUptime')
+
+    def test_a_timeout_from_a_camera_that_answers_is_not_a_loss(self):
+        self.cam.read()
+        self.assertEqual(self.lost, [])
+        self.assertTrue(self.cam.isOpen())
+
+    def test_a_timeout_from_a_camera_that_does_not_answer_is_a_loss(self):
+        self.uptime.side_effect = RuntimeError('Given handle does not '
+                                               'support the operation')
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            ok, frame = self.cam.read()
+        self.assertFalse(ok)
+        self.assertEqual(len(self.lost), 1)
+        self.assertIn('does not answer', self.lost[0][0])
+        self.assertIn('Given handle', self.lost[0][0])
+        self.assertFalse(self.cam.isOpen())
+
+    def test_a_failed_read_is_checked_too(self):
+        self.cam._device.fetch.return_value.__enter__.side_effect = (
+            RuntimeError('driver crash'))
+        self.uptime.side_effect = RuntimeError('gone')
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.cam.read()
+        self.assertEqual(len(self.lost), 1)
+
+    def test_a_camera_without_such_a_node_is_never_lost(self):
+        self.cam._probe = None
+        self.uptime.side_effect = RuntimeError('gone')
+        self.cam.read()
+        self.assertEqual(self.lost, [])
+        self.assertTrue(self.cam.isOpen())
+
+    def test_no_probe_is_found_when_the_camera_does_not_say_what_changes(self):
+        self.cam._changing = None
+        self.assertIsNone(self.cam._findProbe())
+
+    def test_a_lost_camera_answers_quietly(self):
+        self.uptime.side_effect = RuntimeError('gone')
+        with self.assertLogs('QVideo.lib.QCamera', 'ERROR'):
+            self.cam.read()
+        self.assertEqual(self.cam.saferead(), (False, None))
+        self.assertEqual(len(self.lost), 1)
+
+
+# ---------------------------------------------------------------------------
 # TestSet
 # ---------------------------------------------------------------------------
 

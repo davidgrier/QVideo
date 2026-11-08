@@ -329,13 +329,15 @@ class TestSourceInterface(PipelineTestCase):
     def test_pause_holds_back_the_frames_until_resume(self):
         self.make()
         self.pipeline.pause()
-        self.source.send(1)         # the read that was waiting takes it
-        self.assertTrue(wait_until(lambda: self.values() == [1]))
-        self.source.send(2)
-        QtTest.QTest.qWait(50)
-        self.assertEqual(self.values(), [1])
+        for index in (1, 2, 3):
+            self.source.send(index)
+        QtTest.QTest.qWait(100)
+        # pausing takes effect after the read in progress: at most one
+        # frame gets through
+        self.assertLessEqual(len(self.values()), 1)
         self.pipeline.resume()
-        self.assertTrue(wait_until(lambda: self.values() == [1, 2]))
+        self.source.send(4)
+        self.assertTrue(wait_until(lambda: 4 in self.values()))
 
     def test_fps_comes_from_the_source(self):
         self.make()

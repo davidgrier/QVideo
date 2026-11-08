@@ -97,8 +97,8 @@ class CartoonFilter(VideoFilter):
 
     Applies ``cv2.stylization``, smoothing
     low-contrast regions while preserving edges to produce a
-    watercolor/cartoon look.  Grayscale input is promoted to three channels before
-    processing.
+    watercolor/cartoon look.  Grayscale input is promoted to three channels
+    before processing.
 
     Parameters
     ----------
@@ -131,7 +131,8 @@ class CartoonFilter(VideoFilter):
             uint8 RGB stylized frame.
         '''
         color = _ensure_color(image)
-        return cv2.stylization(color, sigma_s=self.sigma_s, sigma_r=self.sigma_r)
+        return cv2.stylization(color, sigma_s=self.sigma_s,
+                               sigma_r=self.sigma_r)
 
     def to_code(self) -> FilterCode:
         ss, sr = self.sigma_s, self.sigma_r

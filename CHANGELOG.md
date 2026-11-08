@@ -9,7 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.21.0] — 2026-11-08
+
 ### Changed
+
+- **Filters use RGB and the shared gray conversion.**  `DejitterFilter`
+  converts with `lib.imageops.grayscale` (it had its own mean), and the
+  artistic filters (`_COLOR_LINES`, `_ensure_color`) work in RGB order, as
+  the rest of QVideo does.  `lib.imageops.ImageFormat` (was `_Fmt`) is
+  public.
 
 - **`QFilterPipeline` is a `QVideoSource`.**  It had a thread loop, a
   `stop()` and a `__del__` of its own; now a small private stage filters

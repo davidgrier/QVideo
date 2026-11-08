@@ -7,6 +7,7 @@ import io
 import logging
 import tempfile
 import time
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -595,6 +596,55 @@ class TestCameraRecord(unittest.TestCase):
         with self.assertRaises(RuntimeError) as caught:
             proxy.record(self.folder / 'q.mkv', n=5)
         self.assertIn('size changed', str(caught.exception))
+
+    def clock(self, step):
+        """A clock that advances *step* seconds each time it is read."""
+        now = [0.]
+
+        def perf_counter():
+            now[0] += step
+            return now[0]
+        return patch.object(camera_module, 'time',
+                            types.SimpleNamespace(perf_counter=perf_counter))
+
+    def record_at(self, step, fps=20., **kwargs):
+        proxy, _ = self.make(fps=fps)
+        with self.clock(step):
+            proxy.record(self.folder / 'rate.mkv', n=5, **kwargs)
+
+    def test_frames_at_the_rate_of_the_file_are_not_remarked_on(self):
+        with self.assertNoLogs('QVideo.interactive.camera', 'WARNING'):
+            self.record_at(0.05)
+
+    def test_a_small_difference_in_rate_is_not_remarked_on(self):
+        with self.assertNoLogs('QVideo.interactive.camera', 'WARNING'):
+            self.record_at(1 / 21)
+
+    def test_slow_frames_are_reported_with_the_measured_rate(self):
+        with self.assertLogs('QVideo.interactive.camera', 'WARNING') as logs:
+            self.record_at(0.1)
+        text = logs.output[0]
+        self.assertIn('10.0 frames/s', text)
+        self.assertIn('20.0', text)
+        self.assertIn('fps=10.0', text)
+        self.assertIn('2.0 times as fast', text)
+
+    def test_fast_frames_are_reported_too(self):
+        with self.assertLogs('QVideo.interactive.camera', 'WARNING') as logs:
+            self.record_at(0.01)
+        self.assertIn('fps=100.0', logs.output[0])
+
+    def test_a_rate_that_was_given_is_not_questioned(self):
+        proxy, _ = self.make(fps=20.)
+        with self.clock(0.1), \
+                self.assertNoLogs('QVideo.interactive.camera', 'WARNING'):
+            proxy.record(self.folder / 'given.mkv', n=5, fps=20)
+
+    def test_one_frame_has_no_rate(self):
+        proxy, _ = self.make()
+        with self.clock(0.5), \
+                self.assertNoLogs('QVideo.interactive.camera', 'WARNING'):
+            proxy.record(self.folder / 'one.mkv', n=1)
 
 
 class TestShowAndLevels(unittest.TestCase):

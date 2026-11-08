@@ -304,7 +304,10 @@ is lossy and holds 8 bits (a deep camera is scaled between its levels), and
 the file declares the frame rate that the camera reports (``fps=`` sets it),
 and an existing file is an error unless you pass ``overwrite=True``.  The
 interrupt button of the notebook stops a recording and leaves a file that
-can be read.  Read the video back with
+can be read.  If the frames arrive at a rate more than 10% off the one the
+file declares (a webcam slows down in dim light, a slow filter misses
+frames), the log warns with the measured rate, and ``fps=`` sets it on the
+next recording.  Read the video back with
 ``QVideo.dvr.formats.openVideo('run1.mkv')``.
 
 Saving a frame

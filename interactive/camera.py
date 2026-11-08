@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['Camera', 'available_cameras']
 
+#: How far the rate of the frames may be from the rate of the file [fraction].
+_RATE_TOLERANCE = 0.1
+
 
 def _unavailable(model: str) -> str:
     '''Return the reason the backend for *model* cannot be imported.'''
@@ -324,6 +327,13 @@ class _CameraProxy:
         or ``.h5`` file as it is.  An ``.mp4`` file holds 8 bits, so the
         frames are scaled between the levels of the camera, and the log
         says so.
+
+        The frame rate that the camera reports may not be the one that it
+        delivers (a webcam slows down in dim light), and a slow filter or
+        disk makes the loop miss frames.  If *fps* is not given and the
+        frames arrived at a rate more than 10% off the rate the file
+        declares, the log warns, with the measured rate: the video would
+        play too fast or too slow.  Record again with ``fps=`` set to it.
         '''
         from QVideo.dvr import formats
         if n is None and seconds is None:
@@ -342,7 +352,7 @@ class _CameraProxy:
         writer = writer_class(path, fps=rate, nframes=n or 2**31)
         reasons: list[str] = []
         writer.finished.connect(reasons.append)
-        start = time.perf_counter()
+        start = first = last = time.perf_counter()
         count = 0
         try:
             while not reasons and (n is None or count < n) and (
@@ -351,8 +361,10 @@ class _CameraProxy:
                 frame = self.read()
                 levels = (getattr(self._camera, 'levels', None)
                           if frame.dtype == np.uint16 else None)
-                writer.write(frame, FrameInfo(count, time.perf_counter(),
-                                              levels=levels))
+                last = time.perf_counter()
+                if count == 0:
+                    first = last
+                writer.write(frame, FrameInfo(count, last, levels=levels))
                 count += 1
         finally:
             writer.close()
@@ -361,6 +373,14 @@ class _CameraProxy:
                                f' frames: {reasons[0]}')
         logger.info(f'Recorded {count} frames to {path!r} '
                     f'in {time.perf_counter() - start:.1f} s')
+        if not fps and count > 1 and last > first:
+            measured = (count - 1) / (last - first)
+            if abs(measured - rate) > _RATE_TOLERANCE * rate:
+                logger.warning(
+                    f'The frames arrived at {measured:.1f} frames/s, not '
+                    f'the {rate:.1f} that {path!r} declares, so the video '
+                    f'plays {rate / measured:.1f} times as fast as it '
+                    f'happened.  Record again with fps={measured:.1f}.')
         return path
 
     def __getattr__(self, name: str):

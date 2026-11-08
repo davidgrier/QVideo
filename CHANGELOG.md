@@ -9,6 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`camera.record()` warns when the frames do not arrive at the declared
+  rate.**  If `fps=` was not given and the frames arrived more than 10% off
+  the rate the file declares (a webcam slows down in dim light, a slow
+  filter or disk misses frames), the log gives the measured rate and says
+  that the video would play too fast or too slow; `fps=` sets it for the
+  next recording.
+
 ### Changed
 
 - **The type check of `lib/` is clean, and CI enforces it.**  `pyright`

@@ -67,7 +67,9 @@ class SampleHold(Normalize):
         if self._count > 0:
             if self._fg is None:
                 return None
-            return np.clip(self._fg + self.darkcount, 0, 255).astype(np.uint8)
+            top = self.bounds(self._fg)[1]
+            return np.clip(self._fg + self.darkcount, 0, top).astype(
+                self._fg.dtype)
         return super().get()
 
     def add(self, image: Image) -> None:

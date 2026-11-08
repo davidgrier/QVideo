@@ -44,6 +44,16 @@ class ThresholdFilter(VideoFilter):
 
     METHODS = ('Global', 'Otsu', 'Adaptive Mean', 'Adaptive Gaussian')
 
+    @property
+    def deep(self) -> bool:     # type: ignore[override]
+        '''Whether the filter keeps the scale of a ``uint16`` frame.
+
+        The global threshold does, at the same fraction of the range as
+        for 8 bits.  OpenCV's Otsu and adaptive methods take 8 bits only,
+        so they get the 8 bit copy.
+        '''
+        return self._method == 'Global'
+
     #: The OpenCV adaptive method (ADAPTIVE_THRESH_<name>_C) of each
     #: adaptive method.
     _ADAPTIVE: ClassVar[dict[str, str]] = {
@@ -138,6 +148,11 @@ class ThresholdFilter(VideoFilter):
             return None
         gray = grayscale(self.data)
         if self._method == 'Global':
+            if gray.dtype == np.uint16:
+                black, white = self.bounds(gray)
+                level = black + self._threshold / 255. * (white - black)
+                return np.where(gray > level, np.uint16(white),
+                                np.uint16(0))
             return cv2.threshold(
                 gray, self._threshold, 255, cv2.THRESH_BINARY)[1]
         if self._method == 'Otsu':

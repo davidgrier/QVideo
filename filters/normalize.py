@@ -43,6 +43,8 @@ class _NormalizeMixin:
     set to zero to avoid undefined values.
     '''
 
+    deep = True
+
     def __init__(self, *args,
                  scale: bool = True,
                  mean: float = 100.,
@@ -97,6 +99,10 @@ class _NormalizeMixin:
         result[zero] = 0
         if self.scale:
             result = self.mean * result
+            if self._fg.dtype == np.uint16:
+                white = self.bounds(self._fg)[1]
+                return np.clip(result * (white / 255.), 0, white).astype(
+                    np.uint16)
         return result.astype(np.uint8)
 
 

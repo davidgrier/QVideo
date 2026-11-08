@@ -35,10 +35,13 @@ class MoMean(VideoFilter):
         Default: ``0.1``.
     '''
 
+    deep = True
+
     def __init__(self, alpha: float = 0.1) -> None:
         super().__init__()
         self.alpha = alpha
         self._acc: np.ndarray | None = None
+        self._type: np.dtype | None = None
 
     @property
     def alpha(self) -> float:
@@ -64,8 +67,10 @@ class MoMean(VideoFilter):
             the accumulator is re-initialized.
         '''
         n = len(data.shape)
-        if self._acc is None or data.shape != self._acc.shape[:n]:
+        if (self._acc is None or data.shape != self._acc.shape[:n]
+                or data.dtype != self._type):
             self._acc = data.astype(np.float32)
+            self._type = data.dtype
         else:
             cv2.accumulateWeighted(data, self._acc, self._alpha)
         self.data = data
@@ -76,11 +81,15 @@ class MoMean(VideoFilter):
         Returns
         -------
         Image or None
-            uint8 estimate, or ``None`` if no frames have been added.
+            Estimate, of the type of the frames, or ``None`` if no frames
+            have been added.
         '''
         if self._acc is None:
             return None
-        return np.clip(self._acc, 0, 255).astype(np.uint8)
+        top = float(np.iinfo(self._type).max)
+        if self._type == np.uint16 and self.levels is not None:
+            top = self.levels[1]
+        return np.clip(self._acc, 0, top).astype(self._type)
 
 
 class QMoMean(QVideoFilter):

@@ -40,6 +40,8 @@ class _MedianBase(VideoFilter):
 
     _sub_type: 'type[_MedianBase] | None' = None
 
+    deep = True
+
     def __init__(self,
                  order: int = 1,
                  data: Image | None = None) -> None:

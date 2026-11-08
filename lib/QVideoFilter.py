@@ -2,15 +2,17 @@
 from __future__ import annotations
 import dataclasses
 import logging
+import numpy as np
 from qtpy import QtCore, QtWidgets
 from QVideo.lib.videotypes import Image
+from QVideo.lib.imageops import to8bit
 import pyqtgraph as pg
 
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['FilterCode', 'GRAY_LINES', 'renderPipeline', 'VideoFilter',
-           'QVideoFilter']
+__all__ = ['FilterCode', 'GRAY_LINES', 'renderPipeline', 'prepare',
+           'VideoFilter', 'QVideoFilter']
 
 
 @dataclasses.dataclass
@@ -79,6 +81,39 @@ def renderPipeline(fragments: list[FilterCode], skipped: list[str]) -> str:
     return '\n'.join(parts) + '\n'
 
 
+def prepare(video_filter: object, frame: Image,
+            levels: tuple[float, float] | None
+            ) -> tuple[Image, tuple[float, float] | None]:
+    '''Return *frame* as *video_filter* wants it, and its levels.
+
+    A ``uint16`` frame goes to a :attr:`~VideoFilter.deep` filter as it is,
+    and the filter is told the *levels*.  Any other filter gets the frame
+    scaled to ``uint8`` between its *levels*, which are then ``None``.  This
+    is what every place that applies filters does, so that a filter sees
+    the same frame in the pipeline, in a rack and on a notebook camera.
+
+    Parameters
+    ----------
+    video_filter : object
+        A :class:`VideoFilter`, or any callable (which is not deep).
+    frame : Image
+        The frame to filter.
+    levels : tuple[float, float] or None
+        The pixel values of *frame* that are black and white.
+
+    Returns
+    -------
+    tuple
+        The frame to give to the filter and the levels that belong to it.
+    '''
+    deep = getattr(video_filter, 'deep', False)
+    if frame.dtype == np.uint16 and not deep:
+        return to8bit(frame, levels), None
+    if deep and isinstance(video_filter, VideoFilter):
+        video_filter.levels = levels if frame.dtype == np.uint16 else None
+    return frame, levels
+
+
 class VideoFilter(QtCore.QObject):
 
     '''Base class for video filters.
@@ -93,14 +128,41 @@ class VideoFilter(QtCore.QObject):
     so that filters can be used as plain callables.
 
     A filter works on 8 bit frames.  The filter pipeline hands it a
-    ``uint16`` frame (from a camera of more than 8 bits) only if the class
+    ``uint16`` frame (from a camera of more than 8 bits) only if the
     attribute :attr:`deep` is ``True``, which promises that the output has
-    the scale of the input: the same black and white levels.  Otherwise the
-    pipeline first scales the frame to ``uint8`` between its levels.
+    the scale of the input: the same black and white levels, which
+    :meth:`bounds` returns.  Otherwise the pipeline first scales the frame
+    to ``uint8`` between its levels.
     '''
 
     #: Whether the filter keeps the scale of a ``uint16`` frame.
     deep: bool = False
+
+    #: The pixel values of a ``uint16`` frame that are black and white.
+    #: The pipeline sets it before it calls a :attr:`deep` filter; it is
+    #: ``None`` for an 8 bit frame and when no pipeline is involved.
+    levels: tuple[float, float] | None = None
+
+    def bounds(self, frame: Image) -> tuple[float, float]:
+        '''Return the black and white values of *frame*.
+
+        A :attr:`deep` filter uses these to keep the scale of its input:
+        the :attr:`levels` of the camera, or the whole range of the type
+        (0 to 255 for ``uint8``) if there are none.
+
+        Parameters
+        ----------
+        frame : Image
+            An integer frame.
+
+        Returns
+        -------
+        tuple[float, float]
+            The pixel values of black and white.
+        '''
+        if self.levels is not None and frame.dtype == np.uint16:
+            return self.levels
+        return 0., float(np.iinfo(frame.dtype).max)
 
     def __init__(self) -> None:
         super().__init__()

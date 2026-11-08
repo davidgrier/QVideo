@@ -1,6 +1,7 @@
 '''OpenCV-backed video file writer supporting AVI, MKV, and MP4.'''
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image, FrameInfo
+from QVideo.lib.imageops import to8bit
 from pathlib import Path
 import cv2
 import logging
@@ -33,7 +34,8 @@ class QOpenCVWriter(QVideoWriter):
     Gray ``uint16`` frames (12-bit and deeper cameras) are written without
     loss by FFV1 when OpenCV is 4.7 or newer and has FFmpeg; no other
     codec is tried unless *codec* names one.  :class:`QOpenCVReader` reads
-    them back as ``uint16``.  ``.mp4`` files cannot hold them.
+    them back as ``uint16``.  ``.mp4`` files cannot hold them: the frames
+    are scaled between their levels to 8 bits.
 
     Parameters
     ----------
@@ -76,6 +78,7 @@ class QOpenCVWriter(QVideoWriter):
         self._colorCodecs = (self._codecs if codec else
                              self.COLOR_CODEC_MAP.get(suffix, self._codecs))
         self._writer = None
+        self._to8bit = False
 
     def open(self, frame: Image) -> bool:
         '''Open the video file using the first available codec.
@@ -98,6 +101,11 @@ class QOpenCVWriter(QVideoWriter):
         '''
         color = (frame.ndim == 3)
         deep = (frame.ndim == 2 and frame.dtype == np.uint16)
+        self._to8bit = (deep and Path(self.filename).suffix == '.mp4')
+        if self._to8bit:
+            logger.info(f'.mp4 files hold 8 bits: the frames of '
+                        f'{self.filename!r} are scaled between their levels')
+            deep = False
         self._writer = self._getWriter(frame.shape, color, deep)
         return self._writer is not None
 
@@ -153,6 +161,8 @@ class QOpenCVWriter(QVideoWriter):
         The capture metadata *info* is not stored: video containers
         record only a nominal frame rate.
         '''
+        if self._to8bit:
+            frame = to8bit(frame, info.levels if info else None)
         if frame.ndim == 3:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         self._writer.write(frame)

@@ -4,6 +4,7 @@ from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
+import numpy as np
 
 __all__ = ['UnsharpFilter', 'QUnsharpFilter']
 
@@ -34,6 +35,8 @@ class UnsharpFilter(VideoFilter):
         a standard unsharp mask; higher values over-sharpen.
         Default: ``1.0``.
     '''
+
+    deep = True
 
     def __init__(self,
                  radius: float = 2.0,
@@ -71,8 +74,11 @@ class UnsharpFilter(VideoFilter):
         if self.data is None:
             return None
         blurred = cv2.GaussianBlur(self.data, (0, 0), self._radius)
-        return cv2.addWeighted(self.data, 1 + self._amount,
-                               blurred, -self._amount, 0)
+        result = cv2.addWeighted(self.data, 1 + self._amount,
+                                 blurred, -self._amount, 0)
+        if result.dtype == np.uint16:
+            np.minimum(result, np.uint16(self.bounds(result)[1]), out=result)
+        return result
 
     def to_code(self) -> FilterCode:
         return FilterCode(

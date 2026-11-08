@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.tests.signals import record
-from QVideo.lib.QVideoScreen import QVideoScreen
+from QVideo.lib.QVideoScreen import QVideoScreen, _AUTO_EVERY
 from QVideo.lib.videotypes import FrameInfo
 
 
@@ -1002,6 +1002,85 @@ class TestLevels(unittest.TestCase):
         screen._ready = True
         screen.setImage(self.ramp(4095))
         self.assertEqual(screen.levels, (0., 4095.))
+
+
+class TestAutoLevels(unittest.TestCase):
+    '''The display follows percentiles of the frames.'''
+
+    def show(self, screen, frame, times=1):
+        for _ in range(times):
+            screen._ready = True
+            screen.setImage(frame)
+
+    @staticmethod
+    def dim(low=1000, high=1400):
+        frame = np.full((64, 64), low, np.uint16)
+        frame[:, 32:] = high
+        return frame
+
+    def test_it_is_off_by_default(self):
+        self.assertIsNone(make_screen().autoLevels)
+
+    def test_the_levels_follow_the_percentiles(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        self.show(screen, self.dim())
+        self.assertEqual(screen.levels, (1000., 1400.))
+
+    def test_the_estimate_moves_gradually_to_a_new_scene(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        self.show(screen, self.dim())
+        self.show(screen, self.dim(2000, 3000), times=_AUTO_EVERY)
+        low, high = screen.levels
+        self.assertTrue(1000 < low < 2000 and 1400 < high < 3000)
+
+    def test_it_settles_on_a_steady_scene(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        self.show(screen, self.dim())
+        self.show(screen, self.dim(2000, 3000), times=_AUTO_EVERY * 30)
+        low, high = screen.levels
+        self.assertAlmostEqual(low, 2000, delta=5)
+        self.assertAlmostEqual(high, 3000, delta=5)
+
+    def test_a_flat_frame_gets_a_range_above_black(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        self.show(screen, np.full((8, 8), 500, np.uint16))
+        low, high = screen.levels
+        self.assertGreater(high, low)
+
+    def test_explicit_levels_win(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        screen.levels = (0, 4095)
+        self.show(screen, self.dim())
+        self.assertEqual(screen.levels, (0., 4095.))
+
+    def test_turning_it_off_restores_the_range_of_the_type(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        self.show(screen, self.dim())
+        screen.autoLevels = None
+        self.show(screen, self.dim())
+        self.assertIsNone(screen.levels)
+
+    def test_bad_percentiles_are_refused(self):
+        screen = make_screen()
+        for percentiles in ((50, 50), (-1, 99), (1, 101), (99, 1)):
+            with self.subTest(percentiles=percentiles):
+                with self.assertRaises(ValueError):
+                    screen.autoLevels = percentiles
+        self.assertIsNone(screen.autoLevels)
+
+    def test_it_works_for_a_color_frame(self):
+        screen = make_screen()
+        screen.autoLevels = (1, 99)
+        frame = np.zeros((16, 16, 3), np.uint8)
+        frame[:, 8:] = 100
+        self.show(screen, frame)
+        self.assertEqual(screen.levels, (0., 100.))
 
 
 class TestFrameLevels(unittest.TestCase):

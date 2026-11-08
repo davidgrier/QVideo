@@ -24,6 +24,7 @@ Camera flags (mutually exclusive):
 If no flag is given, a noise camera is used as a fallback.
 '''
 
+import numpy as np
 from qtpy import QtCore, QtWidgets, QtGui
 from QVideo.lib import (QCameraTree, QVideoSource, QVideoScreen, QSnapshot,
                         launch)
@@ -36,6 +37,10 @@ __all__ = ['QCamcorder']
 #: Compact layout of the screen and the controls [pixels].
 _MARGINS = (4, 4, 4, 4)
 _SPACING = 3
+
+#: The ways to map the counts of a camera of more than 8 bits to the screen.
+_LEVELS = ('Levels: camera range', 'Levels: auto contrast',
+           'Levels: full 16 bits')
 
 #: Backlog, as a fraction of the allowance, from which it is shown.
 _SHOW_BACKLOG = 0.25
@@ -107,6 +112,13 @@ class QCamcorder(QtWidgets.QWidget):
         self._controls.setContentsMargins(*_MARGINS)
         self._controls.setSpacing(_SPACING)
         self._controls.addWidget(self.dvr)
+        self.levelsBox = QtWidgets.QComboBox(self)
+        self.levelsBox.addItems(_LEVELS)
+        self.levelsBox.setToolTip(
+            'How the display maps the counts of the camera to black and '
+            'white.  The recorded data are not changed.')
+        self.levelsBox.hide()           # until a camera has more than 8 bits
+        self._controls.addWidget(self.levelsBox)
         self._controls.addWidget(self.cameraWidget)
 
         layout = QtWidgets.QHBoxLayout(self)
@@ -128,6 +140,22 @@ class QCamcorder(QtWidgets.QWidget):
                                  QtCore.Qt.QueuedConnection)
         self.source.lost.connect(self._showLost)
         self.screen.newFrame.connect(self._snapshot.newFrame)
+        self.screen.newFrame.connect(self._offerLevels)
+        self.levelsBox.currentIndexChanged.connect(self._setLevels)
+
+    @QtCore.Slot(np.ndarray, object)
+    def _offerLevels(self, _frame: np.ndarray, info: object) -> None:
+        '''Show the choice of levels once a frame brings its own.'''
+        if (self.levelsBox.isHidden()
+                and getattr(info, 'levels', None) is not None):
+            self.levelsBox.show()
+
+    @QtCore.Slot(int)
+    def _setLevels(self, index: int) -> None:
+        '''Display the counts between the camera's range, a percentile
+        range of the frame, or the whole range of 16 bits.'''
+        self.screen.levels = (0, 65535) if index == 2 else None
+        self.screen.autoLevels = (1, 99) if index == 1 else None
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         '''Stop the camera source when the widget is closed.

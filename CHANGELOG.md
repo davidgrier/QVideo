@@ -20,6 +20,33 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Under PyQt5, which has no `QMediaDevices`, the cameras are named by
   `QCameraInfo` (they were `Camera 0`, `Camera 1`).
 
+- **Frames of more than 8 bits keep their counts through the filters and the
+  screen.**  These filters are now `deep`: they receive a `uint16` frame
+  and keep its scale (`VideoFilter.levels` is the black and white that the
+  pipeline sets, `VideoFilter.bounds(frame)` returns them): `DarkFrameFilter`,
+  `FlatFieldFilter` (the reference remembers its type, so an 8 bit reference
+  never corrects a deep frame), `InvertFilter` (black + white - pixel),
+  `UnsharpFilter`, `DoGFilter`, `MoMean`, `Median`, `MoMedian`, `Normalize`,
+  `SampleHold` and, for the methods that OpenCV runs on `uint16` frames,
+  `SmoothingFilter` (not the median) and `ThresholdFilter` (global, at the
+  same fraction of the range).  Every other filter still gets the 8 bit
+  copy.  A median background starts again when the type of the frames
+  changes.  `prepare(filter, frame, levels)` is the one rule, used by the
+  pipeline, by `QFilterRack.__call__(frame, levels)` and by the notebook
+  `Camera()`, which scaled nothing before.
+- **A deep frame is saved and recorded honestly.**  `QSnapshot` saves a gray
+  `uint16` frame to PNG or TIFF with 16 bits, stretched so that the levels
+  of the camera run from 0 to 65535 (it refused such a frame before), and
+  anything else with 8 bits; both `.mp4` writers hold 8 bits and now scale
+  the frames between their levels, and say so in the log (the OpenCV writer
+  refused them).  `imageops.stretch16` does the stretching.
+- **`QVideoScreen.autoLevels`** shows the percentiles of the frame (for
+  example `(1, 99)`) as black and white, estimated from a subsample every
+  five frames and smoothed, so a dim 12 bit image fills the screen without
+  a filter and without changing the data.  `QCamcorder` shows a choice of
+  levels (the camera's, auto contrast, the full 16 bits) when a frame brings
+  levels.
+
 - **A Performance page and a script that makes its tables.**
   `benchmarks/benchmark.py` measures the frames per second that reach the
   GUI thread from a synthetic camera, with the delay (median and 99th

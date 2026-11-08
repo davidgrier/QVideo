@@ -58,7 +58,7 @@ class Median(_MedianBase):
             shape, the internal buffers are reallocated.
         '''
         self._ready = False
-        if data.shape != self.shape:
+        if data.shape != self.shape or data.dtype != self._buffer.dtype:
             self._initialize(data)
         if self._next is not None:
             self._next.add(data)

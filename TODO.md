@@ -602,48 +602,39 @@ while streaming included.
 
 - [x] **Find out what the camera and `to_numpy()` give.**  Done 2026-11-04
   (the table above), through `viva` and through `QGenicamCamera`.
-- [ ] **Choose the format in the tree.**  `PixelFormat` is a GenICam
-  enumeration, so the tree may show it already; check that changing it
-  reallocates the ring of a `QRemoteCamera` and announces the new shape
-  and dtype, and that it is a `protected` feature.
-- [x] **Decide what the frame is.**  Done 2026-11-04 (see above).
-- [ ] **Make filters `deep`, one at a time.**  Only `ROIFilter` is.  Plain
-  Gaussian smoothing and `UnsharpFilter` keep the scale; `InvertFilter`
-  (65535 minus), the thresholds (255), CLAHE (12032 from 4095) and the
-  lookup-table filters do not, and four raise.  Each needs the scale of its
-  parameters and a test on counts.
-- [ ] **Say it for the other consumers of `levels`.**  `QSnapshot` refuses
-  `uint16`; the `.mp4` writers drop to 8 bits silently (gray `.avi` and `.mkv` are
-  16 bit in both PyAV and OpenCV since 4.16.0);
-  the headless `Camera()` proxy and `QFilterRack.__call__` apply filters
-  without the pipeline's scaling; a levels control in `QCamcorder`.
-- [ ] **Walk the pipeline.**  Each stage that assumes `uint8` needs a
-  look: `QVideoScreen` (the levels and the color map), the filters (most
-  of the OpenCV calls take `uint16`, but the lookup tables of
-  `GammaFilter` and `ExposureFilter` do not), the overlays, `QSnapshot`,
-  the DVR writers (HDF5 keeps any dtype; gray `.avi` and `.mkv` keep
-  16 bit but not the levels; `.mp4` is 8 bit), and the ring of `QRemoteCamera` (`CODES` lists the dtypes it
-  carries).
-- [ ] **QHOT.**  The hologram and the trap overlay assume the video that
-  the screen shows; check what the normalization of a hologram does with
-  16 bit input.
-- [ ] **Tests** with the fake camera of viva-genicam, if it can make
-  Mono12 or Mono16, and with the noise camera at `uint16`.
-- [ ] **A contrast filter for deep frames (an idea, 2026-11-05).**  One
-  `deep` filter with a method selector, for viewing: percentile stretch
-  (1st to 99th, smoothed over frames so that the display does not flicker),
-  global equalization and CLAHE, all on the counts (OpenCV's CLAHE takes
-  `uint16`), then `uint8` out and no levels.  The point is precision: a
-  filter that is not `deep` gets the 8 bit copy of the pipeline, so CLAHE
-  there works on 256 levels of what had 4096 and bands.  Cost: a 4096-bin
-  `cv2.calcHist` and a lookup table are cheap; percentiles of the whole
-  frame at 145 frames a second are not, so estimate the limits from a
-  subsample every few frames.  It changes the counts, so it must sit after
-  every quantitative stage, and a recorder on its output gets 8 bits (record
-  the raw source to keep 16).  **Undecided: it is better to adjust the
-  camera (exposure, gain, light) for a clear image than to repair it
-  afterwards.**  Weigh that before building; the same effect might come
-  from an auto-levels mode of `QVideoScreen.levels`, with no filter.
+- [x] **Choose the format in the tree.**  `PixelFormat` is a GenICam
+  enumeration, so the tree shows it; changing it while streaming works on a
+  Blackfly S with viva (macOS and Ubuntu 24.04, 2026-11-04).  The shape
+  signal carries only width and height, so a consumer learns the new dtype
+  from the frame (accepted).
+- [x] **Make filters `deep`** (2026-11-07).  `VideoFilter.levels` and
+  `bounds(frame)`; deep: dark frame, flat field (the reference remembers its
+  type), invert, unsharp, DoG, MoMean, Median, MoMedian, Normalize,
+  SampleHold, smoothing (not median), global threshold, ROI.  The rest
+  (Canny, Gamma, Exposure, Laplacian, Sobel, artistic, blob, circle
+  transform, foreground, dejitter, RGB, Otsu and adaptive threshold) get the
+  8 bit copy, which is right for those that use lookup tables or 8 bit
+  OpenCV calls.  Later, if wanted: Gamma and Exposure as `uint16` lookup
+  tables, Laplacian and Sobel with `CV_32F`.
+- [x] **Say it for the other consumers of `levels`** (2026-11-07).
+  `QSnapshot` saves 16 bit gray PNG/TIFF stretched by the levels; the `.mp4`
+  writers scale to 8 bits and say so; `QFilterRack.__call__(frame, levels)`
+  and the `Camera()` proxy scale like the pipeline (`prepare`); `QCamcorder`
+  has the choice of levels.
+- [x] **Walk the pipeline** (2026-11-07).  Screen (levels, `autoLevels`;
+  the color map follows the levels), filters (above), snapshot and writers
+  (above, HDF5 keeps any dtype and the levels, gray `.avi`/`.mkv` keep 16
+  bit), ring of `QRemoteCamera` carries `uint16` and the levels.  The
+  overlays work on what the screen shows.
+- [x] **Tests** (2026-11-07): `tests/test_deepfilters.py` on counts for
+  every deep filter, the pipeline, the rack and the notebook camera, the
+  snapshot, both `.mp4` writers, the screen and the camcorder.  Not done: a
+  camera of viva-genicam's fake that makes Mono12 (it is not known whether it
+  can).
+- [x] **A contrast filter for deep frames**: decided 2026-11-07 *not* to
+  build a filter; `QVideoScreen.autoLevels` (percentiles, smoothed) shows a
+  dim image without changing the counts, and a filter that changes them
+  would have to sit after every quantitative stage.
 
 ---
 

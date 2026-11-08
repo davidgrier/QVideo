@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from QVideo.lib import QVideoWriter
 from QVideo.lib.videotypes import Image, FrameInfo
+from QVideo.lib.imageops import to8bit
 import logging
 from typing import ClassVar
 
@@ -29,7 +30,8 @@ class QPyAVWriter(QVideoWriter):
     OpenCV.  FFV1 is slow on 16-bit gray frames, so an ``.avi`` file of
     them is compressed by FFVHuff instead, also without loss and about 3.5
     times faster; a 16-bit ``.mkv`` file stays on FFV1.  ``.mp4`` files are
-    compressed by H.264, with a small loss.
+    compressed by H.264, with a small loss, and hold 8 bits: 16-bit frames
+    are scaled between their levels first.
     The file is opened lazily on the first frame so that frame dimensions
     and color mode can be determined automatically.
 
@@ -76,6 +78,7 @@ class QPyAVWriter(QVideoWriter):
         self._container = None
         self._stream = None
         self._format = None
+        self._to8bit = False
         self._index = 0
 
     def open(self, frame: Image) -> bool:
@@ -107,6 +110,11 @@ class QPyAVWriter(QVideoWriter):
         if self._format == 'gray16le':
             codec, options = self.CODEC_MAP_GRAY16.get(suffix,
                                                        (codec, options))
+        self._to8bit = (self._format == 'gray16le' and codec == 'libx264')
+        if self._to8bit:
+            logger.info(f'{suffix} files hold 8 bits: the frames of '
+                        f'{self.filename!r} are scaled between their levels')
+            self._format = 'gray'
         try:
             container = av.open(self.filename, 'w')
             stream = container.add_stream(
@@ -139,6 +147,8 @@ class QPyAVWriter(QVideoWriter):
         The capture metadata *info* is not stored: the frames are
         written at a constant frame rate.
         '''
+        if self._to8bit:
+            frame = to8bit(frame, info.levels if info else None)
         picture = self._av.VideoFrame.from_ndarray(
             np.ascontiguousarray(frame), format=self._format)
         picture.pts = self._index

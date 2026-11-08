@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from qtpy import QtCore
 
-from QVideo.lib.imageops import to8bit
-from QVideo.lib.QVideoFilter import VideoFilter
+from QVideo.lib.QVideoFilter import VideoFilter, prepare
 from QVideo.lib.videotypes import Image, FrameInfo
 
 if TYPE_CHECKING:
@@ -227,8 +226,7 @@ class QFilterPipeline(QtCore.QThread):
         has no result yet.
         '''
         for video_filter in self._filters:
-            if frame.dtype == np.uint16 and not video_filter.deep:
-                frame, levels = to8bit(frame, levels), None
+            frame, levels = prepare(video_filter, frame, levels)
             try:
                 result = video_filter(frame)
             except Exception as error:

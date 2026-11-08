@@ -124,6 +124,7 @@ class TestCompactControls(unittest.TestCase):
                     layout = central.controls.layout()
                     widgets = [layout.itemAt(i).widget()
                                for i in range(layout.count())]
+                    widgets = [w for w in widgets if not w.isHidden()]
                     hints = [w.minimumHeight()
                              if isinstance(w, QCameraTree)
                              else w.sizeHint().height() for w in widgets]
@@ -147,6 +148,8 @@ class TestCompactControls(unittest.TestCase):
                         layout = central.controls.layout()
                         widgets = [layout.itemAt(i).widget()
                                    for i in range(layout.count())]
+                        # A hidden widget is not laid out.
+                        widgets = [w for w in widgets if not w.isHidden()]
                         # The macOS style lays a group box out one pixel
                         # into its neighbor so that the frames abut; a
                         # widget drawn over another is more than that.

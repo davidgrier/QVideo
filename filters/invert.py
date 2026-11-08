@@ -1,5 +1,6 @@
 '''Intensity-inversion filter and companion Qt widget.'''
 from qtpy import QtWidgets
+import numpy as np
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter, FilterCode
 from QVideo.lib.videotypes import Image
 import cv2
@@ -14,8 +15,11 @@ class InvertFilter(VideoFilter):
 
     Applies ``255 - pixel`` to every channel of every pixel, turning a
     black-on-white image into white-on-black (and back again).  Has no
-    parameters.
+    parameters.  A frame of more than 8 bits is inverted between its
+    black and white levels.
     '''
+
+    deep = True
 
     def get(self) -> Image | None:
         '''Return the intensity-inverted frame.
@@ -27,7 +31,11 @@ class InvertFilter(VideoFilter):
         '''
         if self.data is None:
             return None
-        return cv2.bitwise_not(self.data)
+        if self.data.dtype != np.uint16:
+            return cv2.bitwise_not(self.data)
+        black, white = self.bounds(self.data)
+        inverted = black + white - self.data.astype(np.float32)
+        return np.clip(inverted, black, white).astype(np.uint16)
 
     def to_code(self) -> FilterCode:
         return FilterCode(

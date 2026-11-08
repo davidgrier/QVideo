@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from QVideo.cameras import chooser
 from QVideo.cameras.chooser import BACKENDS, available_cameras, discover
+from QVideo.lib.QVideoFilter import prepare
 
 if TYPE_CHECKING:
     from QVideo.interactive.widgets import LiveView
@@ -95,15 +96,20 @@ def _notebook(feature: str) -> ModuleType:
             'Install it with: pip install ipywidgets') from ex
 
 
-def _apply(filters: list, frame: 'Image') -> 'Image | None':
+def _apply(filters: list, frame: 'Image',
+           levels: 'tuple[float, float] | None' = None) -> 'Image | None':
     '''Run *frame* through *filters*, in order.
 
     Returns ``None`` if a filter has no result yet (a filter that averages
     over several frames, for example).  A filter that raises is reported
     and removed from *filters*, as the pipeline of a Qt application does.
+    A ``uint16`` frame (from a camera of more than 8 bits, with *levels*)
+    reaches a filter that is not ``deep`` as ``uint8``, scaled between its
+    levels, as in the pipeline.
     '''
     for video_filter in list(filters):
         try:
+            frame, levels = prepare(video_filter, frame, levels)
             frame = video_filter(frame)
         except Exception as ex:
             name = getattr(video_filter, '__name__',
@@ -173,7 +179,8 @@ class _CameraProxy:
             ok, frame = camera.saferead()
             if not ok or frame is None:
                 raise RuntimeError('Camera read failed')
-            frame = _apply(self.filters, frame)
+            frame = _apply(self.filters, frame,
+                           getattr(camera, 'levels', None))
             if frame is not None:
                 return frame
 

@@ -77,9 +77,37 @@ counts:
    class CropFilter(VideoFilter):
        deep = True      # a crop does not change the pixels
 
+A filter that is ``deep`` must work for ``uint8`` and ``uint16`` frames
+alike and keep the scale.  The pipeline sets its ``levels`` before every
+call (``None`` for ``uint8``), and ``self.bounds(frame)`` returns the black
+and white values of a frame, so that an inversion is
+``black + white - pixel`` and a threshold is a fraction of the range, not
+128.  A filter whose ``deep`` depends on its settings may define it as a
+property (``SmoothingFilter`` is ``deep`` except for its median method, which
+OpenCV does not run on ``uint16`` frames with a large kernel).
+
+.. code-block:: python
+
+   class ClipFilter(VideoFilter):
+       deep = True
+
+       def process(self, frame):
+           black, white = self.bounds(frame)
+           return np.clip(frame, black + 10, white - 10)
+
 Do this only for a filter that has been tried on a ``uint16`` frame:
-a threshold of 128, a lookup table of 256 entries and an inversion that
-subtracts from 255 are all wrong for counts.  ``ROIFilter`` is ``deep``.
+a lookup table of 256 entries, a threshold of 128 and an inversion that
+subtracts from 255 are all wrong for counts.  These filters are ``deep``:
+``ROIFilter``, ``DarkFrameFilter``, ``FlatFieldFilter``, ``InvertFilter``,
+``UnsharpFilter``, ``DoGFilter``, ``MoMean``, ``Median``, ``MoMedian``,
+``Normalize`` and ``SampleHold``, ``SmoothingFilter`` (except the median
+method) and ``ThresholdFilter`` (global method).  Every other filter gets
+the 8 bit copy.
+
+Anything that applies filters outside the pipeline does the same:
+:func:`~QVideo.lib.QVideoFilter.prepare` gives a filter the frame that it
+wants, and a rack (``rack(frame, levels)``) and the notebook ``Camera()``
+use it.
 
 
 Writing a stateless filter

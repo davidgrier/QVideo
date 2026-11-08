@@ -106,6 +106,19 @@ class TestQPyAVWriter(unittest.TestCase):
                 self.assertEqual(writer._stream.codec_context.name, codec)
                 writer.close()
 
+    def test_mp4_holds_8_bits_so_deep_frames_are_scaled(self):
+        from QVideo.lib.videotypes import FrameInfo
+        frames = [np.full((48, 64), 4095, np.uint16) for _ in range(5)]
+        writer = QPyAVWriter(str(self.dir / 'deep.mp4'), fps=30)
+        with self.assertLogs('QVideo.dvr.QPyAVWriter', 'INFO'):
+            writer.open(frames[0])
+        for index, frame in enumerate(frames):
+            writer._write(frame, FrameInfo(index, 0., levels=(0., 4095.)))
+        writer.close()
+        back = self.read(str(self.dir / 'deep.mp4'))
+        self.assertEqual(len(back), 5)
+        self.assertGreater(float(np.mean(back[0])), 200)
+
     def test_mp4_keeps_the_number_of_frames(self):
         frames = self.frames((48, 64, 3))
         self.assertEqual(len(self.read(self.write(frames, 'a.mp4'))), 5)

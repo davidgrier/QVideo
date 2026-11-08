@@ -7,6 +7,7 @@ from QVideo.QCamcorder import QCamcorder
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.widgets import QScrollPanel
 from QVideo.lib.QSnapshot import QSnapshot
+from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -114,6 +115,41 @@ class TestQCamcorderDvrPlayback(unittest.TestCase):
     def test_dvr_playback_false_without_prior_true_does_not_raise(self):
         self.widget.dvr.playback._source = None
         self.widget.dvrPlayback(False)  # should not raise
+
+
+class TestQCamcorderLevels(unittest.TestCase):
+
+    '''The choice of levels appears with a camera of more than 8 bits.'''
+
+    def setUp(self):
+        self.widget = make_camcorder()
+        self.addCleanup(self.widget.cameraWidget.stop)
+        self.frame = np.zeros((4, 4), np.uint16)
+
+    def test_it_is_hidden_for_8_bit_frames(self):
+        self.widget.screen.newFrame.emit(self.frame, FrameInfo(0, 0.))
+        self.assertTrue(self.widget.levelsBox.isHidden())
+
+    def test_it_appears_when_a_frame_brings_levels(self):
+        info = FrameInfo(0, 0., levels=(0., 4095.))
+        self.widget.screen.newFrame.emit(self.frame, info)
+        self.assertFalse(self.widget.levelsBox.isHidden())
+
+    def test_a_frame_without_info_does_not_show_it(self):
+        self.widget.screen.newFrame.emit(self.frame, None)
+        self.assertTrue(self.widget.levelsBox.isHidden())
+
+    def test_the_choices_set_the_screen(self):
+        screen = self.widget.screen
+        self.widget.levelsBox.setCurrentIndex(1)
+        self.assertEqual(screen.autoLevels, (1., 99.))
+        self.assertIsNone(screen._levels)
+        self.widget.levelsBox.setCurrentIndex(2)
+        self.assertIsNone(screen.autoLevels)
+        self.assertEqual(screen._levels, (0, 65535))
+        self.widget.levelsBox.setCurrentIndex(0)
+        self.assertIsNone(screen.autoLevels)
+        self.assertIsNone(screen._levels)
 
 
 class TestQCamcorderMessage(unittest.TestCase):

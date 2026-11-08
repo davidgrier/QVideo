@@ -199,7 +199,7 @@ class TestSave(unittest.TestCase):
 
     def test_unsupported_dtype_logs_warning(self):
         snap = make_snapshot()
-        frame = np.zeros((4, 6), dtype=np.uint16)
+        frame = np.zeros((4, 6), dtype=np.float32)
         with self.assertLogs('QVideo.lib.QSnapshot', level='WARNING'):
             snap._save(frame, '/tmp/unused.png')
 
@@ -233,6 +233,49 @@ class TestSave(unittest.TestCase):
         self.assertEqual(loaded.width(), 6)
         self.assertEqual(loaded.height(), 4)
         os.unlink(path)
+
+
+class TestSaveDeep(unittest.TestCase):
+
+    '''A frame of more than 8 bits keeps its bits where the file can.'''
+
+    def save(self, frame, suffix='.png', levels=(0., 4095.)):
+        snap = make_snapshot()
+        snap.levels = levels
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+            path = f.name
+        self.addCleanup(os.unlink, path)
+        snap._save(frame, path)
+        return path
+
+    def test_gray_is_saved_with_16_bits_stretched_to_the_levels(self):
+        frame = np.zeros((4, 6), dtype=np.uint16)
+        frame[:, 3:] = 4095
+        image = QtGui.QImage(self.save(frame))
+        self.assertEqual(image.depth(), 16)
+        self.assertEqual(image.pixelColor(5, 0).red(), 255)
+        self.assertEqual(image.pixelColor(0, 0).red(), 0)
+
+    def test_tiff_holds_16_bits(self):
+        frame = np.full((4, 6), 2048, dtype=np.uint16)
+        image = QtGui.QImage(self.save(frame, '.tiff'))
+        self.assertEqual(image.depth(), 16)
+
+    def test_jpeg_gets_8_bits(self):
+        frame = np.full((4, 6), 4095, dtype=np.uint16)
+        image = QtGui.QImage(self.save(frame, '.jpg'))
+        self.assertGreater(image.width(), 0)
+        self.assertEqual(image.pixelColor(0, 0).red(), 255)
+
+    def test_color_gets_8_bits(self):
+        frame = np.full((4, 6, 3), 4095, dtype=np.uint16)
+        image = QtGui.QImage(self.save(frame))
+        self.assertEqual(image.pixelColor(0, 0).red(), 255)
+
+    def test_without_levels_the_whole_range_is_used(self):
+        frame = np.full((4, 6), 65535, dtype=np.uint16)
+        image = QtGui.QImage(self.save(frame, levels=None))
+        self.assertEqual(image.pixelColor(0, 0).red(), 255)
 
 
 if __name__ == '__main__':

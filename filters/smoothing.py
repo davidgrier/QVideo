@@ -74,6 +74,15 @@ class SmoothingFilter(VideoFilter):
             comment=f'{name} smoothing, k={k}',
         )
 
+    @property
+    def deep(self) -> bool:     # type: ignore[override]
+        '''Whether the filter keeps the scale of a ``uint16`` frame.
+
+        OpenCV's median filter takes ``uint16`` only for small kernels,
+        so the median method gets the 8 bit copy.
+        '''
+        return self._method != 'median'
+
     def process(self, image: Image) -> Image:
         '''Return the smoothed frame.
 

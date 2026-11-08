@@ -28,7 +28,10 @@ class ReferenceFilter(VideoFilter):
 
     Call :meth:`capture` to start averaging and :meth:`reset` to forget
     the reference.  Frames pass through unchanged until a capture
-    completes, and when their shape differs from the reference's.
+    completes, and when their shape or type differs from the reference's.
+    A reference is a ``deep`` filter's if the subclass sets
+    :attr:`~QVideo.lib.QVideoFilter.VideoFilter.deep`; then
+    :attr:`_referenceType` is the type of the frames that made it.
 
     Parameters
     ----------
@@ -59,6 +62,7 @@ class ReferenceFilter(VideoFilter):
     def __init__(self, nFrames: int = 16) -> None:
         super().__init__()
         self._reference: np.ndarray | None = None
+        self._referenceType: np.dtype | None = None
         self._accumulator: np.ndarray | None = None
         self._captureCount: int = 0
         self.nFrames = nFrames
@@ -118,6 +122,7 @@ class ReferenceFilter(VideoFilter):
             if self._captureCount == 0:
                 mean = self._accumulator / self._nFrames
                 self._accumulator = None
+                self._referenceType = image.dtype
                 self._reference = self._makeReference(mean)
                 self.captured.emit()
         self.data = image
@@ -126,12 +131,14 @@ class ReferenceFilter(VideoFilter):
         '''Return the corrected frame.
 
         Returns ``None`` before the first :meth:`add`, and the raw frame if
-        there is no reference or if the frame does not have its shape.
+        there is no reference or if the frame does not have its shape and
+        type.
         '''
         if self.data is None:
             return None
         if (self._reference is None
-                or self.data.shape != self._reference.shape):
+                or self.data.shape != self._reference.shape
+                or self.data.dtype != self._referenceType):
             return self.data
         return self._correct(self.data, self._reference)
 

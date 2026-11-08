@@ -34,6 +34,8 @@ class FlatFieldFilter(ReferenceFilter):
         Number of frames to average during capture.  Default: ``16``.
     '''
 
+    deep = True
+
     def _makeReference(self, mean: np.ndarray) -> np.ndarray | None:
         scale = float(mean.mean())
         return mean / scale if scale > 0 else None
@@ -43,7 +45,8 @@ class FlatFieldFilter(ReferenceFilter):
         image = frame.astype(np.float32)
         corrected = np.where(valid, image / np.where(valid, reference, 1.0),
                              image)
-        return np.clip(corrected, 0, 255).astype(np.uint8)
+        return np.clip(corrected, 0, self.bounds(frame)[1]).astype(
+            frame.dtype)
 
 
 class QFlatFieldFilter(QReferenceFilter):

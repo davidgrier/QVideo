@@ -1,6 +1,7 @@
 '''Still-frame capture from a live video stream.'''
 from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.videotypes import Image
+from QVideo.lib.imageops import stretch16, to8bit
 from pathlib import Path
 import numpy as np
 import datetime
@@ -10,6 +11,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = ['QSnapshot']
+
+#: The file types that hold 16 bit gray.
+_DEEP_FORMATS = ('.png', '.tif', '.tiff')
 
 try:
     _Fmt = QtGui.QImage.Format
@@ -22,6 +26,7 @@ class QSnapshot(QtCore.QObject):
     '''Save still frames from a live video stream.
 
     Connect any signal that emits an :class:`~QVideo.lib.videotypes.Image`
+    (and, if it has one, the ``FrameInfo`` with its levels)
     to :meth:`newFrame` so that the most recent frame is always cached.
     Call :meth:`snap` (or press the hotkey) to write the cached frame to disk.
     Call :meth:`snapAs` to choose the save path via a file dialog.
@@ -62,6 +67,10 @@ class QSnapshot(QtCore.QObject):
                  key_as: str = 'Ctrl+Shift+Alt+S') -> None:
         super().__init__(parent)
         self._frame: Image | None = None
+        #: The pixel values of the cached frame, if it has more than 8 bits,
+        #: that are black and white: those of its ``FrameInfo``; ``None`` is
+        #: the whole range.
+        self.levels: tuple[float, float] | None = None
         shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(key), parent)
         shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut.activated.connect(self.snap)
@@ -69,10 +78,11 @@ class QSnapshot(QtCore.QObject):
         shortcut_as.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
         shortcut_as.activated.connect(self.snapAs)
 
-    @QtCore.Slot(np.ndarray)
-    def newFrame(self, frame: Image) -> None:
-        '''Cache the most recent frame.'''
+    @QtCore.Slot(np.ndarray, object)
+    def newFrame(self, frame: Image, info: object = None) -> None:
+        '''Cache the most recent frame, and the levels that it comes with.'''
         self._frame = frame
+        self.levels = getattr(info, 'levels', None)
 
     def _defaultPath(self) -> str:
         '''Return a timestamped PNG path in the user's home directory.'''
@@ -105,16 +115,34 @@ class QSnapshot(QtCore.QObject):
         Parameters
         ----------
         frame : Image
-            Frame to save.  Must be uint8.
+            Frame to save: ``uint8``, or ``uint16`` from a camera of more
+            than 8 bits.
         filename : str
             Destination path.  The file format is inferred from the extension.
+
+        Notes
+        -----
+        A gray ``uint16`` frame is saved with 16 bits to a PNG or TIFF
+        file, stretched so that :attr:`levels` run from 0 to 65535 (a 12 bit
+        image would look black otherwise).  Any other file, and a color
+        frame, gets 8 bits between :attr:`levels`.
         '''
-        if frame.dtype != np.uint8:
+        deep = False
+        if frame.dtype == np.uint16:
+            deep = (frame.ndim == 2
+                    and Path(filename).suffix.lower() in _DEEP_FORMATS)
+            frame = (stretch16(frame, self.levels) if deep
+                     else to8bit(frame, self.levels))
+        elif frame.dtype != np.uint8:
             logger.warning(f'_save: unsupported dtype {frame.dtype}; '
-                           'expected uint8')
+                           'expected uint8 or uint16')
             return
         frame = np.ascontiguousarray(frame)
-        if frame.ndim == 2:
+        if deep:
+            h, w = frame.shape
+            img = QtGui.QImage(frame.tobytes(), w, h, 2 * w,
+                               _Fmt.Format_Grayscale16)
+        elif frame.ndim == 2:
             h, w = frame.shape
             img = QtGui.QImage(frame.tobytes(), w, h, w,
                                _Fmt.Format_Grayscale8)

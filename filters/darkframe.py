@@ -28,12 +28,15 @@ class DarkFrameFilter(ReferenceFilter):
         Number of frames to average during capture.  Default: ``16``.
     '''
 
+    deep = True
+
     def _makeReference(self, mean: np.ndarray) -> np.ndarray:
-        return mean.astype(np.uint8)
+        return mean.astype(self._referenceType or np.uint8)
 
     def _correct(self, frame: Image, reference: np.ndarray) -> Image:
-        difference = frame.astype(np.int16) - reference.astype(np.int16)
-        return np.clip(difference, 0, 255).astype(np.uint8)
+        difference = frame.astype(np.int32) - reference.astype(np.int32)
+        return np.clip(difference, 0, self.bounds(frame)[1]).astype(
+            frame.dtype)
 
 
 class QDarkFrameFilter(QReferenceFilter):

@@ -42,6 +42,8 @@ class DoGFilter(VideoFilter):
         Default: ``3.0``.
     '''
 
+    deep = True
+
     def __init__(self,
                  low_sigma: float = 1.0,
                  high_sigma: float = 3.0) -> None:
@@ -95,6 +97,9 @@ class DoGFilter(VideoFilter):
         gray = grayscale(self.data).astype(np.float32)
         lo = cv2.GaussianBlur(gray, (0, 0), self._low_sigma)
         hi = cv2.GaussianBlur(gray, (0, 0), self._high_sigma)
+        if self.data.dtype == np.uint16:
+            response = np.minimum(np.abs(lo - hi), self.bounds(self.data)[1])
+            return response.astype(np.uint16)
         return cv2.convertScaleAbs(lo - hi)
 
     def to_code(self) -> FilterCode:

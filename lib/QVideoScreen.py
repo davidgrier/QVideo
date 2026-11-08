@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 __all__ = ['QVideoScreen']
 
 
+#: Frames between the estimates of the levels of ``autoLevels``.
+_AUTO_EVERY = 5
+
+#: About how many pixels of a frame make the estimate.
+_AUTO_SAMPLE = 20000
+
+
 class QVideoScreen(GraphicsLayoutWidget):
 
     '''Video display widget.
@@ -68,6 +75,12 @@ class QVideoScreen(GraphicsLayoutWidget):
         ``uint16`` looks 16 times too dark until ``levels`` is
         ``(0, 4095)``.
 
+    autoLevels : tuple[float, float] | None
+        Percentiles of the frame that the display shows as black and as
+        white, for example ``(1, 99)``, so that a dim or low contrast
+        frame fills the screen.  ``None`` (default) is off.  Explicit
+        :attr:`levels` win.  The data are not changed.
+
     Signals
     -------
     newFrame(numpy.ndarray, FrameInfo)
@@ -90,6 +103,9 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._colormap: str | None = None
         self._levels: tuple[float, float] | None = None
         self._shownLevels: tuple[float, float] | None = None
+        self._auto: tuple[float, float] | None = None
+        self._autoLevels: tuple[float, float] | None = None
+        self._autoCount = 0
         self._ready = True
         self._pending: Image | None = None
         self._overlays: list[object] = []
@@ -205,14 +221,69 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._levels = self._shownLevels = levels
         self.image.setLevels(levels)
 
-    def _followLevels(self, info: FrameInfo | None) -> None:
+    @property
+    def autoLevels(self) -> tuple[float, float] | None:
+        '''The percentiles that the display shows as black and as white.
+
+        The display follows the frames: the levels are estimated from a
+        subsample every few frames and smoothed over time, so that the
+        picture does not flicker.  ``None`` turns it off.  Explicit
+        :attr:`levels` win.
+
+        Raises
+        ------
+        ValueError
+            If the percentiles are not ``0 <= low < high <= 100``.
+        '''
+        return self._auto
+
+    @autoLevels.setter
+    def autoLevels(self, percentiles: tuple[float, float] | None) -> None:
+        if percentiles is not None:
+            low, high = percentiles
+            if not 0 <= low < high <= 100:
+                raise ValueError(
+                    'the percentiles must satisfy 0 <= low < high <= 100: '
+                    f'{percentiles}')
+            percentiles = (float(low), float(high))
+        self._auto = percentiles
+        self._autoLevels = None
+        self._autoCount = 0
+
+    def _estimateLevels(self, image: Image) -> tuple[float, float] | None:
+        '''Return the levels of the percentiles of *image*, smoothed.
+
+        The percentiles come from a subsample of every few frames; the
+        result moves a third of the way to each new estimate.
+        '''
+        assert self._auto is not None
+        self._autoCount += 1
+        if self._autoLevels is None or self._autoCount % _AUTO_EVERY == 0:
+            step = max(1, int(np.sqrt(image.shape[0] * image.shape[1]
+                                      / _AUTO_SAMPLE)))
+            low, high = np.percentile(image[::step, ::step], self._auto)
+            if high <= low:
+                high = low + 1
+            if self._autoLevels is None:
+                self._autoLevels = (float(low), float(high))
+            else:
+                old = self._autoLevels
+                self._autoLevels = (old[0] + (low - old[0]) / 3,
+                                    old[1] + (high - old[1]) / 3)
+        return self._autoLevels
+
+    def _followLevels(self, image: Image, info: FrameInfo | None) -> None:
         '''Show the frame between the levels that it comes with.
 
-        Levels that were set explicitly win.  The display is told only when
-        the levels change, because explicit levels make pyqtgraph rescale
-        every frame.
+        Levels that were set explicitly win, then the percentiles of
+        :attr:`autoLevels`.  The display is told only when the levels
+        change, because explicit levels make pyqtgraph rescale every frame.
         '''
-        wanted = self._levels or (info.levels if info else None)
+        wanted = self._levels
+        if wanted is None and self._auto is not None:
+            wanted = self._estimateLevels(image)
+        if wanted is None and info:
+            wanted = info.levels
         if wanted != self._shownLevels:
             self._shownLevels = wanted
             self.image.setLevels(wanted)
@@ -245,7 +316,7 @@ class QVideoScreen(GraphicsLayoutWidget):
             Capture metadata for *image*, passed on with :attr:`newFrame`.
         '''
         if self._ready:
-            self._followLevels(info)
+            self._followLevels(image, info)
             self.image.setImage(image, autoLevels=False)
             self.newFrame.emit(
                 self._renderComposite() if self._composite else image, info)

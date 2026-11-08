@@ -6,7 +6,7 @@ from qtpy import QtCore, QtWidgets, QtGui
 import pyqtgraph as pg
 
 from QVideo.lib.QVideoFilter import (
-    QVideoFilter, VideoFilter, renderPipeline)
+    QVideoFilter, VideoFilter, prepare, renderPipeline)
 from QVideo.lib.QFilterPipeline import QFilterPipeline
 from QVideo.lib.videotypes import Image
 
@@ -290,13 +290,23 @@ class QFilterRack(QtWidgets.QWidget):
             if slot := self._slotAt(i):
                 yield slot
 
-    def __call__(self, image: Image) -> Image | None:
+    def __call__(self, image: Image,
+                 levels: tuple[float, float] | None = None
+                 ) -> Image | None:
         '''Apply all registered filters to *image* in order.
+
+        A ``uint16`` frame is scaled to ``uint8`` between *levels* before
+        any filter that is not
+        :attr:`~QVideo.lib.QVideoFilter.VideoFilter.deep`, as the pipeline
+        does.
 
         Parameters
         ----------
         image : Image
             Input frame.
+        levels : tuple[float, float], optional
+            The pixel values of *image* that are black and white.  The
+            default is the whole range of the type.
 
         Returns
         -------
@@ -307,6 +317,9 @@ class QFilterRack(QtWidgets.QWidget):
         '''
         result: Image | None = image
         for slot in self._iterSlots():
+            if slot.widget.isChecked():
+                result, levels = prepare(slot.widget.videoFilter, result,
+                                         levels)
             result = slot.widget(result)
             if result is None:
                 return None

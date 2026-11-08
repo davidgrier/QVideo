@@ -9,6 +9,7 @@ import cv2
 from QVideo.dvr.QOpenCVWriter import QOpenCVWriter
 from QVideo.dvr.QOpenCVReader import QOpenCVReader
 from QVideo.lib import QVideoWriter
+from QVideo.lib.videotypes import FrameInfo
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -227,12 +228,28 @@ class TestQOpenCVWriterDeep(unittest.TestCase):
                                    cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_16U])
 
     def test_deep_frame_tries_only_ffv1(self):
-        writer = make_writer('test.mp4')
+        writer = make_writer('test.avi')
         with patch('cv2.VideoWriter') as mock_cls:
             mock_cls.return_value = make_mock_vw(False)
             with self.assertLogs('QVideo.dvr.QOpenCVWriter', 'WARNING'):
                 self.assertFalse(writer.open(_FRAME_DEEP))
-        mock_cls.assert_not_called()
+        for call in mock_cls.call_args_list:
+            self.assertEqual(call[0][2], cv2.VideoWriter_fourcc(*'FFV1'))
+
+    def test_mp4_holds_8_bits_so_deep_frames_are_scaled(self):
+        writer = make_writer('test.mp4')
+        with patch('cv2.VideoWriter') as mock_cls:
+            video = make_mock_vw(True)
+            mock_cls.return_value = video
+            with self.assertLogs('QVideo.dvr.QOpenCVWriter', 'INFO'):
+                self.assertTrue(writer.open(_FRAME_DEEP))
+            frame = np.full((480, 640), 4095, dtype=np.uint16)
+            writer._write(frame, FrameInfo(0, 0., levels=(0., 4095.)))
+        args = mock_cls.call_args[0]
+        self.assertNotIn(cv2.CAP_FFMPEG, args)
+        written = video.write.call_args[0][0]
+        self.assertEqual(written.dtype, np.uint8)
+        self.assertEqual(int(written[0, 0]), 255)
 
     def test_explicit_codec_is_honored_for_deep_frames(self):
         writer = make_writer('test.avi', codec='FFV1')

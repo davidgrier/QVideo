@@ -28,8 +28,9 @@ class QWebShareDialog(QtWidgets.QDialog):
     While the window is open the web screen accepts the code that it shows:
     point the camera of a tablet or phone at it, and the browser opens the
     video.  Closing the window stops pairing and changes the secret, so
-    only someone who could see the screen while it was open can pair.
-    Browsers that paired stay paired until they are disconnected here.
+    only someone who could see the screen while it was open can pair, and
+    each code pairs one device, after which a new code appears.  Browsers
+    that paired stay paired until they are disconnected here.
 
     The window is not modal: the instrument stays usable while it is open.
     A program shows it from a button, a menu item or a shortcut with
@@ -63,9 +64,14 @@ class QWebShareDialog(QtWidgets.QDialog):
         self.address.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         hint = QtWidgets.QLabel(
-            'Point the camera of the tablet at the code.  Only people who '
-            'can see this window can pair; closing it changes the code.')
+            'Point the camera of the tablet at the code.  Each code pairs '
+            'one device, and a new one appears.  Only people who can see '
+            'this window can pair; closing it changes the code.')
         hint.setWordWrap(True)
+        notice = QtWidgets.QLabel(
+            'Not encrypted: use this on a network that you trust.')
+        notice.setWordWrap(True)
+        notice.setStyleSheet('color: #a15c00;')
         self.viewers = QtWidgets.QListWidget()
         self.viewers.setMaximumHeight(90)
         self.viewers.itemSelectionChanged.connect(self._enableDisconnect)
@@ -83,6 +89,7 @@ class QWebShareDialog(QtWidgets.QDialog):
         layout.addWidget(self.code)
         layout.addWidget(self.address)
         layout.addWidget(hint)
+        layout.addWidget(notice)
         layout.addWidget(QtWidgets.QLabel('Paired:'))
         layout.addWidget(self.viewers)
         layout.addLayout(buttons)

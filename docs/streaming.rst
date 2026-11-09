@@ -62,9 +62,11 @@ with a cookie, and from then on that browser sees the video.
 The idea is that **only people who can see the screen of the instrument
 can watch**, and that the window is a *pairing window*:
 
-* the code works only while the window is open.  Closing it changes the
-  secret, so a photograph of the code, or a screen that was shared, pairs
-  nothing afterward;
+* the code works only while the window is open, and **pairs one browser**:
+  the secret changes after each pairing and the window shows the new code,
+  so an address that was read off the network is already spent.  Closing
+  the window changes the secret too, so a photograph of the code, or a
+  screen that was shared, pairs nothing afterward;
 * a paired browser stays paired (for a week, if the browser keeps the
   cookie, and until the program ends) and reconnects without a new scan;
 * the window lists the paired browsers.  **Disconnect** removes one, and

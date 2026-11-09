@@ -133,8 +133,10 @@ class QWebScreen(QtCore.QObject):
     pairs by opening :attr:`pairingUrl`, which the instrument shows as a QR
     code (:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog`).  The
     address works only while the pairing window is open
-    (:meth:`openPairing`); :meth:`closePairing` shuts it and changes the
-    secret, so a photograph of the code is no use afterward.  A paired
+    (:meth:`openPairing`), and for one browser: the secret changes after
+    each pairing, so a link that was read off the network is spent.
+    :meth:`closePairing` shuts the window and changes the secret, so a
+    photograph of the code is no use afterward.  A paired
     browser keeps a cookie that the server remembers until the program ends
     or :meth:`revoke` removes it.  Wrong codes are limited to a few a minute
     from each address.  The connection is **not encrypted**, so anyone who
@@ -515,12 +517,16 @@ class QWebScreen(QtCore.QObject):
             good = self._pairing and hmac.compare_digest(
                 code, self._secret.encode())
             if good:
+                # one code pairs one browser: a link that was read off the
+                # network is spent already
+                self._secret = secrets.token_urlsafe(16)
                 self._sessions[ident] = _Viewer(
                     ident, address, request.headers.get('User-Agent', ''))
         if not good:
             self._fail(address)
             return self._page(EXPIRED, 403)
         self.viewersChanged.emit()
+        self.codeChanged.emit()
         reply = self._web.HTTPFound('/')
         # Lax, not Strict: the scan comes from another app, and a browser
         # does not send a Strict cookie in a redirect that another site began.

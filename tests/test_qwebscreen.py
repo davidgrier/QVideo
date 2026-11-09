@@ -357,6 +357,25 @@ class TestAccess(unittest.TestCase):
         app.processEvents()             # the signal crosses threads
         self.assertTrue(changes)
 
+    def test_a_code_pairs_one_browser(self):
+        self.web.openPairing()
+        code = self.code()
+        codes = record(self.web.codeChanged)
+
+        async def look():
+            statuses = []
+            for _ in range(2):
+                async with self.client() as session:
+                    async with self.pair(session, code) as reply:
+                        statuses.append(reply.status)
+            return statuses
+        self.assertEqual(self.run_client(look), [302, 403])
+        app.processEvents()
+        self.assertTrue(codes)
+        self.assertNotEqual(self.code(), code)
+        self.assertTrue(self.web.pairing)       # the window stays open
+        self.assertEqual(len(self.web.viewers), 1)
+
     def test_a_wrong_code_is_refused(self):
         self.web.openPairing()
 

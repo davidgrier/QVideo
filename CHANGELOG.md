@@ -24,8 +24,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   shows a QR code while it is open, a tablet scans it, and the server answers
   with a cookie.  Closing the window changes the secret, the window lists
   the paired browsers and disconnects them, and wrong codes are rate limited
-  (`QWebScreen(access=False)` turns pairing off).  The connection is not
-  encrypted: for a trusted network.  `python -m QVideo.demos.webdemo` shows
+  (`QWebScreen(access=False)` turns pairing off).  A code pairs one browser.
+  The connection is not encrypted unless the program gives a certificate
+  (`certfile`, `keyfile`: https and a `Secure` cookie); otherwise it is for a
+  trusted network.  `python -m QVideo.demos.webdemo` shows
   the window, the page and the QR code together; the protocol is on the
   "Video in a web browser" page.  Provisional (see Stability).
 

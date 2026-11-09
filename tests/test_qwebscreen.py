@@ -1,7 +1,12 @@
 '''Unit tests for QWebScreen.'''
 import asyncio
 import json
+import os
+import shutil
+import ssl
 import struct
+import subprocess
+import tempfile
 import time
 import unittest
 from unittest.mock import patch
@@ -500,6 +505,114 @@ class TestAccess(unittest.TestCase):
         from QVideo.lib.QWebScreen import _deviceName
         self.assertEqual(_deviceName('Mozilla/5.0 (iPad; CPU OS 17)'), 'iPad')
         self.assertEqual(_deviceName('curl/8'), 'browser')
+
+
+def makeCertificate(directory):
+    '''Write a self-signed certificate for 127.0.0.1; return its paths, or
+    ``None`` if openssl is not there.'''
+    if shutil.which('openssl') is None:     # pragma: no cover
+        return None
+    cert = os.path.join(directory, 'cert.pem')
+    key = os.path.join(directory, 'key.pem')
+    subprocess.run(
+        ['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
+         '-keyout', key, '-out', cert, '-days', '2', '-subj',
+         '/CN=127.0.0.1', '-addext', 'subjectAltName=IP:127.0.0.1'],
+        check=True, capture_output=True)
+    return cert, key
+
+
+@unittest.skipIf(aiohttp is None, 'aiohttp not installed')
+class TestTls(unittest.TestCase):
+
+    '''With a certificate the server speaks https.'''
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        files = makeCertificate(directory.name)
+        if files is None:                   # pragma: no cover
+            self.skipTest('openssl not installed')
+        self.cert, self.key = files
+        self.web = QWebScreen(_Source(), host='127.0.0.1', port=0,
+                              certfile=self.cert, keyfile=self.key)
+        self.web.start()
+        self.addCleanup(self.web.stop)
+        self.base = f'https://127.0.0.1:{self.web.port}'
+        self.context = ssl.create_default_context(cafile=self.cert)
+
+    def client(self):
+        return aiohttp.ClientSession(
+            cookie_jar=aiohttp.CookieJar(unsafe=True))
+
+    def test_the_address_is_https(self):
+        self.assertTrue(self.web.secure)
+        self.assertTrue(self.web.url.startswith('https://'))
+        self.assertTrue(self.web.pairingUrl.startswith('https://'))
+
+    def test_pairing_and_the_video_work_over_https(self):
+        self.web.openPairing()
+        code = self.web.pairingUrl.rsplit('/', 1)[1]
+
+        async def look():
+            async with self.client() as session:
+                async with session.get(
+                        f'{self.base}/join/{code}', ssl=self.context,
+                        allow_redirects=False) as reply:
+                    cookie = reply.cookies['qvideo']
+                async with session.get(self.base + '/',
+                                       ssl=self.context) as page:
+                    status = page.status
+                async with session.ws_connect(
+                        self.base + '/ws', ssl=self.context) as ws:
+                    opened = not ws.closed
+                return cookie, status, opened
+        cookie, status, opened = asyncio.run(look())
+        self.assertTrue(cookie['secure'])
+        self.assertEqual(status, 200)
+        self.assertTrue(opened)
+
+    def test_a_browser_that_does_not_trust_the_certificate_is_refused(self):
+        async def look():
+            async with self.client() as session:
+                try:
+                    await session.get(self.base + '/')
+                except aiohttp.ClientConnectorCertificateError:
+                    return True
+            return False
+        self.assertTrue(asyncio.run(look()))
+
+    def test_plain_http_is_not_served_on_the_port(self):
+        async def look():
+            async with self.client() as session:
+                try:
+                    await session.get(
+                        f'http://127.0.0.1:{self.web.port}/', timeout=
+                        aiohttp.ClientTimeout(total=3))
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    return True
+            return False
+        self.assertTrue(asyncio.run(look()))
+
+    def test_without_a_certificate_the_server_is_not_secure(self):
+        other = QWebScreen(host='127.0.0.1', port=0)
+        self.assertFalse(other.secure)
+        self.assertTrue(other.url.startswith('http://'))
+
+    def test_a_missing_certificate_is_an_error_and_not_a_busy_port(self):
+        other = QWebScreen(host='127.0.0.1', port=self.web.port,
+                           certfile='/nonexistent.pem')
+        with self.assertRaises(OSError):
+            other.start(fallback=True)
+        self.assertFalse(other.isRunning())
+        self.assertEqual(other.port, self.web.port)     # no fallback
+
+    def test_the_dialog_says_encrypted(self):
+        from QVideo.widgets.QWebShareDialog import QWebShareDialog
+        dialog = QWebShareDialog(self.web)
+        self.addCleanup(dialog.deleteLater)
+        labels = [w.text() for w in dialog.findChildren(QtWidgets.QLabel)]
+        self.assertIn('Encrypted (https).', labels)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -45,9 +45,15 @@ class WebDemo(QCamcorder):
     itself is unchanged, and has no web code: sharing is this recipe.
     '''
 
+    #: A subclass that has a certificate sets these (PEM files): the page
+    #: is then served over https.
+    certfile: str | None = None
+    keyfile: str | None = None
+
     def _setupUi(self) -> None:
         super()._setupUi()
-        self.web = QWebScreen(self.screen.source)
+        self.web = QWebScreen(self.screen.source, certfile=self.certfile,
+                              keyfile=self.keyfile)
         self.web.start(fallback=True)
         self.share = QWebShareDialog(self.web, self)
         self.shareButton = QtWidgets.QPushButton('Share...')

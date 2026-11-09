@@ -8,6 +8,7 @@ import json
 import logging
 import secrets
 import socket
+import ssl
 import struct
 import threading
 import time
@@ -141,7 +142,9 @@ class QWebScreen(QtCore.QObject):
     or :meth:`revoke` removes it.  Wrong codes are limited to a few a minute
     from each address.  The connection is **not encrypted**, so anyone who
     can read the network sees the video and the cookie: use a trusted
-    network.
+    network, or give a certificate (``certfile`` and ``keyfile``) and the
+    server speaks https, with a ``Secure`` cookie.  A certificate that the
+    browsers trust is the hard part: see :ref:`streaming-encryption`.
 
     Parameters
     ----------
@@ -159,6 +162,11 @@ class QWebScreen(QtCore.QObject):
         JPEG quality, 1 to 100.  Default 70.
     framerate : float
         The most frames a second that are sent.  Default 30.
+    certfile, keyfile : str, optional
+        The certificate (and its chain) and the private key, in PEM files.
+        With them the server speaks https and :attr:`url` begins with
+        ``https://``; the certificate must name the host that the browsers
+        use.  Without them the connection is not encrypted.
     access : bool
         Require pairing.  Default ``True``.  ``False`` serves anyone who
         can reach the port, with no cookie: for a machine that only you
@@ -206,6 +214,8 @@ class QWebScreen(QtCore.QObject):
                  quality: int = 70,
                  framerate: float = 30.,
                  access: bool = True,
+                 certfile: str | None = None,
+                 keyfile: str | None = None,
                  parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.host = host
@@ -214,6 +224,9 @@ class QWebScreen(QtCore.QObject):
         self.quality = quality
         self.framerate = framerate
         self.access = access
+        self.certfile = certfile
+        self.keyfile = keyfile
+        self._tls: ssl.SSLContext | None = None
         self._guard = threading.Lock()      # the secret and the sessions
         self._secret = secrets.token_urlsafe(16)
         self._pairing = False
@@ -393,7 +406,13 @@ class QWebScreen(QtCore.QObject):
     def url(self) -> str:
         '''The address to open in a browser (valid once started).'''
         host = _lanAddress() if self.host in ('', '0.0.0.0') else self.host
-        return f'http://{host}:{self.port}/'
+        scheme = 'https' if self.secure else 'http'
+        return f'{scheme}://{host}:{self.port}/'
+
+    @property
+    def secure(self) -> bool:
+        '''Whether the connection is encrypted (a certificate was given).'''
+        return self.certfile is not None
 
     @property
     def clients(self) -> int:
@@ -424,9 +443,13 @@ class QWebScreen(QtCore.QObject):
             If ``aiohttp`` is not installed.
         OSError
             If the port cannot be used.
+        ssl.SSLError
+            If the certificate and the key cannot be used.
         '''
         if self._thread is not None:
             return self
+        # Read the certificate first: a bad file is not a busy port.
+        self._tls = self._context()
         try:
             return self._start()
         except OSError:
@@ -435,6 +458,15 @@ class QWebScreen(QtCore.QObject):
             logger.info(f'port {self.port} is taken: using another')
             self.port = 0
             return self._start()
+
+    def _context(self) -> ssl.SSLContext | None:
+        '''Return the TLS settings, or ``None`` for plain http.'''
+        if self.certfile is None:
+            return None
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.load_cert_chain(self.certfile, self.keyfile)
+        return context
 
     def _start(self) -> QWebScreen:
         try:
@@ -491,7 +523,8 @@ class QWebScreen(QtCore.QObject):
         runner = web.AppRunner(app, access_log=None)
         await runner.setup()
         try:
-            await web.TCPSite(runner, self.host, self.port).start()
+            await web.TCPSite(runner, self.host, self.port,
+                              ssl_context=self._tls).start()
             self.port = runner.addresses[0][1]
             self._web = web
             encoder = asyncio.create_task(self._encode())
@@ -547,7 +580,7 @@ class QWebScreen(QtCore.QObject):
         # Lax, not Strict: the scan comes from another app, and a browser
         # does not send a Strict cookie in a redirect that another site began.
         reply.set_cookie(_COOKIE, ident, max_age=_COOKIE_AGE, httponly=True,
-                         samesite='Lax')
+                         samesite='Lax', secure=self.secure)
         raise reply
 
     async def _socket(self, request):

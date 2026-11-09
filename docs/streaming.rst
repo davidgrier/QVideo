@@ -42,12 +42,12 @@ by 1024 a typical frame is about 130 KB (31 Mb/s at 30 frames a second) at
 quality 80 and about 65 KB at quality 60, and a noisy one is several times
 larger.
 
-.. warning::
+.. note::
 
-   The connection is **not encrypted**.  Pairing keeps strangers out, but
-   anyone who can read the network traffic sees the video and the cookie.
-   Use it on a trusted network (``host='127.0.0.1'`` serves this machine
-   only).  The page only shows the video; it controls nothing.
+   By default the connection is **not encrypted** (see
+   :ref:`streaming-encryption`).  Use it on a trusted network, or give the
+   server a certificate.  The page only shows the video; it controls
+   nothing.
 
 Pairing a tablet
 ----------------
@@ -87,6 +87,47 @@ machine that only you can reach.
 A tablet that adds the page to its home screen may keep its cookies apart
 from the browser that scanned the code: scan from the home-screen page, or
 scan again.
+
+.. _streaming-encryption:
+
+Encryption
+----------
+
+There are three levels, and a program picks the one that its network needs.
+
+**Plain http (the default).**  Nothing to install and nothing to set.
+Pairing keeps strangers out: the code works for one browser, while the
+window is open.  But anyone who can read the network traffic sees the video
+and the cookie, so use it on a network whose users you trust.  This is
+enough for looking at a microscope on a tablet.  The window says "Not
+encrypted".
+
+**https with a certificate that you provide.**  ``QWebScreen(source,
+certfile='cert.pem', keyfile='key.pem')`` serves https (TLS 1.2 or later),
+the address begins with ``https://``, the cookie is ``Secure``, and the
+window says "Encrypted".  The certificate must name the host that the
+browser uses, and the browser must trust it; that is the hard part.  In
+the order that I would try them:
+
+* **Tailscale.**  Install it on both devices, then ``tailscale cert
+  <name>.<tailnet>.ts.net`` writes a certificate that every browser trusts,
+  and the address is that name.
+* **A certificate from your institution** for a host name of the instrument.
+* **A private certificate authority**, such as ``mkcert``.  Install its root
+  certificate on each device (on an iPad: install the profile, then trust
+  it under Settings, General, About, Certificate Trust Settings).
+* **A reverse proxy** (Caddy or nginx) that ends TLS and can add logins:
+  QVideo listens on ``host='127.0.0.1'`` behind it.
+
+A self-signed certificate is for testing: a browser warns, and some do not
+allow a WebSocket to it.
+
+**External certification.**  A proxy or an identity-aware gateway in front
+of QVideo, which authenticates people itself.  QVideo's pairing then adds
+nothing and ``access=False`` is reasonable.
+
+Controls from the page, when they come, will need the second level or a
+proxy: a stolen cookie must not move a laser.
 
 How it works
 ------------

@@ -734,16 +734,11 @@ encrypt (see below), and nothing has been tried on an iPad.
 - [ ] **Say what it does not do.**  The panel should say "not encrypted" in
   plain words until a certificate is set.  Without TLS a sniffer on the Wi-Fi
   can read the cookie.  The QR code authenticates; it does not encrypt.
-- [ ] **TLS, opt in** (`certfile`, `keyfile`; `url` becomes `https://`; the
-  page already uses `wss://` on https).  The hard part is trust on the
-  devices, not the code.  Recipes for the docs, best first: a private
-  certificate authority (`mkcert`; on an iPad: install the profile, then
-  Settings > General > About > Certificate Trust Settings), Tailscale
-  (`tailscale cert`; encrypted and trusted names), a reverse proxy (Caddy or
-  nginx terminates TLS and can add logins; QVideo listens on 127.0.0.1), a
-  certificate from the institution.  A self-signed certificate is for tests:
-  Safari shows a warning and, I believe, often refuses WebSockets to it
-  (not tried).  Https also gives the page secure-context APIs (WebCodecs).
+- [x] **TLS, opt in**, built 2026-11-09 (Tier 1): `certfile` and `keyfile`,
+  https URL, `Secure` cookie, the window says "Encrypted".  Recipes are in
+  `docs/streaming.rst`.  Not tried with a real certificate on a device.
+  - [ ] A `QWebScreen.fromTailscale()` helper that runs `tailscale cert` and
+    uses the name (only if Tailscale users ask).
 - [ ] **A privilege model** for when the page can send events: scanning the QR
   code grants view; control needs the operator to answer a prompt in the
   window ("Allow this device to control?").  Someone is at the instrument,

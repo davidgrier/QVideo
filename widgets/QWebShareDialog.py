@@ -68,10 +68,13 @@ class QWebShareDialog(QtWidgets.QDialog):
             'one device, and a new one appears.  Only people who can see '
             'this window can pair; closing it changes the code.')
         hint.setWordWrap(True)
-        notice = QtWidgets.QLabel(
-            'Not encrypted: use this on a network that you trust.')
+        if self.web.secure:
+            notice = QtWidgets.QLabel('Encrypted (https).')
+        else:
+            notice = QtWidgets.QLabel(
+                'Not encrypted: use this on a network that you trust.')
+            notice.setStyleSheet('color: #a15c00;')
         notice.setWordWrap(True)
-        notice.setStyleSheet('color: #a15c00;')
         self.viewers = QtWidgets.QListWidget()
         self.viewers.setMaximumHeight(90)
         self.viewers.itemSelectionChanged.connect(self._enableDisconnect)

@@ -115,6 +115,14 @@ class TestServing(ServerCase):
             other.start()
         self.assertFalse(other.isRunning())
 
+    def test_a_port_in_use_can_fall_back_to_a_free_one(self):
+        taken = self.web.port
+        other = QWebScreen(host='127.0.0.1', port=taken)
+        self.addCleanup(other.stop)
+        other.start(fallback=True)
+        self.assertTrue(other.isRunning())
+        self.assertNotEqual(other.port, taken)
+
     def test_without_aiohttp_it_says_what_to_install(self):
         other = QWebScreen(host='127.0.0.1', port=0)
         with patch.dict('sys.modules', {'aiohttp': None}):

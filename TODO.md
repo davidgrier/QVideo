@@ -727,7 +727,8 @@ encrypt (see below), and nothing has been tried on an iPad.
   The web demo has a Share button and Ctrl+Shift+W.  Still to do:
   - [ ] Try it on an iPad and a phone (the camera app opens the link; does
     Safari keep the cookie? does the home-screen page need its own scan?).
-  - [ ] A Share action in `QCamcorder` (menu item and shortcut).
+  - Decided 2026-11-09: no Share action in `QCamcorder`; the camcorder
+    stays lean and sharing is a recipe (`WebDemo` subclasses it).
   - [ ] Persist sessions across restarts (opt in) so that a restart does not
     need a new scan.
 - [ ] **Say what it does not do.**  The panel should say "not encrypted" in

@@ -59,8 +59,8 @@ roidemo
     interest; only the pixels inside it are recorded.
 
 webdemo
-    The video on the screen and, at the same time, in any browser on the
-    network that opens the address shown (a tablet, a phone).  Needs
+    A :class:`~QVideo.QCamcorder.QCamcorder` whose video can also be watched
+    on a tablet or phone: a QR code pairs the browser.  Needs
     ``QVideo[stream]``.
 
 Running

@@ -14,7 +14,7 @@ or closes it.  This needs ``aiohttp`` and ``segno``:
 import logging
 
 from qtpy import QtCore, QtGui, QtWidgets
-from QVideo.demos.demo import Demo
+from QVideo.QCamcorder import QCamcorder
 from QVideo.lib import launch
 from QVideo.lib.QWebScreen import QWebScreen
 from QVideo.widgets.QWebShareDialog import QWebShareDialog
@@ -25,13 +25,14 @@ logger = logging.getLogger(__name__)
 __all__ = ['WebDemo']
 
 
-class WebDemo(Demo):
+class WebDemo(QCamcorder):
 
-    '''The video on the screen, and in any browser that opens the address.
+    '''A camcorder whose video can also be watched on a tablet or phone.
 
     Data flow::
 
         camera -> screen
+              \\-> dvr
               \\-> web screen -> browsers
 
     The recipe is one object that watches the same source as the screen:
@@ -40,19 +41,14 @@ class WebDemo(Demo):
     that opens the QR code
     (:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog`) and says how
     many are watching.  The window opens when the demo starts.  Port 8080 is
-    tried first; if it is taken, any free port is used.  See
-    :class:`~QVideo.demos.demo.Demo` for the parameters.
+    tried first; if it is taken, any free port is used.  The camcorder
+    itself is unchanged, and has no web code: sharing is this recipe.
     '''
 
     def _setupUi(self) -> None:
         super()._setupUi()
         self.web = QWebScreen(self.screen.source)
-        try:
-            self.web.start()
-        except OSError:
-            logger.info('port 8080 is taken: using another')
-            self.web.port = 0
-            self.web.start()
+        self.web.start(fallback=True)
         self.share = QWebShareDialog(self.web, self)
         self.shareButton = QtWidgets.QPushButton('Share...')
         self.shareButton.setToolTip('Show the QR code (Ctrl+Shift+W)')

@@ -404,8 +404,14 @@ class QWebScreen(QtCore.QObject):
         '''Return whether the server is up.'''
         return self._thread is not None
 
-    def start(self) -> QWebScreen:
+    def start(self, fallback: bool = False) -> QWebScreen:
         '''Start the server, in a thread of its own.
+
+        Parameters
+        ----------
+        fallback : bool
+            If the port is taken, take any free port instead of raising.
+            Default ``False``.
 
         Returns
         -------
@@ -421,6 +427,16 @@ class QWebScreen(QtCore.QObject):
         '''
         if self._thread is not None:
             return self
+        try:
+            return self._start()
+        except OSError:
+            if not fallback:
+                raise
+            logger.info(f'port {self.port} is taken: using another')
+            self.port = 0
+            return self._start()
+
+    def _start(self) -> QWebScreen:
         try:
             from aiohttp import web
         except ImportError as error:

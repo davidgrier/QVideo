@@ -104,15 +104,52 @@ Example::
     python -m QVideo.demos.filterdemo -c 1  # second OpenCV camera
 '''
 
-from .demo import Demo
-from .filterdemo import FilterDemo
-from .filterrackdemo import FilterRackDemo
-from .histogramdemo import HistogramDemo
-from .uniformitydemo import UniformityDemo
-from .circulardemo import CircularDemo
-from .roidemo import CropROI, ROIDemo
-from .trackpydemo import TrackpyDemo
-from .yolodemo import YoloDemo
-from .compositedemo import CompositeDemo
-from .combineddemo import CombinedDemo
+import importlib
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:       # for type checkers and editors; not run
+    from .demo import Demo
+    from .filterdemo import FilterDemo
+    from .filterrackdemo import FilterRackDemo
+    from .histogramdemo import HistogramDemo
+    from .uniformitydemo import UniformityDemo
+    from .circulardemo import CircularDemo
+    from .roidemo import CropROI, ROIDemo
+    from .trackpydemo import TrackpyDemo
+    from .yolodemo import YoloDemo
+    from .compositedemo import CompositeDemo
+    from .combineddemo import CombinedDemo
+
+#: Where each name lives.  A demo is imported when it is first asked for, so
+#: that ``python -m QVideo.demos.<name>`` does not find its module already
+#: imported (``runpy`` warns), and a program that uses one demo does not
+#: load the packages that the others need.
+_MODULES = {
+    'Demo': 'demo',
+    'FilterDemo': 'filterdemo',
+    'FilterRackDemo': 'filterrackdemo',
+    'HistogramDemo': 'histogramdemo',
+    'UniformityDemo': 'uniformitydemo',
+    'CircularDemo': 'circulardemo',
+    'CropROI': 'roidemo',
+    'ROIDemo': 'roidemo',
+    'TrackpyDemo': 'trackpydemo',
+    'YoloDemo': 'yolodemo',
+    'CompositeDemo': 'compositedemo',
+    'CombinedDemo': 'combineddemo',
+}
+
+__all__ = list(_MODULES)
+
+
+def __getattr__(name: str):
+    module = _MODULES.get(name)
+    if module is None:
+        raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+    value = getattr(importlib.import_module(f'.{module}', __name__), name)
+    globals()[name] = value             # later lookups skip this function
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted([*globals(), *_MODULES])

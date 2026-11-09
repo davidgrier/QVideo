@@ -19,9 +19,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   levels of the frame, encoded once as JPEG for all browsers (and not at all
   while there are none), and each browser gets the newest frame and skips
   the rest.  A message carries the frame with its metadata and a place for
-  overlays, so that what is drawn belongs to the frame.  View only, without
-  authentication: for a trusted network.  `python -m QVideo.demos.webdemo`
-  shows the window and the page together; the protocol is on the
+  overlays, so that what is drawn belongs to the frame.  View only.
+  **A browser must pair first**: `QWebShareDialog` (in `QVideo.widgets`)
+  shows a QR code while it is open, a tablet scans it, and the server answers
+  with a cookie.  Closing the window changes the secret, the window lists
+  the paired browsers and disconnects them, and wrong codes are rate limited
+  (`QWebScreen(access=False)` turns pairing off).  The connection is not
+  encrypted: for a trusted network.  `python -m QVideo.demos.webdemo` shows
+  the window, the page and the QR code together; the protocol is on the
   "Video in a web browser" page.  Provisional (see Stability).
 
 ## [4.24.0] — 2026-11-08

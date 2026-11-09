@@ -54,3 +54,15 @@ entries read "OpenCV 0" and so on.
 
 .. automodule:: QVideo.widgets.QCameraChooser
    :members:
+
+QWebShareDialog
+---------------
+
+:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog` is the window that
+pairs a tablet with a :class:`~QVideo.lib.QWebScreen.QWebScreen` (see
+:doc:`../streaming`).  It shows a QR code while it is open, lists the
+browsers that have paired and disconnects them, and closing it changes the
+code.  It needs the ``stream`` extra for ``segno``.
+
+.. automodule:: QVideo.widgets.QWebShareDialog
+   :members:

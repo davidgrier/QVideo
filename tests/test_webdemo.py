@@ -27,6 +27,7 @@ class TestWebDemo(unittest.TestCase):
         self.demo = WebDemo(self.tree)
         self.demo.web.stop()
         self.demo.web.host = '127.0.0.1'
+        self.demo.web.access = False
         self.demo.web.port = 0
         self.demo.web.start()
         self.addCleanup(self.cleanup)
@@ -42,9 +43,18 @@ class TestWebDemo(unittest.TestCase):
         self.assertIs(self.demo.web.source, self.demo.screen.source)
         self.assertIs(self.demo.web.source, self.tree.source)
 
-    def test_the_panel_says_where_to_look(self):
-        self.assertTrue(self.demo.address.text().startswith('http://'))
+    def test_the_panel_counts_the_viewers(self):
         self.assertEqual(self.demo.viewers.text(), '0 watching')
+
+    def test_the_share_button_shows_and_closes_the_pairing_window(self):
+        self.demo.share.close()
+        self.assertFalse(self.demo.web.pairing)
+        self.demo.shareButton.click()
+        self.assertTrue(self.demo.share.isVisible())
+        self.assertTrue(self.demo.web.pairing)
+        self.demo.shareButton.click()
+        self.assertFalse(self.demo.share.isVisible())
+        self.assertFalse(self.demo.web.pairing)
 
     def test_the_window_and_a_browser_both_get_frames(self):
         shown = []

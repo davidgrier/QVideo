@@ -705,7 +705,7 @@ while streaming included.
 
 ---
 
-## Web screen: video on a tablet  **Starter built 2026-11-08; not pushed**
+## Web screen: video on a tablet  **Starter built 2026-11-08; access built 2026-11-09; not pushed**
 
 `QWebScreen` (`lib/QWebScreen.py`, `docs/streaming.rst`, `demos/webdemo.py`)
 serves a source to web browsers over a WebSocket: view only, JPEG frames,
@@ -713,27 +713,26 @@ the newest frame for a slow browser, no encoding while nobody watches.  Tried
 on a desktop browser over the network (`http://utopia.local:8080`, 27 frames
 a second from a webcam).  Not yet tried on an iPad.
 
-**Do not push or release it until the access control below exists.**  It
-has no authentication and no encryption: anyone who can reach the port sees
-the video (decided 2026-11-08).
+**Do not push or release it until the user says so** (decided 2026-11-08,
+because it had no authentication).  Pairing now exists; it still does not
+encrypt (see below), and nothing has been tried on an iPad.
 
-- [ ] **Access by QR code** (next).  A capability link: the window shows a QR
-  code for `http://<name>.local:<port>/pair?code=<secret>`, so that only
-  those who can see the screen can connect (a random 128 bit secret; it is
-  exchanged for a session cookie and the page redirects, so the secret does
-  not stay in the address bar or the history).  The page and `/ws` refuse a
-  browser without a session; failed attempts are rate limited.  A panel
-  (a widget in `widgets/`, used by the web demo and `QCamcorder`) shows the QR
-  code, the address, the viewers (device, address, since) with Disconnect, and
-  New code, which revokes the old link.  On by default (`access=None` turns it
-  off).  Reusable until rotated; a strict mode accepts the code only for a
-  short time after "Add viewer".  `segno` (pure Python) draws the QR code
-  with `QPainter` and in a terminal, and goes in the `stream` extra.  About a
-  day with tests.
-- [ ] **Say what it does not do.**  A photographed or screen-shared QR code
-  works until it is rotated.  Without TLS a sniffer on the Wi-Fi can read the
-  cookie, so the panel says "not encrypted" in plain words until a
-  certificate is set.  The QR code authenticates; it does not encrypt.
+- [x] **Access by QR code**, built 2026-11-09 (`QWebShareDialog` in
+  `widgets/`, `segno` in the `stream` extra).  The dialog is a pairing
+  window: the code works only while it is open, closing it changes the
+  secret, paired browsers keep a cookie (a week; the server forgets it at
+  exit), `/join/<secret>` sets the cookie and redirects, wrong codes are
+  limited to five a minute from an address, `/ws` checks the origin, and the
+  window lists the browsers with Disconnect, Disconnect all and New code.
+  The web demo has a Share button and Ctrl+Shift+W.  Still to do:
+  - [ ] Try it on an iPad and a phone (the camera app opens the link; does
+    Safari keep the cookie? does the home-screen page need its own scan?).
+  - [ ] A Share action in `QCamcorder` (menu item and shortcut).
+  - [ ] Persist sessions across restarts (opt in) so that a restart does not
+    need a new scan.
+- [ ] **Say what it does not do.**  The panel should say "not encrypted" in
+  plain words until a certificate is set.  Without TLS a sniffer on the Wi-Fi
+  can read the cookie.  The QR code authenticates; it does not encrypt.
 - [ ] **TLS, opt in** (`certfile`, `keyfile`; `url` becomes `https://`; the
   page already uses `wss://` on https).  The hard part is trust on the
   devices, not the code.  Recipes for the docs, best first: a private

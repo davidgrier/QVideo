@@ -3,19 +3,24 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hmac
 import json
 import logging
+import secrets
 import socket
 import struct
 import threading
+import time
+from collections import deque
 from typing import Any
+from urllib.parse import urlsplit
 
 import cv2
 import numpy as np
 from qtpy import QtCore
 
 from QVideo.lib._qapp import stopAtQuit
-from QVideo.lib._webpage import PAGE
+from QVideo.lib._webpage import DENIED, EXPIRED, PAGE
 from QVideo.lib.imageops import AutoLevels, to8bit
 from QVideo.lib.videotypes import FrameInfo, Image
 
@@ -26,6 +31,20 @@ __all__ = ['QWebScreen']
 
 #: Frames between estimates of the levels that ``autoLevels`` follows.
 _AUTO_EVERY = 4
+
+#: The cookie that identifies a paired browser.
+_COOKIE = 'qvideo'
+
+#: A paired browser is remembered by the browser for this many seconds.
+_COOKIE_AGE = 7 * 24 * 3600
+
+#: This many wrong codes from one address within ``_WINDOW`` seconds block it
+#: for the rest of the window.
+_ATTEMPTS = 5
+_WINDOW = 60.
+
+#: The close code that tells the page that the instrument disconnected it.
+_REVOKED = 4401
 
 
 def _lanAddress() -> str:
@@ -42,16 +61,39 @@ def _lanAddress() -> str:
         return '127.0.0.1'
 
 
+def _deviceName(agent: str) -> str:
+    '''Return a short name for the device that a browser runs on.'''
+    for key, name in (('iPad', 'iPad'), ('iPhone', 'iPhone'),
+                      ('Android', 'Android'), ('Macintosh', 'Mac'),
+                      ('Windows', 'Windows'), ('Linux', 'Linux')):
+        if key in agent:
+            return name
+    return 'browser'
+
+
+class _Viewer:
+
+    '''A browser that was paired: one device, perhaps with several pages.'''
+
+    def __init__(self, ident: str, address: str, agent: str) -> None:
+        self.ident = ident
+        self.address = address
+        self.name = _deviceName(agent)
+        self.since = time.time()
+        self.clients: set[_Client] = set()
+
+
 class _Client:
 
-    '''One browser: the newest message that it has not been sent yet.
+    '''One connection: the newest message that it has not been sent yet.
 
     A message that arrives before the previous one is sent replaces it, so a
     slow tablet gets the newest frame and no one waits for it.
     '''
 
-    def __init__(self, ws: Any) -> None:
+    def __init__(self, ws: Any, viewer: _Viewer | None = None) -> None:
         self.ws = ws
+        self.viewer = viewer
         self.message: bytes | None = None
         self.ready = asyncio.Event()
 
@@ -79,16 +121,25 @@ class QWebScreen(QtCore.QObject):
 
     The counterpart of :class:`~QVideo.lib.QVideoScreen.QVideoScreen` for
     a viewer that is not a Qt window: a tablet, a phone or another computer.
-    Open :attr:`url` in a browser.  Several browsers can watch at once.  The
-    page has no controls (tap it to hide the frame readout).
+    Several browsers can watch at once.  The page has no controls (tap it
+    to hide the frame readout).
 
     Every frame goes out with its metadata in one message, so whatever is
     drawn with a frame belongs to that frame.  A browser that cannot keep up
     gets the newest frame and skips the rest, and the encoding is done once
     for all browsers, and not at all while there are none.
 
-    There is **no authentication**: anyone who can reach the port sees the
-    video.  Use it on a trusted network.
+    **Access.**  A browser must be paired before it sees anything, and it
+    pairs by opening :attr:`pairingUrl`, which the instrument shows as a QR
+    code (:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog`).  The
+    address works only while the pairing window is open
+    (:meth:`openPairing`); :meth:`closePairing` shuts it and changes the
+    secret, so a photograph of the code is no use afterward.  A paired
+    browser keeps a cookie that the server remembers until the program ends
+    or :meth:`revoke` removes it.  Wrong codes are limited to a few a minute
+    from each address.  The connection is **not encrypted**, so anyone who
+    can read the network sees the video and the cookie: use a trusted
+    network.
 
     Parameters
     ----------
@@ -106,6 +157,10 @@ class QWebScreen(QtCore.QObject):
         JPEG quality, 1 to 100.  Default 70.
     framerate : float
         The most frames a second that are sent.  Default 30.
+    access : bool
+        Require pairing.  Default ``True``.  ``False`` serves anyone who
+        can reach the port, with no cookie: for a machine that only you
+        can reach.
     parent : QObject, optional
         Qt parent.
 
@@ -119,11 +174,27 @@ class QWebScreen(QtCore.QObject):
     Signals
     -------
     clientsChanged(int)
-        The number of browsers that are watching.
+        The number of connections that are watching.
+    viewersChanged()
+        A browser paired, connected, disconnected or was removed.
+    pairingChanged(bool)
+        The pairing window opened or closed.
+    codeChanged()
+        :attr:`pairingUrl` changed: show the new code.
     '''
 
     #: Emitted with the number of browsers that watch, when it changes.
     clientsChanged = QtCore.Signal(int)
+
+    #: Emitted when a browser pairs, connects, disconnects or is removed.
+    viewersChanged = QtCore.Signal()
+
+    #: Emitted with ``True`` when the pairing window opens, ``False`` when
+    #: it closes.
+    pairingChanged = QtCore.Signal(bool)
+
+    #: Emitted when :attr:`pairingUrl` changes: show the new code.
+    codeChanged = QtCore.Signal()
 
     def __init__(self,
                  source=None,
@@ -132,6 +203,7 @@ class QWebScreen(QtCore.QObject):
                  maxWidth: int = 1024,
                  quality: int = 70,
                  framerate: float = 30.,
+                 access: bool = True,
                  parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.host = host
@@ -139,6 +211,12 @@ class QWebScreen(QtCore.QObject):
         self.maxWidth = maxWidth
         self.quality = quality
         self.framerate = framerate
+        self.access = access
+        self._guard = threading.Lock()      # the secret and the sessions
+        self._secret = secrets.token_urlsafe(16)
+        self._pairing = False
+        self._sessions: dict[str, _Viewer] = {}
+        self._failures: dict[str, deque[float]] = {}
         self._levels: tuple[float, float] | None = None
         self._auto: AutoLevels | None = None
         self._source = None
@@ -206,6 +284,106 @@ class QWebScreen(QtCore.QObject):
                       else AutoLevels(percentiles, every=_AUTO_EVERY))
 
     # ------------------------------------------------------------------
+    # Access
+    # ------------------------------------------------------------------
+
+    @property
+    def pairingUrl(self) -> str:
+        '''The address that pairs a browser (the one that the QR code
+        holds).  It works only while :attr:`pairing` is ``True``.  Without
+        :attr:`access` it is :attr:`url`.'''
+        if not self.access:
+            return self.url
+        with self._guard:
+            return f'{self.url}join/{self._secret}'
+
+    @property
+    def pairing(self) -> bool:
+        '''Whether the pairing window is open.'''
+        return self._pairing
+
+    def openPairing(self) -> None:
+        '''Let browsers pair with :attr:`pairingUrl`.'''
+        self._setPairing(True)
+
+    def closePairing(self) -> None:
+        '''Stop pairing, and change the secret.  Browsers that are paired
+        stay paired.'''
+        self._setPairing(False)
+
+    def _setPairing(self, state: bool) -> None:
+        with self._guard:
+            changed = state != self._pairing
+            self._pairing = state
+            if not state:
+                self._secret = secrets.token_urlsafe(16)
+        if changed:
+            self.pairingChanged.emit(state)
+            if not state:
+                self.codeChanged.emit()
+
+    def rotate(self) -> None:
+        '''Change the secret: the address and code that were shown no longer
+        pair.  Browsers that are paired stay paired.'''
+        with self._guard:
+            self._secret = secrets.token_urlsafe(16)
+        self.codeChanged.emit()
+
+    @property
+    def viewers(self) -> list[dict[str, Any]]:
+        '''The paired browsers, as dicts with ``id``, ``name`` (the kind of
+        device), ``address``, ``since`` (a time) and ``watching`` (whether
+        a page is open).'''
+        with self._guard:
+            return [dict(id=v.ident, name=v.name, address=v.address,
+                         since=v.since, watching=bool(v.clients))
+                    for v in self._sessions.values()]
+
+    def revoke(self, ident: str | None = None) -> None:
+        '''Unpair a browser, or all of them if *ident* is ``None``.
+
+        The browser is disconnected, and must pair again to see the video.
+        '''
+        with self._guard:
+            if ident is None:
+                gone = list(self._sessions.values())
+                self._sessions.clear()
+            else:
+                gone = [v for v in (self._sessions.pop(ident, None),) if v]
+        loop = self._loop
+        if loop is not None and not loop.is_closed():
+            for viewer in gone:
+                asyncio.run_coroutine_threadsafe(self._drop(viewer), loop)
+        if gone:
+            self.viewersChanged.emit()
+
+    @staticmethod
+    async def _drop(viewer: _Viewer) -> None:
+        for client in list(viewer.clients):
+            await client.ws.close(code=_REVOKED)
+
+    def _viewerOf(self, request) -> _Viewer | None:
+        token = request.cookies.get(_COOKIE)
+        with self._guard:
+            return self._sessions.get(token) if token else None
+
+    def _blocked(self, address: str) -> bool:
+        '''Return whether *address* has failed too often lately.'''
+        failures = self._failures.get(address)
+        if failures is None:
+            return False
+        now = time.monotonic()
+        while failures and now - failures[0] > _WINDOW:
+            failures.popleft()
+        if not failures:
+            del self._failures[address]
+            return False
+        return len(failures) >= _ATTEMPTS
+
+    def _fail(self, address: str) -> None:
+        self._failures.setdefault(address, deque()).append(time.monotonic())
+
+    # ------------------------------------------------------------------
     # The server
     # ------------------------------------------------------------------
 
@@ -258,7 +436,7 @@ class QWebScreen(QtCore.QObject):
             self._thread.join()
             self._thread = None
             raise error
-        logger.info(f'QWebScreen: open {self.url} in a browser')
+        logger.info(f'QWebScreen: serving {self.url}')
         return self
 
     def stop(self) -> None:
@@ -290,6 +468,8 @@ class QWebScreen(QtCore.QObject):
         app = web.Application()
         app.router.add_get('/', self._index)
         app.router.add_get('/ws', self._socket)
+        app.router.add_get('/session', self._check)
+        app.router.add_get('/join/{code}', self._join)
         runner = web.AppRunner(app, access_log=None)
         await runner.setup()
         try:
@@ -305,15 +485,62 @@ class QWebScreen(QtCore.QObject):
         finally:
             await runner.cleanup()
 
+    def _allowed(self, request) -> bool:
+        return not self.access or self._viewerOf(request) is not None
+
+    def _page(self, text: str, status: int = 200):
+        return self._web.Response(text=text, status=status,
+                                  content_type='text/html',
+                                  headers={'Cache-Control': 'no-store'})
+
     async def _index(self, request):
-        return self._web.Response(text=PAGE, content_type='text/html')
+        if not self._allowed(request):
+            return self._page(DENIED, 401)
+        return self._page(PAGE)
+
+    async def _check(self, request):
+        '''Tell the page whether it is still paired.'''
+        status = 200 if self._allowed(request) else 401
+        return self._web.Response(status=status,
+                                  headers={'Cache-Control': 'no-store'})
+
+    async def _join(self, request):
+        '''Pair a browser: the address that the QR code holds.'''
+        address = request.remote or ''
+        if self._blocked(address):
+            return self._page(EXPIRED, 429)
+        code = request.match_info['code'].encode()
+        ident = secrets.token_urlsafe(16)
+        with self._guard:
+            good = self._pairing and hmac.compare_digest(
+                code, self._secret.encode())
+            if good:
+                self._sessions[ident] = _Viewer(
+                    ident, address, request.headers.get('User-Agent', ''))
+        if not good:
+            self._fail(address)
+            return self._page(EXPIRED, 403)
+        self.viewersChanged.emit()
+        reply = self._web.HTTPFound('/')
+        reply.set_cookie(_COOKIE, ident, max_age=_COOKIE_AGE, httponly=True,
+                         samesite='Strict')
+        raise reply
 
     async def _socket(self, request):
+        viewer = self._viewerOf(request)
+        if self.access and viewer is None:
+            raise self._web.HTTPUnauthorized()
+        origin = request.headers.get('Origin')
+        if origin is not None and urlsplit(origin).netloc != request.host:
+            raise self._web.HTTPForbidden()     # another site's page
         ws = self._web.WebSocketResponse(heartbeat=20.)
         await ws.prepare(request)
-        client = _Client(ws)
+        client = _Client(ws, viewer)
         self._clients.add(client)
+        if viewer is not None:
+            viewer.clients.add(client)
         self.clientsChanged.emit(len(self._clients))
+        self.viewersChanged.emit()
         if self._last is not None:      # a new browser sees the last frame
             client.put(self._last)
         sender = asyncio.create_task(client.run())
@@ -323,7 +550,10 @@ class QWebScreen(QtCore.QObject):
         finally:
             sender.cancel()
             self._clients.discard(client)
+            if viewer is not None:
+                viewer.clients.discard(client)
             self.clientsChanged.emit(len(self._clients))
+            self.viewersChanged.emit()
         return ws
 
     # ------------------------------------------------------------------
@@ -432,7 +662,13 @@ class QWebScreen(QtCore.QObject):
         except OSError:
             web.port = 0                # 8080 is taken: any free port
             web.start()
-        print(f'Open {web.url} in a browser.  Ctrl-C stops.')
+        web.openPairing()
+        print(f'Scan this code, or open {web.pairingUrl}  Ctrl-C stops.')
+        try:
+            from QVideo.lib._qrcode import terminal
+            print(terminal(web.pairingUrl))
+        except ImportError:
+            pass
         app.exec()
         source.stop()
         web.stop()

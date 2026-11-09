@@ -2,12 +2,13 @@
 
 One self-contained page: no framework and nothing to install.  It opens a
 WebSocket to ``/ws``, draws each frame on a canvas that fits the window, and
-reconnects when the server goes away.  A frame that arrives while the
+reconnects when the server goes away, and stops when the instrument has
+unpaired it.  A frame that arrives while the
 previous one is being decoded replaces it, so a slow tablet shows the newest
 frame and never falls behind.  Tapping the page shows or hides the readout.
 '''
 
-__all__ = ['PAGE']
+__all__ = ['PAGE', 'DENIED', 'EXPIRED']
 
 PAGE = r'''<!DOCTYPE html>
 <html lang="en">
@@ -53,16 +54,37 @@ function readout() {
                     head.height + '   ' + rate + ' frames/s';
 }
 
+// Retry, unless the server no longer knows this browser (it restarted, or
+// the code was changed): then only a new scan helps.
+async function retry() {
+  try {
+    const reply = await fetch('/session', { cache: 'no-store' });
+    if (reply.status === 401) {
+      state = 'not paired: scan the code on the instrument';
+      readout();
+      return;
+    }
+  } catch (error) {
+    // the server is not there yet: try again
+  }
+  connect();
+}
+
 function connect() {
   if (socket !== null && socket.readyState <= 1) return;   // already open
   const scheme = location.protocol === 'https:' ? 'wss://' : 'ws://';
   socket = new WebSocket(scheme + location.host + '/ws');
   socket.binaryType = 'arraybuffer';
   socket.onopen = () => { state = 'live'; readout(); };
-  socket.onclose = () => {
+  socket.onclose = (event) => {
+    if (event.code === 4401) {          // the instrument unpaired this page
+      state = 'disconnected: scan the code on the instrument again';
+      readout();
+      return;
+    }
     state = 'waiting for the server...';
     readout();
-    setTimeout(connect, 1000);
+    setTimeout(retry, 1000);
   };
   socket.onerror = () => socket.close();
   socket.onmessage = (event) => {
@@ -115,3 +137,24 @@ connect();
 </body>
 </html>
 '''
+
+_STYLE = '''<style>
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center;
+         justify-content: center; background: #000; color: #ddd;
+         font: 18px/1.5 -apple-system, system-ui, sans-serif; }
+  main { max-width: 22em; padding: 24px; text-align: center; }
+</style>'''
+
+_HEAD = ('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+         '<meta name="viewport" content="width=device-width, '
+         'initial-scale=1"><title>QVideo</title>' + _STYLE + '</head>')
+
+#: What a browser sees before it is paired.
+DENIED = (_HEAD + '<body><main><p>This video is private.</p>'
+          '<p>Scan the QR code on the instrument with this device\'s '
+          'camera.</p></main></body></html>')
+
+#: What a browser sees when its code does not pair.
+EXPIRED = (_HEAD + '<body><main><p>This code does not work.</p>'
+           '<p>It may have expired.  Open the share window on the '
+           'instrument and scan the new code.</p></main></body></html>')

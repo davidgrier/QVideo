@@ -13,11 +13,14 @@ QScrollPanel
     A panel of controls that scrolls when the window is too short.
 QCameraChooser
     A combo box of the cameras that work.
+QWebShareDialog
+    The QR code that pairs a tablet with a ``QWebScreen``.
 '''
 from .QHistogramWidget import QHistogramWidget
 from .QUniformityWidget import QUniformityWidget
 from .QScrollPanel import QScrollPanel
 from .QCameraChooser import QCameraChooser
+from .QWebShareDialog import QWebShareDialog
 
 __all__ = ['QHistogramWidget', 'QUniformityWidget', 'QScrollPanel',
-           'QCameraChooser']
+           'QCameraChooser', 'QWebShareDialog']

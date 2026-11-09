@@ -7,7 +7,7 @@ counterpart of :class:`~QVideo.lib.QVideoScreen.QVideoScreen` for a viewer
 that is not a Qt window, and the two can run at the same time on the same
 source.
 
-It needs ``aiohttp``::
+It needs ``aiohttp`` and ``segno`` (which draws the QR code)::
 
     pip install "QVideo[stream]"
 
@@ -21,7 +21,10 @@ Using it
 
     source = QVideoSource(camera).start()
     web = QWebScreen(source).start()
-    print(web.url)              # open this in the browser
+
+    from QVideo.widgets import QWebShareDialog
+    share = QWebShareDialog(web)
+    share.show()                # the QR code that pairs a tablet
 
 To show what the filters make, connect it to the pipeline, as for a screen:
 ``web.source = rack.pipeline``.  ``python -m QVideo.demos.webdemo`` shows the
@@ -41,9 +44,47 @@ larger.
 
 .. warning::
 
-   There is **no authentication**: anyone who can reach the port sees the
-   video.  Use it on a trusted network (``host='127.0.0.1'`` serves this
-   machine only).  The page only shows the video; it controls nothing.
+   The connection is **not encrypted**.  Pairing keeps strangers out, but
+   anyone who can read the network traffic sees the video and the cookie.
+   Use it on a trusted network (``host='127.0.0.1'`` serves this machine
+   only).  The page only shows the video; it controls nothing.
+
+Pairing a tablet
+----------------
+
+A browser sees nothing until the instrument pairs it.  The program shows
+:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog` (a button, a menu
+item or a shortcut calls its ``toggle()``; the web demo has a Share button
+and Ctrl+Shift+W).  While that window is open it shows a QR code, and the
+camera of a tablet or phone opens the address in it.  The server answers
+with a cookie, and from then on that browser sees the video.
+
+The idea is that **only people who can see the screen of the instrument
+can watch**, and that the window is a *pairing window*:
+
+* the code works only while the window is open.  Closing it changes the
+  secret, so a photograph of the code, or a screen that was shared, pairs
+  nothing afterward;
+* a paired browser stays paired (for a week, if the browser keeps the
+  cookie, and until the program ends) and reconnects without a new scan;
+* the window lists the paired browsers.  **Disconnect** removes one, and
+  **Disconnect all** every one; **New code** changes the secret while the
+  window stays open;
+* a few wrong codes a minute from one address block it for a minute, and
+  the secret has 128 random bits, so it cannot be guessed;
+* a page from another web site cannot open the video stream of a paired
+  browser.
+
+Without a window, ``web.openPairing()`` and ``web.closePairing()`` do the
+same, ``web.pairingUrl`` is the address, ``web.viewers`` lists the paired
+browsers and ``web.revoke(id)`` removes one.
+``python -m QVideo.lib.QWebScreen -g`` opens pairing and prints the QR code
+in the terminal.  ``QWebScreen(access=False)`` turns pairing off, for a
+machine that only you can reach.
+
+A tablet that adds the page to its home screen may keep its cookies apart
+from the browser that scanned the code: scan from the home-screen page, or
+scan again.
 
 How it works
 ------------
@@ -59,8 +100,12 @@ once.
 The protocol
 ------------
 
-A browser asks for ``/`` (the page) and then opens a WebSocket at ``/ws``.
-The server sends **binary** messages and the page sends nothing yet.  A
+A browser pairs with ``/join/<secret>``, which sets a cookie and redirects
+to ``/``.  It then asks for ``/`` (the page) and opens a WebSocket at
+``/ws``; ``/session`` answers 200 while the browser is paired and 401 if
+not.  The server closes the WebSocket with code 4401 when the instrument
+disconnects the browser.  The server sends **binary** messages and the page
+sends nothing yet.  A
 message holds one frame and everything that belongs to it:
 
 ======== ============= ====================================================
@@ -98,7 +143,7 @@ What it does not do
 -------------------
 
 The page is for looking.  It has no controls and no touch interaction, no
-overlays and no authentication, and it sends JPEG frames: video with H.264
+overlays and no encryption, and it sends JPEG frames: video with H.264
 would need much less bandwidth and is not supported.  The format leaves room
 for overlays that are drawn over the frame and for events that the page sends
 back.

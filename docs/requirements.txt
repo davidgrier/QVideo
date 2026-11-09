@@ -3,3 +3,4 @@ sphinx
 sphinx-autodoc-typehints
 PyQt5
 aiohttp
+segno

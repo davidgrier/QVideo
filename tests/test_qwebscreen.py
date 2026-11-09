@@ -54,7 +54,7 @@ class ServerCase(unittest.TestCase):
     def setUp(self):
         self.source = _Source()
         self.web = QWebScreen(self.source, host='127.0.0.1', port=0,
-                              framerate=1000.)
+                              framerate=1000., access=False)
         self.web.start()
         self.addCleanup(self.web.stop)
 
@@ -270,6 +270,205 @@ class TestWithoutAServer(unittest.TestCase):
         web = QWebScreen(port=8123)
         self.assertRegex(web.url, r'^http://[\d.]+:8123/$')
         self.assertNotIn('0.0.0.0', web.url)
+
+
+@unittest.skipIf(aiohttp is None, 'aiohttp not installed')
+class TestAccess(unittest.TestCase):
+
+    '''A browser sees nothing until the instrument pairs it.'''
+
+    def setUp(self):
+        self.source = _Source()
+        self.web = QWebScreen(self.source, host='127.0.0.1', port=0,
+                              framerate=1000.)
+        self.web.start()
+        self.addCleanup(self.web.stop)
+        self.base = f'http://127.0.0.1:{self.web.port}'
+
+    @staticmethod
+    def client():
+        '''A session that keeps cookies from an IP address, as a browser
+        does.'''
+        return aiohttp.ClientSession(
+            cookie_jar=aiohttp.CookieJar(unsafe=True))
+
+    def code(self):
+        return self.web.pairingUrl.rsplit('/', 1)[1]
+
+    def run_client(self, coroutine, *args):
+        return asyncio.run(coroutine(*args))
+
+    def pair(self, session, code=None):
+        return session.get(f'{self.base}/join/{code or self.code()}',
+                           allow_redirects=False)
+
+    def test_nothing_is_served_before_pairing(self):
+        async def look():
+            async with self.client() as session:
+                async with session.get(self.base + '/') as page:
+                    status = page.status
+                async with session.get(self.base + '/session') as check:
+                    checked = check.status
+                async with session.get(self.base + '/ws') as ws:
+                    socket = ws.status
+                return status, checked, socket
+        self.assertEqual(self.run_client(look), (401, 401, 401))
+
+    def test_the_code_does_not_work_until_pairing_opens(self):
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session) as reply:
+                    return reply.status
+        self.assertEqual(self.run_client(look), 403)
+        self.assertEqual(self.web.viewers, [])
+
+    def test_pairing_gives_a_cookie_that_opens_the_page_and_the_video(self):
+        self.web.openPairing()
+        changes = record(self.web.viewersChanged)
+
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session) as reply:
+                    joined = reply.status, reply.headers['Location']
+                async with session.get(self.base + '/') as page:
+                    status = page.status
+                async with session.get(self.base + '/session') as check:
+                    checked = check.status
+                async with session.ws_connect(self.base + '/ws') as ws:
+                    for _ in range(100):
+                        self.source.send(gradient())
+                        try:
+                            message = await ws.receive(timeout=0.05)
+                        except asyncio.TimeoutError:
+                            continue
+                        if message.type == aiohttp.WSMsgType.BINARY:
+                            return joined, status, checked, True
+                return joined, status, checked, False
+        joined, status, checked, got = self.run_client(look)
+        self.assertEqual(joined, (302, '/'))
+        self.assertEqual((status, checked), (200, 200))
+        self.assertTrue(got)
+        (viewer,) = self.web.viewers
+        self.assertTrue(viewer['id'])
+        app.processEvents()             # the signal crosses threads
+        self.assertTrue(changes)
+
+    def test_a_wrong_code_is_refused(self):
+        self.web.openPairing()
+
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session, 'wrong') as reply:
+                    return reply.status
+        self.assertEqual(self.run_client(look), 403)
+        self.assertEqual(self.web.viewers, [])
+
+    def test_too_many_wrong_codes_block_the_address(self):
+        self.web.openPairing()
+
+        async def look():
+            statuses = []
+            async with self.client() as session:
+                for _ in range(7):
+                    async with self.pair(session, 'wrong') as reply:
+                        statuses.append(reply.status)
+                async with self.pair(session) as reply:    # the right one
+                    statuses.append(reply.status)
+            return statuses
+        statuses = self.run_client(look)
+        self.assertEqual(statuses[:5], [403] * 5)
+        self.assertEqual(statuses[5:], [429] * 3)
+        self.assertEqual(self.web.viewers, [])
+
+    def test_closing_the_window_changes_the_secret_but_keeps_viewers(self):
+        self.web.openPairing()
+        old = self.web.pairingUrl
+        codes = record(self.web.codeChanged)
+        states = record(self.web.pairingChanged)
+
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session) as reply:
+                    assert reply.status == 302
+                self.web.closePairing()
+                async with session.get(self.base + '/session') as check:
+                    return check.status
+        self.assertEqual(self.run_client(look), 200)
+        self.assertNotEqual(self.web.pairingUrl, old)
+        self.assertEqual(codes, [()])
+        self.assertEqual(states, [(False,)])
+        self.assertFalse(self.web.pairing)
+        self.assertEqual(len(self.web.viewers), 1)
+
+    def test_the_old_code_fails_after_a_new_one(self):
+        self.web.openPairing()
+        old = self.code()
+        self.web.rotate()
+
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session, old) as reply:
+                    return reply.status
+        self.assertEqual(self.run_client(look), 403)
+
+    def test_revoking_disconnects_and_unpairs(self):
+        self.web.openPairing()
+
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session):
+                    pass
+                async with session.ws_connect(self.base + '/ws') as ws:
+                    (viewer,) = self.web.viewers
+                    self.web.revoke(viewer['id'])
+                    while True:
+                        message = await ws.receive(timeout=3.)
+                        if message.type != aiohttp.WSMsgType.BINARY:
+                            break
+                    closed = ws.close_code
+                async with session.get(self.base + '/session') as check:
+                    return closed, check.status
+        closed, status = self.run_client(look)
+        self.assertEqual(closed, 4401)
+        self.assertEqual(status, 401)
+        self.assertEqual(self.web.viewers, [])
+
+    def test_revoking_all(self):
+        self.web.openPairing()
+
+        async def look():
+            for _ in range(2):
+                async with self.client() as session:
+                    async with self.pair(session):
+                        pass
+        self.run_client(look)
+        self.assertEqual(len(self.web.viewers), 2)
+        self.web.revoke()
+        self.assertEqual(self.web.viewers, [])
+
+    def test_a_page_from_another_site_cannot_open_the_video(self):
+        self.web.openPairing()
+
+        async def look():
+            async with self.client() as session:
+                async with self.pair(session):
+                    pass
+                try:
+                    await session.ws_connect(
+                        self.base + '/ws',
+                        headers={'Origin': 'http://evil.example'})
+                except aiohttp.WSServerHandshakeError as error:
+                    return error.status
+        self.assertEqual(self.run_client(look), 403)
+
+    def test_without_access_the_pairing_address_is_the_page(self):
+        other = QWebScreen(host='127.0.0.1', port=0, access=False)
+        self.assertEqual(other.pairingUrl, other.url)
+
+    def test_the_device_is_named(self):
+        from QVideo.lib.QWebScreen import _deviceName
+        self.assertEqual(_deviceName('Mozilla/5.0 (iPad; CPU OS 17)'), 'iPad')
+        self.assertEqual(_deviceName('curl/8'), 'browser')
 
 
 if __name__ == '__main__':  # pragma: no cover

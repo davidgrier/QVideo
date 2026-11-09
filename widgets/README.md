@@ -11,3 +11,6 @@ own, because opening each device to see that it works takes time.
 
 The histogram and the uniformity widget take a screen and watch it, so
 they need no connection to the camera.
+
+`QWebShareDialog` is the window that pairs a tablet with a `QWebScreen`: it
+shows a QR code while it is open and lists the browsers that have paired.

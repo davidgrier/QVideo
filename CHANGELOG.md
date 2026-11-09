@@ -31,6 +31,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the window, the page and the QR code together; the protocol is on the
   "Video in a web browser" page.  Provisional (see Stability).
 
+### Fixed
+
+- `python -m QVideo.demos.<name>` no longer warns that the module "was found
+  in sys.modules" (`runpy`).  `QVideo.demos` imports a demo when it is asked
+  for (`from QVideo.demos import WebDemo` works as before), so running a
+  demo does not load the others and the packages that they need.
+
 ## [4.24.0] — 2026-11-08
 
 ### Added

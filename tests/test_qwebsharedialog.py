@@ -4,6 +4,8 @@ from unittest.mock import patch
 
 from qtpy import QtWidgets
 
+from QVideo.cameras.Noise import QNoiseCamera
+
 from QVideo.lib import _qrcode
 from QVideo.lib.QWebScreen import QWebScreen, _Viewer
 from QVideo.widgets.QWebShareDialog import QWebShareDialog
@@ -90,6 +92,108 @@ class TestDialog(unittest.TestCase):
         self.dialog.disconnectAllButton.click()
         self.assertEqual(self.web.viewers, [])
         self.assertEqual(self.dialog.viewers.count(), 0)
+
+
+class TestControlPrompt(unittest.TestCase):
+
+    '''The operator answers a browser that asks to control the camera.'''
+
+    def setUp(self):
+        self.camera = QNoiseCamera()
+        self.addCleanup(self.camera.close)
+        self.web = QWebScreen(host='127.0.0.1', port=8099,
+                              camera=self.camera, controlOverHttp=True)
+        self.dialog = QWebShareDialog(self.web)
+        self.addCleanup(self.dialog.deleteLater)
+        self.viewer = _Viewer('abc', '10.0.0.7', 'Mozilla (iPad)')
+        self.web._sessions['abc'] = self.viewer
+
+    def ask(self):
+        self.viewer.control = 'requested'
+        self.web.controlRequested.emit('abc')
+        app.processEvents()
+        return self.dialog._prompts.get('abc')
+
+    @staticmethod
+    def press(box, text):
+        (button,) = [b for b in box.buttons() if b.text() == text]
+        button.click()
+
+    def test_a_request_raises_a_prompt_that_names_the_browser(self):
+        box = self.ask()
+        self.assertTrue(box.isVisible())
+        self.assertIn('iPad', box.text())
+        self.assertIn('10.0.0.7', box.text())
+        self.assertIn('blacklevel', box.informativeText())
+        box.close()
+
+    def test_allow_grants_control(self):
+        box = self.ask()
+        self.press(box, 'Allow')
+        self.assertEqual(self.web.controller, 'abc')
+        self.assertNotIn('abc', self.dialog._prompts)
+
+    def test_deny_refuses_control(self):
+        box = self.ask()
+        self.press(box, 'Deny')
+        self.assertIsNone(self.web.controller)
+        self.assertEqual(self.viewer.control, 'none')
+        self.assertGreater(self.viewer.deniedAt, 0)
+
+    def test_closing_the_prompt_is_a_refusal(self):
+        box = self.ask()
+        box.close()
+        self.assertEqual(self.viewer.control, 'none')
+        self.assertIsNone(self.web.controller)
+
+    def test_a_request_that_is_withdrawn_closes_the_prompt(self):
+        box = self.ask()
+        self.viewer.control = 'none'            # the page gave up
+        self.web.viewersChanged.emit()
+        self.assertNotIn('abc', self.dialog._prompts)
+        self.assertFalse(box.isVisible())
+
+    def test_the_prompt_does_not_need_the_dialog_to_show(self):
+        self.assertFalse(self.dialog.isVisible())
+        box = self.ask()
+        self.assertTrue(box.isVisible())
+        box.close()
+
+    def test_a_second_request_does_not_stack_prompts(self):
+        box = self.ask()
+        self.web.controlRequested.emit('abc')
+        self.assertIs(self.dialog._prompts['abc'], box)
+        box.close()
+
+    def test_the_list_says_who_wants_and_who_has_control(self):
+        self.viewer.control = 'requested'
+        self.web.viewersChanged.emit()
+        self.assertIn('wants control', self.dialog.viewers.item(0).text())
+        self.viewer.control = 'granted'
+        self.web.viewersChanged.emit()
+        self.assertIn('controls', self.dialog.viewers.item(0).text())
+
+    def test_the_operator_can_take_control_back(self):
+        self.viewer.control = 'granted'
+        self.web.viewersChanged.emit()
+        self.assertFalse(self.dialog.takeBackButton.isEnabled())
+        self.dialog.viewers.setCurrentRow(0)
+        self.assertTrue(self.dialog.takeBackButton.isEnabled())
+        self.dialog.takeBackButton.click()
+        self.assertEqual(self.viewer.control, 'none')
+
+    def test_the_window_says_what_a_tablet_may_do(self):
+        self.assertIn('blacklevel', self.dialog.controlNote.text())
+        self.web.controlOverHttp = False
+        other = QWebShareDialog(self.web)
+        self.addCleanup(other.deleteLater)
+        self.assertIn('https', other.controlNote.text())
+        self.assertIn('View only', other.controlNote.text())
+
+    def test_without_a_camera_the_window_says_nothing_about_control(self):
+        dialog = QWebShareDialog(QWebScreen(port=8099))
+        self.addCleanup(dialog.deleteLater)
+        self.assertTrue(dialog.controlNote.isHidden())
 
 
 @unittest.skipIf(segno is None, 'segno not installed')

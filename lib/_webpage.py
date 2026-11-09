@@ -6,6 +6,10 @@ reconnects when the server goes away, and stops when the instrument has
 unpaired it.  A frame that arrives while the
 previous one is being decoded replaces it, so a slow tablet shows the newest
 frame and never falls behind.  Tapping the page shows or hides the readout.
+
+When the server describes camera properties (a ``hello`` message) the page
+offers a Controls panel: a control for each property, which works once the
+operator has allowed it.  The server decides everything; the page only asks.
 '''
 
 __all__ = ['PAGE', 'DENIED', 'EXPIRED']
@@ -27,11 +31,35 @@ PAGE = r'''<!DOCTYPE html>
          font: 13px/1.4 -apple-system, system-ui, sans-serif; color: #ddd;
          background: rgba(0, 0, 0, .55); border-radius: 4px;
          pointer-events: none; }
+  button, select, input { font: 15px -apple-system, system-ui, sans-serif; }
+  #gear { position: fixed; right: 8px; top: 6px; padding: 8px 12px;
+          border: 0; border-radius: 6px; color: #ddd;
+          background: rgba(0, 0, 0, .55); }
+  #panel { position: fixed; right: 8px; top: 48px; width: min(22em, 90vw);
+           max-height: calc(100vh - 64px); overflow: auto; padding: 10px;
+           box-sizing: border-box; border-radius: 8px; color: #ddd;
+           background: rgba(0, 0, 0, .78);
+           font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+  #panel[hidden], #gear[hidden] { display: none; }
+  #status { margin-bottom: 8px; }
+  #ask { min-height: 44px; width: 100%; margin-bottom: 10px; border: 0;
+         border-radius: 6px; color: #fff; background: #57068c; }
+  #ask:disabled { opacity: .5; }
+  .row { margin: 10px 0; }
+  .row label { display: flex; justify-content: space-between; }
+  .row input[type=range], .row select { width: 100%; min-height: 32px; }
+  .row input:disabled, .row select:disabled { opacity: .45; }
 </style>
 </head>
 <body>
 <canvas id="view" width="16" height="16"></canvas>
 <div id="hud">connecting...</div>
+<button id="gear" hidden>Controls</button>
+<div id="panel" hidden>
+  <div id="status"></div>
+  <button id="ask"></button>
+  <div id="rows"></div>
+</div>
 <script>
 'use strict';
 const canvas = document.getElementById('view');
@@ -77,6 +105,8 @@ function connect() {
   socket.binaryType = 'arraybuffer';
   socket.onopen = () => { state = 'live'; readout(); };
   socket.onclose = (event) => {
+    ctl = { state: 'none', available: false, reason: 'not connected' };
+    updatePanel();
     if (event.code === 4401) {          // the instrument unpaired this page
       state = 'disconnected: scan the code on the instrument again';
       readout();
@@ -88,6 +118,10 @@ function connect() {
   };
   socket.onerror = () => socket.close();
   socket.onmessage = (event) => {
+    if (typeof event.data === 'string') {       // a note from the server
+      try { note(JSON.parse(event.data)); } catch (error) { /* ignore */ }
+      return;
+    }
     pending = event.data;
     if (!drawing) draw();
   };
@@ -123,8 +157,212 @@ async function draw() {
   readout();
 }
 
+// ---- Controls -----------------------------------------------------------
+// The server sends the properties and what each allows ('hello'), who may
+// change them ('control') and their values ('values').  The page asks; the
+// server checks every value again and the operator decides who may set.
+
+const panel = document.getElementById('panel');
+const gear = document.getElementById('gear');
+const statusText = document.getElementById('status');
+const ask = document.getElementById('ask');
+const rows = document.getElementById('rows');
+let controls = [];
+let ctl = { state: 'none', available: false, reason: '' };
+const widgets = {};      // name -> { entry, input, out }
+let busy = null;         // the property that a finger is moving
+const SEND_EVERY = 100;  // ms between values sent while a slider moves
+const lastSent = {};
+const timers = {};
+
+function send(message) {
+  if (socket !== null && socket.readyState === 1) {
+    socket.send(JSON.stringify(message));
+  }
+}
+
+function note(message) {
+  if (message.type === 'hello') {
+    controls = message.controls;
+    ctl = { state: message.state, available: message.available,
+            reason: message.reason };
+    buildPanel();
+  } else if (message.type === 'control') {
+    ctl = { state: message.state, available: message.available,
+            reason: message.reason };
+    updatePanel();
+  } else if (message.type === 'values') {
+    for (const name in message.values) showValue(name, message.values[name]);
+  }
+}
+
+function fmt(value) {
+  if (typeof value !== 'number') return String(value);
+  return Number.isInteger(value) ? String(value)
+                                 : String(parseFloat(value.toPrecision(4)));
+}
+
+// A slider that spans three decades or more is logarithmic.
+function isLog(entry) {
+  return entry.min > 0 && entry.max / entry.min >= 1000;
+}
+
+function toPosition(entry, value) {
+  if (isLog(entry)) {
+    return 1000 * Math.log(value / entry.min) /
+           Math.log(entry.max / entry.min);
+  }
+  return value;
+}
+
+function fromPosition(entry, position) {
+  let value = position;
+  if (isLog(entry)) {
+    value = entry.min * Math.pow(entry.max / entry.min, position / 1000);
+  }
+  return entry.type === 'int' ? Math.round(value) : value;
+}
+
+function makeInput(entry) {
+  let input;
+  if (entry.type === 'bool') {
+    input = document.createElement('input');
+    input.type = 'checkbox';
+  } else if (entry.type === 'list') {
+    input = document.createElement('select');
+    for (const choice of entry.limits) {
+      const option = document.createElement('option');
+      option.textContent = choice;
+      input.appendChild(option);
+    }
+  } else {
+    input = document.createElement('input');
+    if ('min' in entry && 'max' in entry) {
+      input.type = 'range';
+      if (isLog(entry)) {
+        input.min = 0; input.max = 1000; input.step = 1;
+      } else {
+        input.min = entry.min; input.max = entry.max;
+        input.step = entry.step ||
+            (entry.type === 'int' ? 1 : (entry.max - entry.min) / 1000);
+      }
+    } else {
+      input.type = 'number';
+      if (entry.step) input.step = entry.step;
+    }
+  }
+  return input;
+}
+
+function readInput(entry, input) {
+  if (entry.type === 'bool') return input.checked;
+  if (entry.type === 'list') return input.value;
+  if (input.type === 'range') return fromPosition(entry, Number(input.value));
+  return Number(input.value);
+}
+
+function writeInput(entry, input, value) {
+  if (entry.type === 'bool') input.checked = Boolean(value);
+  else if (entry.type === 'list') input.value = value;
+  else if (input.type === 'range') input.value = toPosition(entry, value);
+  else input.value = value;
+}
+
+function sendSet(name, value, now) {
+  const wait = SEND_EVERY - (performance.now() - (lastSent[name] || 0));
+  if (now || wait <= 0) {
+    clearTimeout(timers[name]); delete timers[name];
+    lastSent[name] = performance.now();
+    send({ type: 'set', name: name, value: value });
+  } else if (!(name in timers)) {         // the newest value goes out later
+    timers[name] = setTimeout(() => {
+      delete timers[name];
+      const w = widgets[name];
+      sendSet(name, readInput(w.entry, w.input), true);
+    }, wait);
+  }
+}
+
+function buildPanel() {
+  rows.textContent = '';
+  for (const key in widgets) delete widgets[key];
+  for (const entry of controls) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const label = document.createElement('label');
+    const title = document.createElement('span');
+    title.textContent = entry.name;
+    const out = document.createElement('span');
+    label.append(title, out);
+    const input = makeInput(entry);
+    input.setAttribute('aria-label', entry.name);
+    input.addEventListener('pointerdown', () => { busy = entry.name; });
+    input.addEventListener('input', () => {
+      const value = readInput(entry, input);
+      out.textContent = fmt(value);
+      sendSet(entry.name, value, entry.type !== 'int' && entry.type !== 'float'
+                                 || input.type === 'number');
+    });
+    input.addEventListener('change', () => {
+      busy = null;
+      sendSet(entry.name, readInput(entry, input), true);
+    });
+    row.append(label, input);
+    rows.appendChild(row);
+    widgets[entry.name] = { entry: entry, input: input, out: out };
+    showValue(entry.name, entry.value);
+  }
+  gear.hidden = controls.length === 0;
+  updatePanel();
+}
+
+function showValue(name, value) {
+  const w = widgets[name];
+  if (!w || busy === name) return;
+  writeInput(w.entry, w.input, value);
+  w.out.textContent = fmt(value);
+}
+
+const STATUS = {
+  none: 'View only.',
+  requested: 'Waiting for the operator to allow it...',
+  granted: 'You are controlling the camera.',
+  denied: 'The operator said no.',
+  revoked: 'The operator took control back.'
+};
+
+function updatePanel() {
+  if (!ctl.available) {
+    const reason = ctl.reason || 'not available';
+    statusText.textContent = 'View only: ' + reason + '.';
+    ask.hidden = true;
+  } else {
+    statusText.textContent = STATUS[ctl.state] || STATUS.none;
+    ask.hidden = false;
+    ask.disabled = ctl.state === 'requested';
+    ask.textContent = ctl.state === 'granted' ? 'Release control'
+                                              : 'Ask to control';
+  }
+  const live = ctl.available && ctl.state === 'granted';
+  for (const name in widgets) {
+    widgets[name].input.disabled = !(live && widgets[name].entry.writable);
+  }
+}
+
+ask.addEventListener('click', () => {
+  if (ctl.state === 'granted') {
+    send({ type: 'release' });
+    ctl.state = 'none';
+    updatePanel();
+  } else {
+    send({ type: 'request' });
+  }
+});
+gear.addEventListener('click', () => { panel.hidden = !panel.hidden; });
+
 setInterval(() => { rate = shown; shown = 0; readout(); }, 1000);
-document.addEventListener('click', () => {
+document.addEventListener('click', (event) => {
+  if (event.target.closest('#panel, #gear')) return;
   hud.style.display = hud.style.display === 'none' ? '' : 'none';
 });
 document.addEventListener('visibilitychange', () => {

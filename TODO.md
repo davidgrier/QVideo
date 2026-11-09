@@ -751,10 +751,17 @@ encrypt (see below), and nothing has been tried on an iPad.
   IP address would change with DHCP), and a frame rate on the Qt side to
   compare with the page's readout (27 frames a second from a webcam is
   probably the camera: it gave 24 an hour earlier).
-- [ ] **Controls from the tablet.**  `PropertySpec` gives each property's
-  type and limits, and `watch` / `propertiesChanged` push live changes, so
-  the page can build sliders for exposure and gain as `CameraControls` does
-  in a notebook.
+- [x] **A privilege model and controls from the tablet**, built 2026-11-09
+  (`lib/_webcontrols.py`, `QWebScreen(camera=...)`, the prompt in
+  `QWebShareDialog`, the Controls panel in `lib/_webpage.py`).  Scanning
+  grants view; control needs the operator's *Allow*, https (or
+  `controlOverHttp`), one controller at a time.  Checked in Chrome with
+  Playwright (sliders, log slider, switch, drop-down, a drag).  Still to do:
+  - [ ] Try it on the iPad (touch drags, the home-screen page, the prompt).
+  - [ ] Controls for properties of a Genicam camera (the default list names
+    `ExposureTime`, `Gain` and others; check on the Blackfly S).
+  - [ ] Show the property names as the tree does (labels, units).
+  - [ ] Debounce `values` from a camera that reports every frame.
 - [ ] **Overlays and touch.**  The header's `overlays` list carries
   primitives (circle, cross, line, text, with an id, image coordinates and a
   "draggable" flag) in the message of the frame they belong to; the page sends

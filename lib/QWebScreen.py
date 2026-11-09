@@ -13,6 +13,8 @@ import struct
 import threading
 import time
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Sequence
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -20,6 +22,7 @@ import cv2
 import numpy as np
 from qtpy import QtCore
 
+from QVideo.lib import _webcontrols
 from QVideo.lib._qapp import stopAtQuit
 from QVideo.lib._webpage import DENIED, EXPIRED, PAGE
 from QVideo.lib.imageops import AutoLevels, to8bit
@@ -47,6 +50,13 @@ _WINDOW = 60.
 #: The close code that tells the page that the instrument disconnected it.
 _REVOKED = 4401
 
+#: A browser that was refused control waits this long [s] before it can ask
+#: again, so that a paired device cannot fill the screen with prompts.
+_RETRY = 10.
+
+#: The largest message that a page may send [bytes].
+_MAX_MESSAGE = 4096
+
 
 def _lanAddress() -> str:
     '''Return the address of this machine on the local network.
@@ -72,6 +82,14 @@ def _deviceName(agent: str) -> str:
     return 'browser'
 
 
+def _plain(value: object) -> object:
+    '''Make a NumPy number into a Python one, for JSON.'''
+    item = getattr(value, 'item', None)
+    if item is None:
+        raise TypeError(f'{type(value).__name__} is not JSON')
+    return item()
+
+
 class _Viewer:
 
     '''A browser that was paired: one device, perhaps with several pages.'''
@@ -82,6 +100,8 @@ class _Viewer:
         self.name = _deviceName(agent)
         self.since = time.time()
         self.clients: set[_Client] = set()
+        self.control = 'none'           # 'none', 'requested' or 'granted'
+        self.deniedAt = 0.
 
 
 class _Client:
@@ -89,17 +109,23 @@ class _Client:
     '''One connection: the newest message that it has not been sent yet.
 
     A message that arrives before the previous one is sent replaces it, so a
-    slow tablet gets the newest frame and no one waits for it.
+    slow tablet gets the newest frame and no one waits for it.  Notes (text
+    for the page) are not replaced: each is sent, before the next frame.
     '''
 
     def __init__(self, ws: Any, viewer: _Viewer | None = None) -> None:
         self.ws = ws
         self.viewer = viewer
         self.message: bytes | None = None
+        self.notes: deque[str] = deque()
         self.ready = asyncio.Event()
 
     def put(self, message: bytes) -> None:
         self.message = message
+        self.ready.set()
+
+    def tell(self, note: str) -> None:
+        self.notes.append(note)
         self.ready.set()
 
     async def run(self) -> None:
@@ -109,6 +135,8 @@ class _Client:
             while True:
                 await self.ready.wait()
                 self.ready.clear()
+                while self.notes:
+                    await self.ws.send_str(self.notes.popleft())
                 message, self.message = self.message, None
                 if message is not None:
                     await self.ws.send_bytes(message)
@@ -122,8 +150,8 @@ class QWebScreen(QtCore.QObject):
 
     The counterpart of :class:`~QVideo.lib.QVideoScreen.QVideoScreen` for
     a viewer that is not a Qt window: a tablet, a phone or another computer.
-    Several browsers can watch at once.  The page has no controls (tap it
-    to hide the frame readout).
+    Several browsers can watch at once.  Tap the page to hide the frame
+    readout.  With a ``camera`` the page also offers controls (see below).
 
     Every frame goes out with its metadata in one message, so whatever is
     drawn with a frame belongs to that frame.  A browser that cannot keep up
@@ -145,6 +173,19 @@ class QWebScreen(QtCore.QObject):
     network, or give a certificate (``certfile`` and ``keyfile``) and the
     server speaks https, with a ``Secure`` cookie.  A certificate that the
     browsers trust is the hard part: see :ref:`streaming-encryption`.
+
+    **Control.**  Pairing lets a browser *look*.  To *change* the camera it
+    asks, and the operator answers a prompt on the screen of the instrument
+    (:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog` shows it, or
+    a program connects :attr:`controlRequested` to :meth:`grantControl` and
+    :meth:`denyControl`).  One browser controls at a time, and control ends
+    when its page closes or the operator takes it back
+    (:meth:`revokeControl`).  A page can change only the properties named in
+    ``properties`` (by default the usual ones: exposure, gain and so on),
+    and every value is checked and clipped to the limits of the property.
+    Control needs a secure connection (a certificate), because a cookie that
+    was read off the network must not move an instrument; a program that
+    trusts its network can set ``controlOverHttp``.
 
     Parameters
     ----------
@@ -170,7 +211,21 @@ class QWebScreen(QtCore.QObject):
     access : bool
         Require pairing.  Default ``True``.  ``False`` serves anyone who
         can reach the port, with no cookie: for a machine that only you
-        can reach.
+        can reach.  It is view only: with nobody to pair, nobody can ask
+        for control.
+    camera : QCamera, optional
+        The camera whose properties the page may change.  Without one the
+        page has no controls.
+    properties : sequence of str, optional
+        The names of the properties that the page may change.  Default
+        ``None``: the usual ones that the camera has and lets us write
+        (:data:`~QVideo.lib._webcontrols.COMMON`).  An empty sequence turns
+        control off.
+    controlOverHttp : bool
+        Allow control without a certificate.  Default ``False``.  Anyone
+        who can read the network can then take the cookie of the browser
+        that controls and set the properties with it: only for a network
+        that you trust as you trust the instrument.
     parent : QObject, optional
         Qt parent.
 
@@ -191,6 +246,10 @@ class QWebScreen(QtCore.QObject):
         The pairing window opened or closed.
     codeChanged()
         :attr:`pairingUrl` changed: show the new code.
+    controlRequested(str)
+        A paired browser asks to control the camera, with the ``id`` of the
+        browser (see :attr:`viewers`): answer with :meth:`grantControl` or
+        :meth:`denyControl`.
     '''
 
     #: Emitted with the number of browsers that watch, when it changes.
@@ -206,6 +265,9 @@ class QWebScreen(QtCore.QObject):
     #: Emitted when :attr:`pairingUrl` changes: show the new code.
     codeChanged = QtCore.Signal()
 
+    #: Emitted with the ``id`` of a browser that asks to control the camera.
+    controlRequested = QtCore.Signal(str)
+
     def __init__(self,
                  source=None,
                  host: str = '0.0.0.0',
@@ -216,6 +278,9 @@ class QWebScreen(QtCore.QObject):
                  access: bool = True,
                  certfile: str | None = None,
                  keyfile: str | None = None,
+                 camera=None,
+                 properties: Sequence[str] | None = None,
+                 controlOverHttp: bool = False,
                  parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.host = host
@@ -226,6 +291,10 @@ class QWebScreen(QtCore.QObject):
         self.access = access
         self.certfile = certfile
         self.keyfile = keyfile
+        self.properties = properties
+        self.controlOverHttp = controlOverHttp
+        self._camera = None
+        self._pool: ThreadPoolExecutor | None = None
         self._tls: ssl.SSLContext | None = None
         self._guard = threading.Lock()      # the secret and the sessions
         self._secret = secrets.token_urlsafe(16)
@@ -245,6 +314,7 @@ class QWebScreen(QtCore.QObject):
         self._count = 0
         self._error: BaseException | None = None
         self.source = source
+        self.camera = camera
         stopAtQuit(self.stop)
 
     # ------------------------------------------------------------------
@@ -347,11 +417,13 @@ class QWebScreen(QtCore.QObject):
     @property
     def viewers(self) -> list[dict[str, Any]]:
         '''The paired browsers, as dicts with ``id``, ``name`` (the kind of
-        device), ``address``, ``since`` (a time) and ``watching`` (whether
-        a page is open).'''
+        device), ``address``, ``since`` (a time), ``watching`` (whether
+        a page is open) and ``control`` (``'none'``, ``'requested'`` or
+        ``'granted'``).'''
         with self._guard:
             return [dict(id=v.ident, name=v.name, address=v.address,
-                         since=v.since, watching=bool(v.clients))
+                         since=v.since, watching=bool(v.clients),
+                         control=v.control)
                     for v in self._sessions.values()]
 
     def revoke(self, ident: str | None = None) -> None:
@@ -397,6 +469,236 @@ class QWebScreen(QtCore.QObject):
 
     def _fail(self, address: str) -> None:
         self._failures.setdefault(address, deque()).append(time.monotonic())
+
+    # ------------------------------------------------------------------
+    # Control
+    # ------------------------------------------------------------------
+
+    @property
+    def camera(self):
+        '''The camera whose properties a page may change, or ``None``.'''
+        return self._camera
+
+    @camera.setter
+    def camera(self, camera) -> None:
+        if self._camera is not None:
+            self._camera.propertiesChanged.disconnect(self._changed)
+        self._camera = camera
+        if camera is not None:
+            # Queued: the camera reports from its own threads.
+            camera.propertiesChanged.connect(self._changed)
+
+    def _exposed(self) -> list[str]:
+        '''Return the names of the properties that a page may change.'''
+        if self._camera is None:
+            return []
+        return _webcontrols.choose(self._camera.properties, self.properties)
+
+    @property
+    def controlNames(self) -> list[str]:
+        '''The names of the properties that a page may change.'''
+        return self._exposed()
+
+    def _controlState(self) -> tuple[bool, str]:
+        '''Return whether a page can control the camera, and if not, why.'''
+        if self._camera is None or not self._exposed():
+            return False, 'there is nothing to control'
+        if not self.access:
+            return False, 'pairing is off'
+        if not (self.secure or self.controlOverHttp):
+            return False, 'control needs a secure connection (https)'
+        return True, ''
+
+    @property
+    def controlAvailable(self) -> bool:
+        '''Whether a paired browser can ask to control the camera.'''
+        return self._controlState()[0]
+
+    @property
+    def controlReason(self) -> str:
+        '''Why :attr:`controlAvailable` is ``False`` (empty if it is not).'''
+        return self._controlState()[1]
+
+    @property
+    def controller(self) -> str | None:
+        '''The ``id`` of the browser that controls the camera, or ``None``.'''
+        with self._guard:
+            for viewer in self._sessions.values():
+                if viewer.control == 'granted':
+                    return viewer.ident
+        return None
+
+    def grantControl(self, ident: str) -> bool:
+        '''Let the browser *ident* control the camera, and nobody else.
+
+        A browser that controlled it before is told that it does not.
+
+        Returns
+        -------
+        bool
+            ``False`` if there is no such browser or control is not
+            available.
+        '''
+        if not self.controlAvailable:
+            return False
+        with self._guard:
+            viewer = self._sessions.get(ident)
+            if viewer is None:
+                return False
+            changed = [v for v in self._sessions.values()
+                       if v.control == 'granted' and v is not viewer]
+            for other in changed:
+                other.control = 'none'
+            viewer.control = 'granted'
+        for other in changed:
+            self._notify(other, 'revoked')
+        self._notify(viewer, 'granted')
+        self.viewersChanged.emit()
+        return True
+
+    def denyControl(self, ident: str) -> None:
+        '''Refuse the request of the browser *ident* to control the camera.
+
+        The browser can ask again after a few seconds.
+        '''
+        with self._guard:
+            viewer = self._sessions.get(ident)
+            if viewer is None or viewer.control != 'requested':
+                return
+            viewer.control = 'none'
+            viewer.deniedAt = time.monotonic()
+        self._notify(viewer, 'denied')
+        self.viewersChanged.emit()
+
+    def revokeControl(self, ident: str | None = None) -> None:
+        '''Take control back from the browser *ident*, or from whichever
+        browser has it if *ident* is ``None``.'''
+        with self._guard:
+            gone = [v for v in self._sessions.values()
+                    if v.control == 'granted'
+                    and ident in (None, v.ident)]
+            for viewer in gone:
+                viewer.control = 'none'
+        for viewer in gone:
+            self._notify(viewer, 'revoked')
+        if gone:
+            self.viewersChanged.emit()
+
+    def _notify(self, viewer: _Viewer, state: str) -> None:
+        '''Tell the pages of *viewer* what became of their control.'''
+        available, reason = self._controlState()
+        self._tellViewer(viewer, dict(type='control', state=state,
+                                      available=available, reason=reason))
+
+    def _tellViewer(self, viewer: _Viewer, note: dict) -> None:
+        text = json.dumps(note)
+        self._inLoop(lambda: [c.tell(text) for c in list(viewer.clients)])
+
+    def _tellAll(self, note: dict) -> None:
+        text = json.dumps(note, default=_plain)
+        self._inLoop(lambda: [c.tell(text) for c in list(self._clients)])
+
+    def _inLoop(self, call) -> None:
+        '''Run *call* in the thread of the server, from any thread.'''
+        loop = self._loop
+        if loop is not None and not loop.is_closed():
+            with contextlib.suppress(RuntimeError):     # the loop has closed
+                loop.call_soon_threadsafe(call)
+
+    @QtCore.Slot(object)
+    def _changed(self, values: dict) -> None:
+        '''Tell the pages that properties changed (a page set one, or the
+        camera did by itself).'''
+        names = set(self._exposed())
+        shown = {key: value for key, value in values.items() if key in names}
+        if shown:
+            self._tellAll(dict(type='values', values=shown))
+
+    async def _hello(self, client: _Client) -> None:
+        '''Send a page what it needs to build its controls.'''
+        camera = self._camera
+        names = self._exposed()
+        available, reason = self._controlState()
+        entries: list[dict] = []
+        if camera is not None and names and self._pool is not None:
+            loop = asyncio.get_running_loop()
+            values = await loop.run_in_executor(
+                self._pool, camera.snapshot, names)
+            entries = _webcontrols.describe(camera.properties, names, values)
+        viewer = client.viewer
+        client.tell(json.dumps(
+            dict(type='hello', secure=self.secure, available=available,
+                 reason=reason, controls=entries,
+                 state=viewer.control if viewer else 'none'),
+            default=_plain))
+
+    async def _handle(self, client: _Client, text: str) -> None:
+        '''Act on a message from a page.  A page is not trusted: anything
+        that is not understood, or not allowed, is ignored.'''
+        viewer = client.viewer
+        try:
+            message = json.loads(text)
+        except ValueError:
+            return
+        if viewer is None or not isinstance(message, dict):
+            return
+        kind = message.get('type')
+        if kind == 'request':
+            self._request(viewer)
+        elif kind == 'release':
+            self._release(viewer)
+        elif kind == 'set':
+            await self._set(viewer, message.get('name'),
+                            message.get('value'))
+
+    def _request(self, viewer: _Viewer) -> None:
+        available, _ = self._controlState()
+        with self._guard:
+            if not available or viewer.control != 'none':
+                state = viewer.control
+                ask = False
+            elif time.monotonic() - viewer.deniedAt < _RETRY:
+                state, ask = 'denied', False
+            else:
+                viewer.control = state = 'requested'
+                ask = True
+        self._notify(viewer, state if available else 'none')
+        if ask:
+            self.viewersChanged.emit()
+            self.controlRequested.emit(viewer.ident)
+
+    def _release(self, viewer: _Viewer) -> None:
+        with self._guard:
+            held, viewer.control = viewer.control, 'none'
+        if held != 'none':
+            self._notify(viewer, 'none')
+            self.viewersChanged.emit()
+
+    async def _set(self, viewer: _Viewer, name: object,
+                   value: object) -> None:
+        camera = self._camera
+        if (camera is None or viewer.control != 'granted'
+                or not self._controlState()[0]
+                or not isinstance(name, str)
+                or name not in self._exposed()):
+            return
+        try:
+            value = _webcontrols.coerce(camera.properties[name], value)
+        except ValueError as error:
+            logger.debug(f'QWebScreen: {name}: {error}')
+            return
+        if self._pool is not None:
+            await asyncio.get_running_loop().run_in_executor(
+                self._pool, self._apply, camera, name, value)
+
+    def _apply(self, camera, name: str, value: object) -> None:
+        '''Set a property, in a thread that may wait for the camera, and
+        say what the exposed properties are now.'''
+        try:
+            camera.set(name, value)
+            camera.propertiesChanged.emit(camera.snapshot(self._exposed()))
+        except Exception:
+            logger.exception(f'QWebScreen: {name} could not be set')
 
     # ------------------------------------------------------------------
     # The server
@@ -515,6 +817,8 @@ class QWebScreen(QtCore.QObject):
     async def _run(self, web, ready: threading.Event) -> None:
         self._wake = asyncio.Event()
         self._halt = asyncio.Event()
+        self._pool = ThreadPoolExecutor(
+            1, thread_name_prefix='QWebScreen-camera')
         app = web.Application()
         app.router.add_get('/', self._index)
         app.router.add_get('/ws', self._socket)
@@ -535,6 +839,8 @@ class QWebScreen(QtCore.QObject):
                 await client.ws.close(code=1001)    # going away
         finally:
             await runner.cleanup()
+            self._pool.shutdown(wait=False, cancel_futures=True)
+            self._pool = None
 
     def _allowed(self, request) -> bool:
         return not self.access or self._viewerOf(request) is not None
@@ -590,7 +896,8 @@ class QWebScreen(QtCore.QObject):
         origin = request.headers.get('Origin')
         if origin is not None and urlsplit(origin).netloc != request.host:
             raise self._web.HTTPForbidden()     # another site's page
-        ws = self._web.WebSocketResponse(heartbeat=20.)
+        ws = self._web.WebSocketResponse(heartbeat=20.,
+                                         max_msg_size=_MAX_MESSAGE)
         await ws.prepare(request)
         client = _Client(ws, viewer)
         self._clients.add(client)
@@ -602,13 +909,18 @@ class QWebScreen(QtCore.QObject):
             client.put(self._last)
         sender = asyncio.create_task(client.run())
         try:
-            async for _ in ws:
-                pass                    # the page sends nothing, yet
+            if self._camera is not None:        # no camera, no controls
+                await self._hello(client)
+            async for message in ws:
+                if message.type == self._web.WSMsgType.TEXT:
+                    await self._handle(client, message.data)
         finally:
             sender.cancel()
             self._clients.discard(client)
             if viewer is not None:
                 viewer.clients.discard(client)
+                if not viewer.clients:      # control ends with the page
+                    self._release(viewer)
             self.clientsChanged.emit(len(self._clients))
             self.viewersChanged.emit()
         return ws

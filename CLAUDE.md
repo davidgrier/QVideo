@@ -272,8 +272,18 @@ shows a QR code of `web.pairingUrl` while it is open (`openPairing()`),
 and closing it changes the secret (`closePairing()`); `/join/<secret>`
 sets a session cookie.  Sessions and the secret are guarded by a
 `threading.Lock`, signals cross from the server thread to the GUI thread
-queued, and the connection is not encrypted (TLS is in TODO.md).  Do not
-log the secret.
+queued, and the connection is encrypted only with `certfile` and `keyfile`.
+Do not log the secret.
+
+Control from a page (`camera=`): a paired browser asks, the operator
+answers (`controlRequested`, `grantControl`, `denyControl`; the prompt is in
+`QWebShareDialog`), one browser holds control, and it needs https unless
+`controlOverHttp`.  `lib/_webcontrols.py` is the gate: it chooses the
+exposed properties from `PropertySpec`, describes them for the page and
+`coerce`s every value that a page sends; the page is never trusted.  Camera
+calls run in a worker thread of the server (`_pool`), never in the loop or
+the GUI thread, and a change re-emits `camera.propertiesChanged` so that the
+tree and the pages follow.
 
 ### DVR (`dvr/`)
 

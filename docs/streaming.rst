@@ -46,8 +46,8 @@ larger.
 
    By default the connection is **not encrypted** (see
    :ref:`streaming-encryption`).  Use it on a trusted network, or give the
-   server a certificate.  The page only shows the video; it controls
-   nothing.
+   server a certificate.  A page can change camera properties only with the
+   operator's permission (:ref:`streaming-control`).
 
 Pairing a tablet
 ----------------
@@ -126,8 +126,51 @@ allow a WebSocket to it.
 of QVideo, which authenticates people itself.  QVideo's pairing then adds
 nothing and ``access=False`` is reasonable.
 
-Controls from the page, when they come, will need the second level or a
-proxy: a stolen cookie must not move a laser.
+Controls from the page need the second level (or a proxy): a cookie that
+was read off the network must not move a laser.  A program that trusts its
+network as it trusts the instrument can opt out with
+``controlOverHttp=True``.
+
+.. _streaming-control:
+
+Controls from the page
+----------------------
+
+Pairing lets a browser *look*.  Given the camera, the page can also *change*
+it::
+
+    web = QWebScreen(source, camera=camera, certfile=..., keyfile=...)
+
+The page then has a Controls button.  Its panel builds a control for each
+property from the :class:`~QVideo.lib.QCamera.PropertySpec` of the camera: a
+slider for a number with limits (logarithmic when the range spans three
+decades, as an exposure does), a switch for a ``bool``, a drop-down for a
+choice, and a number box for a number without limits.  The values follow the
+camera, including a gain or exposure that it changes by itself, and a change
+made in the window of the instrument (the Qt tree) shows on the page.
+
+**The operator decides.**  The panel starts view only.  *Ask to control*
+raises a prompt on the screen of the instrument (from
+:class:`~QVideo.widgets.QWebShareDialog.QWebShareDialog`, whether or not it
+is showing): *Allow* or *Deny*.  A browser that was refused waits a few
+seconds before it can ask again.  One browser controls at a time; granting
+another takes control from the first, and so does *Take back control* in the
+window.  Control ends by itself when the page closes.  A program that has no
+dialog connects ``web.controlRequested`` to ``web.grantControl`` or
+``web.denyControl``.
+
+**What a page can change.**  ``properties=['exposure', 'gain']`` names them.
+By default they are the usual ones that the camera has and lets us write
+(exposure, gain, gamma, brightness, contrast, saturation, black and white
+level, frame rate), and ``properties=[]`` turns control off.  The server
+checks every value again and does not trust the page: an unlisted property
+or a read-only one cannot be set, a number is clipped to the limits of the
+property, a choice must be one of its choices, and anything else (a string
+for a number, ``NaN``) is ignored.
+
+**Where it is available.**  Control needs a certificate (https), or
+``controlOverHttp=True``, and pairing (``access=True``).  Otherwise the panel
+says "View only" and why, and so does the window of the instrument.
 
 How it works
 ------------
@@ -147,8 +190,8 @@ A browser pairs with ``/join/<secret>``, which sets a cookie and redirects
 to ``/``.  It then asks for ``/`` (the page) and opens a WebSocket at
 ``/ws``; ``/session`` answers 200 while the browser is paired and 401 if
 not.  The server closes the WebSocket with code 4401 when the instrument
-disconnects the browser.  The server sends **binary** messages and the page
-sends nothing yet.  A
+disconnects the browser.  The server sends **binary** messages, one for each
+frame, and **text** messages (JSON, below) about the controls.  A binary
 message holds one frame and everything that belongs to it:
 
 ======== ============= ====================================================
@@ -182,11 +225,29 @@ The header has these keys:
 The page is also the specification of a client: another program can read the
 same messages.
 
+The text messages are JSON objects with a ``type``.  The server sends:
+
+``hello``
+    on connecting, when there is a camera: ``controls`` (a list of
+    ``name``, ``type`` (``bool``, ``int``, ``float`` or ``list``), ``value``,
+    ``writable`` and, where the camera says, ``min``, ``max``, ``step`` and
+    ``limits``), ``available``, ``reason`` (why it is not) and ``state``.
+``control``
+    ``state`` (``none``, ``requested``, ``granted``, ``denied`` or
+    ``revoked``), ``available`` and ``reason``.
+``values``
+    ``values``: the exposed properties that changed.
+
+The page sends ``{"type": "request"}``, ``{"type": "release"}`` and
+``{"type": "set", "name": ..., "value": ...}``; the last is ignored unless
+the operator has granted control.  A message of more than 4 KB closes the
+connection.
+
 What it does not do
 -------------------
 
-The page is for looking.  It has no controls and no touch interaction, no
-overlays and no encryption, and it sends JPEG frames: video with H.264
-would need much less bandwidth and is not supported.  The format leaves room
-for overlays that are drawn over the frame and for events that the page sends
-back.
+The page controls the camera but nothing else, and it has no touch
+interaction with overlays and no encryption unless the program gives a
+certificate.  It sends JPEG frames: video with H.264 would need much less
+bandwidth and is not supported.  The format leaves room for overlays that
+are drawn over the frame and for events that the page sends back.

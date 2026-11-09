@@ -30,6 +30,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   trusted network.  `python -m QVideo.demos.webdemo` shows
   the window, the page and the QR code together; the protocol is on the
   "Video in a web browser" page.  Provisional (see Stability).
+- **Controls from the tablet.**  `QWebScreen(source, camera=camera)` gives
+  the page a Controls panel: a slider, switch or drop-down for each property
+  that the application exposes (`properties=`; by default exposure, gain and
+  the usual others), built from `PropertySpec`.  The page starts view only;
+  *Ask to control* raises a prompt on the instrument (`QWebShareDialog`, or
+  `controlRequested` with `grantControl` and `denyControl`), one browser
+  controls at a time, and the operator can take control back.  Control needs
+  https (or `controlOverHttp=True` for a trusted network), every value is
+  checked and clipped on the server, and a change by a page shows in the Qt
+  tree and in every page.
 
 ### Fixed
 

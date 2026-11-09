@@ -594,6 +594,17 @@ class TestTls(unittest.TestCase):
             return False
         self.assertTrue(asyncio.run(look()))
 
+    def test_control_is_available_over_https_and_not_over_http(self):
+        from QVideo.cameras.Noise import QNoiseCamera
+        camera = QNoiseCamera()
+        self.addCleanup(camera.close)
+        secure = QWebScreen(camera=camera, certfile=self.cert,
+                            keyfile=self.key)
+        self.assertTrue(secure.controlAvailable)
+        plain = QWebScreen(camera=camera)
+        self.assertFalse(plain.controlAvailable)
+        self.assertIn('https', plain.controlReason)
+
     def test_without_a_certificate_the_server_is_not_secure(self):
         other = QWebScreen(host='127.0.0.1', port=0)
         self.assertFalse(other.secure)

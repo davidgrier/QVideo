@@ -43,6 +43,12 @@ class TestWebDemo(unittest.TestCase):
         self.assertIs(self.demo.web.source, self.demo.screen.source)
         self.assertIs(self.demo.web.source, self.tree.source)
 
+    def test_a_tablet_may_ask_to_control_the_camera(self):
+        self.assertIs(self.demo.web.camera, self.tree.camera)
+        self.demo.web.access = True         # the fixture turns pairing off
+        self.assertTrue(self.demo.web.controlAvailable)
+        self.assertIn('blacklevel', self.demo.web.controlNames)
+
     def test_the_panel_counts_the_viewers(self):
         self.assertEqual(self.demo.viewers.text(), '0 watching')
 

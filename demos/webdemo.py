@@ -50,10 +50,17 @@ class WebDemo(QCamcorder):
     certfile: str | None = None
     keyfile: str | None = None
 
+    #: A demo on a trusted network lets a tablet control the camera without
+    #: a certificate, to try it.  An application should leave this ``False``
+    #: or give a certificate: see :class:`~QVideo.lib.QWebScreen.QWebScreen`.
+    controlOverHttp: bool = True
+
     def _setupUi(self) -> None:
         super()._setupUi()
         self.web = QWebScreen(self.screen.source, certfile=self.certfile,
-                              keyfile=self.keyfile)
+                              keyfile=self.keyfile,
+                              camera=self.cameraWidget.camera,
+                              controlOverHttp=self.controlOverHttp)
         self.web.start(fallback=True)
         self.share = QWebShareDialog(self.web, self)
         self.shareButton = QtWidgets.QPushButton('Share...')

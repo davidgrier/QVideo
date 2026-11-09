@@ -19,6 +19,9 @@ _QUIET = 4
 #: The width of the code on the screen [pixels], about.
 _SIZE = 280
 
+#: Where an entry of the list keeps the control state of its browser.
+_CONTROL = QtCore.Qt.ItemDataRole.UserRole + 1
+
 
 class QWebShareDialog(QtWidgets.QDialog):
 
@@ -31,6 +34,11 @@ class QWebShareDialog(QtWidgets.QDialog):
     only someone who could see the screen while it was open can pair, and
     each code pairs one device, after which a new code appears.  Browsers
     that paired stay paired until they are disconnected here.
+
+    A paired browser can ask to control the camera (see
+    :class:`~QVideo.lib.QWebScreen.QWebScreen`).  The dialog asks the
+    operator, with a message box that appears whether or not the dialog is
+    showing, and lists who controls.  **Take back control** ends it.
 
     The window is not modal: the instrument stays usable while it is open.
     A program shows it from a button, a menu item or a shortcut with
@@ -50,10 +58,13 @@ class QWebShareDialog(QtWidgets.QDialog):
         self.web = web
         self.setWindowTitle('Watch on a tablet')
         self._setupUi()
+        self._prompts: dict[str, QtWidgets.QMessageBox] = {}
         web.codeChanged.connect(self._showCode)
+        web.controlRequested.connect(self._askControl)
         web.viewersChanged.connect(self._showViewers)
         self._showCode()
         self._showViewers()
+        self._showControlNote()
 
     def _setupUi(self) -> None:
         self.code = QtWidgets.QLabel()
@@ -75,6 +86,8 @@ class QWebShareDialog(QtWidgets.QDialog):
                 'Not encrypted: use this on a network that you trust.')
             notice.setStyleSheet('color: #a15c00;')
         notice.setWordWrap(True)
+        self.controlNote = QtWidgets.QLabel()
+        self.controlNote.setWordWrap(True)
         self.viewers = QtWidgets.QListWidget()
         self.viewers.setMaximumHeight(90)
         self.viewers.itemSelectionChanged.connect(self._enableDisconnect)
@@ -84,15 +97,23 @@ class QWebShareDialog(QtWidgets.QDialog):
         self.disconnectAllButton.clicked.connect(self._disconnectAll)
         self.newCodeButton = QtWidgets.QPushButton('New code')
         self.newCodeButton.clicked.connect(self.web.rotate)
-        buttons = QtWidgets.QHBoxLayout()
-        for button in (self.disconnectButton, self.disconnectAllButton,
-                       self.newCodeButton):
-            buttons.addWidget(button)
+        self.takeBackButton = QtWidgets.QPushButton('Take back control')
+        self.takeBackButton.clicked.connect(self._takeBack)
+        buttons = QtWidgets.QGridLayout()
+        buttons.addWidget(self.disconnectButton, 0, 0)
+        buttons.addWidget(self.disconnectAllButton, 0, 1)
+        buttons.addWidget(self.takeBackButton, 1, 0)
+        buttons.addWidget(self.newCodeButton, 1, 1)
         layout = QtWidgets.QVBoxLayout(self)
+        # The window is as tall as its contents need: with wrapped text the
+        # layout otherwise lets it shrink until widgets overlap.
+        layout.setSizeConstraint(
+            QtWidgets.QLayout.SizeConstraint.SetFixedSize)
         layout.addWidget(self.code)
         layout.addWidget(self.address)
         layout.addWidget(hint)
         layout.addWidget(notice)
+        layout.addWidget(self.controlNote)
         layout.addWidget(QtWidgets.QLabel('Paired:'))
         layout.addWidget(self.viewers)
         layout.addLayout(buttons)
@@ -135,41 +156,64 @@ class QWebShareDialog(QtWidgets.QDialog):
                               'to see a QR code.  Open this address '
                               'instead:')
             return
-        self.code.setPixmap(QtGui.QPixmap.fromImage(self._draw(modules)))
+        pixmap = QtGui.QPixmap.fromImage(self._draw(modules))
+        self.code.setPixmap(pixmap)
+        self.code.setFixedSize(pixmap.size())       # the layout cannot clip
 
     @staticmethod
     def _draw(modules: list[list[bool]]) -> QtGui.QImage:
         '''Return the picture of a code: black modules on white.'''
         count = len(modules) + 2 * _QUIET
         scale = max(3, _SIZE // count)
-        image = QtGui.QImage(count * scale, count * scale,
-                             QtGui.QImage.Format.Format_RGB32)
+        side = max(_SIZE, count * scale)    # always the same size, if it fits
+        offset = (side - count * scale) // 2 + _QUIET * scale
+        image = QtGui.QImage(side, side, QtGui.QImage.Format.Format_RGB32)
         image.fill(QtGui.QColor('white'))
         painter = QtGui.QPainter(image)
         black = QtGui.QColor('black')
         for y, row in enumerate(modules):
             for x, dark in enumerate(row):
                 if dark:
-                    painter.fillRect((x + _QUIET) * scale,
-                                     (y + _QUIET) * scale,
+                    painter.fillRect(offset + x * scale, offset + y * scale,
                                      scale, scale, black)
         painter.end()
         return image
+
+    def _showControlNote(self) -> None:
+        '''Say what a paired browser can do about the camera.'''
+        if self.web.camera is None:
+            self.controlNote.hide()
+            return
+        if self.web.controlAvailable:
+            names = ', '.join(self.web.controlNames)
+            text = f'A tablet can ask to control: {names}.'
+        else:
+            text = f'View only: {self.web.controlReason}.'
+        self.controlNote.setText(text)
+        self.controlNote.show()
 
     @QtCore.Slot()
     def _showViewers(self) -> None:
         selected = self._selected()
         self.viewers.clear()
-        for viewer in self.web.viewers:
+        wanted = {'requested': '  wants control', 'granted': '  controls'}
+        viewers = self.web.viewers
+        for viewer in viewers:
             state = 'watching' if viewer['watching'] else 'away'
             item = QtWidgets.QListWidgetItem(
-                f"{viewer['name']}  {viewer['address']}  ({state})")
+                f"{viewer['name']}  {viewer['address']}  ({state})"
+                + wanted.get(viewer['control'], ''))
             item.setData(QtCore.Qt.ItemDataRole.UserRole, viewer['id'])
+            item.setData(_CONTROL, viewer['control'])
             self.viewers.addItem(item)
             if viewer['id'] == selected:
                 item.setSelected(True)
         self.disconnectAllButton.setEnabled(self.viewers.count() > 0)
         self._enableDisconnect()
+        asking = {v['id'] for v in viewers if v['control'] == 'requested'}
+        for ident in list(self._prompts):
+            if ident not in asking:             # it gave up, or left
+                self._withdraw(ident)
 
     def _selected(self) -> str | None:
         items = self.viewers.selectedItems()
@@ -180,6 +224,64 @@ class QWebShareDialog(QtWidgets.QDialog):
     @QtCore.Slot()
     def _enableDisconnect(self) -> None:
         self.disconnectButton.setEnabled(self._selected() is not None)
+        items = self.viewers.selectedItems()
+        self.takeBackButton.setEnabled(
+            bool(items) and items[0].data(_CONTROL) == 'granted')
+
+    @QtCore.Slot()
+    def _takeBack(self) -> None:
+        ident = self._selected()
+        if ident is not None:
+            self.web.revokeControl(ident)
+
+    # ------------------------------------------------------------------
+    # The operator answers a request
+    # ------------------------------------------------------------------
+
+    @QtCore.Slot(str)
+    def _askControl(self, ident: str) -> None:
+        '''Ask the operator whether the browser *ident* may control the
+        camera.  Not modal: the instrument stays usable.'''
+        if ident in self._prompts:
+            return
+        viewer = next((v for v in self.web.viewers if v['id'] == ident), None)
+        if viewer is None:
+            return
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Icon.Question)
+        box.setWindowTitle('Allow control?')
+        box.setText(f"{viewer['name']} ({viewer['address']}) wants to "
+                    'control the camera.')
+        box.setInformativeText(
+            'It will be able to change: '
+            + ', '.join(self.web.controlNames) + '.')
+        role = QtWidgets.QMessageBox.ButtonRole
+        allow = box.addButton('Allow', role.YesRole)
+        deny = box.addButton('Deny', role.NoRole)
+        box.setDefaultButton(deny)
+        box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        box.setWindowModality(QtCore.Qt.WindowModality.NonModal)
+        box.finished.connect(
+            lambda _result, i=ident, b=box, a=allow: self._answered(i, b, a))
+        self._prompts[ident] = box
+        box.show()
+        box.raise_()
+
+    def _answered(self, ident: str, box: QtWidgets.QMessageBox,
+                  allow: QtWidgets.QAbstractButton) -> None:
+        if self._prompts.get(ident) is not box:
+            return                      # withdrawn: nobody to answer
+        del self._prompts[ident]
+        if box.clickedButton() is allow:
+            self.web.grantControl(ident)
+        else:
+            self.web.denyControl(ident)
+
+    def _withdraw(self, ident: str) -> None:
+        '''Close the prompt for a browser that no longer asks.'''
+        box = self._prompts.pop(ident, None)
+        if box is not None:
+            box.close()
 
     @QtCore.Slot()
     def _disconnectAll(self) -> None:

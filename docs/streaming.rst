@@ -11,6 +11,20 @@ It needs ``aiohttp`` and ``segno`` (which draws the QR code)::
 
     pip install "QVideo[stream]"
 
+Try it
+------
+
+::
+
+    python -m QVideo.demos.webdemo -c       # -c: a USB webcam
+
+The window opens with a QR code.  Point the camera of a tablet or phone at
+it and open the link: the video appears in the browser.  Tap *Controls*,
+then *Ask to control*, and answer the prompt on the instrument (*Allow*) to
+change exposure, gain, mirror, flip or resolution from the tablet.  The
+tablet and the computer must be on the same network, and the demo is not
+encrypted (see :ref:`streaming-encryption`).
+
 Using it
 --------
 
@@ -25,6 +39,11 @@ Using it
     from QVideo.widgets import QWebShareDialog
     share = QWebShareDialog(web)
     share.show()                # the QR code that pairs a tablet
+
+Give the server the camera, and a paired tablet can ask to change its
+properties (:ref:`streaming-control`)::
+
+    web = QWebScreen(source, camera=camera).start()
 
 To show what the filters make, connect it to the pipeline, as for a screen:
 ``web.source = rack.pipeline``.  ``python -m QVideo.demos.webdemo`` shows the
@@ -162,7 +181,11 @@ dialog connects ``web.controlRequested`` to ``web.grantControl`` or
 **What a page can change.**  ``properties=['exposure', 'gain']`` names them.
 By default they are the usual ones that the camera has and lets us write
 (exposure, gain, gamma, brightness, contrast, saturation, black and white
-level, frame rate), and ``properties=[]`` turns control off.  The server
+level, frame rate, color, mirrored, flipped, resolution) and does not hide
+(an OpenCV camera hides its frame rate, which it changes only with the
+resolution), and ``properties=[]`` turns
+control off.  A camera may accept a value and not apply it; the page then
+shows the value that the camera reports.  The server
 checks every value again and does not trust the page: an unlisted property
 or a read-only one cannot be set, a number is clipped to the limits of the
 property, a choice must be one of its choices, and anything else (a string

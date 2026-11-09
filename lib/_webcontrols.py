@@ -23,10 +23,13 @@ __all__ = ['COMMON', 'choose', 'describe', 'coerce']
 
 #: The properties that are exposed when the application names none: the
 #: usual ones of a camera, by lowercase name.  A backend that spells them
-#: otherwise, or an application that wants more, names them.
+#: otherwise, or an application that wants more, names them.  ``resolution``
+#: is among them (a change reshapes the frames of a recording in progress,
+#: as it does in the window); ``width`` and ``height`` are not.
 COMMON = ('exposure', 'exposuretime', 'gain', 'gamma', 'brightness',
           'contrast', 'saturation', 'blacklevel', 'whitelevel', 'fps',
-          'acquisitionframerate')
+          'acquisitionframerate', 'color', 'mirrored', 'flipped',
+          'resolution')
 
 _KINDS = {bool: 'bool', int: 'int', float: 'float'}
 
@@ -50,11 +53,16 @@ def choose(properties: dict[str, PropertySpec],
     names : sequence of str, optional
         What the application asked for; unknown names, and properties that a
         page cannot show, are left out.  ``None`` takes those of
-        :data:`COMMON` that the camera has and lets us write.
+        :data:`COMMON` that the camera has, lets us write and does not hide:
+        a camera hides a property that it changes only together with
+        another (the frame rate of an OpenCV camera, which follows the
+        resolution) and that the window of the instrument does not show
+        either.
     '''
     if names is None:
         names = [name for name, spec in properties.items()
-                 if name.lower() in COMMON and spec.setter is not None]
+                 if name.lower() in COMMON and spec.setter is not None
+                 and not spec.hidden]
     return [name for name in names
             if name in properties and kind(properties[name]) is not None]
 

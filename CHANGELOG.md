@@ -32,8 +32,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   "Video in a web browser" page.  Provisional (see Stability).
 - **Controls from the tablet.**  `QWebScreen(source, camera=camera)` gives
   the page a Controls panel: a slider, switch or drop-down for each property
-  that the application exposes (`properties=`; by default exposure, gain and
-  the usual others), built from `PropertySpec`.  The page starts view only;
+  that the application exposes (`properties=`; by default exposure, gain,
+  mirror, flip, resolution and the other usual ones that the camera shows),
+  built from `PropertySpec`.  The page starts view only;
   *Ask to control* raises a prompt on the instrument (`QWebShareDialog`, or
   `controlRequested` with `grantControl` and `denyControl`), one browser
   controls at a time, and the operator can take control back.  Control needs

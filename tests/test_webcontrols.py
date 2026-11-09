@@ -75,6 +75,13 @@ class TestChoose(unittest.TestCase):
         self.assertEqual(_webcontrols.choose(self.properties),
                          ['Gain', 'fps'])
 
+    def test_a_hidden_property_is_not_offered_by_default(self):
+        self.properties['fps'].hidden = True
+        self.assertEqual(_webcontrols.choose(self.properties), ['Gain'])
+        # but an application that names it gets it
+        self.assertEqual(_webcontrols.choose(self.properties, ['fps']),
+                         ['fps'])
+
     def test_named_properties_are_kept_if_a_page_can_show_them(self):
         self.assertEqual(
             _webcontrols.choose(self.properties,

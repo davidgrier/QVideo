@@ -330,6 +330,7 @@ class TestAccess(unittest.TestCase):
             async with self.client() as session:
                 async with self.pair(session) as reply:
                     joined = reply.status, reply.headers['Location']
+                    cookie = reply.cookies['qvideo']
                 async with session.get(self.base + '/') as page:
                     status = page.status
                 async with session.get(self.base + '/session') as check:
@@ -342,9 +343,12 @@ class TestAccess(unittest.TestCase):
                         except asyncio.TimeoutError:
                             continue
                         if message.type == aiohttp.WSMsgType.BINARY:
-                            return joined, status, checked, True
-                return joined, status, checked, False
-        joined, status, checked, got = self.run_client(look)
+                            return joined, status, checked, True, cookie
+                return joined, status, checked, False, cookie
+        joined, status, checked, got, cookie = self.run_client(look)
+        # A scan comes from another app: Strict would lose the cookie in
+        # the redirect (found on an iPad, 2026-11-09).
+        self.assertEqual(cookie['samesite'], 'Lax')
         self.assertEqual(joined, (302, '/'))
         self.assertEqual((status, checked), (200, 200))
         self.assertTrue(got)

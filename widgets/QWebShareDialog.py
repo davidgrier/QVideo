@@ -72,7 +72,7 @@ class QWebShareDialog(QtWidgets.QDialog):
         self.disconnectButton = QtWidgets.QPushButton('Disconnect')
         self.disconnectButton.clicked.connect(self._disconnect)
         self.disconnectAllButton = QtWidgets.QPushButton('Disconnect all')
-        self.disconnectAllButton.clicked.connect(self.web.revoke)
+        self.disconnectAllButton.clicked.connect(self._disconnectAll)
         self.newCodeButton = QtWidgets.QPushButton('New code')
         self.newCodeButton.clicked.connect(self.web.rotate)
         buttons = QtWidgets.QHBoxLayout()
@@ -170,6 +170,11 @@ class QWebShareDialog(QtWidgets.QDialog):
     @QtCore.Slot()
     def _enableDisconnect(self) -> None:
         self.disconnectButton.setEnabled(self._selected() is not None)
+
+    @QtCore.Slot()
+    def _disconnectAll(self) -> None:
+        # not connected to web.revoke directly: clicked sends a bool
+        self.web.revoke()
 
     @QtCore.Slot()
     def _disconnect(self) -> None:

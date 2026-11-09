@@ -522,8 +522,10 @@ class QWebScreen(QtCore.QObject):
             return self._page(EXPIRED, 403)
         self.viewersChanged.emit()
         reply = self._web.HTTPFound('/')
+        # Lax, not Strict: the scan comes from another app, and a browser
+        # does not send a Strict cookie in a redirect that another site began.
         reply.set_cookie(_COOKIE, ident, max_age=_COOKIE_AGE, httponly=True,
-                         samesite='Strict')
+                         samesite='Lax')
         raise reply
 
     async def _socket(self, request):

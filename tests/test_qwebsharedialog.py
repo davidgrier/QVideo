@@ -82,6 +82,15 @@ class TestDialog(unittest.TestCase):
         self.assertEqual(self.dialog.viewers.count(), 0)
         self.assertFalse(self.dialog.disconnectAllButton.isEnabled())
 
+    def test_disconnect_all_removes_every_viewer(self):
+        for name in 'ab':
+            self.web._sessions[name] = _Viewer(name, '10.0.0.7', 'iPad')
+        self.web.viewersChanged.emit()
+        self.assertEqual(self.dialog.viewers.count(), 2)
+        self.dialog.disconnectAllButton.click()
+        self.assertEqual(self.web.viewers, [])
+        self.assertEqual(self.dialog.viewers.count(), 0)
+
 
 @unittest.skipIf(segno is None, 'segno not installed')
 class TestQrcode(unittest.TestCase):

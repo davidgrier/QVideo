@@ -757,11 +757,16 @@ encrypt (see below), and nothing has been tried on an iPad.
   grants view; control needs the operator's *Allow*, https (or
   `controlOverHttp`), one controller at a time.  Checked in Chrome with
   Playwright (sliders, log slider, switch, drop-down, a drag).  Still to do:
-  - [ ] Try it on the iPad (touch drags, the home-screen page, the prompt).
-  - [ ] Controls for properties of a Genicam camera (the default list names
-    `ExposureTime`, `Gain` and others; check on the Blackfly S).
-  - [ ] Show the property names as the tree does (labels, units).
-  - [ ] Debounce `values` from a camera that reports every frame.
+  - [x] Try it on the iPad (touch drags, the prompt): works (2026-11-09).
+  - [ ] The home-screen page: iOS keeps the cookies of a home-screen app
+    apart from Safari's, so an app added to the home screen may need to pair
+    again (and it cannot scan a code); try it, and decide whether the page
+    needs a way in (a typed code).
+  - [ ] Controls for properties of a Genicam camera: the default list matches
+    `ExposureTime` and `Gain` without regard to case, and `unit` is passed on
+    (Genicam; Viva if the library gives one); check on the Blackfly S.
+  - [x] Labels and units (`label()`, `unit`), `values` sent at most every
+    0.1 s, a Full screen button and a wake lock (2026-11-09).
 - [ ] **Overlays and touch.**  The header's `overlays` list carries
   primitives (circle, cross, line, text, with an id, image coordinates and a
   "draggable" flag) in the message of the frame they belong to; the page sends

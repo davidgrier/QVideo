@@ -40,7 +40,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   controls at a time, and the operator can take control back.  Control needs
   https (or `controlOverHttp=True` for a trusted network), every value is
   checked and clipped on the server, and a change by a page shows in the Qt
-  tree and in every page.
+  tree and in every page.  A control has a readable name and a unit where
+  the camera gives one (`registerProperty(..., unit='us')`; the Genicam
+  backends do), the page hears about changes at most ten times a second,
+  and it has a Full screen button and keeps the tablet awake where the
+  browser allows (https).  A change made in the Qt tree now reaches the
+  pages (the tree announces it with `propertiesChanged`), and a change made
+  from a page updates everything that the tree shows, such as the width
+  after a new resolution.
 
 ### Fixed
 

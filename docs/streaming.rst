@@ -51,8 +51,12 @@ window and the web page together, and says where to find the page.
 ``python -m QVideo.lib.QWebScreen -g`` serves a camera and nothing else.
 
 The page is one small file that fits the video to the window.  Tapping it
-hides the frame readout.  Several browsers can watch at once, and a browser
-that is closed or loses the connection reconnects by itself.
+hides the frame readout, and the *Full screen* button hides the bars of the
+browser where it allows that.  The page asks the device not to sleep while it
+is open, but a browser grants that only on a secure page (https); on http,
+set the auto-lock of the tablet instead.  Several browsers can watch at
+once, and a browser that is closed or loses the connection reconnects by
+itself.
 
 A frame of more than 8 bits is shown between the levels that it comes with,
 as the screen does (``levels``, ``autoLevels``).  ``maxWidth`` (1024),
@@ -177,6 +181,13 @@ another takes control from the first, and so does *Take back control* in the
 window.  Control ends by itself when the page closes.  A program that has no
 dialog connects ``web.controlRequested`` to ``web.grantControl`` or
 ``web.denyControl``.
+
+**What a page shows.**  Each control has a name for a person (``ExposureTime``
+is *Exposure time*, ``fps`` is *Frame rate*) and, when the camera says what
+its values are measured in (``unit``, which the Genicam backends give), the
+unit.  A backend gives one with ``registerProperty(..., unit='us')``.  The
+page hears about values that change at most ten times a second, even from a
+camera that reports every frame.
 
 **What a page can change.**  ``properties=['exposure', 'gain']`` names them.
 By default they are the usual ones that the camera has and lets us write

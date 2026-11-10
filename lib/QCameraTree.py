@@ -253,16 +253,21 @@ class QCameraTree(ParameterTree):
         '''
         if self._ignoreSync:
             return
+        changed = False
         for param, change, value in changes:
             if change == 'value':
                 key = param.name()
                 logger.debug(f'Syncing {key}: {change}: {value}')
                 self.camera.set(key, value)
                 self._updateStep(param)
+                changed = True
         values = self.camera.snapshot(self._parameters)
         with self._syncIgnored():
             for key, value in values.items():
                 self.set(key, value)
+        if changed:
+            # Tell the others who show the camera (a web page) what it has.
+            self.camera.propertiesChanged.emit(values)
 
     @QtCore.Slot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:

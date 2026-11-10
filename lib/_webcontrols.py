@@ -14,12 +14,13 @@ the camera cannot write, cannot be set.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Iterable, Sequence
 from typing import Any
 
 from QVideo.lib.QCamera import PropertySpec
 
-__all__ = ['COMMON', 'choose', 'describe', 'coerce']
+__all__ = ['COMMON', 'choose', 'describe', 'coerce', 'label']
 
 #: The properties that are exposed when the application names none: the
 #: usual ones of a camera, by lowercase name.  A backend that spells them
@@ -32,6 +33,23 @@ COMMON = ('exposure', 'exposuretime', 'gain', 'gamma', 'brightness',
           'resolution')
 
 _KINDS = {bool: 'bool', int: 'int', float: 'float'}
+
+#: How a page names the usual properties, where splitting the name at
+#: capital letters does not.
+_LABELS = {'blacklevel': 'Black level', 'whitelevel': 'White level',
+           'exposuretime': 'Exposure time', 'fps': 'Frame rate',
+           'acquisitionframerate': 'Frame rate', 'color': 'Color',
+           'mirrored': 'Mirror', 'flipped': 'Flip'}
+
+
+def label(name: str) -> str:
+    '''Return *name* as a person reads it: ``ExposureTime`` is
+    ``Exposure time``, ``fps`` is ``Frame rate``.'''
+    known = _LABELS.get(name.lower())
+    if known is not None:
+        return known
+    words = re.sub(r'(?<=[a-z0-9])(?=[A-Z])', ' ', name).replace('_', ' ')
+    return words[:1].upper() + words[1:].lower() if words else name
 
 
 def kind(spec: PropertySpec) -> str | None:
@@ -73,9 +91,10 @@ def describe(properties: dict[str, PropertySpec], names: Iterable[str],
 
     Only plain values (strings, numbers, booleans, lists), so the result is
     JSON.  An entry has ``name``, ``type`` (``'bool'``, ``'int'``,
-    ``'float'`` or ``'list'``), ``value`` and ``writable``; a number adds
-    ``min``, ``max`` and ``step`` where the camera gives them, and a list
-    adds ``limits``.  A property with no value just now is left out.
+    ``'float'`` or ``'list'``), ``label`` (the name for a person), ``value``
+    and ``writable``; a number adds ``min``, ``max`` and ``step`` where the
+    camera gives them, a property adds ``unit`` where the camera says one,
+    and a list adds ``limits``.  A property with no value just now is left out.
     '''
     entries = []
     for name in names:
@@ -83,14 +102,17 @@ def describe(properties: dict[str, PropertySpec], names: Iterable[str],
         value = values.get(name)
         if value is None:
             continue
-        entry: dict[str, Any] = dict(name=name, type=kind(spec),
-                                     value=value,
+        entry: dict[str, Any] = dict(name=name, label=label(name),
+                                     type=kind(spec), value=value,
                                      writable=spec.setter is not None)
         entry.update({key: attribute for key, attribute in
                       (('min', spec.minimum), ('max', spec.maximum),
                        ('step', spec.step)) if attribute is not None})
         if spec.limits:
             entry['limits'] = list(spec.limits)
+        unit = spec.extra.get('unit')
+        if unit and isinstance(unit, str):
+            entry['unit'] = unit
         entries.append(entry)
     return entries
 

@@ -99,11 +99,32 @@ class TestChoose(unittest.TestCase):
             properties, ['gain', 'mode', 'off'],
             {'gain': .5, 'mode': 'a', 'off': False})
         self.assertEqual(entries[0], dict(
-            name='gain', type='float', value=.5, writable=True,
-            min=0., max=1., step=.1))
+            name='gain', label='Gain', type='float', value=.5,
+            writable=True, min=0., max=1., step=.1))
         self.assertEqual(entries[1]['limits'], ['a', 'b'])
         self.assertFalse(entries[2]['writable'])
         json.dumps(entries)
+
+    def test_a_label_is_a_name_for_a_person(self):
+        for name, label in (('ExposureTime', 'Exposure time'),
+                            ('exposuretime', 'Exposure time'),
+                            ('BlackLevel', 'Black level'),
+                            ('AcquisitionFrameRate', 'Frame rate'),
+                            ('mirrored', 'Mirror'), ('Gain', 'Gain'),
+                            ('TriggerMode', 'Trigger mode'),
+                            ('gamma', 'Gamma')):
+            self.assertEqual(_webcontrols.label(name), label)
+
+    def test_a_unit_is_sent_only_when_the_camera_says_one(self):
+        properties = {'exposure': spec(float, unit='us'),
+                      'gain': spec(float),
+                      'odd': spec(float, unit=3)}
+        entries = _webcontrols.describe(
+            properties, ['exposure', 'gain', 'odd'],
+            {'exposure': 1., 'gain': 1., 'odd': 1.})
+        self.assertEqual(entries[0]['unit'], 'us')
+        self.assertNotIn('unit', entries[1])
+        self.assertNotIn('unit', entries[2])
 
     def test_a_property_without_a_value_is_left_out(self):
         entries = _webcontrols.describe({'gain': spec()}, ['gain'], {})
@@ -230,6 +251,16 @@ class TestControl(unittest.TestCase):
         self.assertEqual(values['values']['blacklevel'], 40)
         self.assertTrue(changed)            # the Qt tree follows
 
+    def test_a_set_tells_the_tree_about_what_it_watches_too(self):
+        '''A tree shows more than the page does (a new resolution changes the
+        width it shows): what it watches is announced with what the page
+        shows.'''
+        self.web.properties = ['blacklevel']
+        self.camera.watch(['whitelevel'])
+        heard = record(self.camera.propertiesChanged)
+        self.web._apply(self.camera, 'blacklevel', 40)
+        self.assertEqual(sorted(heard[0][0]), ['blacklevel', 'whitelevel'])
+
     def test_a_set_without_control_does_nothing(self):
         before = self.camera.get('blacklevel')
 
@@ -348,6 +379,22 @@ class TestControl(unittest.TestCase):
             return await self.note(ws, 'values')
         values = self.ask(work)['values']
         self.assertEqual(values, {'fps': 12.})     # only what is exposed
+
+    def test_changes_that_come_fast_reach_a_page_as_one_message(self):
+        async def work(session, ws, ident):
+            await self.note(ws, 'hello')
+            for value in range(1, 21):
+                self.camera.propertiesChanged.emit({'fps': float(value)})
+            app.processEvents()
+            first = await self.note(ws, 'values')
+            try:
+                second = await self.note(ws, 'values', timeout=0.5)
+            except AssertionError:
+                second = None
+            return first, second
+        first, second = self.ask(work)
+        self.assertEqual(first['values'], {'fps': 20.})   # the newest
+        self.assertIsNone(second)
 
     def test_a_viewer_that_was_removed_cannot_be_granted_control(self):
         self.assertFalse(self.web.grantControl('nobody'))

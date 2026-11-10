@@ -141,6 +141,8 @@ def spec(feature: IValue, kind: str) -> tuple[type, dict[str, object]]:
         meta = {'minimum': bounds['min'], 'maximum': bounds['max']}
         if bounds['inc'] is not None:
             meta['step'] = bounds['inc']
+    if kind == 'float' and getattr(feature, 'unit', None):
+        meta['unit'] = feature.unit
     return PTYPES[kind], meta
 
 

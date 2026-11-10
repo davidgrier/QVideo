@@ -224,6 +224,9 @@ class QVivaCamera(QCamera):
                 meta['step'] = ptype(state.range.inc)
         if state.enum_entries:
             meta['limits'] = list(state.enum_entries)
+        unit = getattr(state, 'unit', None)
+        if unit and isinstance(unit, str):
+            meta['unit'] = unit
         setter = (self._setter(name, call, ptype)
                   if self._isWritable(state, name) else None)
         self.registerProperty(name, getter=self._getter(name, call),

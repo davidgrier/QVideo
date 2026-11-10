@@ -6,6 +6,9 @@ reconnects when the server goes away, and stops when the instrument has
 unpaired it.  A frame that arrives while the
 previous one is being decoded replaces it, so a slow tablet shows the newest
 frame and never falls behind.  Tapping the page shows or hides the readout.
+A Full screen button hides the browser's own bars where the browser allows
+it, and the page asks the device not to sleep while it is open (a browser
+allows that only on a secure page, https).
 
 When the server describes camera properties (a ``hello`` message) the page
 offers a Controls panel: a control for each property, which works once the
@@ -32,9 +35,12 @@ PAGE = r'''<!DOCTYPE html>
          background: rgba(0, 0, 0, .55); border-radius: 4px;
          pointer-events: none; }
   button, select, input { font: 15px -apple-system, system-ui, sans-serif; }
-  #gear { position: fixed; right: 8px; top: 6px; padding: 8px 12px;
-          border: 0; border-radius: 6px; color: #ddd;
-          background: rgba(0, 0, 0, .55); }
+  #gear, #full { position: fixed; top: 6px; padding: 8px 12px; border: 0;
+                 border-radius: 6px; color: #ddd;
+                 background: rgba(0, 0, 0, .55); }
+  #gear { right: 8px; }
+  #full { right: 100px; }
+  #full[hidden] { display: none; }
   #panel { position: fixed; right: 8px; top: 48px; width: min(22em, 90vw);
            max-height: calc(100vh - 64px); overflow: auto; padding: 10px;
            box-sizing: border-box; border-radius: 8px; color: #ddd;
@@ -54,6 +60,7 @@ PAGE = r'''<!DOCTYPE html>
 <body>
 <canvas id="view" width="16" height="16"></canvas>
 <div id="hud">connecting...</div>
+<button id="full" hidden>Full screen</button>
 <button id="gear" hidden>Controls</button>
 <div id="panel" hidden>
   <div id="status"></div>
@@ -196,10 +203,16 @@ function note(message) {
   }
 }
 
-function fmt(value) {
-  if (typeof value !== 'number') return String(value);
-  return Number.isInteger(value) ? String(value)
-                                 : String(parseFloat(value.toPrecision(4)));
+function fmt(value, entry) {
+  let text = String(value);
+  if (typeof value === 'number') {
+    text = Number.isInteger(value)
+        ? String(value) : String(parseFloat(value.toPrecision(4)));
+  }
+  if (entry && entry.unit && typeof value === 'number') {
+    text += ' ' + entry.unit;
+  }
+  return text;
 }
 
 // A slider that spans three decades or more is logarithmic.
@@ -291,15 +304,15 @@ function buildPanel() {
     row.className = 'row';
     const label = document.createElement('label');
     const title = document.createElement('span');
-    title.textContent = entry.name;
+    title.textContent = entry.label || entry.name;
     const out = document.createElement('span');
     label.append(title, out);
     const input = makeInput(entry);
-    input.setAttribute('aria-label', entry.name);
+    input.setAttribute('aria-label', entry.label || entry.name);
     input.addEventListener('pointerdown', () => { busy = entry.name; });
     input.addEventListener('input', () => {
       const value = readInput(entry, input);
-      out.textContent = fmt(value);
+      out.textContent = fmt(value, entry);
       sendSet(entry.name, value, entry.type !== 'int' && entry.type !== 'float'
                                  || input.type === 'number');
     });
@@ -320,7 +333,7 @@ function showValue(name, value) {
   const w = widgets[name];
   if (!w || busy === name) return;
   writeInput(w.entry, w.input, value);
-  w.out.textContent = fmt(value);
+  w.out.textContent = fmt(value, w.entry);
 }
 
 const STATUS = {
@@ -360,17 +373,58 @@ ask.addEventListener('click', () => {
 });
 gear.addEventListener('click', () => { panel.hidden = !panel.hidden; });
 
+// ---- Full screen and wake lock -------------------------------------------
+// Both are requests that a browser may refuse; the page works without them.
+const full = document.getElementById('full');
+const root = document.documentElement;
+const canFull = Boolean(root.requestFullscreen ||
+                        root.webkitRequestFullscreen);
+function isFull() {
+  return Boolean(document.fullscreenElement ||
+                 document.webkitFullscreenElement);
+}
+function showFull() {
+  full.hidden = !canFull;
+  full.textContent = isFull() ? 'Exit full screen' : 'Full screen';
+}
+full.addEventListener('click', () => {
+  try {
+    if (isFull()) {
+      (document.exitFullscreen || document.webkitExitFullscreen)
+          .call(document);
+    } else {
+      (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+    }
+  } catch (error) { /* refused */ }
+});
+document.addEventListener('fullscreenchange', showFull);
+document.addEventListener('webkitfullscreenchange', showFull);
+showFull();
+
+let lock = null;
+async function keepAwake() {
+  if (!('wakeLock' in navigator) || document.hidden || lock !== null) return;
+  try {
+    lock = await navigator.wakeLock.request('screen');
+    lock.addEventListener('release', () => { lock = null; });
+  } catch (error) {
+    lock = null;                  // not allowed here (it needs https)
+  }
+}
+
 setInterval(() => { rate = shown; shown = 0; readout(); }, 1000);
 document.addEventListener('click', (event) => {
-  if (event.target.closest('#panel, #gear')) return;
+  if (event.target.closest('#panel, #gear, #full')) return;
   hud.style.display = hud.style.display === 'none' ? '' : 'none';
 });
 document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) keepAwake();
   if (!document.hidden && (socket === null || socket.readyState > 1)) {
     connect();
   }
 });
 connect();
+keepAwake();
 </script>
 </body>
 </html>

@@ -57,6 +57,10 @@ _RETRY = 10.
 #: The largest message that a page may send [bytes].
 _MAX_MESSAGE = 4096
 
+#: Seconds that changed values wait, so that a camera that reports every
+#: frame sends a page one message in a tenth of a second at most.
+_VALUES_EVERY = 0.1
+
 
 def _lanAddress() -> str:
     '''Return the address of this machine on the local network.
@@ -307,6 +311,8 @@ class QWebScreen(QtCore.QObject):
         self._thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._clients: set[_Client] = set()
+        self._heldValues: dict[str, Any] = {}
+        self._valuesTimer: asyncio.TimerHandle | None = None
         self._lock = threading.Lock()
         self._latest: tuple[Image, FrameInfo | None] | None = None
         self._scheduled = False
@@ -612,7 +618,30 @@ class QWebScreen(QtCore.QObject):
         names = set(self._exposed())
         shown = {key: value for key, value in values.items() if key in names}
         if shown:
-            self._tellAll(dict(type='values', values=shown))
+            self._inLoop(lambda: self._queueValues(shown))
+
+    def _queueValues(self, shown: dict) -> None:
+        '''Hold changed values for a moment and send each page the newest
+        of each in one message.  Every value is sent, even one that did not
+        change: a page that asked for a value the camera did not accept
+        needs to hear what the camera has.  Runs in the thread of the
+        server.'''
+        loop = self._loop
+        if loop is None:
+            return
+        self._heldValues.update(shown)
+        if self._valuesTimer is None:
+            self._valuesTimer = loop.call_later(
+                _VALUES_EVERY, self._sendValues)
+
+    def _sendValues(self) -> None:
+        self._valuesTimer = None
+        held, self._heldValues = self._heldValues, {}
+        if held:
+            text = json.dumps(dict(type='values', values=held),
+                              default=_plain)
+            for client in list(self._clients):
+                client.tell(text)
 
     async def _hello(self, client: _Client) -> None:
         '''Send a page what it needs to build its controls.'''
@@ -696,7 +725,12 @@ class QWebScreen(QtCore.QObject):
         say what the exposed properties are now.'''
         try:
             camera.set(name, value)
-            camera.propertiesChanged.emit(camera.snapshot(self._exposed()))
+            # What the pages show, and what a tree that watches the camera
+            # shows (a new resolution changes the width in the tree).
+            names = self._exposed()
+            names += [key for key in getattr(camera, '_watched', ())
+                      if key not in names]
+            camera.propertiesChanged.emit(camera.snapshot(names))
         except Exception:
             logger.exception(f'QWebScreen: {name} could not be set')
 
@@ -841,6 +875,8 @@ class QWebScreen(QtCore.QObject):
             await runner.cleanup()
             self._pool.shutdown(wait=False, cancel_futures=True)
             self._pool = None
+            self._valuesTimer = None
+            self._heldValues = {}
 
     def _allowed(self, request) -> bool:
         return not self.access or self._viewerOf(request) is not None

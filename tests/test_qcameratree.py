@@ -191,6 +191,16 @@ class TestQCameraTreeSync(unittest.TestCase):
         tree._parameters['width'].setValue(320)
         self.assertEqual(cam.width, 320)
 
+    def test_a_change_in_the_tree_is_announced_to_the_others(self):
+        '''A web page that shows the camera hears what the tree changed.'''
+        from QVideo.tests.signals import record
+        cam = make_camera()
+        tree = make_tree(source=make_source(cam))
+        heard = record(cam.propertiesChanged)
+        tree._parameters['width'].setValue(320)
+        self.assertEqual(len(heard), 1)
+        self.assertEqual(heard[0][0]['width'], 320)
+
     def test_set_does_not_cause_infinite_loop(self):
         '''_sync sets _ignoreSync to avoid re-entrant loops.'''
         tree = make_tree()

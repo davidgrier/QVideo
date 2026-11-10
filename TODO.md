@@ -762,9 +762,8 @@ encrypt (see below), and nothing has been tried on an iPad.
     apart from Safari's, so an app added to the home screen may need to pair
     again (and it cannot scan a code); try it, and decide whether the page
     needs a way in (a typed code).
-  - [ ] Controls for properties of a Genicam camera: the default list matches
-    `ExposureTime` and `Gain` without regard to case, and `unit` is passed on
-    (Genicam; Viva if the library gives one); check on the Blackfly S.
+  - [x] Controls for properties of a Genicam camera: works on the Blackfly S
+    with `-f` (Harvesters) and `-g` (Viva), checked by the user 2026-11-09.
   - [x] Labels and units (`label()`, `unit`), `values` sent at most every
     0.1 s, a Full screen button and a wake lock (2026-11-09).
 - [ ] **Overlays and touch.**  The header's `overlays` list carries

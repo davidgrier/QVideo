@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import hmac
 import json
 import logging
@@ -14,7 +15,7 @@ import threading
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -22,7 +23,7 @@ import cv2
 import numpy as np
 from qtpy import QtCore
 
-from QVideo.lib import _webcontrols
+from QVideo.lib import _tailscale, _webcontrols
 from QVideo.lib._qapp import stopAtQuit
 from QVideo.lib._webpage import DENIED, EXPIRED, PAGE
 from QVideo.lib.imageops import AutoLevels, to8bit
@@ -60,6 +61,9 @@ _MAX_MESSAGE = 4096
 #: Seconds that changed values wait, so that a camera that reports every
 #: frame sends a page one message in a tenth of a second at most.
 _VALUES_EVERY = 0.1
+
+#: Seconds between looks at the certificate files, for a renewal.
+_CERT_EVERY = 3600.
 
 
 def _lanAddress() -> str:
@@ -313,6 +317,8 @@ class QWebScreen(QtCore.QObject):
         self._camera = None
         self._pool: ThreadPoolExecutor | None = None
         self._tls: ssl.SSLContext | None = None
+        self._renew: Callable[[], object] | None = None
+        self._certTime: float | None = None
         self._guard = threading.Lock()      # the secret and the sessions
         self._secret = secrets.token_urlsafe(16)
         self._pairing = False
@@ -823,7 +829,90 @@ class QWebScreen(QtCore.QObject):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.load_cert_chain(self.certfile, self.keyfile)
+        self._certTime = self._modified()
         return context
+
+    def _modified(self) -> float | None:
+        '''When the certificate file last changed, if there is one.'''
+        try:
+            return os.stat(self.certfile).st_mtime if self.certfile else None
+        except OSError:
+            return None
+
+    def reloadCertificate(self) -> bool:
+        '''Read the certificate and the key again.
+
+        A certificate that is renewed (every few months) replaces the files;
+        the server reads them again by itself within an hour, and a program
+        that has just renewed them calls this to use them at once.  New
+        connections get the new certificate; those that are open keep the
+        old until they close.  Nothing changes if the new files are not a
+        good pair.
+
+        Returns
+        -------
+        bool
+            Whether the server now uses the files as they are.
+        '''
+        if self._tls is None:
+            return False
+        try:
+            probe = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            probe.load_cert_chain(self.certfile, self.keyfile)   # a pair?
+            self._tls.load_cert_chain(self.certfile, self.keyfile)
+        except (ssl.SSLError, OSError):
+            logger.exception('the certificate could not be read again')
+            return False
+        self._certTime = self._modified()
+        logger.info('certificate read again')
+        return True
+
+    async def _watchCertificate(self) -> None:
+        '''Renew the certificate if the program can, and use the files
+        when they change.'''
+        loop = asyncio.get_running_loop()
+        while True:
+            await asyncio.sleep(_CERT_EVERY)
+            if self._renew is not None:
+                try:
+                    await loop.run_in_executor(None, self._renew)
+                except Exception:
+                    logger.exception('the certificate was not renewed')
+            if self._modified() != self._certTime:
+                self.reloadCertificate()
+
+    @classmethod
+    def fromTailscale(cls, source=None, directory: str | None = None,
+                      **kwargs) -> QWebScreen:
+        '''Return a screen with a certificate from Tailscale.
+
+        Runs ``tailscale cert`` for the name that the tailnet gives this
+        machine, and serves https at that name: every browser trusts it, and
+        a device that runs Tailscale reaches it from anywhere.  The server
+        asks again every hour (Tailscale renews only when it is time) and
+        uses a renewed certificate without a restart.
+
+        Parameters
+        ----------
+        source : QVideoSource, optional
+            As for the constructor.
+        directory : str, optional
+            Where the certificate and key go.  Default
+            ``~/.cache/QVideo/tailscale``.
+        **kwargs :
+            The other arguments of the constructor, such as ``camera``.
+
+        Raises
+        ------
+        QVideo.lib._tailscale.TailscaleError
+            Tailscale is not installed or signed in, or HTTPS Certificates
+            are off for the tailnet.
+        '''
+        certfile, keyfile, host = _tailscale.certificate(directory)
+        web = cls(source, certfile=certfile, keyfile=keyfile, hostname=host,
+                  **kwargs)
+        web._renew = lambda: _tailscale.certificate(directory)
+        return web
 
     def _start(self) -> QWebScreen:
         try:
@@ -887,9 +976,13 @@ class QWebScreen(QtCore.QObject):
             self.port = runner.addresses[0][1]
             self._web = web
             encoder = asyncio.create_task(self._encode())
+            watcher = (asyncio.create_task(self._watchCertificate())
+                       if self._tls is not None else None)
             ready.set()
             await self._halt.wait()
             encoder.cancel()
+            if watcher is not None:
+                watcher.cancel()
             for client in list(self._clients):
                 await client.ws.close(code=1001)    # going away
         finally:

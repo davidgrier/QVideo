@@ -139,9 +139,15 @@ browser alone can do this only for a host name that has a certificate from a
 public authority, which needs someone to provide the name (see the last
 item below).  The ways to get it, in the order that I would try them:
 
-* **Tailscale** (the app on both devices).  The traffic runs in an encrypted
-  tunnel, and ``tailscale cert <name>.<tailnet>.ts.net`` writes a
-  certificate that every browser trusts for that name.
+* **Tailscale** (the app on both devices, and *HTTPS Certificates* turned on
+  for the tailnet in its admin console).  The traffic runs in an encrypted
+  tunnel, and a certificate that every browser trusts comes with the name
+  that the tailnet gives the machine.  One call does it::
+
+      web = QWebScreen.fromTailscale(source, camera=camera, port=443)
+
+  It runs ``tailscale cert`` for that name, serves https at it, and asks
+  Tailscale again every hour, which renews only when it is time.
 * **A virtual private network**, such as that of the university, on the
   viewer's device.  The tunnel encrypts the traffic; QVideo can stay on
   http inside it (with ``controlOverHttp=True`` if the VPN is as trusted as
@@ -170,7 +176,13 @@ the window says "Encrypted", and the address (and so the QR code) is
 so without ``hostname`` the QR code holds the address of the machine on the
 network (``https://192.168.4.29:8080/``) and a browser refuses it.  The port
 is left out of the address where it is the default of the scheme (443 for
-https).  A certificate that you renew is read when the program starts.
+https).
+
+A certificate is renewed every few months.  The server looks at the file
+every hour and uses a new one without a restart (new connections get it; open
+ones keep the old until they close), and ``web.reloadCertificate()`` does it
+at once, for a program that has just renewed the files.  Files that are not a
+good pair are ignored, with a message in the log.
 
 A self-signed certificate is for testing: a browser warns, and some do not
 allow a WebSocket to it.

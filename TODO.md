@@ -705,17 +705,16 @@ while streaming included.
 
 ---
 
-## Web screen: video on a tablet  **Starter built 2026-11-08; access built 2026-11-09; not pushed**
+## Web screen: video on a tablet  **Built and pushed 2026-11-09 to 11-11; not released**
 
 `QWebScreen` (`lib/QWebScreen.py`, `docs/streaming.rst`, `demos/webdemo.py`)
-serves a source to web browsers over a WebSocket: view only, JPEG frames,
-the newest frame for a slow browser, no encoding while nobody watches.  Tried
-on a desktop browser over the network (`http://utopia.local:8080`, 27 frames
-a second from a webcam).  Not yet tried on an iPad.
-
-**Do not push or release it until the user says so** (decided 2026-11-08,
-because it had no authentication).  Pairing now exists; it still does not
-encrypt (see below), and nothing has been tried on an iPad.
+serves a source to web browsers over a WebSocket: JPEG frames, the newest
+frame for a slow browser, no encoding while nobody watches.  Pairing by QR
+code, controls that the operator allows, and two encryption tiers exist; it
+works on a Mac, an iPad and with the Blackfly S.  It is unreleased (in the
+CHANGELOG under Unreleased).  Not yet tried on a phone (an Android phone
+cannot connect, and a plain `http.server` fails too), with the home-screen
+page, or with a real certificate.
 
 - [x] **Access by QR code**, built 2026-11-09 (`QWebShareDialog` in
   `widgets/`, `segno` in the `stream` extra).  The dialog is a pairing
@@ -725,21 +724,24 @@ encrypt (see below), and nothing has been tried on an iPad.
   limited to five a minute from an address, `/ws` checks the origin, and the
   window lists the browsers with Disconnect, Disconnect all and New code.
   The web demo has a Share button and Ctrl+Shift+W.  Still to do:
-  - [ ] Try it on an iPad and a phone (the camera app opens the link; does
-    Safari keep the cookie? does the home-screen page need its own scan?).
+  - [x] Try it on an iPad: scan, view, disconnect, reconnect and control all
+    work (2026-11-09).
+  - [ ] **An Android phone cannot connect** (Chrome: `ERR_TOO_MANY_RETRIES`,
+    on the same Wi-Fi, even with mobile data off; a plain `python -m
+    http.server` fails the same way, so it is not QVideo).  Parked
+    2026-11-09.  Look at the router (client isolation, a guest network),
+    Chrome's "Private DNS" and Wi-Fi settings, and another Android device or
+    browser; try the address in Firefox for Android.
   - Decided 2026-11-09: no Share action in `QCamcorder`; the camcorder
     stays lean and sharing is a recipe (`WebDemo` subclasses it).
   - [ ] Persist sessions across restarts (opt in) so that a restart does not
     need a new scan.
-- [ ] **Say what it does not do.**  The panel should say "not encrypted" in
-  plain words until a certificate is set.  Without TLS a sniffer on the Wi-Fi
-  can read the cookie.  The QR code authenticates; it does not encrypt.
+- [x] **Say what it does not do**: the window says "Not encrypted" in plain
+  words until a certificate is set (built 2026-11-09).
 - [x] **TLS, opt in**, built 2026-11-09 (now tier 2 of the two-tier
   plan of `docs/streaming.rst`): `certfile` and `keyfile`,
   https URL, `Secure` cookie, the window says "Encrypted".  Recipes are in
   `docs/streaming.rst`.  Not tried with a real certificate on a device.
-  - [ ] A `QWebScreen.fromTailscale()` helper that runs `tailscale cert` and
-    uses the name (only if Tailscale users ask).
 - [ ] **A privilege model** for when the page can send events: scanning the QR
   code grants view; control needs the operator to answer a prompt in the
   window ("Allow this device to control?").  Someone is at the instrument,
@@ -770,13 +772,12 @@ encrypt (see below), and nothing has been tried on an iPad.
 - [x] **`hostname=`** (the name in the address and the QR code, port left out
   when it is the default of the scheme) and the encryption page rewritten as
   two tiers (2026-11-10).  Still to do for tier 2:
-  - [ ] A `fromTailscale()` helper (`tailscale cert`, then `certfile`,
-    `keyfile`, `hostname`).
-  - [ ] Read renewed certificate files without a restart.
-  - [ ] The sharing window says which tier is in use ("Encrypted by https",
-    "Not encrypted: trusted network only").
-  - [ ] Try a real certificate on a device (Tailscale, or a name of the
-    lab's).
+  - [x] `QWebScreen.fromTailscale()` (`lib/_tailscale.py`) and an hourly look
+    at the certificate files, with `reloadCertificate()` (2026-11-11).
+  - [x] The sharing window already says it ("Encrypted (https).", "Not
+    encrypted: use this on a network that you trust.").
+  - [ ] Try a real certificate on a device: `fromTailscale()` has been
+    tested only against a stand-in for the `tailscale` commands.
 - [ ] **Overlays and touch.**  The header's `overlays` list carries
   primitives (circle, cross, line, text, with an id, image coordinates and a
   "draggable" flag) in the message of the frame they belong to; the page sends

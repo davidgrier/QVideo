@@ -635,6 +635,73 @@ class TestTls(unittest.TestCase):
         self.assertFalse(other.isRunning())
         self.assertEqual(other.port, self.web.port)     # no fallback
 
+    def served(self):
+        '''The certificate that the server presents, as PEM.'''
+        return ssl.get_server_certificate(('127.0.0.1', self.web.port))
+
+    def restart(self, renew=None):
+        '''Serve again, and look at the files every 50 ms.'''
+        self.web.stop()
+        patcher = patch('QVideo.lib.QWebScreen._CERT_EVERY', 0.05)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.web = QWebScreen(_Source(), host='127.0.0.1', port=0,
+                              certfile=self.cert, keyfile=self.key)
+        self.web._renew = renew
+        self.web.start()
+        self.addCleanup(self.web.stop)
+
+    def renewed(self):
+        '''Replace the files with another certificate; return its PEM.'''
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        cert, key = makeCertificate(directory.name)
+        shutil.copyfile(key, self.key)
+        shutil.copyfile(cert, self.cert)
+        with open(cert) as file:
+            return file.read()
+
+    def test_a_renewed_certificate_is_served_after_a_reload(self):
+        before = self.served()
+        new = self.renewed()
+        self.assertEqual(self.served(), before)         # not yet
+        self.assertTrue(self.web.reloadCertificate())
+        self.assertEqual(self.served().strip(), new.strip())
+        self.assertNotEqual(self.served(), before)
+
+    def test_files_that_are_not_a_pair_leave_the_certificate_alone(self):
+        before = self.served()
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        other, _ = makeCertificate(directory.name)
+        shutil.copyfile(other, self.cert)               # the key is not its
+        with self.assertLogs('QVideo.lib.QWebScreen', 'ERROR'):
+            self.assertFalse(self.web.reloadCertificate())
+        self.assertEqual(self.served(), before)
+
+    def test_without_a_certificate_there_is_nothing_to_reload(self):
+        self.assertFalse(QWebScreen(port=0).reloadCertificate())
+
+    def test_the_server_notices_a_renewed_certificate_by_itself(self):
+        self.restart()
+        time.sleep(0.1)
+        new = self.renewed()
+        os.utime(self.cert, (time.time() + 10, time.time() + 10))
+        deadline = time.monotonic() + 5.
+        while time.monotonic() < deadline:
+            if self.served().strip() == new.strip():
+                break
+            time.sleep(0.05)
+        self.assertEqual(self.served().strip(), new.strip())
+
+    def test_the_server_asks_for_a_renewal_that_the_program_can_make(self):
+        calls = []
+        self.restart(renew=lambda: calls.append(1))
+        deadline = time.monotonic() + 3.
+        while not calls and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.assertTrue(calls)
+
     def test_the_dialog_says_encrypted(self):
         from QVideo.widgets.QWebShareDialog import QWebShareDialog
         dialog = QWebShareDialog(self.web)

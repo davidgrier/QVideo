@@ -826,23 +826,20 @@ that list.  What remains:
 
 ---
 
-## Dropped frames  **Planned; not urgent**
+## Dropped frames  **Decided 2026-11-12: not built**
 
 `QCamera.read()` returns no frame number, and `QVideoSource` counts
 `FrameInfo.index` after the read, so a frame that the camera, its driver or a
-`QRemoteCamera` discards leaves no gap.  `QVideoSource`, which reads every
-camera, should detect and report this once for all of them:
-
-- [ ] Compare the interval between frames with the usual one.  Use
-      `hardwareTimestamp` when the camera has one (`QRemoteCamera` carries
-      it), and the arrival time otherwise.  A longer interval means that
-      frames were lost.
-- [ ] Warn, at a limited rate so that a stalled camera does not flood the
-      log, and keep a count that a recorder or a status bar can show.
-- [ ] Test with a camera that skips frames and with a slow consumer.
-
-`QCamera` needs no frame counter for this; add one only if a camera can
-report its own.
+`QRemoteCamera` discards leaves no gap in the index.  A detector was built and
+tested (the interval between frames against the median of the last 32; a
+hardware timestamp when the camera has one; `FrameInfo.dropped`, a count on the
+source and the recorder; about 1 microsecond a frame), and then **removed**:
+no lost frame has ever been seen with the hardware that QVideo runs on, the
+cameras are reliable, and a feature for a failure that does not happen is code
+to maintain for nothing.  Camera loss (an unplugged cable) has its own
+mechanism, `_deviceLost`, and an interval cannot detect a camera that has gone
+silent.  Revisit only if a recording is ever found to have a gap; the
+`timestamp` and `hardware_timestamp` columns of an HDF5 file already show one.
 
 ---
 

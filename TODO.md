@@ -10,8 +10,10 @@ Ideas for upgrades and extensions, in no particular order.
   about 27% into the suite).  Reproduced here with a stress script (pipelines
   made and stopped while a thread emits frames): the crash was inside
   `QMutexLocker`, and the pipeline, `QVideoSource` and `QFrameRelay` now use
-  Python's locks (0 crashes in 160 runs, from about one in three).  The CI
-  runs `pytest -v` until a few runs have passed; then go back to `-q`.
+  Python's locks (0 crashes in 160 runs, from about one in three).  12 of the
+  13 runs since have passed (the other was a type error), so the CI is back
+  to `pytest -q` (2026-11-12); `-X faulthandler` stays, and prints the test
+  that was running if a segfault returns.
 - Python 3.11 / PyQt5 has failed intermittently.
 
 ---

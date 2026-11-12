@@ -50,7 +50,7 @@ jupyter  = ["ipywidgets"]
 opencv   = ["cv2-enumerate-cameras"]
 dvr      = ["h5py", "hdf5plugin"]
 av       = ["av"]
-circletransform = ["scipy"]
+circletransform = ["dgimage>=0.2.0"]
 # numba is not imported by QVideo: trackpy uses it, and finds features
 # about five times faster with it
 trackpy  = ["trackpy", "pandas", "numba"]

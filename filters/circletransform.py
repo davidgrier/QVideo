@@ -4,6 +4,7 @@ from pyqtgraph import SpinBox
 from QVideo.lib.QVideoFilter import VideoFilter, QVideoFilter
 from QVideo.lib.videotypes import Image
 from QVideo.lib.imageops import grayscale
+import cv2
 import numpy as np
 from numpy.typing import NDArray
 
@@ -11,15 +12,15 @@ from numpy.typing import NDArray
 __all__ = ['CircleTransformFilter', 'QCircleTransformFilter']
 
 
-def _scipy():
-    '''Import scipy, an optional dependency, when a filter is created.'''
+def _dgimage():
+    '''Import dgimage, an optional dependency, when a filter is created.'''
     try:
-        from scipy import fft, signal
+        import dgimage
     except ImportError as error:
         raise ImportError(
-            'CircleTransformFilter requires scipy: '
+            'CircleTransformFilter requires dgimage: '
             'pip install "QVideo[circletransform]"') from error
-    return fft, signal
+    return dgimage
 
 
 class CircleTransformFilter(VideoFilter):
@@ -27,31 +28,40 @@ class CircleTransformFilter(VideoFilter):
     '''Orientation alignment transform (OAT) ring-detection filter.
 
     Detects circularly symmetric ring-like features by computing the
-    orientation alignment transform of Krishnatreya & Grier (2014).
-    Each pixel's gradient orientation is compared against the expected
-    orientation for a ring centered at every candidate position; the
-    result is a detection map whose peaks locate ring centers.
+    orientation alignment transform of Krishnatreya & Grier (2014), which
+    :func:`dgimage.circletransform` implements for QVideo, pylorenzmie and
+    other projects.  The computation is heavy, so run the filter in a
+    :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`, which keeps it off
+    the GUI thread.
 
-    The transform integrates evidence from all ring radii simultaneously,
-    so no radius parameter is required.  The computation is heavy, so run
-    the filter in a :class:`~QVideo.lib.QFilterPipeline.QFilterPipeline`, which
-    keeps it off the GUI thread.
+    The filter is made for a live display and uses the fast options of
+    dgimage by default: single precision (1.7 times faster, a difference of
+    3e-7 of the peak) and a binning of 2 (the transform of the frame
+    averaged in blocks of 2 by 2 pixels: 2.3 times faster in all, and a
+    smoother map in which a sphere is one blob).  Together they take about
+    6 ms for a frame of 1280 by 1024, against 30 ms for the filter that
+    carried its own double precision copy of the transform.  The map is
+    scaled back to the size of the frame, so that positions in it are those
+    of the frame.  Set ``binning=1`` for the map
+    at full resolution (the highest pixel of a blob, which is scattered over
+    the blob at full resolution, is then not the same pixel).
 
     Parameters
     ----------
     window : int
-        Savitzky-Golay derivative window size [pixels].  Must be odd and
-        greater than *polyorder*.  Larger values smooth noise but reduce
-        spatial resolution of detected ring centers.  Default: ``13``.
+        Savitzky-Golay derivative window size [pixels] of the binned image.
+        Must be odd and greater than *polyorder*.  Larger values smooth noise
+        but reduce spatial resolution of detected ring centers.
+        Default: ``13``.
     polyorder : int
         Savitzky-Golay polynomial order.  Must be less than *window*.
         Default: ``3``.
+    binning : int
+        Average blocks of *binning* by *binning* pixels first.  ``1`` is no
+        binning.  Default: ``2``.
 
     Notes
     -----
-    The OAT kernel :math:`K(\\mathbf{k}) = e^{-2i\\theta_k}/|\\mathbf{k}|`
-    is cached by frame shape and recomputed only when the shape changes.
-
     The output is normalized per-frame so that its peak is white, and
     peak brightness indicates likely ring centers.  A ``uint8`` frame gives
     a ``uint8`` map between 0 and 255.  The filter is ``deep``: a ``uint16``
@@ -70,50 +80,55 @@ class CircleTransformFilter(VideoFilter):
 
     deep = True
 
-    def __init__(self, window: int = 13, polyorder: int = 3) -> None:
-        self._fft, self._signal = _scipy()
-        self._kernel = np.ones((1, 1))
-        self.window = window
-        self.polyorder = polyorder
+    def __init__(self, window: int = 13, polyorder: int = 3,
+                 binning: int = 2) -> None:
+        self._transform = _dgimage().CircleTransform(
+            window, polyorder, dtype=np.float32, binning=binning)
         super().__init__()
 
     @property
     def window(self) -> int:
         '''Savitzky-Golay derivative window [pixels], always odd and ≥ 3.'''
-        return self._window
+        return self._transform.window
 
     @window.setter
     def window(self, window: int) -> None:
-        window = max(3, int(window))
-        self._window = window + (1 - window % 2)
+        self._transform.window = window
 
     @property
     def polyorder(self) -> int:
         '''Savitzky-Golay polynomial order, always ≥ 1.'''
-        return self._polyorder
+        return self._transform.polyorder
 
     @polyorder.setter
     def polyorder(self, polyorder: int) -> None:
-        self._polyorder = max(1, int(polyorder))
+        self._transform.polyorder = polyorder
 
-    def _kernel_for(self, shape: tuple[int, int]) -> NDArray:
-        if shape == self._kernel.shape:
-            return self._kernel
-        ny, nx = shape
-        kx = self._fft.fftshift(np.linspace(-1., 1., nx, endpoint=False))
-        ky = self._fft.fftshift(np.linspace(-1., 1., ny, endpoint=False))
-        k = np.hypot.outer(ky, kx) + 0.001
-        kernel = np.subtract.outer(1.j * ky, kx) / k
-        kernel *= kernel / k
-        self._kernel = kernel
-        return kernel
+    @property
+    def binning(self) -> int:
+        '''Size of the blocks that are averaged first, always ≥ 1.'''
+        return self._transform.binning
+
+    @binning.setter
+    def binning(self, binning: int) -> None:
+        self._transform.binning = binning
+
+    def _heat(self, gray: Image) -> NDArray[np.floating]:
+        '''The map of *gray*, between 0 and 1, of the shape of *gray*.'''
+        heat = self._transform.transform(gray)
+        if heat.shape == gray.shape:
+            return heat
+        ny, nx = (n * self.binning for n in heat.shape)
+        up = cv2.resize(heat, (nx, ny), interpolation=cv2.INTER_LINEAR)
+        up = np.pad(up, ((0, gray.shape[0] - ny), (0, gray.shape[1] - nx)),
+                    mode='edge')            # rows that did not fill a block
+        peak = up.max()
+        if peak > np.finfo(np.float32).eps:
+            up /= peak                      # the peak stays white
+        return up
 
     def process(self, image: Image) -> Image:
         '''Compute the OAT of *image* and return a heat map.
-
-        Converts color input to float grayscale, computes orientational
-        order gradients via Savitzky-Golay differentiation, then
-        convolves with the OAT kernel in Fourier space.
 
         Parameters
         ----------
@@ -127,29 +142,19 @@ class CircleTransformFilter(VideoFilter):
             OAT heat map, same spatial shape and dtype as *image* (a color
             frame gives ``uint8``).  Bright peaks indicate ring centers.
         '''
-        gray = grayscale(image).astype(float)
-        psi = np.empty(gray.shape, dtype=complex)
-        savgol = self._signal.savgol_filter
-        psi.real = savgol(gray, self._window, self._polyorder, 1, axis=1)
-        psi.imag = savgol(gray, self._window, self._polyorder, 1, axis=0)
-        psi *= psi
-        psi = self._fft.fft2(psi, workers=-1, overwrite_x=True)
-        psi *= self._kernel_for(gray.shape)
-        psi = self._fft.ifft2(psi, workers=-1, overwrite_x=True)
-        c = psi.real ** 2 + psi.imag ** 2
-        deep = image.dtype == np.uint16 and image.ndim == 2
-        black, white = self.bounds(image) if deep else (0., 255.)
-        cmax = c.max()
-        if cmax > np.finfo(float).eps:
-            c *= (white - black) / cmax
-        c += black
-        return np.round(c).clip(black, white).astype(
-            np.uint16 if deep else np.uint8)
+        gray = grayscale(image)
+        heat = self._heat(gray)
+        if gray.dtype == np.uint16:
+            black, white = self.bounds(image)
+            return np.round(black + heat * (white - black)).clip(
+                black, white).astype(np.uint16)
+        return np.round(heat * 255.).clip(0, 255).astype(np.uint8)
 
 
 class QCircleTransformFilter(QVideoFilter):
 
-    '''Widget for :class:`CircleTransformFilter` with a window spinbox.
+    '''Widget for :class:`CircleTransformFilter` with a window spinbox and
+    one for the binning (1 turns it off).
 
     Parameters
     ----------
@@ -170,16 +175,27 @@ class QCircleTransformFilter(QVideoFilter):
                                 step=2, int=True)
         self._spinbox.setMinimum(3)
         self._layout.addWidget(self._spinbox)
+        self._layout.addWidget(QtWidgets.QLabel('bin'))
+        self._binbox = SpinBox(value=self.videoFilter.binning,
+                               step=1, int=True, bounds=(1, 8))
+        self._layout.addWidget(self._binbox)
 
     def _connectSignals(self) -> None:
         super()._connectSignals()
         self._spinbox.valueChanged.connect(self._setWindow)
+        self._binbox.valueChanged.connect(self._setBinning)
 
     @QtCore.Slot(object)
     def _setWindow(self, window: int) -> None:
         self.videoFilter.window = window
         with QtCore.QSignalBlocker(self._spinbox):
             self._spinbox.setValue(self.videoFilter.window)
+
+    @QtCore.Slot(object)
+    def _setBinning(self, binning: int) -> None:
+        self.videoFilter.binning = binning
+        with QtCore.QSignalBlocker(self._binbox):
+            self._binbox.setValue(self.videoFilter.binning)
 
 
 if __name__ == '__main__':  # pragma: no cover

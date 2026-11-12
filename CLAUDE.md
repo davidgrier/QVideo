@@ -305,6 +305,12 @@ Stateless or stateful image transforms (`QBlurFilter`, `QEdgeFilter`,
 `QRGBFilter`, `QSampleHold`, etc.). Each subclasses `VideoFilter` and
 implements `__call__(frame) -> frame`.
 
+`CircleTransformFilter` is a thin wrapper of `dgimage.circletransform` (the
+image transformations that QVideo shares with pylorenzmie, `~/python/
+imagetransforms`; the `circletransform` extra installs it): it runs it in
+single precision with a binning of 2 and scales the map back to the size of the
+frame, so a change to the algorithm belongs in dgimage.
+
 Filters share `QVideo.lib.imageops.grayscale` for color-to-gray conversion
 (luminance, RGB ordered, one `cv2.cvtColor`); do not write
 `image.mean(axis=2)`, which is about 100 times slower.  Prefer OpenCV calls

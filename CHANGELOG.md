@@ -9,6 +9,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **`CircleTransformFilter` uses `dgimage` and its fast options.**  The
+  transform is now `dgimage.circletransform`, the implementation that QVideo,
+  pylorenzmie and other projects of the group share (the `circletransform`
+  extra installs `dgimage` instead of `scipy`).  The filter runs it in single
+  precision (a difference of 3e-7 of the peak) with a **binning of 2** (the
+  frame is averaged in blocks of 2 by 2 pixels first, and the map is scaled
+  back to the size of the frame, so positions are those of the frame): a frame
+  of 1280 by 1024 takes 6 ms instead of 30 ms, and a sphere is one blob in a
+  smoother map.  `CircleTransformFilter(binning=1)` gives the map at full
+  resolution, and the widget has a `bin` box for it; `window` applies to the
+  binned image.
+
 ### Added
 
 - **`CircleTransformFilter` is `deep`.**  A `uint16` frame of a camera of

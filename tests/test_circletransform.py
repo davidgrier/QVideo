@@ -42,18 +42,18 @@ class TestCircleTransformFilterInit(unittest.TestCase):
         self.assertEqual(CircleTransformFilter(polyorder=2).polyorder, 2)
 
 
-class TestCircleTransformFilterScipy(unittest.TestCase):
+class TestCircleTransformFilterDgimage(unittest.TestCase):
 
-    def test_missing_scipy_raises_actionable_error(self):
-        with patch.dict(sys.modules, {'scipy': None}):
+    def test_missing_dgimage_raises_actionable_error(self):
+        with patch.dict(sys.modules, {'dgimage': None}):
             with self.assertRaisesRegex(ImportError,
                                         r'QVideo\[circletransform\]'):
                 CircleTransformFilter()
 
-    def test_importing_the_module_does_not_import_scipy(self):
+    def test_importing_the_module_does_not_import_dgimage(self):
         import subprocess
         code = ('import sys; import QVideo.filters.circletransform; '
-                'sys.exit(int("scipy" in sys.modules))')
+                'sys.exit(int("dgimage" in sys.modules))')
         result = subprocess.run([sys.executable, '-c', code],
                                 capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
@@ -175,10 +175,66 @@ class TestCircleTransformFilterKernel(unittest.TestCase):
         self.assertEqual(r1.shape, (16, 16))
         self.assertEqual(r2.shape, _SHAPE)
 
-    def test_kernel_shape_matches_requested(self):
-        f = make_filter()
-        k = f._kernel_for(_SHAPE)
-        self.assertEqual(k.shape, _SHAPE)
+
+def rings(shape, center, k=0.3):
+    y, x = np.indices(shape)
+    return np.round(127.5 * (1. + np.cos(
+        k * np.hypot(x - center[0], y - center[1])))).astype(np.uint8)
+
+
+class TestCircleTransformFilterFast(unittest.TestCase):
+
+    '''The filter uses the fast options of dgimage by default.'''
+
+    def test_the_defaults_are_single_precision_and_binning_2(self):
+        f = CircleTransformFilter()
+        self.assertEqual(f.binning, 2)
+        self.assertEqual(f._transform.dtype, np.float32)
+
+    def test_binning_may_be_changed_and_is_at_least_one(self):
+        f = CircleTransformFilter(binning=4)
+        self.assertEqual(f.binning, 4)
+        f.binning = 0
+        self.assertEqual(f.binning, 1)
+
+    def test_the_map_has_the_shape_of_the_frame(self):
+        for shape in ((96, 128), (95, 127), (97, 130)):
+            for binning in (1, 2, 3):
+                with self.subTest(shape=shape, binning=binning):
+                    f = make_filter(window=5, binning=binning)
+                    frame = rings(shape, (shape[1] // 2, shape[0] // 2))
+                    self.assertEqual(f.process(frame).shape, shape)
+
+    def test_the_peak_is_white(self):
+        f = make_filter(window=5)
+        self.assertEqual(int(f.process(rings((96, 128), (70, 40))).max()),
+                         255)
+
+    def test_a_sphere_is_found_where_it_is(self):
+        for binning in (1, 2, 4):
+            with self.subTest(binning=binning):
+                f = make_filter(window=5, polyorder=2, binning=binning)
+                # rings 40 pixels apart: binning averages away finer ones
+                heat = f.process(rings((96, 128), (70, 40), k=0.15))
+                y, x = np.unravel_index(heat.argmax(), heat.shape)
+                self.assertLessEqual(abs(int(x) - 70), 3)
+                self.assertLessEqual(abs(int(y) - 40), 3)
+
+    def test_the_map_agrees_with_dgimage_without_binning(self):
+        import dgimage
+        frame = rings((96, 128), (70, 40))
+        f = make_filter(window=5, binning=1)
+        heat = dgimage.circletransform(frame, window=5)
+        np.testing.assert_allclose(f.process(frame) / 255., heat, atol=0.01)
+
+    def test_a_deep_frame_keeps_the_scale_with_binning(self):
+        f = make_filter(window=5, binning=2)
+        f.levels = (0., 4095.)
+        counts = rings((96, 128), (70, 40)).astype(np.uint16) * 16
+        result = f.process(counts)
+        self.assertEqual(result.dtype, np.uint16)
+        self.assertEqual(int(result.max()), 4095)
+        self.assertEqual(result.shape, (96, 128))
 
 
 class TestQCircleTransformFilterWidget(unittest.TestCase):
@@ -196,6 +252,14 @@ class TestQCircleTransformFilterWidget(unittest.TestCase):
     def test_spinbox_default_value(self):
         w = make_widget()
         self.assertEqual(w._spinbox.value(), 13)
+
+    def test_binning_spinbox_follows_the_filter(self):
+        w = make_widget()
+        self.assertEqual(w._binbox.value(), 2)
+        w._binbox.setValue(4)
+        self.assertEqual(w.videoFilter.binning, 4)
+        w._binbox.setValue(1)
+        self.assertEqual(w.videoFilter.binning, 1)
 
     def test_spinbox_minimum(self):
         w = make_widget()

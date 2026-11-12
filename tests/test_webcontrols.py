@@ -257,9 +257,12 @@ class TestControl(unittest.TestCase):
         shows.'''
         self.web.properties = ['blacklevel']
         self.camera.watch(['whitelevel'])
-        heard = record(self.camera.propertiesChanged)
+        heard = []
+        self.camera.propertiesChanged.connect(
+            lambda values: heard.append(values),
+            QtCore.Qt.ConnectionType.DirectConnection)
         self.web._apply(self.camera, 'blacklevel', 40)
-        self.assertEqual(sorted(heard[0][0]), ['blacklevel', 'whitelevel'])
+        self.assertEqual(sorted(heard[0]), ['blacklevel', 'whitelevel'])
 
     def test_a_set_without_control_does_nothing(self):
         before = self.camera.get('blacklevel')

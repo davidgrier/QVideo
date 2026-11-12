@@ -712,9 +712,9 @@ serves a source to web browsers over a WebSocket: JPEG frames, the newest
 frame for a slow browser, no encoding while nobody watches.  Pairing by QR
 code, controls that the operator allows, and two encryption tiers exist; it
 works on a Mac, an iPad and with the Blackfly S.  It is unreleased (in the
-CHANGELOG under Unreleased).  Not yet tried on a phone (an Android phone
-cannot connect, and a plain `http.server` fails too), with the home-screen
-page, or with a real certificate.
+CHANGELOG under Unreleased).  Works on an Android phone once Chrome is
+allowed to use local servers.  Not yet tried with the home-screen page or
+with a real certificate.
 
 - [x] **Access by QR code**, built 2026-11-09 (`QWebShareDialog` in
   `widgets/`, `segno` in the `stream` extra).  The dialog is a pairing
@@ -726,12 +726,12 @@ page, or with a real certificate.
   The web demo has a Share button and Ctrl+Shift+W.  Still to do:
   - [x] Try it on an iPad: scan, view, disconnect, reconnect and control all
     work (2026-11-09).
-  - [ ] **An Android phone cannot connect** (Chrome: `ERR_TOO_MANY_RETRIES`,
-    on the same Wi-Fi, even with mobile data off; a plain `python -m
-    http.server` fails the same way, so it is not QVideo).  Parked
-    2026-11-09.  Look at the router (client isolation, a guest network),
-    Chrome's "Private DNS" and Wi-Fi settings, and another Android device or
-    browser; try the address in Firefox for Android.
+  - [x] **An Android phone could not connect** (Chrome: `ERR_TOO_MANY_RETRIES`):
+    solved by the user 2026-11-12.  Chrome on Android refuses pages from
+    local servers by default; allowing local servers in the site settings
+    makes it work.  Documented under "Troubleshooting" in
+    `docs/streaming.rst`.  Not tried: whether https at a name needs the same
+    setting, and which Chrome versions show which error.
   - Decided 2026-11-09: no Share action in `QCamcorder`; the camcorder
     stays lean and sharing is a recipe (`WebDemo` subclasses it).
   - [ ] Persist sessions across restarts (opt in) so that a restart does not

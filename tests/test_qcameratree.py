@@ -1,7 +1,7 @@
 '''Unit tests for QCameraTree.'''
 import unittest
 from unittest.mock import patch, MagicMock
-from qtpy import QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from QVideo.lib.QCameraTree import QCameraTree
 from QVideo.lib.QCamera import PropertySpec
 from QVideo.cameras.Noise._camera import QNoiseCamera
@@ -193,13 +193,17 @@ class TestQCameraTreeSync(unittest.TestCase):
 
     def test_a_change_in_the_tree_is_announced_to_the_others(self):
         '''A web page that shows the camera hears what the tree changed.'''
-        from QVideo.tests.signals import record
         cam = make_camera()
         tree = make_tree(source=make_source(cam))
-        heard = record(cam.propertiesChanged)
+        heard = []
+        # The camera lives in the thread of its source: a direct connection
+        # is the only one that PySide6 delivers to a function in this test.
+        cam.propertiesChanged.connect(
+            lambda values: heard.append(values),
+            QtCore.Qt.ConnectionType.DirectConnection)
         tree._parameters['width'].setValue(320)
         self.assertEqual(len(heard), 1)
-        self.assertEqual(heard[0][0]['width'], 320)
+        self.assertEqual(heard[0]['width'], 320)
 
     def test_set_does_not_cause_infinite_loop(self):
         '''_sync sets _ignoreSync to avoid re-entrant loops.'''

@@ -854,12 +854,13 @@ class QWebScreen(QtCore.QObject):
         bool
             Whether the server now uses the files as they are.
         '''
-        if self._tls is None:
+        certfile = self.certfile
+        if self._tls is None or certfile is None:
             return False
         try:
             probe = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            probe.load_cert_chain(self.certfile, self.keyfile)   # a pair?
-            self._tls.load_cert_chain(self.certfile, self.keyfile)
+            probe.load_cert_chain(certfile, self.keyfile)       # a pair?
+            self._tls.load_cert_chain(certfile, self.keyfile)
         except (ssl.SSLError, OSError):
             logger.exception('the certificate could not be read again')
             return False

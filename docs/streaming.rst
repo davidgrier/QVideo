@@ -187,6 +187,26 @@ good pair are ignored, with a message in the log.
 A self-signed certificate is for testing: a browser warns, and some do not
 allow a WebSocket to it.
 
+Troubleshooting
+---------------
+
+**An Android phone cannot open the link** (Chrome says "This site can't be
+reached" with ``ERR_TOO_MANY_RETRIES``, although the phone is on the same
+network and a computer opens the same address).  Chrome on Android, by
+default, refuses pages from servers on the local network.  Allow it for the
+instrument: in Chrome, open the site settings of the page (or Settings, Site
+settings) and allow *local network* access, or the local servers permission
+that your version of Chrome names, then reload.  A plain ``python -m
+http.server`` fails the same way, so the cause is the phone and not QVideo.
+Chrome has been adding this permission under the name `Local Network Access
+<https://developer.chrome.com/blog/local-network-access>`_; the error that it
+shows differs between versions, so look for the setting even if the message
+is another one.
+
+Other things that look the same: a router that isolates the devices on the
+Wi-Fi from each other ("client isolation", often on by default for a guest
+network) and a phone on mobile data instead of Wi-Fi.
+
 .. _streaming-control:
 
 Controls from the page

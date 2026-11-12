@@ -123,6 +123,42 @@ class TestCircleTransformFilterProcess(unittest.TestCase):
         self.assertEqual(int(result.max()), 255)
 
 
+class TestCircleTransformFilterDeep(unittest.TestCase):
+
+    def setUp(self):
+        self.filter = make_filter(window=5)
+        self.counts = (_FRAME.astype(np.uint16) * 16)   # 12 bit counts
+
+    def test_it_is_deep(self):
+        self.assertTrue(self.filter.deep)
+
+    def test_a_deep_frame_gives_a_uint16_map(self):
+        result = self.filter.process(self.counts)
+        self.assertEqual(result.dtype, np.uint16)
+        self.assertEqual(result.shape, _SHAPE)
+
+    def test_the_peak_is_the_white_level(self):
+        self.filter.levels = (0., 4095.)
+        self.assertEqual(int(self.filter.process(self.counts).max()), 4095)
+
+    def test_the_map_stays_between_the_levels(self):
+        self.filter.levels = (100., 4095.)
+        result = self.filter.process(self.counts)
+        self.assertGreaterEqual(int(result.min()), 100)
+        self.assertEqual(int(result.max()), 4095)
+
+    def test_without_levels_the_whole_range_is_used(self):
+        self.assertEqual(int(self.filter.process(self.counts).max()), 65535)
+
+    def test_it_agrees_with_the_8_bit_map_up_to_the_scale(self):
+        deep = self.filter.process(self.counts).astype(float) / 65535 * 255
+        plain = self.filter.process(_FRAME).astype(float)
+        np.testing.assert_allclose(deep, plain, atol=1.)
+
+    def test_the_8_bit_map_is_as_before(self):
+        self.assertEqual(self.filter.process(_FRAME).dtype, np.uint8)
+
+
 class TestCircleTransformFilterKernel(unittest.TestCase):
 
     def test_process_consistent_for_same_shape(self):

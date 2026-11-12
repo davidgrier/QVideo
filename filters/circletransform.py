@@ -52,8 +52,13 @@ class CircleTransformFilter(VideoFilter):
     The OAT kernel :math:`K(\\mathbf{k}) = e^{-2i\\theta_k}/|\\mathbf{k}|`
     is cached by frame shape and recomputed only when the shape changes.
 
-    The output is normalized per-frame to ``[0, 255]`` and returned as
-    ``uint8``.  Peak brightness indicates likely ring centers.
+    The output is normalized per-frame so that its peak is white, and
+    peak brightness indicates likely ring centers.  A ``uint8`` frame gives
+    a ``uint8`` map between 0 and 255.  The filter is ``deep``: a ``uint16``
+    frame of a camera of more than 8 bits goes in as it is, so that the
+    gradients use all of its bits, and the map is ``uint16`` between the
+    black and white levels of the frame, which keeps the scale that the
+    screen and the recorder expect.
 
     References
     ----------
@@ -62,6 +67,8 @@ class CircleTransformFilter(VideoFilter):
     orientation alignment transform,'
     *Optics Express* **22**, 12773–12778 (2014).
     '''
+
+    deep = True
 
     def __init__(self, window: int = 13, polyorder: int = 3) -> None:
         self._fft, self._signal = _scipy()
@@ -102,7 +109,7 @@ class CircleTransformFilter(VideoFilter):
         return kernel
 
     def process(self, image: Image) -> Image:
-        '''Compute the OAT of *image* and return a uint8 heat map.
+        '''Compute the OAT of *image* and return a heat map.
 
         Converts color input to float grayscale, computes orientational
         order gradients via Savitzky-Golay differentiation, then
@@ -111,13 +118,14 @@ class CircleTransformFilter(VideoFilter):
         Parameters
         ----------
         image : Image
-            Input frame (grayscale or color uint8).
+            Input frame: grayscale or color ``uint8``, or grayscale
+            ``uint16`` (a deep frame).
 
         Returns
         -------
         Image
-            OAT heat map, same spatial shape as *image*, dtype ``uint8``.
-            Bright peaks indicate ring centers.
+            OAT heat map, same spatial shape and dtype as *image* (a color
+            frame gives ``uint8``).  Bright peaks indicate ring centers.
         '''
         gray = grayscale(image).astype(float)
         psi = np.empty(gray.shape, dtype=complex)
@@ -129,10 +137,14 @@ class CircleTransformFilter(VideoFilter):
         psi *= self._kernel_for(gray.shape)
         psi = self._fft.ifft2(psi, workers=-1, overwrite_x=True)
         c = psi.real ** 2 + psi.imag ** 2
+        deep = image.dtype == np.uint16 and image.ndim == 2
+        black, white = self.bounds(image) if deep else (0., 255.)
         cmax = c.max()
         if cmax > np.finfo(float).eps:
-            c *= 255.0 / cmax
-        return np.round(c).clip(0, 255).astype(np.uint8)
+            c *= (white - black) / cmax
+        c += black
+        return np.round(c).clip(black, white).astype(
+            np.uint16 if deep else np.uint8)
 
 
 class QCircleTransformFilter(QVideoFilter):

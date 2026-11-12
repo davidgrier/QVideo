@@ -11,6 +11,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **`CircleTransformFilter` is `deep`.**  A `uint16` frame of a camera of
+  more than 8 bits goes into the orientation alignment transform as it is,
+  so the gradients use all of its bits and not the top 8, and the map is
+  `uint16` between the levels of the frame (peak at white), which the
+  screen and the recorder read correctly.  An 8 bit frame gives the same
+  `uint8` map as before.
+
 - **`QWebScreen`: the video in a web browser.**  A counterpart of
   `QVideoScreen` for a viewer that is not a Qt window, such as a tablet at the
   bench: it serves a small page and a WebSocket (`pip install

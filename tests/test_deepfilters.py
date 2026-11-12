@@ -54,6 +54,16 @@ class TestPipelineGivesLevels(unittest.TestCase):
         self.assertEqual(frame.dtype, np.uint16)
         self.assertEqual(levels, LEVELS)
 
+    def test_the_circle_transform_keeps_the_counts_and_the_levels(self):
+        from QVideo.filters import CircleTransformFilter
+        rng = np.random.default_rng(1)
+        frame = rng.integers(0, 4096, (32, 32)).astype(np.uint16)
+        result, levels = self.apply(CircleTransformFilter(window=5), frame,
+                                    LEVELS)
+        self.assertEqual(result.dtype, np.uint16)
+        self.assertEqual(levels, LEVELS)
+        self.assertEqual(int(result.max()), int(LEVELS[1]))
+
     def test_a_filter_that_is_not_deep_gets_8_bits(self):
         class Plain(VideoFilter):
             pass

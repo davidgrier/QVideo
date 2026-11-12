@@ -678,10 +678,10 @@ while streaming included.
   `bounds(frame)`; deep: dark frame, flat field (the reference remembers its
   type), invert, unsharp, DoG, MoMean, Median, MoMedian, Normalize,
   SampleHold, smoothing (not median), global threshold, ROI.  The rest
-  (Canny, Gamma, Exposure, Laplacian, Sobel, artistic, blob, circle
-  transform, foreground, dejitter, RGB, Otsu and adaptive threshold) get the
+  (Canny, Gamma, Exposure, Laplacian, Sobel, artistic, blob, foreground, dejitter, RGB, Otsu and adaptive threshold) get the
   8 bit copy, which is right for those that use lookup tables or 8 bit
-  OpenCV calls.  Later, if wanted: Gamma and Exposure as `uint16` lookup
+  OpenCV calls.  The circle transform became deep 2026-11-12 (it works
+  in floating point and its map keeps the levels).  Later, if wanted: Gamma and Exposure as `uint16` lookup
   tables, Laplacian and Sobel with `CV_32F`.
 - [x] **Say it for the other consumers of `levels`** (2026-11-07).
   `QSnapshot` saves 16 bit gray PNG/TIFF stretched by the levels; the `.mp4`

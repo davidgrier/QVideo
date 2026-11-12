@@ -22,8 +22,8 @@ The window opens with a QR code.  Point the camera of a tablet or phone at
 it and open the link: the video appears in the browser.  Tap *Controls*,
 then *Ask to control*, and answer the prompt on the instrument (*Allow*) to
 change exposure, gain, mirror, flip or resolution from the tablet.  The
-tablet and the computer must be on the same network, and the demo is not
-encrypted (see :ref:`streaming-encryption`).
+tablet and the computer must be on the same network, and the demo is tier 1:
+not encrypted (see :ref:`streaming-encryption`).
 
 Using it
 --------
@@ -67,10 +67,11 @@ larger.
 
 .. note::
 
-   By default the connection is **not encrypted** (see
-   :ref:`streaming-encryption`).  Use it on a trusted network, or give the
-   server a certificate.  A page can change camera properties only with the
-   operator's permission (:ref:`streaming-control`).
+   By default the connection is **not encrypted**: tier 1, for a network that
+   you trust.  For any other network, give the server a certificate or use a
+   tunnel: tier 2 (:ref:`streaming-encryption`).  A page can change camera
+   properties only with the operator's permission
+   (:ref:`streaming-control`).
 
 Pairing a tablet
 ----------------
@@ -116,43 +117,63 @@ scan again.
 Encryption
 ----------
 
-There are three levels, and a program picks the one that its network needs.
+There are two tiers.  Which one a viewer needs depends on the network that
+the video crosses, not on the device.
 
-**Plain http (the default).**  Nothing to install and nothing to set.
-Pairing keeps strangers out: the code works for one browser, while the
-window is open.  But anyone who can read the network traffic sees the video
-and the cookie, so use it on a network whose users you trust.  This is
-enough for looking at a microscope on a tablet.  The window says "Not
-encrypted".
+**Tier 1: a network that you trust.**  Plain http, the default.  The tablet
+or phone needs nothing but its browser, and the program needs no settings.
+Pairing keeps strangers out: the code works for one browser, while the window
+is open.  But anyone who can read the network traffic sees the video and the
+cookie, so use it where you trust the users of the network (the Wi-Fi of the
+laboratory).  The window says "Not encrypted".  A page is view only here,
+and a program that trusts its network as it trusts the instrument can allow
+control with ``controlOverHttp=True``.
 
-**https with a certificate that you provide.**  ``QWebScreen(source,
-certfile='cert.pem', keyfile='key.pem')`` serves https (TLS 1.2 or later),
-the address begins with ``https://``, the cookie is ``Secure``, and the
-window says "Encrypted".  The certificate must name the host that the
-browser uses, and the browser must trust it; that is the hard part.  In
-the order that I would try them:
+**Tier 2: everything else.**  Use this when the video crosses a network that
+you do not control (a colleague who watches from home), and when a page
+controls the instrument: a cookie that was read off the network must not
+move a laser.  The connection is encrypted, and the device needs something
+more than its browser, because a browser trusts a connection only when it
+holds a certificate that it can verify or when a tunnel carries it.  A
+browser alone can do this only for a host name that has a certificate from a
+public authority, which needs someone to provide the name (see the last
+item below).  The ways to get it, in the order that I would try them:
 
-* **Tailscale.**  Install it on both devices, then ``tailscale cert
-  <name>.<tailnet>.ts.net`` writes a certificate that every browser trusts,
-  and the address is that name.
-* **A certificate from your institution** for a host name of the instrument.
+* **Tailscale** (the app on both devices).  The traffic runs in an encrypted
+  tunnel, and ``tailscale cert <name>.<tailnet>.ts.net`` writes a
+  certificate that every browser trusts for that name.
+* **A virtual private network**, such as that of the university, on the
+  viewer's device.  The tunnel encrypts the traffic; QVideo can stay on
+  http inside it (with ``controlOverHttp=True`` if the VPN is as trusted as
+  the instrument).
 * **A private certificate authority**, such as ``mkcert``.  Install its root
   certificate on each device (on an iPad: install the profile, then trust
   it under Settings, General, About, Certificate Trust Settings).
-* **A reverse proxy** (Caddy or nginx) that ends TLS and can add logins:
-  QVideo listens on ``host='127.0.0.1'`` behind it.
+* **A reverse proxy** (Caddy or nginx) that ends TLS and can add logins, or
+  an identity-aware gateway: QVideo listens on ``host='127.0.0.1'`` behind
+  it, and ``access=False`` is reasonable if the proxy authenticates people.
+* **A name of your own and a certificate from a public authority** (Let's
+  Encrypt).  A browser needs nothing installed.  Someone who controls a
+  domain gives the instrument a name (``scope1.example.edu``) that leads to
+  its address, and the certificate comes from the DNS challenge, which works
+  for a private address.  It is a one-time step for an administrator, and
+  the certificate must be renewed.
+
+Give QVideo the certificate and the name that it covers::
+
+    web = QWebScreen(source, certfile='cert.pem', keyfile='key.pem',
+                     hostname='scope1.example.edu', port=443)
+
+The server then speaks https (TLS 1.2 or later), the cookie is ``Secure``,
+the window says "Encrypted", and the address (and so the QR code) is
+``https://scope1.example.edu/``.  A certificate names a host, not an address,
+so without ``hostname`` the QR code holds the address of the machine on the
+network (``https://192.168.4.29:8080/``) and a browser refuses it.  The port
+is left out of the address where it is the default of the scheme (443 for
+https).  A certificate that you renew is read when the program starts.
 
 A self-signed certificate is for testing: a browser warns, and some do not
 allow a WebSocket to it.
-
-**External certification.**  A proxy or an identity-aware gateway in front
-of QVideo, which authenticates people itself.  QVideo's pairing then adds
-nothing and ``access=False`` is reasonable.
-
-Controls from the page need the second level (or a proxy): a cookie that
-was read off the network must not move a laser.  A program that trusts its
-network as it trusts the instrument can opt out with
-``controlOverHttp=True``.
 
 .. _streaming-control:
 
@@ -281,7 +302,8 @@ What it does not do
 -------------------
 
 The page controls the camera but nothing else, and it has no touch
-interaction with overlays and no encryption unless the program gives a
-certificate.  It sends JPEG frames: video with H.264 would need much less
-bandwidth and is not supported.  The format leaves room for overlays that
-are drawn over the frame and for events that the page sends back.
+interaction with overlays and no encryption (tier 1) unless the program
+gives a certificate or runs in a tunnel (tier 2).  It sends JPEG frames:
+video with H.264 would need much less bandwidth and is not supported.  The
+format leaves room for overlays that are drawn over the frame and for events
+that the page sends back.

@@ -46,19 +46,23 @@ class WebDemo(QCamcorder):
     '''
 
     #: A subclass that has a certificate sets these (PEM files): the page
-    #: is then served over https.
+    #: is then served over https,
+    #: and the name that the certificate covers, which the QR code uses.
     certfile: str | None = None
     keyfile: str | None = None
+    hostname: str | None = None
 
-    #: A demo on a trusted network lets a tablet control the camera without
-    #: a certificate, to try it.  An application should leave this ``False``
-    #: or give a certificate: see :class:`~QVideo.lib.QWebScreen.QWebScreen`.
+    #: A demo is tier 1 (plain http, a network that you trust): it lets a
+    #: tablet control the camera without a certificate, to try it.  An
+    #: application should leave this ``False`` or give a certificate: see
+    #: :class:`~QVideo.lib.QWebScreen.QWebScreen`.
     controlOverHttp: bool = True
 
     def _setupUi(self) -> None:
         super()._setupUi()
         self.web = QWebScreen(self.screen.source, certfile=self.certfile,
                               keyfile=self.keyfile,
+                              hostname=self.hostname,
                               camera=self.cameraWidget.camera,
                               controlOverHttp=self.controlOverHttp)
         self.web.start(fallback=True)

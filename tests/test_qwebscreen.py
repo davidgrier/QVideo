@@ -284,6 +284,23 @@ class TestWithoutAServer(unittest.TestCase):
         self.assertRegex(web.url, r'^http://[\d.]+:8123/$')
         self.assertNotIn('0.0.0.0', web.url)
 
+    def test_a_hostname_is_the_name_in_the_url_and_the_code(self):
+        web = QWebScreen(port=8123, hostname='scope1.example.edu')
+        self.assertEqual(web.url, 'http://scope1.example.edu:8123/')
+        self.assertTrue(
+            web.pairingUrl.startswith('http://scope1.example.edu:8123/join/'))
+
+    def test_the_port_of_the_scheme_is_left_out_of_the_url(self):
+        self.assertEqual(
+            QWebScreen(port=80, hostname='a.example').url,
+            'http://a.example/')
+        web = QWebScreen(port=443, hostname='a.example')
+        web.certfile = 'cert.pem'               # secure: no server needed
+        self.assertEqual(web.url, 'https://a.example/')
+        self.assertEqual(
+            QWebScreen(port=443, hostname='a.example').url,
+            'http://a.example:443/')
+
 
 @unittest.skipIf(aiohttp is None, 'aiohttp not installed')
 class TestAccess(unittest.TestCase):

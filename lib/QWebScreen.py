@@ -172,11 +172,16 @@ class QWebScreen(QtCore.QObject):
     photograph of the code is no use afterward.  A paired
     browser keeps a cookie that the server remembers until the program ends
     or :meth:`revoke` removes it.  Wrong codes are limited to a few a minute
-    from each address.  The connection is **not encrypted**, so anyone who
-    can read the network sees the video and the cookie: use a trusted
-    network, or give a certificate (``certfile`` and ``keyfile``) and the
-    server speaks https, with a ``Secure`` cookie.  A certificate that the
-    browsers trust is the hard part: see :ref:`streaming-encryption`.
+    from each address.
+
+    **Encryption** has two tiers (:ref:`streaming-encryption`).  Tier 1, the
+    default, is plain http for a network that you trust: anyone who can read
+    the network sees the video and the cookie.  Tier 2 is for any other
+    network, and for control from a page: give a certificate (``certfile``,
+    ``keyfile``) and the name that it covers (``hostname``) and the server
+    speaks https, with a ``Secure`` cookie, or run it inside a tunnel (a
+    VPN, Tailscale) or behind a proxy.  A certificate that the browsers
+    trust is the hard part.
 
     **Control.**  Pairing lets a browser *look*.  To *change* the camera it
     asks, and the operator answers a prompt on the screen of the instrument
@@ -212,6 +217,12 @@ class QWebScreen(QtCore.QObject):
         With them the server speaks https and :attr:`url` begins with
         ``https://``; the certificate must name the host that the browsers
         use.  Without them the connection is not encrypted.
+    hostname : str, optional
+        The name that browsers use for this machine, such as
+        ``'scope1.example.edu'``.  :attr:`url`, and so the QR code, use it
+        instead of the address on the local network: a certificate names a
+        host, not an address, so a browser accepts it only at that name.
+        The name must lead to this machine.  Default ``None``: the address.
     access : bool
         Require pairing.  Default ``True``.  ``False`` serves anyone who
         can reach the port, with no cookie: for a machine that only you
@@ -282,6 +293,7 @@ class QWebScreen(QtCore.QObject):
                  access: bool = True,
                  certfile: str | None = None,
                  keyfile: str | None = None,
+                 hostname: str | None = None,
                  camera=None,
                  properties: Sequence[str] | None = None,
                  controlOverHttp: bool = False,
@@ -295,6 +307,7 @@ class QWebScreen(QtCore.QObject):
         self.access = access
         self.certfile = certfile
         self.keyfile = keyfile
+        self.hostname = hostname
         self.properties = properties
         self.controlOverHttp = controlOverHttp
         self._camera = None
@@ -740,10 +753,18 @@ class QWebScreen(QtCore.QObject):
 
     @property
     def url(self) -> str:
-        '''The address to open in a browser (valid once started).'''
-        host = _lanAddress() if self.host in ('', '0.0.0.0') else self.host
+        '''The address to open in a browser (valid once started): the
+        ``hostname`` if there is one, otherwise the address of this machine
+        on the local network.  The port is left out where it is the
+        default of the scheme (443 for https).'''
+        host = self.hostname
+        if not host:
+            host = (_lanAddress() if self.host in ('', '0.0.0.0')
+                    else self.host)
         scheme = 'https' if self.secure else 'http'
-        return f'{scheme}://{host}:{self.port}/'
+        default = 443 if self.secure else 80
+        port = '' if self.port == default else f':{self.port}'
+        return f'{scheme}://{host}{port}/'
 
     @property
     def secure(self) -> bool:

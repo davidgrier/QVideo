@@ -734,7 +734,8 @@ encrypt (see below), and nothing has been tried on an iPad.
 - [ ] **Say what it does not do.**  The panel should say "not encrypted" in
   plain words until a certificate is set.  Without TLS a sniffer on the Wi-Fi
   can read the cookie.  The QR code authenticates; it does not encrypt.
-- [x] **TLS, opt in**, built 2026-11-09 (Tier 1): `certfile` and `keyfile`,
+- [x] **TLS, opt in**, built 2026-11-09 (now tier 2 of the two-tier
+  plan of `docs/streaming.rst`): `certfile` and `keyfile`,
   https URL, `Secure` cookie, the window says "Encrypted".  Recipes are in
   `docs/streaming.rst`.  Not tried with a real certificate on a device.
   - [ ] A `QWebScreen.fromTailscale()` helper that runs `tailscale cert` and
@@ -766,6 +767,16 @@ encrypt (see below), and nothing has been tried on an iPad.
     with `-f` (Harvesters) and `-g` (Viva), checked by the user 2026-11-09.
   - [x] Labels and units (`label()`, `unit`), `values` sent at most every
     0.1 s, a Full screen button and a wake lock (2026-11-09).
+- [x] **`hostname=`** (the name in the address and the QR code, port left out
+  when it is the default of the scheme) and the encryption page rewritten as
+  two tiers (2026-11-10).  Still to do for tier 2:
+  - [ ] A `fromTailscale()` helper (`tailscale cert`, then `certfile`,
+    `keyfile`, `hostname`).
+  - [ ] Read renewed certificate files without a restart.
+  - [ ] The sharing window says which tier is in use ("Encrypted by https",
+    "Not encrypted: trusted network only").
+  - [ ] Try a real certificate on a device (Tailscale, or a name of the
+    lab's).
 - [ ] **Overlays and touch.**  The header's `overlays` list carries
   primitives (circle, cross, line, text, with an id, image coordinates and a
   "draggable" flag) in the message of the frame they belong to; the page sends

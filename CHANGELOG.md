@@ -26,7 +26,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the paired browsers and disconnects them, and wrong codes are rate limited
   (`QWebScreen(access=False)` turns pairing off).  A code pairs one browser.
   The connection is not encrypted unless the program gives a certificate
-  (`certfile`, `keyfile`: https and a `Secure` cookie); otherwise it is for a
+  (`certfile`, `keyfile`: https and a `Secure` cookie, and `hostname`: the
+  name that the certificate covers, which the address and the QR code use);
+  otherwise it is for a
   trusted network.  `python -m QVideo.demos.webdemo` shows
   the window, the page and the QR code together; the protocol is on the
   "Video in a web browser" page.  Provisional (see Stability).

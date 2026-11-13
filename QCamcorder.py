@@ -103,6 +103,7 @@ class QCamcorder(QtWidgets.QWidget):
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.cameraWidget = cameraWidget
+        self._lostReason: str | None = None     # a recording ended by loss
         self._setupUi()
         self._snapshot = QSnapshot(self, screen=self.screen)
         self._connectSignals()
@@ -206,8 +207,20 @@ class QCamcorder(QtWidgets.QWidget):
         '''Tell the user why a recording stopped by itself.
 
         The status bar is easy to miss while watching the video, and a
-        recording that ends without notice can lose data.
+        recording that ends without notice can lose data.  A recording that
+        ended because the camera was lost is explained here, in the one
+        dialog that :meth:`_showLost` leaves to it.
         '''
+        lost, self._lostReason = self._lostReason, None
+        if lost is not None:
+            self._warn('Recording stopped',
+                       'The camera was lost, and the recording stopped.',
+                       'The frames recorded so far are saved.  No more '
+                       'images will arrive, and the last one stays on the '
+                       'screen.  Restart the program to use the camera '
+                       'again.',
+                       details=lost[:1].upper() + lost[1:] + '.')
+            return
         self._warn('Recording stopped', 'The recording stopped.',
                    reason[:1].upper() + reason[1:] + '.')
 
@@ -217,13 +230,19 @@ class QCamcorder(QtWidgets.QWidget):
 
         The screen keeps the last frame and everything else carries on, so
         nothing else says why the picture is still.  A recording that is
-        running is stopped by the recorder (and says so itself).
+        running is stopped by the recorder, which reports it next (the
+        recorder listens after this does, and its report is queued behind
+        this call): the dialog that says so covers the loss too, so there
+        is one dialog, not two.
         '''
         self.message.emit('Camera lost.  Restart the program to use it again.')
+        if self.dvr.isRecording():
+            self._lostReason = reason
+            return
         self._warn('Camera lost', 'Lost contact with the camera.',
                    'No more images will arrive, and the last one stays on '
-                   'the screen.  A recording that was running has been '
-                   'stopped.  Restart the program to use the camera again.',
+                   'the screen.  Restart the program to use the camera '
+                   'again.',
                    details=reason[:1].upper() + reason[1:] + '.')
 
     def _warn(self, title: str, headline: str, explanation: str = '',

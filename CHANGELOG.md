@@ -11,6 +11,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.27.1] — 2026-11-13
+
+### Fixed
+
+- **One dialog when the camera is lost during a recording**, not two ("Camera
+  lost" and "Recording stopped").  `QCamcorder` shows only "Recording stopped"
+  (the camera was lost, the frames recorded so far are saved), with the
+  reason behind the details button.  Tried with a Blackfly S on
+  `webdemo -f`: the recording stopped, the file played back, and the web page
+  said the camera was lost.
+
+---
+
 ## [4.27.0] — 2026-11-13
 
 ### Added

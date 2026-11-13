@@ -275,7 +275,6 @@ class TestQCamcorderCameraLost(unittest.TestCase):
     def test_the_dialog_says_what_to_do(self):
         self.lose()
         text = self.widget._stopBox.informativeText()
-        self.assertIn('has been stopped', text)
         self.assertIn('Restart the program', text)
 
     def test_the_technical_reason_is_behind_the_details_button(self):
@@ -287,6 +286,46 @@ class TestQCamcorderCameraLost(unittest.TestCase):
     def test_the_controls_are_disabled(self):
         self.lose()
         self.assertFalse(self.widget.cameraWidget.isEnabled())
+
+    def test_a_loss_during_a_recording_opens_one_dialog_that_says_so(self):
+        with patch.object(self.widget.dvr, 'isRecording',
+                          return_value=True):
+            self.lose('the cable was pulled')
+        self.open.assert_not_called()       # the recorder reports next
+        self.widget._showStopped('the camera was lost; frames are saved')
+        self.open.assert_called_once()
+        box = self.widget._stopBox
+        self.assertEqual(box.text(),
+                         'The camera was lost, and the recording stopped.')
+        self.assertIn('recorded so far are saved', box.informativeText())
+        self.assertEqual(box.detailedText(), 'The cable was pulled.')
+        self.assertEqual(
+            self.messages[-1],
+            'Camera lost.  Restart the program to use it again.')
+
+    def test_a_real_loss_during_a_recording_opens_one_dialog(self):
+        from QVideo.dvr import formats
+        from QVideo.tests.fakes import FakeWriter
+        FakeWriter.made = []
+        with patch.dict(formats.Writer, {'.fake': FakeWriter}):
+            self.widget.dvr.recorder.start('x.fake')
+            self.addCleanup(self.widget.dvr.recorder.stop)
+            self.lose()
+            for _ in range(5):
+                app.processEvents()
+        self.assertFalse(self.widget.dvr.isRecording())
+        self.open.assert_called_once()
+        self.assertEqual(self.widget._stopBox.text(),
+                         'The camera was lost, and the recording stopped.')
+
+    def test_the_next_recording_that_stops_is_not_blamed_on_the_camera(self):
+        with patch.object(self.widget.dvr, 'isRecording',
+                          return_value=True):
+            self.lose()
+        self.widget._showStopped('x')
+        self.widget._showStopped('the disk is full')
+        self.assertEqual(self.widget._stopBox.text(),
+                         'The recording stopped.')
 
 
 if __name__ == '__main__':

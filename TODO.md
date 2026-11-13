@@ -948,6 +948,8 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
 - [x] **A running recording stops on loss** (2026-11-13): `QRecorder` stops it
   and keeps the frames (`stopped` with the reason).  **The web pages are told**
   (2026-11-13): a `lost` message, control taken back and not offered again.
+  Tried on the Blackfly S (`webdemo -f`, cable pulled during a recording):
+  the recording stopped and plays back, and the page announced the loss.
 - Declined 2026-11-13: a placard on the screen (it could cover something
   important; an application may add one from `lost`); a `launch()` option to
   quit on loss (nobody has asked).

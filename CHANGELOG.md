@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+---
+
+## [4.26.0] — 2026-11-13
+
 ### Added
 
 - **The window waits for a changing shape.**  Dragging the height or width

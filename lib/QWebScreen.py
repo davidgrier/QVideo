@@ -315,6 +315,7 @@ class QWebScreen(QtCore.QObject):
         self.properties = properties
         self.controlOverHttp = controlOverHttp
         self._camera = None
+        self._lost: str | None = None       # why the camera is gone
         self._pool: ThreadPoolExecutor | None = None
         self._tls: ssl.SSLContext | None = None
         self._renew: Callable[[], object] | None = None
@@ -508,10 +509,26 @@ class QWebScreen(QtCore.QObject):
     def camera(self, camera) -> None:
         if self._camera is not None:
             self._camera.propertiesChanged.disconnect(self._changed)
+            self._camera.lost.disconnect(self._cameraLost)
         self._camera = camera
+        self._lost = None
         if camera is not None:
             # Queued: the camera reports from its own threads.
             camera.propertiesChanged.connect(self._changed)
+            camera.lost.connect(self._cameraLost)
+
+    @QtCore.Slot(str)
+    def _cameraLost(self, reason: str) -> None:
+        '''The camera is gone: take control from the browser that has it,
+        tell every page, and keep the last frame on view.  The pages that
+        come later hear it in their greeting.'''
+        self._lost = reason
+        self.revokeControl()
+        with self._guard:
+            viewers = list(self._sessions.values())
+        for viewer in viewers:      # control is not available any more
+            self._notify(viewer, viewer.control)
+        self._tellAll(dict(type='lost', reason=reason))
 
     def _exposed(self) -> list[str]:
         '''Return the names of the properties that a page may change.'''
@@ -528,6 +545,8 @@ class QWebScreen(QtCore.QObject):
         '''Return whether a page can control the camera, and if not, why.'''
         if self._camera is None or not self._exposed():
             return False, 'there is nothing to control'
+        if self._lost is not None:
+            return False, 'the camera was lost'
         if not self.access:
             return False, 'pairing is off'
         if not (self.secure or self.controlOverHttp):
@@ -668,7 +687,8 @@ class QWebScreen(QtCore.QObject):
         names = self._exposed()
         available, reason = self._controlState()
         entries: list[dict] = []
-        if camera is not None and names and self._pool is not None:
+        if (camera is not None and names and self._pool is not None
+                and self._lost is None):
             loop = asyncio.get_running_loop()
             values = await loop.run_in_executor(
                 self._pool, camera.snapshot, names)
@@ -676,7 +696,7 @@ class QWebScreen(QtCore.QObject):
         viewer = client.viewer
         client.tell(json.dumps(
             dict(type='hello', secure=self.secure, available=available,
-                 reason=reason, controls=entries,
+                 reason=reason, controls=entries, lost=self._lost,
                  state=viewer.control if viewer else 'none'),
             default=_plain))
 

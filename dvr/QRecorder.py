@@ -66,8 +66,9 @@ class QRecorder(QtCore.QObject):
     stopped(str)
         Emitted with the reason when the recorder stops a recording by
         itself, just before ``recording(False)``: it fell behind the
-        camera, or the writer could not go on (the size of the frames
-        changed, the file could not be written).
+        camera, the camera was lost (the frames recorded so far are kept),
+        or the writer could not go on (the size of the frames changed, the
+        file could not be written).
 
     Examples
     --------
@@ -197,6 +198,9 @@ class QRecorder(QtCore.QObject):
         self._thread.start()
         self._source.newFrame.connect(writer.write)
         self._source.newFrame.connect(self._monitor.check)
+        lost = getattr(self._source, 'lost', None)
+        if lost is not None:        # a file cannot be lost
+            lost.connect(self._sourceLost)
         self.recording.emit(True)
 
     @QtCore.Slot()
@@ -214,6 +218,9 @@ class QRecorder(QtCore.QObject):
             self._source.newFrame.disconnect(self._monitor.check)
             self._writer.frameNumber.disconnect(self.frameNumber)
             self._writer.finished.disconnect(self._writerFinished)
+            lost = getattr(self._source, 'lost', None)
+            if lost is not None:
+                lost.disconnect(self._sourceLost)
         except (RuntimeError, TypeError):
             logger.debug('Some recording signals were already disconnected')
         self._monitor.stop()
@@ -231,6 +238,18 @@ class QRecorder(QtCore.QObject):
         if reason:
             logger.error(reason)
             self.stopped.emit(reason)
+        self.stop()
+
+    @QtCore.Slot(str)
+    def _sourceLost(self, reason: str) -> None:
+        '''Stop the recording of a camera that is gone, and keep the frames
+        that it recorded: it would wait for frames that will not come.'''
+        if not self.isRecording():
+            return
+        reason = (f'the camera was lost ({reason}); '
+                  'the frames recorded so far are saved')
+        logger.error(reason)
+        self.stopped.emit(reason)
         self.stop()
 
     def _fellBehind(self, lag: float) -> None:

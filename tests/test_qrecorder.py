@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 import numpy as np
-from qtpy import QtTest, QtWidgets
+from qtpy import QtCore, QtTest, QtWidgets
 from QVideo.dvr import QRecorder, formats
 from QVideo.dvr.QHDF5Writer import QHDF5Writer
 from QVideo.lib.videotypes import FrameInfo
@@ -259,6 +259,64 @@ class TestFallingBehind(RecorderCase):
         recorder = self.watching()
         recorder.stop()
         self.capture(recorder, 99.)
+
+
+class TestCameraLost(RecorderCase):
+
+    '''A camera that is gone sends no more frames: the recording stops, and
+    the frames that were recorded stay.'''
+
+    def setUp(self):
+        super().setUp()
+        self.source = _LostSource()
+        self.recorder.source = self.source
+
+    def test_the_recording_stops_and_says_why(self):
+        stopped = record(self.recorder.stopped)
+        off = record(self.recorder.recording)
+        self.recorder.start('x.fake')
+        self.source.emit(3)
+        self.source.lost.emit('unplugged')
+        self.assertFalse(self.recorder.isRecording())
+        self.assertEqual(off, [(True,), (False,)])
+        (reason,), = stopped
+        self.assertIn('camera was lost', reason)
+        self.assertIn('unplugged', reason)
+
+    def test_the_frames_that_were_recorded_are_written(self):
+        self.recorder.start('x.fake')
+        self.source.emit(3)
+        self.source.lost.emit('unplugged')
+        self.assertEqual(self.writer.written, 3)
+        self.assertTrue(self.writer.closed)
+
+    def test_a_loss_when_nothing_is_recorded_does_nothing(self):
+        stopped = record(self.recorder.stopped)
+        self.recorder.start('x.fake')
+        self.recorder.stop()
+        self.source.lost.emit('unplugged')
+        self.assertEqual(stopped, [])
+
+    def test_a_recording_that_ended_does_not_hear_a_later_loss(self):
+        stopped = record(self.recorder.stopped)
+        self.recorder.start('x.fake')
+        self.recorder.stop()
+        self.source.lost.emit('unplugged')
+        self.assertEqual(stopped, [])
+
+    def test_a_source_that_cannot_be_lost_records_as_before(self):
+        source = FakeSource()           # a file: it has no lost signal
+        recorder = QRecorder(source)
+        self.addCleanup(recorder.stop)
+        recorder.start('x.fake')
+        source.emit(2)
+        recorder.stop()
+        self.assertEqual(self.writer.written, 2)
+
+
+class _LostSource(FakeSource):
+    '''A source of a camera: it can be lost.'''
+    lost = QtCore.Signal(str)
 
 
 class TestFrameSize(RecorderCase):

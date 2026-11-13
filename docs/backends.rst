@@ -229,7 +229,12 @@ that the device is *gone*, not for an error that a working device reports.
 It closes the camera, logs one error and emits
 :attr:`~QVideo.lib.QCamera.QCamera.lost`, which the source passes on, the
 control tree answers by disabling its controls and
-:class:`~QVideo.QCamcorder.QCamcorder` by saying so.  Afterwards
+:class:`~QVideo.QCamcorder.QCamcorder` by saying so.  A recording that is
+running is stopped by its :class:`~QVideo.dvr.QRecorder.QRecorder`, which keeps
+the frames recorded so far and reports the reason through ``stopped``.  A
+:class:`~QVideo.lib.QWebScreen.QWebScreen` that has the camera tells its pages
+(they show "camera lost" in place of the frame counter), takes control back
+from the browser that has it and offers no control after that.  Afterwards
 ``saferead()`` returns ``(False, None)``, ``get`` returns ``None``, and
 ``set`` and ``execute`` log a warning and do nothing.
 

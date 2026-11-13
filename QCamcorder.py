@@ -217,13 +217,13 @@ class QCamcorder(QtWidgets.QWidget):
 
         The screen keeps the last frame and everything else carries on, so
         nothing else says why the picture is still.  A recording that is
-        running waits for frames that will not come: stop it.
+        running is stopped by the recorder (and says so itself).
         '''
         self.message.emit('Camera lost.  Restart the program to use it again.')
         self._warn('Camera lost', 'Lost contact with the camera.',
                    'No more images will arrive, and the last one stays on '
-                   'the screen.  Stop any recording that is running, then '
-                   'restart the program to use the camera again.',
+                   'the screen.  A recording that was running has been '
+                   'stopped.  Restart the program to use the camera again.',
                    details=reason[:1].upper() + reason[1:] + '.')
 
     def _warn(self, title: str, headline: str, explanation: str = '',

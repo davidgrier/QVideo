@@ -11,6 +11,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.27.0] — 2026-11-13
+
+### Added
+
+- **A lost camera stops the recording and tells the web pages.**  A recording
+  that is running when the camera goes (a cable pulled) used to wait for
+  frames that never came.  `QRecorder` now stops it, closes the file with the
+  frames that were recorded, and emits `stopped` with the reason ("the camera
+  was lost ...; the frames recorded so far are saved"), which `QCamcorder`
+  shows in a dialog.  `QWebScreen` told nothing: a paired tablet kept the last
+  frame and live controls.  It now sends the pages a `lost` message (the page
+  says "camera lost" where the frame counter was), takes control back from the
+  browser that has it, offers none afterwards, and tells a page that
+  connects later in its greeting.  Nothing is drawn over the video.
+
+---
+
 ## [4.26.1] — 2026-11-13
 
 ### Changed

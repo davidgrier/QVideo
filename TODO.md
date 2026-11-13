@@ -945,9 +945,12 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   turns the end of its worker into a loss at the next read.  Tried by
   pulling the cable through worker, proxy and source (`devel/genicamloss2.py`):
   one `lost` after 1.3 s, worker gone.  Picamera is cabled and never needs it.
-- [ ] **Optional:** stop a running recording with "camera lost" (it stalls
-  now; the dialog tells the user to stop it); a placard on the screen; a
-  `launch()` option to quit on loss.
+- [x] **A running recording stops on loss** (2026-11-13): `QRecorder` stops it
+  and keeps the frames (`stopped` with the reason).  **The web pages are told**
+  (2026-11-13): a `lost` message, control taken back and not offered again.
+- Declined 2026-11-13: a placard on the screen (it could cover something
+  important; an application may add one from `lost`); a `launch()` option to
+  quit on loss (nobody has asked).
 - Not planned: reconnection, device identity, replay of settings, starting
   without a camera.  The five decisions of 2026-11-06 that assumed
   reconnection (same device, retry, replay) no longer apply; stopping a

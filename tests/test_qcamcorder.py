@@ -275,8 +275,8 @@ class TestQCamcorderCameraLost(unittest.TestCase):
     def test_the_dialog_says_what_to_do(self):
         self.lose()
         text = self.widget._stopBox.informativeText()
-        self.assertIn('Stop any recording', text)
-        self.assertIn('restart the program', text)
+        self.assertIn('has been stopped', text)
+        self.assertIn('Restart the program', text)
 
     def test_the_technical_reason_is_behind_the_details_button(self):
         self.lose('the cable was pulled')

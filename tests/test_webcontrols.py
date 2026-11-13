@@ -251,6 +251,49 @@ class TestControl(unittest.TestCase):
         self.assertEqual(values['values']['blacklevel'], 40)
         self.assertTrue(changed)            # the Qt tree follows
 
+    def test_a_lost_camera_is_told_to_the_pages_and_takes_control_back(self):
+        async def work(session, ws, ident):
+            await self.note(ws, 'hello')
+            await self.send(ws, type='request')
+            await self.note(ws, 'control', state='requested')
+            self.web.grantControl(ident)
+            await self.note(ws, 'control', state='granted')
+            self.camera.lost.emit('the cable was pulled')
+            control = await self.note(ws, 'control', available=False)
+            lost = await self.note(ws, 'lost')
+            await self.send(ws, type='set', name='blacklevel', value=40)
+            await asyncio.sleep(0.2)
+            return lost, control
+        before = self.camera.get('blacklevel')
+        lost, control = self.ask(work)
+        self.assertEqual(lost['reason'], 'the cable was pulled')
+        self.assertEqual(control['state'], 'revoked')
+        self.assertIn('lost', control['reason'])
+        self.assertIsNone(self.web.controller)
+        self.assertFalse(self.web.controlAvailable)
+        self.assertEqual(self.camera.get('blacklevel'), before)
+
+    def test_a_page_that_comes_after_the_loss_hears_it_in_the_greeting(self):
+        self.camera.lost.emit('gone')
+
+        async def work(session, ws, ident):
+            return await self.note(ws, 'hello')
+        hello = self.ask(work)
+        self.assertEqual(hello['lost'], 'gone')
+        self.assertFalse(hello['available'])
+        self.assertEqual(hello['controls'], [])
+
+    def test_a_page_that_is_not_lost_is_told_so(self):
+        async def work(session, ws, ident):
+            return await self.note(ws, 'hello')
+        self.assertIsNone(self.ask(work)['lost'])
+
+    def test_a_new_camera_is_not_lost(self):
+        self.camera.lost.emit('gone')
+        self.web.camera = QNoiseCamera()
+        self.addCleanup(self.web.camera.close)
+        self.assertTrue(self.web.controlAvailable)
+
     def test_a_set_tells_the_tree_about_what_it_watches_too(self):
         '''A tree shows more than the page does (a new resolution changes the
         width it shows): what it watches is announced with what the page

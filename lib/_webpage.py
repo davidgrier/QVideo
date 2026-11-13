@@ -188,12 +188,21 @@ function send(message) {
   }
 }
 
+// The camera is gone: no more frames will come, and the last one stays.
+function lost(reason) {
+  state = 'camera lost: ' + reason;
+  readout();
+}
+
 function note(message) {
   if (message.type === 'hello') {
     controls = message.controls;
     ctl = { state: message.state, available: message.available,
             reason: message.reason };
     buildPanel();
+    if (message.lost) lost(message.lost);
+  } else if (message.type === 'lost') {
+    lost(message.reason);
   } else if (message.type === 'control') {
     ctl = { state: message.state, available: message.available,
             reason: message.reason };

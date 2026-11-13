@@ -9,6 +9,53 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **A slider with a spin box in the camera tree.**  pyqtgraph has a spin box
+  for a number and a slider with only a label; nothing has both, so
+  `QSliderSpinBox` (in `widgets/`) is a slider that is dragged to find a value
+  and a spin box that is typed in to set it exactly, kept in step, with a
+  logarithmic scale for a range of decades (an exposure time: a drag crosses
+  six decades in a hand's width) and a notch for each step of a whole number.
+  `lib/_sliderspin.py` makes it a type of control for a `ParameterTree`,
+  `'sliderspin'`, and the trees of the cameras ask for it for every number
+  that has a range: `QCameraTree` from `minimum` and `maximum` of the property,
+  `QGenicamTree` (Basler, IDS, Flir, MV, Vimba X) from the limits of the node.
+  The control stays visible (pyqtgraph shows a number as text until its row is
+  clicked), follows the limits that the camera changes, is locked while the
+  camera does not allow a write, and writes the camera at every step of a drag:
+  the worker thread of the tree keeps only the latest.  A number without a
+  range is a spin box, as before.
+
+### Changed
+
+- **`QCameraTree` writes the camera in a worker thread.**  Every edit in the
+  tree used to call `camera.set()` and `camera.snapshot()` in the interface
+  thread, which wait for the camera lock that the capture thread holds while
+  it waits for a frame, so each step of a slider that was dragged froze the
+  window for about a frame (34 ms at 30 fps, 200 ms at 5 fps or with a long
+  exposure) and the tree handled only a third of the steps.  The tree now
+  takes the value at once and hands it to a worker (`lib/_writequeue.py`)
+  that keeps the latest value of each property, in the order in which the user
+  last touched them, and brings the camera's answer back with a signal.  A
+  simulated drag of 3 s, an edit every 10 ms, with the Noise camera: the
+  interface stops freezing (the gaps of a 5 ms heartbeat: mean 34 ms and worst
+  47 ms before, mean 5 ms and worst 21 ms now at 30 fps; mean 150 ms and worst
+  215 ms before, 5 ms and 13 ms now at 5 fps), and the tree handles all of the
+  steps (283 of about 300 instead of 83, and 315 instead of 18).  The answer is
+  not shown over a control that the user has changed since, nor announced to
+  the others (a web page) as the camera's value.
+  - A change reaches the camera a moment later, so a script or a test that
+    needs it done calls the new `QCameraTree.flush()`; `threaded=False` gives
+    the old behavior, a write inside the change.
+  - For the trees of backends there are hooks in place of an override of
+    `_sync`: `_toCamera`, `_fromCamera`, `_readback` and `_announce`.
+    `QGenicamTree` uses them for its scale factors (and no longer reads all of
+    the settings of the camera in the interface thread); `QVivaTree` needs no
+    override.
+  - A tree change that is not a value (a limit, a flag) no longer reads the
+    camera back.
+
 ## [4.25.0] — 2026-11-12
 
 ### Changed

@@ -2,13 +2,16 @@
 import contextlib
 import logging
 import math
-from typing import cast
+import time
+from typing import Any, cast
 
 from qtpy import QtCore, QtGui, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib import _sliderspin  # noqa: F401  registers 'sliderspin'
 from QVideo.lib._qapp import stopAtQuit
+from QVideo.lib._writequeue import Batch, WriteQueue
 
 
 __all__ = ['QCameraTree']
@@ -37,6 +40,15 @@ class QCameraTree(ParameterTree):
     Changes made in the tree are pushed to the camera; camera-side
     changes are reflected back into the tree.
 
+    Requests to change camera properties are queued in a worker thread
+    to avoid blocking the GUI and are batched to ensure that only the
+    most recent value for each property is written to the camera. This
+    means that values displayed on the GUI may not be written to the
+    camera until the end of a frame interval, and some requests in a
+    stream of requests may be dropped silently. Calling :meth:`flush`
+    waits for the camera to have the latest values, which can be useful
+    in scripts or tests.
+
     Parameters
     ----------
     source : QCamera or QVideoSource
@@ -45,6 +57,11 @@ class QCameraTree(ParameterTree):
         Parameter-tree description of the camera properties to expose.
         If ``None`` a default description is generated from
         :attr:`~QVideo.lib.QCamera.QCamera.settings`.
+    threaded : bool
+        Write the camera in a worker thread (the default).  ``False`` writes
+        it in the interface thread, inside the change, as before: the
+        interface waits for the camera, and a write has taken effect when the
+        change returns.
     *args :
         Additional positional arguments forwarded to
         :class:`~pyqtgraph.parametertree.ParameterTree`.
@@ -77,7 +94,8 @@ class QCameraTree(ParameterTree):
         '''Describe the properties of *camera* that it can read now.
 
         A read-only property is disabled, a hidden one is not visible and a
-        string with limits is a list.
+        string with limits is a list, and a number that has a range is a slider
+        with a spin box.
         '''
         entries = []
         for name, spec in camera.properties.items():
@@ -94,13 +112,31 @@ class QCameraTree(ParameterTree):
                 entry['visible'] = False
             if spec.ptype is str and spec.limits:
                 entry.update(type='list', limits=spec.limits)
+            elif (type(value) in (int, float)
+                  and spec.minimum is not None and spec.maximum is not None
+                  and spec.minimum < spec.maximum):
+                # A number with a range: a slider and a spin box, whether or
+                # not it can be written now (a camera unlocks the exposure
+                # time when the exposure is manual), so that it has one when
+                # it can.  The control is locked while it cannot.
+                entry.update(type='sliderspin', int=type(value) is int,
+                             limits=(spec.minimum, spec.maximum))
+                if type(value) is int and spec.step is not None:
+                    entry['step'] = spec.step
             entries.append(entry)
         return entries
+
+    #: Emitted, from the worker thread, with ``(values, edits)``: what the
+    #: camera answered after a batch of writes, and the number of the last
+    #: edit of each property that the batch carried.
+    _written = QtCore.Signal(object)
 
     def __init__(self,
                  source: Source,
                  description: Description | None = None,
-                 *args, **kwargs) -> None:
+                 *args,
+                 threaded: bool = True,
+                 **kwargs) -> None:
         if not source.isOpen():     # before there is a widget to discard
             raise RuntimeError('Video source is not open')
         kwargs.setdefault('showHeader', False)
@@ -110,12 +146,24 @@ class QCameraTree(ParameterTree):
         else:
             self._source = source
         self._ignoreSync = False
+        # The edits of each property: counted when the user makes one, and
+        # the count that the camera has written.  A property whose count is
+        # ahead has a change that the camera has not seen, and what the
+        # camera answers about it is out of date.
+        self._edits: dict[str, int] = {}
+        self._applied: dict[str, int] = {}
+        self._queue: WriteQueue | None = None
+        self._emitted = self._shown = 0
+        if threaded:
+            self._queue = WriteQueue(self._work, f'{type(self).__name__} '
+                                     'writer')
+            self._written.connect(self._showWritten)
         self._createTree(description)
         self._connectSignals()
         self._setupUi()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        '''Stop the video source when the widget is closed.'''
+        '''Stop the writer and the video source when the widget is closed.'''
         self.stop()
         super().closeEvent(event)
 
@@ -171,7 +219,9 @@ class QCameraTree(ParameterTree):
         Recomputing the step from the live value on every change keeps
         scrolling proportional at every magnitude instead.
         '''
-        if param.opts.get('type') != 'float':
+        kind = param.opts.get('type')
+        if kind != 'float' and not (kind == 'sliderspin'
+                                    and not param.opts.get('int')):
             return
         try:
             value = float(param.value())
@@ -209,10 +259,16 @@ class QCameraTree(ParameterTree):
         with self._syncIgnored():
             for key, value in values.items():
                 if (key in self._parameters
+                        and not self._outstanding(key)
                         and self._differs(self._parameters[key].value(),
                                           value)):
                     self.set(key, value)
         self._showAccess()
+
+    def _outstanding(self, key: str) -> bool:
+        '''Return whether the user has changed *key* since the camera last
+        wrote it: what the camera says about it is out of date.'''
+        return self._edits.get(key, 0) > self._applied.get(key, 0)
 
     @staticmethod
     def _differs(shown: object, value: object) -> bool:
@@ -241,33 +297,136 @@ class QCameraTree(ParameterTree):
 
     @QtCore.Slot(object, object)
     def _sync(self, root: Parameter, changes: Changes) -> None:
-        '''Send the changes made in the tree to the camera, then show it.
+        '''Send changes made in the tree to the camera.
 
-        The camera may change more than it was asked to (a longer exposure
-        slows the frame rate), so the tree reads back the properties that
-        it shows, and only those: a camera has many more properties than a
-        tree has controls.  A property that cannot be read at the moment
-        keeps its value in the tree.  They are read in one request
-        (:meth:`QCamera.snapshot`), which waits for at most one frame: the
-        capture thread holds the camera while it waits for one.
+        Queue requests from the user to change camera settings.
+        Changing one setting may cause the camera to change
+        additional settings. The tree therefore refreshes displayed
+        settings from the actual state of the camera after requesting
+        a change. Writing and readback are performed by a worker
+        thread unless the tree is not ``threaded``;
+        see :meth:`_work` and :meth:`_show`.
         '''
         if self._ignoreSync:
             return
-        changed = False
+        batch: Batch = {}
         for param, change, value in changes:
             if change == 'value':
                 key = param.name()
                 logger.debug(f'Syncing {key}: {change}: {value}')
-                self.camera.set(key, value)
                 self._updateStep(param)
-                changed = True
-        values = self.camera.snapshot(self._parameters)
+                self._edits[key] = self._edits.get(key, 0) + 1
+                batch.pop(key, None)
+                batch[key] = (value, self._edits[key])
+        if not batch:
+            return
+        if self._queue is None:                 # not threaded: here and now
+            self._show(*self._write(batch))
+            return
+        for key, (value, edits) in batch.items():
+            self._queue.put(key, value, edits)
+
+    def _work(self, batch: Batch) -> None:
+        '''In the worker thread: write *batch* and hand the answer over.'''
+        answer = self._write(batch)
+        self._emitted += 1
+        try:
+            self._written.emit(answer)
+        except RuntimeError:                    # the tree was deleted
+            logger.debug('the tree is gone: the answer is dropped')
+
+    def _write(self, batch: Batch) -> tuple[dict, dict[str, int]]:
+        '''Write *batch* to the camera and read back.
+
+        Returns the values that the camera has, and the number of the last
+        edit that was written for each property.  A write that the camera
+        refuses is logged, and the readback then shows the user what the
+        camera has.
+        '''
+        edits: dict[str, int] = {}
+        for key, (value, count) in batch.items():
+            try:
+                self.camera.set(key, self._toCamera(key, value))
+            except Exception:
+                logger.exception(f'the camera refused {key} = {value!r}')
+            edits[key] = count
+        try:
+            values = self._readback()
+        except Exception:
+            logger.exception('the camera could not be read back')
+            values = {}
+        return values, edits
+
+    @QtCore.Slot(object)
+    def _showWritten(self, answer: tuple[dict, dict[str, int]]) -> None:
+        '''In the interface thread: show what the worker brought.'''
+        self._shown += 1
+        self._show(*answer)
+
+    def _show(self, values: dict, edits: dict[str, int]) -> None:
+        '''Show *values*, the camera's answer after the writes that carried
+        *edits*, except where the user has changed the property since.
+
+        The others who show the camera (a web page) are told what it has.
+        '''
+        for key, count in edits.items():
+            self._applied[key] = max(count, self._applied.get(key, 0))
+        current = {key: value for key, value in values.items()
+                   if not self._outstanding(key)}
         with self._syncIgnored():
-            for key, value in values.items():
-                self.set(key, value)
-        if changed:
-            # Tell the others who show the camera (a web page) what it has.
-            self.camera.propertiesChanged.emit(values)
+            for key, value in current.items():
+                if key in self._parameters:
+                    self.set(key, self._fromCamera(key, value))
+        self._showAccess()
+        self._announce(current)
+
+    # The places where a tree for a camera that needs more may differ.
+
+    def _toCamera(self, key: str, value: Any) -> Any:
+        '''Return the value of control *key* as the camera takes it.'''
+        return value
+
+    def _fromCamera(self, key: str, value: Any) -> Any:
+        '''Return the value of property *key* as the control shows it.'''
+        return value
+
+    def _readback(self) -> dict:
+        '''Read, in one request, what the controls show (called in the
+        worker thread).'''
+        return self.camera.snapshot(self._parameters)
+
+    def _announce(self, values: dict) -> None:
+        '''Tell the others who show the camera what it has.'''
+        self.camera.propertiesChanged.emit(values)
+
+    def flush(self, timeout: float = 10.) -> bool:
+        '''Wait until the camera has the changes made in the tree and the
+        tree has shown its answer.
+
+        Call it from the interface thread, in a script or a test that needs
+        a change to have taken effect.  It processes events while it waits.
+
+        Parameters
+        ----------
+        timeout : float
+            The longest to wait [s].
+
+        Returns
+        -------
+        bool
+            ``True`` if the writes are done and shown, ``False`` if the time
+            ran out.  A tree that is not ``threaded`` is always done.
+        '''
+        if self._queue is None:
+            return True
+        end = time.monotonic() + timeout
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            if self._queue.idle() and self._shown == self._emitted:
+                return True
+            if time.monotonic() >= end:
+                return False
+            time.sleep(0.001)
 
     @QtCore.Slot(str, object)
     def set(self, key: str, value: QCamera.PropertyValue) -> None:
@@ -331,7 +490,13 @@ class QCameraTree(ParameterTree):
 
     @QtCore.Slot()
     def stop(self) -> None:
-        '''Stop and join the video source thread.'''
+        '''Stop the writer and join the video source thread.
+
+        Writes that are waiting are dropped; the one in progress is
+        finished first.
+        '''
+        if self._queue is not None:
+            self._queue.close()
         if self.source.isRunning():
             self.source.stop()
 

@@ -451,6 +451,40 @@ becomes a default.
       page from the start.  Ask someone who does not know QVideo to try it.
 
 
+## Smooth controls in the camera tree  **Writes in a worker 2026-11-12; widget open**
+
+The sliders of the web page felt better than the tree's.  The cause was not the
+widget: every edit called `camera.set()` and `camera.snapshot()` in the
+interface thread, which wait for the camera lock that the capture thread holds
+while it waits for a frame (34 ms an edit at 30 fps, a frame time or an
+exposure in general), so a drag froze the window and the tree handled a third of
+the steps.  Spike (`devel/spike_tree_async.py`, not in the repository) and the
+change: the camera is written in a worker thread that keeps the latest value of
+each property (`lib/_writequeue.py`), and the answer is not shown over a
+control that the user has changed since.
+
+- [x] Writes in a worker, coalesced, in order; `flush()`, `threaded=False`;
+      hooks for the backends (Genicam scale factors, Viva access).  Tested with
+      a camera whose setter waits on a gate.
+- [ ] **Check it on the Blackfly** (`-g` and `-f`): drag exposure, gain and
+      frame rate, and change the resolution while streaming.  The measurements
+      were made with the Noise camera (a frame of 33 ms and of 200 ms).
+- [x] **A slider next to the spin box** (2026-11-13): `widgets/QSliderSpinBox`
+      and the parameter type `'sliderspin'` (`lib/_sliderspin.py`): a slider
+      that maps position to value linearly, or logarithmically for a real range
+      of more than two decades, a notch for each step of a whole number, and
+      the spin box kept for exact entry; a drag writes live (the worker keeps
+      the latest value).  Every number with a range gets one, whether or not it
+      can be written now (a camera unlocks some as its settings change), and a
+      locked one is greyed.  Open: try it on the Blackfly (Viva and `-f`), the
+      width of the panel in `QCamcorder`, and whether the read-only numbers
+      (the resulting frame rate) are better as a spin box only.
+- [ ] Genicam trees (`QGenicamTree`, the Harvesters path) still read the camera
+      in the interface thread when the camera reports a change of its own
+      (`_showChanges`); Viva does not.
+
+---
+
 ## Resolution and Region of Interest
 
 Camera resolution changes are a common pain point, especially for

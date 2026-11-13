@@ -185,7 +185,21 @@ camera from the GUI thread.
 **`QCameraTree`** is a `pyqtgraph.parametertree` widget. It reads
 `camera.properties` to auto-build a control tree — no manual UI code needed
 per camera. It requires `properties` to be a proper dict (populated via
-`registerProperty`).
+`registerProperty`).  A number that has a range (`minimum` and `maximum`, or the
+limits of a GenICam node) is a `'sliderspin'` control: `widgets/QSliderSpinBox`
+is the plain widget, and `lib/_sliderspin.py` makes it a pyqtgraph parameter
+type (the module imports the widget only when a control is made, because
+`QVideo.widgets` imports `QVideo.lib`, and `lib` must not import `widgets` at
+import time; pyqtgraph hides the editor of a number until its row is clicked,
+so the item sets `hideWidget = False`).  It writes the camera in a worker thread
+(`lib/_writequeue.py`: the latest value of each property wins, in the order of
+the last touch), because a call in the interface thread waits for the camera
+lock that the capture thread holds while it waits for a frame, and a slider
+that is dragged would freeze the window; a change therefore reaches the camera
+a moment later (`tree.flush()` waits for it, `threaded=False` writes inside
+the change).  The camera's answer is not shown over a control that the user has
+changed since (a per-property edit count).  A backend's tree does not override
+`_sync`: it overrides `_toCamera`, `_fromCamera`, `_readback` or `_announce`.
 
 **`VideoFilter`** objects run in a **`QFilterPipeline`** (a worker thread),
 optionally driven by a **`QFilterRack`** of filter widgets, between a

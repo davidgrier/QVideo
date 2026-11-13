@@ -2,7 +2,7 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, PropertyMock, patch
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -362,6 +362,131 @@ class TestDescribe(unittest.TestCase):
         f = _int_feature('Width', visibility=_EVisibility.Expert)
         d = _nodes_module.describe(f)
         self.assertEqual(d['visibility'], _EVisibility.Expert)
+
+
+class TestScaledWrites(unittest.TestCase):
+
+    '''A control in seconds is a node in microseconds: the hooks convert.'''
+
+    def setUp(self):
+        features = [_float_feature('ExposureTime', value=10000., min=10.,
+                                   max=1e6, unit='us'),
+                    _float_feature('Gamma', value=1.0)]
+        self.tree, self.cam, _ = make_tree(features=features)
+        self.addCleanup(self.tree.stop)
+
+    def test_the_value_goes_to_the_camera_in_the_units_of_the_node(self):
+        self.assertAlmostEqual(self.tree._toCamera('ExposureTime', 0.002),
+                               2000.)
+
+    def test_a_node_without_a_scale_is_sent_as_it_is(self):
+        self.assertEqual(self.tree._toCamera('Gamma', 2.0), 2.0)
+
+    def test_the_value_comes_back_in_the_units_of_the_control(self):
+        self.assertAlmostEqual(self.tree._fromCamera('ExposureTime', 2000.),
+                               0.002)
+        self.assertEqual(self.tree._fromCamera('Gamma', 2.0), 2.0)
+
+    def test_the_readback_is_all_of_the_settings(self):
+        with patch.object(type(self.cam), 'settings',
+                          new_callable=PropertyMock,
+                          return_value={'Gamma': 1.5}):
+            self.assertEqual(self.tree._readback(), {'Gamma': 1.5})
+
+    def test_the_others_are_not_told(self):
+        heard = []
+        self.cam.propertiesChanged.connect(
+            lambda values: heard.append(values),
+            QtCore.Qt.ConnectionType.DirectConnection)
+        self.tree._announce({'Gamma': 1.5})
+        self.assertEqual(heard, [])
+
+    def test_an_edit_goes_in_microseconds_and_comes_back_in_seconds(self):
+        settings = {'ExposureTime': 2000., 'Gamma': 1.0}
+        with patch.object(type(self.cam), 'settings',
+                          new_callable=PropertyMock, return_value=settings), \
+                patch.object(self.cam, 'set') as set_:
+            self.tree._parameters['ExposureTime'].setValue(0.002)
+            self.assertTrue(self.tree.flush())
+        key, sent = set_.call_args.args
+        self.assertEqual(key, 'ExposureTime')
+        self.assertAlmostEqual(sent, 2000.)
+        self.assertAlmostEqual(self.tree._parameters['ExposureTime'].value(),
+                               0.002)
+
+
+class TestSliders(unittest.TestCase):
+
+    '''A node that holds a number with a range is a slider with a spin box.'''
+
+    def setUp(self):
+        self.tree, _, _ = make_tree()
+
+    def node(self, **kw):
+        this = dict(name='N', title='N', visibility=0, type='int', value=5,
+                    default=5, min=0, max=100)
+        this.update(kw)
+        return self.tree.describe(this)
+
+    def test_a_whole_number_with_a_range_is_a_slider(self):
+        d = self.node()
+        self.assertEqual(d['type'], 'sliderspin')
+        self.assertTrue(d['int'])
+
+    def test_a_real_number_with_a_range_is_a_slider_in_the_units_of_the_tree(
+            self):
+        d = self.node(type='float', value=10000., default=10000., min=10.,
+                      max=1e6, unit='us', step=1.)
+        self.assertEqual(d['type'], 'sliderspin')
+        self.assertFalse(d['int'])
+        self.assertEqual(d['units'], 's')                    # not us
+        self.assertAlmostEqual(d['max'], 1.)
+        self.assertAlmostEqual(d['value'], 0.01)
+
+    def test_a_number_without_a_range_is_as_before(self):
+        self.assertEqual(self.node(min=None, max=None)['type'], 'int')
+        # and a node that does not even have the keys
+        self.assertEqual(self.tree.describe(
+            dict(name='M', title='M', visibility=0, type='int', value=1,
+                 default=1))['type'], 'int')
+
+    def test_a_range_of_one_point_is_as_before(self):
+        self.assertEqual(self.node(min=5, max=5)['type'], 'int')
+
+    def test_a_range_that_is_not_finite_is_as_before(self):
+        self.assertEqual(self.node(min=0., max=float('inf'),
+                                   type='float', unit='')['type'], 'float')
+
+    def test_a_range_of_billions_has_no_slider(self):
+        self.assertEqual(self.node(min=0, max=2 ** 32)['type'], 'int')
+
+    def test_a_register_is_as_before(self):
+        self.assertEqual(self.node(readonly=True)['type'], 'int')
+
+    def test_other_types_are_as_before(self):
+        for kind in ('list', 'bool', 'str', 'action'):
+            with self.subTest(kind=kind):
+                self.assertEqual(self.node(type=kind)['type'], kind)
+
+    def test_the_tree_builds_sliders(self):
+        features = [_int_feature('Width', value=1280, min=128, max=3840,
+                                 inc=8),
+                    _float_feature('Gamma', value=1., min=0.1, max=4.)]
+        tree, _, _ = make_tree(features=features)
+        self.assertEqual(tree._parameters['Width'].opts['type'], 'sliderspin')
+        self.assertEqual(tree._parameters['Gamma'].opts['type'], 'sliderspin')
+
+    def test_the_range_of_the_control_follows_the_camera(self):
+        features = [_int_feature('Width', value=1280, min=128, max=3840,
+                                 inc=8)]
+        tree, cam, nm = make_tree(features=features)
+        widget = next(iter(tree._parameters['Width'].items)).widget
+        self.assertEqual((widget.minimum, widget.maximum), (128, 3840))
+        node = nm.get_node('Width')
+        node.min, node.max = 128, 2000          # another setting narrowed it
+        tree._updateLimits()
+        self.assertEqual((widget.minimum, widget.maximum), (128, 2000))
+        self.assertEqual(widget.value(), 1280)
 
 
 class TestConvert(unittest.TestCase):

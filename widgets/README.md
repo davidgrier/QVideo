@@ -14,3 +14,9 @@ they need no connection to the camera.
 
 `QWebShareDialog` is the window that pairs a tablet with a `QWebScreen`: it
 shows a QR code while it is open and lists the browsers that have paired.
+
+`QSliderSpinBox` is a slider and a spin box for one number, kept in step:
+the slider to find a value, the spin box to set it exactly, and a logarithmic
+scale for a range of decades.  It knows nothing of cameras.  The camera trees
+use it for the numbers that have a range, through `lib/_sliderspin.py`, which
+makes it a control (`'sliderspin'`) of a pyqtgraph `ParameterTree`.

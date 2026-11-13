@@ -211,23 +211,27 @@ class TestResolutionSync(unittest.TestCase):
         tree, cam = make_tree()
         cam._device.set.reset_mock()
         tree._parameters['resolution'].setValue(self.LABEL)
+        tree.flush()
         self.assertIn(1280, self._device_calls(cam, QOpenCVCamera.WIDTH))
 
     def test_selecting_sets_height(self):
         tree, cam = make_tree()
         cam._device.set.reset_mock()
         tree._parameters['resolution'].setValue(self.LABEL)
+        tree.flush()
         self.assertIn(720, self._device_calls(cam, QOpenCVCamera.HEIGHT))
 
     def test_selecting_sets_fps(self):
         tree, cam = make_tree()
         cam._device.set.reset_mock()
         tree._parameters['resolution'].setValue(self.LABEL)
+        tree.flush()
         self.assertIn(30., self._device_calls(cam, QOpenCVCamera.FPS))
 
     def test_selecting_updates_the_width_and_height_fields(self):
         tree, _ = make_tree()
         tree._parameters['resolution'].setValue(self.LABEL)
+        tree.flush()
         self.assertEqual(tree._parameters['width'].value(), 1280)
         self.assertEqual(tree._parameters['height'].value(), 720)
 
@@ -236,6 +240,7 @@ class TestResolutionSync(unittest.TestCase):
         cam._device.set.reset_mock()
         tree._ignoreSync = True
         tree._parameters['resolution'].setValue(self.LABEL)
+        tree.flush()
         self.assertEqual(self._device_calls(cam, QOpenCVCamera.WIDTH), [])
 
     def test_non_resolution_changes_forwarded_to_base(self):
@@ -246,6 +251,7 @@ class TestResolutionSync(unittest.TestCase):
         param.name.return_value = 'mirrored'
         changes = [(param, 'value', True)]
         tree._sync(None, changes)
+        tree.flush()
         self.assertTrue(cam.mirrored)
 
     def test_unrelated_change_does_not_reset_the_resolution(self):
@@ -255,6 +261,7 @@ class TestResolutionSync(unittest.TestCase):
         param = MagicMock()
         param.name.return_value = 'mirrored'
         tree._sync(None, [(param, 'value', True)])
+        tree.flush()
         self.assertEqual(tree._parameters['resolution'].value(), self.LABEL)
 
     def test_disabling_fields_at_construction_keeps_the_resolution(self):

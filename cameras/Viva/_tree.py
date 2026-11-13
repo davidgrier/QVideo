@@ -1,8 +1,6 @@
 '''Camera property tree for GenICam cameras driven by viva-genicam.'''
 from typing import ClassVar
 
-from qtpy import QtCore
-from pyqtgraph.parametertree import Parameter
 
 from QVideo.cameras.Viva._camera import QVivaCamera
 from QVideo.lib.QCameraTree import QCameraTree, Source
@@ -97,13 +95,6 @@ class QVivaTree(QCameraTree):
         for key, param in self._parameters.items():
             if key in properties:
                 param.setOpts(enabled=properties[key]['setter'] is not None)
-
-    @QtCore.Slot(object, object)
-    def _sync(self, root: Parameter, changes) -> None:
-        '''Send the changes to the camera, then show what it allows.'''
-        super()._sync(root, changes)
-        if not self._ignoreSync:
-            self._showAccess()
 
 
 if __name__ == '__main__':  # pragma: no cover

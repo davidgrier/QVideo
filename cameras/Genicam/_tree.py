@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 _MICROSECOND_UNITS = frozenset({'us', 'µs', 'μs'})
 
+#: The widest range of whole numbers that gets a slider.
+_MAX_SLIDER_RANGE = 1e9
+
 __all__ = ['QGenicamTree']
 
 
@@ -138,7 +141,24 @@ class QGenicamTree(QCameraTree):
             this['children'] = [self.describe(c) for c in node['children']]
         elif node.get('type') == 'float':
             self._describeFloat(this)
+        self._makeSlider(this)
         return this
+
+    @staticmethod
+    def _makeSlider(this: dict[str, Any]) -> None:
+        '''Make a number that has a range, and that is not read only, a slider
+        with a spin box.  (A range of billions has no use for a slider.)'''
+        if this.get('type') not in ('int', 'float') or this.get('readonly'):
+            return
+        low, high = this.get('min'), this.get('max')
+        if low is None or high is None or not low < high:
+            return
+        if not (math.isfinite(low) and math.isfinite(high)):
+            return
+        if this['type'] == 'int' and high - low > _MAX_SLIDER_RANGE:
+            return
+        this['int'] = this['type'] == 'int'
+        this['type'] = 'sliderspin'
 
     def _describeFloat(self, this: dict[str, Any]) -> None:
         '''Apply units, scale and step to the float description *this*.'''
@@ -170,20 +190,25 @@ class QGenicamTree(QCameraTree):
             p = item.param
             p.sigValueChanged.connect(self._handleItemChanges)
 
-    @QtCore.Slot(object, object)
-    def _sync(self, root, changes) -> None:
-        if self._ignoreSync:
-            return
-        for param, change, value in changes:
-            if change == 'value':
-                key = param.name()
-                scale = self._scaleFactors.get(key)
-                sent = value if scale is None else value / scale
-                self.camera.set(key, sent)
-        with self._syncIgnored():
-            for key, value in self.camera.settings.items():
-                scale = self._scaleFactors.get(key)
-                self.set(key, value if scale is None else value * scale)
+    def _toCamera(self, key: str, value: Any) -> Any:
+        '''Return the value of control *key* in the units of the node.'''
+        scale = self._scaleFactors.get(key)
+        return value if scale is None else value / scale
+
+    def _fromCamera(self, key: str, value: Any) -> Any:
+        '''Return the value of node *key* in the units of the control.'''
+        scale = self._scaleFactors.get(key)
+        return value if scale is None else value * scale
+
+    def _readback(self) -> dict:
+        '''Read all of the settings of the camera (in the worker thread).'''
+        return dict(self.camera.settings)
+
+    def _announce(self, values: dict) -> None:
+        '''Say nothing: the nodes that a change touches are refreshed by
+        :meth:`_showChanges`, which reads the camera, and announcing every
+        setting after every change would make it do that in the interface
+        thread.'''
 
     @property
     def controls(self) -> Sequence[str] | None:

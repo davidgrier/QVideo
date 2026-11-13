@@ -1,4 +1,6 @@
 '''Unit tests for QCameraTree.'''
+import threading
+import time
 import unittest
 from unittest.mock import patch, MagicMock
 from qtpy import QtCore, QtGui, QtWidgets
@@ -143,6 +145,7 @@ class TestQCameraTreeChoiceProperty(unittest.TestCase):
     def test_selecting_an_entry_sets_the_camera_property(self):
         tree = QCameraTree(make_source(self._camera()))
         tree._parameters['mode'].setValue('slow')
+        tree.flush()
         self.assertEqual(self.mode, 'slow')
 
     def test_unrelated_change_does_not_reset_the_selection(self):
@@ -189,6 +192,7 @@ class TestQCameraTreeSync(unittest.TestCase):
         cam = make_camera()
         tree = make_tree(source=make_source(cam))
         tree._parameters['width'].setValue(320)
+        tree.flush()
         self.assertEqual(cam.width, 320)
 
     def test_a_change_in_the_tree_is_announced_to_the_others(self):
@@ -202,6 +206,7 @@ class TestQCameraTreeSync(unittest.TestCase):
             lambda values: heard.append(values),
             QtCore.Qt.ConnectionType.DirectConnection)
         tree._parameters['width'].setValue(320)
+        tree.flush()
         self.assertEqual(len(heard), 1)
         self.assertEqual(heard[0]['width'], 320)
 
@@ -210,6 +215,7 @@ class TestQCameraTreeSync(unittest.TestCase):
         tree = make_tree()
         # If this call returns without recursion error, the guard works
         tree._parameters['width'].setValue(320)
+        tree.flush()
 
 
 class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
@@ -234,6 +240,7 @@ class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
         tree = QCameraTree(make_source(cam), description=desc)
         unseen.reset_mock()
         tree._parameters['width'].setValue(320)
+        tree.flush()
         unseen.assert_not_called()
 
     def test_it_logs_no_warning_for_a_property_that_it_does_not_show(self):
@@ -243,6 +250,7 @@ class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
         tree = QCameraTree(make_source(cam), description=desc)
         with self.assertNoLogs('QVideo.lib.QCameraTree', 'WARNING'):
             tree._parameters['width'].setValue(320)
+            tree.flush()
 
     def test_an_entry_that_is_not_a_camera_property_does_no_harm(self):
         desc = [{'name': 'width', 'type': 'int', 'value': 640,
@@ -250,14 +258,17 @@ class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
                 {'name': 'note', 'type': 'str', 'value': 'x'}]
         tree = QCameraTree(make_source(), description=desc)
         tree._parameters['width'].setValue(320)
+        tree.flush()
         self.assertEqual(tree.get('note'), 'x')
 
     def test_a_value_that_cannot_be_read_now_stays_in_the_tree(self):
         cam = make_camera()
         tree = make_tree(source=make_source(cam))
         tree._parameters['height'].setValue(300)
+        tree.flush()
         cam.properties['height']['getter'] = lambda: None
         tree._parameters['width'].setValue(320)       # triggers the readback
+        tree.flush()
         self.assertEqual(tree.get('height'), 300)
 
     def test_the_tree_shows_what_the_camera_did_beyond_the_request(self):
@@ -265,6 +276,7 @@ class TestQCameraTreeSyncReadsWhatItShows(unittest.TestCase):
         tree = make_tree(source=make_source(cam))
         cam._height = 100                              # the camera did this
         tree._parameters['width'].setValue(320)
+        tree.flush()
         self.assertEqual(tree.get('height'), 100)
 
 
@@ -293,6 +305,7 @@ class TestQCameraTreeLost(unittest.TestCase):
 
     def test_a_change_made_before_the_loss_still_reaches_the_camera(self):
         self.tree.set('width', 320)
+        self.tree.flush()
         self.assertEqual(self.tree.camera.get('width'), 320)
 
 
@@ -335,7 +348,7 @@ class TestSyncIgnored(unittest.TestCase):
         tree = make_tree(source=make_source(cam))
         with patch.object(type(tree), 'set', side_effect=RuntimeError):
             with self.assertRaises(RuntimeError):
-                tree._sync(None, [])
+                tree._show({'width': 5}, {})
         self.assertFalse(tree._ignoreSync)
 
 
@@ -379,6 +392,7 @@ class TestQCameraTreeSyncGuard(unittest.TestCase):
         # Calling _sync directly with a value change should be ignored
         param = tree._parameters['width']
         tree._sync(None, [(param, 'value', 9999)])
+        tree.flush()
         self.assertEqual(cam.width, original_width)
         tree._ignoreSync = False
 
@@ -408,6 +422,7 @@ class TestQCameraTreeSyncNonValueChange(unittest.TestCase):
         original_width = cam.width
         param = tree._parameters['width']
         tree._sync(None, [(param, 'options', 9999)])
+        tree.flush()
         self.assertEqual(cam.width, original_width)
 
 
@@ -566,11 +581,13 @@ class TestQCameraTreeFollowsTheCamera(unittest.TestCase):
             limits=['Off', 'Once'])
         tree, _ = self.make(camera)
         tree._parameters['Auto'].setValue('Once')
+        tree.flush()
         self.assertEqual(state['value'], 'Once')
         state['value'] = 'Off'                  # the camera has settled
         camera.propertiesChanged.emit({'Auto': 'Off'})
         self.assertEqual(tree.get('Auto'), 'Off')
         tree._parameters['Auto'].setValue('Once')
+        tree.flush()
         self.assertEqual(state['value'], 'Once')
 
     def test_an_edit_reads_the_camera_in_one_request(self):
@@ -578,6 +595,7 @@ class TestQCameraTreeFollowsTheCamera(unittest.TestCase):
         with patch.object(camera, 'snapshot',
                           wraps=camera.snapshot) as snapshot:
             tree._parameters['width'].setValue(320)
+            tree.flush()
         snapshot.assert_called_once()
 
     def test_floats_that_agree_are_not_a_difference(self):
@@ -585,6 +603,334 @@ class TestQCameraTreeFollowsTheCamera(unittest.TestCase):
         self.assertTrue(QCameraTree._differs(1., 1.1))
         self.assertTrue(QCameraTree._differs('Once', 'Off'))
         self.assertFalse(QCameraTree._differs(3, 3))
+
+
+class SlowCamera(QNoiseCamera):
+
+    '''A camera whose setter waits for a gate, as a camera does that its
+    capture thread holds while it waits for a frame.'''
+
+    def __init__(self):
+        super().__init__()
+        self.gate = threading.Event()
+        self.gate.set()                     # open: close it to hold writes
+        self.entered = threading.Event()
+        self.writes: list = []
+        self.threads: set = set()
+        self.refuse = None
+
+    def set(self, key, value):
+        self.entered.set()
+        self.gate.wait(5)
+        if self.refuse is not None and self.refuse(key, value):
+            raise ValueError(f'{key} = {value!r} is out of range')
+        self.writes.append((key, value))
+        self.threads.add(threading.current_thread())
+        return super().set(key, value)
+
+
+class TestQCameraTreeThreaded(unittest.TestCase):
+
+    '''The camera is written in a thread of its own.'''
+
+    def setUp(self):
+        self.camera = SlowCamera()
+        self.tree = QCameraTree(make_source(self.camera))
+        self.addCleanup(self.finish)
+
+    def finish(self):
+        self.camera.gate.set()
+        self.tree.stop()
+
+    def width(self, value):
+        self.tree._parameters['width'].setValue(value)
+
+    def test_a_change_does_not_wait_for_the_camera(self):
+        self.camera.gate.clear()
+        start = time.perf_counter()
+        self.width(320)
+        elapsed = time.perf_counter() - start
+        self.assertLess(elapsed, 0.5)               # the camera waits 5 s
+        self.assertEqual(self.tree.get('width'), 320)   # the tree took it
+        self.assertEqual(self.camera.writes, [])
+        self.camera.gate.set()
+        self.assertTrue(self.tree.flush())
+        self.assertEqual(self.camera.width, 320)
+
+    def test_the_camera_is_written_in_another_thread(self):
+        self.width(320)
+        self.tree.flush()
+        self.assertNotIn(threading.current_thread(), self.camera.threads)
+        self.assertTrue(self.camera.threads)
+
+    def test_the_latest_value_is_the_one_that_is_written(self):
+        self.camera.gate.clear()
+        self.width(1)
+        self.camera.entered.wait(5)                 # the first is in hand
+        for n in range(2, 40):
+            self.width(n)                           # a slider is dragged
+        self.camera.gate.set()
+        self.tree.flush()
+        self.assertEqual(self.camera.writes, [('width', 1), ('width', 39)])
+        self.assertEqual(self.camera.width, 39)
+        self.assertEqual(self.tree.get('width'), 39)
+
+    def test_the_writes_keep_the_order_of_the_last_touch(self):
+        self.camera.gate.clear()
+        self.width(1)
+        self.camera.entered.wait(5)
+        self.tree._parameters['height'].setValue(2)
+        self.width(3)                               # width again: after height
+        self.camera.gate.set()
+        self.tree.flush()
+        self.assertEqual(self.camera.writes,
+                         [('width', 1), ('height', 2), ('width', 3)])
+
+    def test_an_answer_does_not_overwrite_a_newer_edit(self):
+        shown = []
+        self.tree._parameters['width'].sigValueChanged.connect(
+            lambda param, value: shown.append(value))
+        self.camera.gate.clear()
+        self.width(320)
+        self.camera.entered.wait(5)                 # 320 is being written
+        self.width(400)                             # the user moves on
+        self.camera.gate.set()
+        self.tree.flush()
+        self.assertEqual(self.tree.get('width'), 400)
+        self.assertEqual(self.camera.width, 400)
+        # the answer to 320 arrived after 400 was chosen: it was not shown
+        self.assertNotIn(320, shown[shown.index(400):])
+
+    def test_an_answer_about_a_newer_edit_is_not_announced(self):
+        heard = []
+        self.camera.propertiesChanged.connect(
+            lambda values: heard.append(dict(values)),
+            QtCore.Qt.ConnectionType.DirectConnection)
+        self.camera.gate.clear()
+        self.width(320)
+        self.camera.entered.wait(5)
+        self.width(400)
+        self.camera.gate.set()
+        self.tree.flush()
+        self.assertTrue(heard)
+        self.assertTrue(all(values.get('width') != 320 for values in heard))
+        self.assertEqual(heard[-1]['width'], 400)
+
+    def test_a_change_that_the_camera_reports_does_not_override_an_edit(self):
+        self.camera.gate.clear()
+        self.width(320)                             # not yet written
+        self.tree._showChanges({'width': 111})      # the camera says 111
+        self.assertEqual(self.tree.get('width'), 320)
+        self.camera.gate.set()
+        self.tree.flush()
+        self.tree._showChanges({'width': 111})      # now it may
+        self.assertEqual(self.tree.get('width'), 111)
+
+    def test_a_camera_that_refuses_is_logged_and_the_tree_shows_the_truth(self):
+        before = self.tree.get('width')
+        self.camera.refuse = lambda key, value: value > 1000
+        with self.assertLogs('QVideo.lib.QCameraTree', 'ERROR') as logs:
+            self.width(5000)
+            self.tree.flush()
+        self.assertIn('width', logs.output[0])
+        self.assertEqual(self.tree.get('width'), before)    # shown as it is
+        self.camera.refuse = None
+        self.width(320)                             # and it goes on
+        self.tree.flush()
+        self.assertEqual(self.camera.width, 320)
+
+    def test_a_camera_that_cannot_be_read_back_is_logged(self):
+        with patch.object(self.tree, '_readback',
+                          side_effect=RuntimeError('no frame')):
+            with self.assertLogs('QVideo.lib.QCameraTree', 'ERROR') as logs:
+                self.width(320)
+                self.tree.flush()
+        self.assertIn('could not be read back', logs.output[0])
+        self.assertEqual(self.camera.width, 320)        # it was written
+        self.assertEqual(self.tree.get('width'), 320)   # and the tree kept it
+
+    def test_an_answer_for_a_tree_that_is_gone_is_dropped(self):
+        broken = MagicMock()
+        broken.emit.side_effect = RuntimeError('wrapped C/C++ object deleted')
+        with patch.object(type(self.tree), '_written', broken):
+            self.tree._work({'width': (320, 1)})        # does not raise
+        self.assertEqual(self.camera.width, 320)
+
+    def test_flush_says_when_the_time_runs_out(self):
+        self.camera.gate.clear()
+        self.width(320)
+        self.assertFalse(self.tree.flush(timeout=0.05))
+        self.camera.gate.set()
+        self.assertTrue(self.tree.flush())
+
+    def test_flush_with_nothing_to_write_returns_at_once(self):
+        start = time.perf_counter()
+        self.assertTrue(self.tree.flush())
+        self.assertLess(time.perf_counter() - start, 0.5)
+
+    def test_stop_drops_what_waits_and_finishes_what_is_written(self):
+        self.camera.gate.clear()
+        self.width(1)
+        self.camera.entered.wait(5)
+        self.tree._parameters['height'].setValue(2)     # waits behind
+        stopper = threading.Thread(target=self.tree.stop)
+        stopper.start()
+        time.sleep(0.05)
+        self.camera.gate.set()
+        stopper.join(5)
+        self.assertFalse(stopper.is_alive())
+        self.assertEqual(self.camera.writes, [('width', 1)])
+        self.width(7)                                   # nothing is written
+        self.assertTrue(self.tree.flush())
+        self.assertEqual(self.camera.writes, [('width', 1)])
+
+
+class RangedCamera(SlowCamera):
+
+    '''A camera with numbers that have ranges, and some that do not.'''
+
+    def __init__(self):
+        super().__init__()
+        self.state = dict(exposure=0.01, gain=3., offset=640, free=1.5,
+                          temperature=31.5, degenerate=2.)
+        register = self.registerProperty
+
+        def number(name, ptype, setter=True, **meta):
+            register(name, getter=lambda: self.state[name],
+                     setter=((lambda value: self.state.update({name: value}))
+                             if setter else None),
+                     ptype=ptype, **meta)
+
+        number('exposure', float, minimum=1e-5, maximum=30.)
+        number('gain', float, minimum=0., maximum=24.)
+        number('offset', int, minimum=0, maximum=1920, step=16)
+        number('free', float)                             # no range
+        number('temperature', float, setter=False,
+               minimum=0., maximum=100.)                  # read only
+        number('degenerate', float, minimum=2., maximum=2.)
+
+
+class TestQCameraTreeSliders(unittest.TestCase):
+
+    '''A number that has a range is a slider with a spin box.'''
+
+    def setUp(self):
+        self.camera = RangedCamera()
+        self.tree = QCameraTree(make_source(self.camera))
+        self.addCleanup(self.finish)
+
+    def finish(self):
+        self.camera.gate.set()
+        self.tree.stop()
+
+    def param(self, name):
+        return self.tree._parameters[name]
+
+    def control(self, name):
+        return next(iter(self.param(name).items)).widget
+
+    def test_a_number_with_a_range_is_a_slider(self):
+        for name in ('exposure', 'gain', 'offset'):
+            with self.subTest(name=name):
+                self.assertEqual(self.param(name).opts['type'], 'sliderspin')
+
+    def test_the_limits_are_the_range_of_the_camera(self):
+        self.assertEqual(self.param('exposure').opts['limits'], (1e-5, 30.))
+        self.assertEqual(self.param('gain').opts['limits'], (0., 24.))
+
+    def test_whole_numbers_are_whole_and_keep_their_step(self):
+        self.assertTrue(self.param('offset').opts['int'])
+        self.assertEqual(self.param('offset').opts['step'], 16)
+        self.assertFalse(self.param('gain').opts['int'])
+
+    def test_a_number_without_a_range_is_a_spin_box_as_before(self):
+        self.assertEqual(self.param('free').opts['type'], 'float')
+
+    def test_a_number_that_cannot_be_written_is_a_locked_slider(self):
+        # a camera unlocks some of its numbers as its settings change, and a
+        # control that is not there cannot be unlocked
+        self.assertEqual(self.param('temperature').opts['type'], 'sliderspin')
+        self.assertFalse(self.param('temperature').opts['enabled'])
+        widget = self.control('temperature')
+        self.assertFalse(widget.slider.isEnabled())
+        self.assertFalse(widget.spin.isEnabled())
+
+    def test_a_range_of_one_point_is_a_spin_box_as_before(self):
+        self.assertEqual(self.param('degenerate').opts['type'], 'float')
+
+    def test_other_types_are_as_before(self):
+        self.assertEqual(self.param('color').opts['type'], 'bool')
+
+    def test_the_slider_shows_the_value_of_the_camera(self):
+        self.assertEqual(self.control('gain').value(), 3.)
+        self.assertEqual(self.control('gain').slider.value(),
+                         round(1000 * 3 / 24))
+        self.assertTrue(self.control('exposure').isLogarithmic())
+
+    def test_dragging_a_slider_writes_the_camera_with_the_latest_value(self):
+        self.camera.gate.clear()
+        slider = self.control('gain').slider
+        slider.setValue(100)
+        self.camera.entered.wait(5)                 # the first is in hand
+        for position in range(101, 700, 25):
+            slider.setValue(position)               # the drag goes on
+        self.camera.gate.set()
+        self.assertTrue(self.tree.flush())
+        gains = [value for key, value in self.camera.writes if key == 'gain']
+        self.assertEqual(len(gains), 2)             # not one for each step
+        self.assertAlmostEqual(gains[-1], 24 * 676 / 1000)
+        self.assertAlmostEqual(self.camera.state['gain'], gains[-1])
+        self.assertAlmostEqual(self.control('gain').value(), gains[-1])
+
+    def test_a_change_that_the_camera_reports_moves_the_slider_not_the_camera(
+            self):
+        self.camera.propertiesChanged.emit({'gain': 6.})
+        self.assertEqual(self.tree.get('gain'), 6.)
+        self.assertEqual(self.control('gain').slider.value(), 250)
+        self.tree.flush()
+        self.assertEqual(self.camera.writes, [])            # nothing sent back
+
+    def test_the_spin_box_writes_the_camera_too(self):
+        self.control('gain').spin.setValue(18.)
+        self.tree.flush()
+        self.assertEqual(self.camera.state['gain'], 18.)
+        self.assertEqual(self.control('gain').slider.value(), 750)
+
+    def test_the_step_of_a_spin_box_follows_the_value(self):
+        self.tree.set('exposure', 5.)
+        self.assertAlmostEqual(self.param('exposure').opts['step'], 0.1)
+        self.tree.set('exposure', 0.002)
+        self.assertAlmostEqual(self.param('exposure').opts['step'], 1e-4)
+
+    def test_the_step_of_whole_numbers_is_left_alone(self):
+        self.tree.set('offset', 800)
+        self.assertEqual(self.param('offset').opts['step'], 16)
+
+
+class TestQCameraTreeNotThreaded(unittest.TestCase):
+
+    '''``threaded=False`` writes in the interface thread, inside the change.'''
+
+    def test_the_change_has_taken_effect_when_it_returns(self):
+        camera = SlowCamera()
+        tree = QCameraTree(make_source(camera), threaded=False)
+        self.addCleanup(tree.stop)
+        tree._parameters['width'].setValue(320)
+        self.assertEqual(camera.width, 320)
+        self.assertEqual(camera.threads, {threading.current_thread()})
+
+    def test_flush_has_nothing_to_wait_for(self):
+        tree = QCameraTree(make_source(), threaded=False)
+        self.addCleanup(tree.stop)
+        self.assertTrue(tree.flush())
+
+    def test_the_answer_is_shown_at_once(self):
+        camera = SlowCamera()
+        tree = QCameraTree(make_source(camera), threaded=False)
+        self.addCleanup(tree.stop)
+        camera._height = 100                        # the camera did this
+        tree._parameters['width'].setValue(320)
+        self.assertEqual(tree.get('height'), 100)
 
 
 if __name__ == '__main__':

@@ -467,11 +467,13 @@ class TestAccess(unittest.TestCase):
             try:
                 self.assertTrue(tree._parameters['Height'].opts['enabled'])
                 camera._device.names.add('Height')
-                tree._sync(None, [])
+                camera.updateAccess()           # what a frame's check does
+                tree._showChanges({})
                 self.assertFalse(tree._parameters['Height'].opts['enabled'])
                 self.assertTrue(tree._parameters['Width'].opts['enabled'])
                 camera._device.names.clear()
-                tree._sync(None, [])
+                camera.updateAccess()
+                tree._showChanges({})
                 self.assertTrue(tree._parameters['Height'].opts['enabled'])
             finally:
                 tree.stop()
@@ -485,7 +487,8 @@ class TestAccess(unittest.TestCase):
             try:
                 self.assertFalse(tree._parameters['Height'].opts['enabled'])
                 camera._device.names.clear()
-                tree._sync(None, [])
+                camera.updateAccess()
+                tree._showChanges({})
                 self.assertTrue(tree._parameters['Height'].opts['enabled'])
             finally:
                 tree.stop()
@@ -755,6 +758,7 @@ class TestSnapshot(unittest.TestCase):
             try:
                 camera._device.names.add('Height')
                 tree._parameters['Width'].setValue(320)
+                tree.flush()
                 self.assertFalse(tree._parameters['Height'].opts['enabled'])
             finally:
                 tree.stop()

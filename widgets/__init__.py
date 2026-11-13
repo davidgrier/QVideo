@@ -15,12 +15,15 @@ QCameraChooser
     A combo box of the cameras that work.
 QWebShareDialog
     The QR code that pairs a tablet with a ``QWebScreen``.
+QSliderSpinBox
+    A slider and a spin box for one number, kept in step.
 '''
 from .QHistogramWidget import QHistogramWidget
 from .QUniformityWidget import QUniformityWidget
 from .QScrollPanel import QScrollPanel
 from .QCameraChooser import QCameraChooser
 from .QWebShareDialog import QWebShareDialog
+from .QSliderSpinBox import QSliderSpinBox
 
 __all__ = ['QHistogramWidget', 'QUniformityWidget', 'QScrollPanel',
-           'QCameraChooser', 'QWebShareDialog']
+           'QCameraChooser', 'QWebShareDialog', 'QSliderSpinBox']

@@ -15,6 +15,9 @@ from QVideo.lib.imageops import AutoLevels, ImageFormat
 
 logger = logging.getLogger(__name__)
 
+#: The time [ms] that the shape must rest before the window is fitted to it.
+_FIT_DELAY = 300
+
 __all__ = ['QVideoScreen']
 
 
@@ -112,6 +115,10 @@ class QVideoScreen(GraphicsLayoutWidget):
         self._timer = QtCore.QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._setready)
+        self._fitTimer = QtCore.QTimer(self)
+        self._fitTimer.setSingleShot(True)
+        self._fitTimer.setInterval(_FIT_DELAY)
+        self._fitTimer.timeout.connect(self._fitToVideo)
         self._setupUi()
 
     def _setupUi(self) -> None:
@@ -138,8 +145,10 @@ class QVideoScreen(GraphicsLayoutWidget):
             self._source.shapeChanged.disconnect(self.updateShape)
         self._source = source
         self._relay = None
+        self._fitTimer.stop()
         if source is None:
             return
+        self._videoShape = None     # a new source fits the window at once
         self.updateShape(source.shape)
         source.shapeChanged.connect(self.updateShape)
         self._relay = QFrameRelay(source)
@@ -407,6 +416,10 @@ class QVideoScreen(GraphicsLayoutWidget):
     def updateShape(self, shape: QtCore.QSize) -> None:
         '''Resize the display to match the video frame dimensions.
 
+        The first shape fits the window to the video at once; later ones
+        wait until the shape has not changed for a moment (see
+        :data:`_FIT_DELAY`), and the video is scaled in the window meanwhile.
+
         Ignores shapes that are not positive: zero, which :class:`QCamera`
         emits as a sentinel before ``width`` / ``height`` are registered
         as camera properties, and ``-1``, which a driver can report before
@@ -420,12 +433,21 @@ class QVideoScreen(GraphicsLayoutWidget):
         if shape.width() <= 0 or shape.height() <= 0:
             return
         logger.debug(f'Resizing to {shape}')
+        first = self._videoShape is None
         self._videoShape = shape
         self.updateGeometry()
         widget = self
         while (widget := widget.parentWidget()) is not None:
             widget.updateGeometry()
-        self._fitToVideo()
+        if first:
+            self._fitToVideo()
+            return
+        # A control that changes the shape (a slider that is dragged) does so
+        # at every step.  Resizing the window each time moves the controls
+        # from under the pointer, so the video is scaled in the window as it
+        # is, and the window is fitted when the changes have stopped.
+        self._showAll(shape.width(), shape.height())
+        self._fitTimer.start()
 
     @QtCore.Slot()
     def _fitToVideo(self) -> None:

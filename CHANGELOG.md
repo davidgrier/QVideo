@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **The window waits for a changing shape.**  Dragging the height or width
+  slider changed the shape at every step, and the window was resized at every
+  step, which moved the controls from under the pointer.  `QVideoScreen` now
+  scales the video in the window and fits the window when the shape has rested
+  for 300 ms.  The first shape of a source still fits at once.
+
 - **A slider with a spin box in the camera tree.**  pyqtgraph has a spin box
   for a number and a slider with only a label; nothing has both, so
   `QSliderSpinBox` (in `widgets/`) is a slider that is dragged to find a value

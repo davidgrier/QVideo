@@ -377,6 +377,54 @@ class TestParentsFollowTheShape(unittest.TestCase):
         i.assert_called_once_with()
 
 
+class TestShapeChangesAreSettled(unittest.TestCase):
+    '''A shape that keeps changing (a dragged slider) does not resize the
+    window at every step: the window is fitted when it has rested.'''
+
+    def test_the_first_shape_fits_at_once(self):
+        screen = make_screen()
+        with patch.object(screen, '_fitToVideo') as fit:
+            screen.updateShape(QtCore.QSize(64, 48))
+        fit.assert_called_once_with()
+
+    def test_a_later_shape_waits_and_scales_the_video_meanwhile(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(64, 48))
+        with patch.object(screen, '_fitToVideo') as fit, \
+             patch.object(screen, '_showAll') as show:
+            screen.updateShape(QtCore.QSize(64, 40))
+            screen.updateShape(QtCore.QSize(64, 32))
+        fit.assert_not_called()
+        show.assert_called_with(64, 32)
+        self.assertTrue(screen._fitTimer.isActive())
+
+    def test_the_window_is_fitted_once_when_the_changes_stop(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(64, 48))
+        with patch.object(screen, '_fitToVideo') as fit:
+            screen._fitTimer.timeout.disconnect()
+            screen._fitTimer.timeout.connect(screen._fitToVideo)
+            for height in (40, 32, 24):
+                screen.updateShape(QtCore.QSize(64, height))
+            screen._fitTimer.setInterval(1)
+            screen._fitTimer.start()
+            deadline = QtCore.QDeadlineTimer(500)
+            while screen._fitTimer.isActive() and not deadline.hasExpired():
+                app.processEvents()
+        fit.assert_called_once_with()
+
+    def test_a_new_source_fits_at_once_and_drops_a_waiting_fit(self):
+        screen = make_screen()
+        screen.updateShape(QtCore.QSize(64, 48))
+        screen.updateShape(QtCore.QSize(64, 40))
+        source = MagicMock()
+        source.shape = QtCore.QSize(32, 24)
+        with patch.object(screen, '_fitToVideo') as fit:
+            screen.source = source
+        fit.assert_called_once_with()
+        self.assertFalse(screen._fitTimer.isActive())
+
+
 class TestRenderComposite(unittest.TestCase):
     '''The composite frame is a grab of the widget as an RGB array.'''
 

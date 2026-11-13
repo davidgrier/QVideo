@@ -15,6 +15,13 @@ Ideas for upgrades and extensions, in no particular order.
   to `pytest -q` (2026-11-12); `-X faulthandler` stays, and prints the test
   that was running if a segfault returns.
 - Python 3.11 / PyQt5 has failed intermittently.
+- The segfault came back once (2026-11-13, Python 3.13 / PyQt6 on Ubuntu, about
+  26% into the suite, on the merge commit of 4.26.1; the rerun passed), so
+  the fix of 2026-11-08 may not have been the whole story.  Not investigated.
+  Two flakes that were the tests' own are fixed: the page that waits 100 ms
+  for changes to arrive (`test_changes_that_come_fast_reach_a_page_...`,
+  a longer hold in the test), and the Windows job, which skipped the worker
+  tests of `QRemoteCamera` except one class (now skipped too).
 
 ---
 

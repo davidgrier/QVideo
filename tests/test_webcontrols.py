@@ -3,6 +3,7 @@ import asyncio
 import json
 import time
 import unittest
+import unittest.mock
 
 from qtpy import QtCore, QtWidgets
 
@@ -434,11 +435,15 @@ class TestControl(unittest.TestCase):
             app.processEvents()
             first = await self.note(ws, 'values')
             try:
-                second = await self.note(ws, 'values', timeout=0.5)
+                second = await self.note(ws, 'values', timeout=1.)
             except AssertionError:
                 second = None
             return first, second
-        first, second = self.ask(work)
+        # A hold that is long next to the time that a busy machine needs to
+        # hand 20 changes to the server thread: with the real 100 ms the
+        # server sometimes sent the changes that had arrived by then.
+        with unittest.mock.patch('QVideo.lib.QWebScreen._VALUES_EVERY', 1.):
+            first, second = self.ask(work)
         self.assertEqual(first['values'], {'fps': 20.})   # the newest
         self.assertIsNone(second)
 

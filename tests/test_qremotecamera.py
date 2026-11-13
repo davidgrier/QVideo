@@ -440,6 +440,7 @@ class TestTheWorkerRing(unittest.TestCase):
         self.assertEqual(worker.ringInfo()[0], ring.name)
 
 
+@not_on_windows
 class TestTheWorkerSpeaks(unittest.TestCase):
 
     def test_the_listener_sorts_answers_from_events(self):

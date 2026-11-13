@@ -115,10 +115,11 @@ class QCameraTree(ParameterTree):
             elif (type(value) in (int, float)
                   and spec.minimum is not None and spec.maximum is not None
                   and spec.minimum < spec.maximum):
-                # A number with a range: a slider and a spin box, whether or
-                # not it can be written now (a camera unlocks the exposure
-                # time when the exposure is manual), so that it has one when
-                # it can.  The control is locked while it cannot.
+                # A number with a range: a slider and a spin box.  A number
+                # that cannot be written now (a read-only property, or one
+                # that the camera has locked, such as the exposure time while
+                # the exposure is automatic) shows its spin box only: the
+                # control hides the slider while it is disabled.
                 entry.update(type='sliderspin', int=type(value) is int,
                              limits=(spec.minimum, spec.maximum))
                 if type(value) is int and spec.step is not None:

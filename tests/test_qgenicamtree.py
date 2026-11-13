@@ -665,6 +665,7 @@ class TestShowChanges(unittest.TestCase):
         tree, cam, _ = self.make()
         with patch.object(cam, 'states', wraps=cam.states) as states:
             tree._showChanges({'F0': 2.0})
+            tree.flush()
         self.assertEqual(states.call_count, 1)
         self.assertEqual(len(list(states.call_args[0][0])), 5)
 
@@ -673,6 +674,7 @@ class TestShowChanges(unittest.TestCase):
         for i in range(5):
             nm.get_node(f'F{i}').value = 2.0
         tree._showChanges({'F0': 2.0})
+        tree.flush()
         for i in range(5):
             self.assertAlmostEqual(tree._parameters[f'F{i}'].value(), 2.0)
 
@@ -681,6 +683,7 @@ class TestShowChanges(unittest.TestCase):
         nm.get_node('F0').value = 2.0
         with patch.object(cam, 'set') as send:
             tree._showChanges({'F0': 2.0})
+            tree.flush()
         send.assert_not_called()
 
     def test_a_closed_camera_is_left_alone(self):
@@ -688,18 +691,21 @@ class TestShowChanges(unittest.TestCase):
         cam.close()
         with patch.object(cam, 'states') as states:
             tree._showChanges({})
+            tree.flush()
         states.assert_not_called()
 
     def test_the_camera_signal_reaches_the_tree(self):
         tree, cam, nm = self.make()
         nm.get_node('F1').value = 3.0
         cam.propertiesChanged.emit({'F1': 3.0})
+        tree.flush()
         self.assertAlmostEqual(tree._parameters['F1'].value(), 3.0)
 
     def test_a_change_of_a_property_reads_everything_at_once(self):
         tree, cam, _ = self.make()
         with patch.object(cam, 'states', wraps=cam.states) as states:
             tree._handleItemChanges()
+            tree.flush()
         self.assertEqual(states.call_count, 1)
         self.assertEqual(len(list(states.call_args[0][0])), 5)
 
@@ -748,6 +754,7 @@ class TestUpdateValues(unittest.TestCase):
         tree, cam, nm = make_tree(features=[feat])
         nm.get_node('Gamma').value = 2.0
         tree._showChanges({'Gamma': 2.0})
+        tree.flush()
         self.assertAlmostEqual(tree._parameters['Gamma'].value(), 2.0)
 
     def test_invisible_node_skipped(self):
@@ -842,6 +849,86 @@ class TestVisibilityProp(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class TestReadsInAWorker(unittest.TestCase):
+    '''The camera lock is held while the camera waits for a frame, so the
+    tree reads the nodes in a thread of its own, never in the interface.'''
+
+    def make(self):
+        return make_tree(features=[_float_feature(f'F{i}', value=1.0)
+                                   for i in range(3)])
+
+    def test_the_nodes_are_not_read_in_the_interface_thread(self):
+        import threading
+        tree, cam, _ = self.make()
+        threads = []
+        real = cam.states
+
+        def states(names):
+            threads.append(threading.current_thread())
+            return real(names)
+
+        with patch.object(cam, 'states', states):
+            tree._showChanges({'F0': 2.0})
+            tree._handleItemChanges()
+            tree.flush()
+        self.assertTrue(threads)
+        self.assertNotIn(threading.main_thread(), threads)
+
+    def test_requests_that_pile_up_are_read_once_or_twice(self):
+        import threading
+        tree, cam, _ = self.make()
+        gate, entered = threading.Event(), threading.Event()
+        real = cam.states
+        count = []
+
+        def states(names):
+            count.append(1)
+            entered.set()
+            gate.wait(5)
+            return real(names)
+
+        with patch.object(cam, 'states', states):
+            tree._showChanges({})
+            entered.wait(5)
+            for _ in range(20):
+                tree._showChanges({})
+            gate.set()
+            tree.flush()
+        self.assertLessEqual(len(count), 2)
+
+    def test_a_request_for_the_values_is_not_lost_to_a_later_one(self):
+        tree, cam, nm = self.make()
+        nm.get_node('F0').value = 2.0
+        tree._showChanges({'F0': 2.0})      # asks for the values
+        tree._handleItemChanges()           # does not
+        tree.flush()
+        self.assertAlmostEqual(tree._parameters['F0'].value(), 2.0)
+
+    def test_a_control_that_was_changed_since_is_not_overwritten(self):
+        tree, cam, nm = self.make()
+        nm.get_node('F0').value = 2.0
+        tree._edits['F0'] = 1               # the user changed it; not written
+        tree._showChanges({'F0': 2.0})
+        tree.flush()
+        self.assertAlmostEqual(tree._parameters['F0'].value(), 1.0)
+
+    def test_an_item_change_does_not_show_the_values_of_the_camera(self):
+        tree, cam, nm = self.make()
+        nm.get_node('F0').value = 2.0
+        tree._handleItemChanges()
+        tree.flush()
+        self.assertAlmostEqual(tree._parameters['F0'].value(), 1.0)
+
+    def test_a_tree_that_is_not_threaded_reads_at_once(self):
+        cam, nm = make_camera([_float_feature('F0', value=1.0)])
+        tree = QGenicamTree(camera=cam, visibility=_EVisibility.Guru,
+                            threaded=False)
+        nm.get_node('F0').value = 2.0
+        tree._showChanges({'F0': 2.0})
+        self.assertAlmostEqual(tree._parameters['F0'].value(), 2.0)
+        self.assertTrue(tree.flush())
+
 
 
 class TestShowingRows(unittest.TestCase):

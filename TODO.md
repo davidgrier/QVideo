@@ -479,9 +479,11 @@ control that the user has changed since.
       locked one is greyed.  Open: try it on the Blackfly (Viva and `-f`), the
       width of the panel in `QCamcorder`, and whether the read-only numbers
       (the resulting frame rate) are better as a spin box only.
-- [ ] Genicam trees (`QGenicamTree`, the Harvesters path) still read the camera
-      in the interface thread when the camera reports a change of its own
-      (`_showChanges`); Viva does not.
+- [x] Genicam trees (`QGenicamTree`, the Harvesters path) read the camera in a
+      worker (`_refresh`), after every item change and when the camera reports
+      a change of its own (2026-11-13); Viva does not need it.
+- [x] Numbers that cannot be written (read only or locked) show the spin box
+      only, no slider (2026-11-13).
 
 ---
 
@@ -741,14 +743,13 @@ while streaming included.
 
 ---
 
-## Web screen: video on a tablet  **Built and pushed 2026-11-09 to 11-11; not released**
+## Web screen: video on a tablet  **Built 2026-11-09 to 11-11; released in 4.25.0 (provisional)**
 
 `QWebScreen` (`lib/QWebScreen.py`, `docs/streaming.rst`, `demos/webdemo.py`)
 serves a source to web browsers over a WebSocket: JPEG frames, the newest
 frame for a slow browser, no encoding while nobody watches.  Pairing by QR
 code, controls that the operator allows, and two encryption tiers exist; it
-works on a Mac, an iPad and with the Blackfly S.  It is unreleased (in the
-CHANGELOG under Unreleased).  Works on an Android phone once Chrome is
+works on a Mac, an iPad and with the Blackfly S.  It was released in 4.25.0 (provisional).  Works on an Android phone once Chrome is
 allowed to use local servers.  Not yet tried with the home-screen page or
 with a real certificate.
 

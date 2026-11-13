@@ -198,8 +198,12 @@ lock that the capture thread holds while it waits for a frame, and a slider
 that is dragged would freeze the window; a change therefore reaches the camera
 a moment later (`tree.flush()` waits for it, `threaded=False` writes inside
 the change).  The camera's answer is not shown over a control that the user has
-changed since (a per-property edit count).  A backend's tree does not override
-`_sync`: it overrides `_toCamera`, `_fromCamera`, `_readback` or `_announce`.
+changed since (a per-property edit count).  A number that cannot be written now shows its
+spin box only (the item hides the slider while the parameter is disabled).  A
+backend's tree does not override `_sync`: it overrides `_toCamera`,
+`_fromCamera`, `_readback` or `_announce`; `QGenicamTree` also reads the nodes
+that it shows (limits, access, values that the camera changed) in a second
+worker, `_refresh`, never in the interface thread.
 
 **`VideoFilter`** objects run in a **`QFilterPipeline`** (a worker thread),
 optionally driven by a **`QFilterRack`** of filter widgets, between a

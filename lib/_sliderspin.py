@@ -73,6 +73,12 @@ class SliderSpinParameterItem(NumericParameterItem):
             spin['suffix'] = opts['units']
         if spin:
             self.widget.setOpts(**spin)
+        if 'enabled' in opts or 'readonly' in opts:
+            # A number that cannot be changed now (read only, or locked by
+            # the camera) has nothing to drag: it shows its spin box only.
+            self.widget.slider.setVisible(
+                bool(param.opts.get('enabled', True))
+                and not param.opts.get('readonly', False))
         if 'log' in opts:
             self.widget.setLogarithmic(opts['log'])
         if 'min' in opts or 'max' in opts:

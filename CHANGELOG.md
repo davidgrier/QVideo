@@ -11,6 +11,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [4.26.1] — 2026-11-13
+
+### Changed
+
+- **The Genicam tree reads the camera in a worker thread.**  `QGenicamTree`
+  (the Harvesters path) read the nodes that it shows in the interface thread
+  after every change and whenever the camera reported one of its own, which
+  waits for the camera lock that the capture thread holds while it waits for a
+  frame.  A worker thread now reads them, keeping only the latest request, and
+  the tree shows the answer (not over a control that the user has changed
+  since).  `tree.flush()` waits for it, and `threaded=False` reads in place.
+- **A number that cannot be written has no slider.**  A read-only property, or
+  one that the camera has locked (the exposure time while the exposure is
+  automatic), shows its spin box only; the slider comes back when the number
+  can be written.
+
+---
+
 ## [4.26.0] — 2026-11-13
 
 ### Added

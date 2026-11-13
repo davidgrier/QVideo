@@ -169,6 +169,25 @@ class TestOptions(unittest.TestCase):
         param.setOpts(enabled=True)
         self.assertTrue(widget.slider.isEnabled())
 
+    def test_a_number_that_cannot_be_changed_has_no_slider(self):
+        param, widget, *_ = make()
+        widget.show()
+        self.assertTrue(widget.slider.isVisible())
+        param.setOpts(enabled=False)
+        self.assertFalse(widget.slider.isVisible())
+        self.assertTrue(widget.spin.isVisible())
+        param.setOpts(enabled=True)
+        self.assertTrue(widget.slider.isVisible())
+        param.setOpts(readonly=True)
+        self.assertFalse(widget.slider.isVisible())
+        param.setOpts(readonly=False)
+        self.assertTrue(widget.slider.isVisible())
+
+    def test_a_parameter_that_starts_locked_has_no_slider(self):
+        param, widget, *_ = make(enabled=False)
+        widget.show()
+        self.assertFalse(widget.slider.isVisible())
+
     def test_a_read_only_parameter_locks_the_control(self):
         param, widget, *_ = make()
         param.setOpts(readonly=True)

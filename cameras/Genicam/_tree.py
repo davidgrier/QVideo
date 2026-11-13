@@ -1,9 +1,12 @@
 '''Camera property tree for GenICam cameras.'''
 from typing import Any, ClassVar
 import math
+import threading
+import time
 from collections.abc import Sequence
 from qtpy import QtCore
 from QVideo.lib import QCameraTree
+from QVideo.lib._writequeue import Batch, WriteQueue
 from QVideo.cameras.Genicam import QGenicamCamera
 from genicam.genapi import EAccessMode, EVisibility
 import logging
@@ -92,6 +95,10 @@ class QGenicamTree(QCameraTree):
         GammaEnable=False,
     )
 
+    #: Emitted, from the worker thread, with the snapshots of the nodes
+    #: that it read: ``(states, values)``.
+    _refreshed = QtCore.Signal(object)
+
     def __init__(self, *args,
                  camera: QGenicamCamera | None = None,
                  cameraID: int = 0,
@@ -109,8 +116,18 @@ class QGenicamTree(QCameraTree):
         self._scaleFactors: dict[str, float] = {}
         self._decParams: set[str] = set()
         self._visibilities: dict[str, int] = {}
+        # The nodes are read in a worker thread (see _refresh); until the
+        # tree is built, and in a tree that is not threaded, here.
+        self._reads: WriteQueue | None = None
+        self._wantValues = False
+        self._wantLock = threading.Lock()
+        self._readsEmitted = self._readsShown = 0
         description = self.description(camera)
         super().__init__(camera, description, *args, **kwargs)
+        if self._queue is not None:
+            self._reads = WriteQueue(self._readWork, f'{type(self).__name__} '
+                                     'reader')
+            self._refreshed.connect(self._showRefreshed)
         self._visibility = visibility
         self.controls = controls
         self.visibility = visibility
@@ -207,8 +224,8 @@ class QGenicamTree(QCameraTree):
     def _announce(self, values: dict) -> None:
         '''Say nothing: the nodes that a change touches are refreshed by
         :meth:`_showChanges`, which reads the camera, and announcing every
-        setting after every change would make it do that in the interface
-        thread.'''
+        setting after every change would make it do that after every
+        change.'''
 
     @property
     def controls(self) -> Sequence[str] | None:
@@ -242,10 +259,7 @@ class QGenicamTree(QCameraTree):
             return
         logger.debug('Handling item changes')
         self._updateVisible()
-        params, states = self._snapshot()
-        self._updateEnabled(params, states)
-        self._updateLimits(params, states)
-        self._updateValues(params, states)
+        self._refresh(values=False)
 
     def _updateVisible(self) -> None:
         '''Show the parameters that should be visible.
@@ -371,15 +385,71 @@ class QGenicamTree(QCameraTree):
         settled, or a mode that turns itself off did), and what they
         change besides: the limits of other nodes, and which nodes can be
         written now (``ExposureTime`` again once the exposure is manual).
-        All of it is read from the nodes that are shown, in one request.
-        Nothing is sent back to the camera.
+        All of it is read from the nodes that are shown, in one request, in
+        a worker thread (see :meth:`_refresh`).  Nothing is sent back to the
+        camera.
 
         Does nothing if the camera is no longer open (application
         shutdown), which would touch freed GenApi objects.
         '''
         if not self.camera.isOpen():
             return
-        params, states = self._snapshot()
+        self._refresh(values=True)
+
+    def _refresh(self, values: bool) -> None:
+        '''Read the shown nodes and show their state: the limits, which
+        can be written and the read-only values, and also the values that
+        the user can change if *values*.
+
+        The camera thread holds the lock while it waits for a frame, so a
+        read in the interface thread would freeze the window for a frame:
+        the nodes are read in a worker thread that keeps only the latest
+        request, and shown when they arrive.  A tree that is not
+        ``threaded`` reads here.
+        '''
+        names = [name for _, name in self._visibleParams()]
+        with self._wantLock:
+            self._wantValues = self._wantValues or values
+        if self._reads is None:
+            self._showStates(self._read(names), self._takeWant())
+            return
+        self._reads.put('states', names)
+
+    def _takeWant(self) -> bool:
+        '''Return whether a request asked for the values, and forget it.'''
+        with self._wantLock:
+            want, self._wantValues = self._wantValues, False
+        return want
+
+    def _read(self, names: list[str]) -> dict:
+        '''Read the nodes *names* together, under one lock.'''
+        if not self.camera.isOpen():
+            return {}
+        return self.camera.states(names)
+
+    def _readWork(self, batch: Batch) -> None:
+        '''In the worker thread: read the nodes and hand them over.'''
+        names, _ = batch['states']
+        answer = (self._read(names), self._takeWant())
+        self._readsEmitted += 1
+        try:
+            self._refreshed.emit(answer)
+        except RuntimeError:                    # the tree was deleted
+            logger.debug('the tree is gone: the nodes are dropped')
+
+    @QtCore.Slot(object)
+    def _showRefreshed(self, answer: tuple[dict, bool]) -> None:
+        '''In the interface thread: show the nodes that the worker read.'''
+        self._readsShown += 1
+        self._showStates(*answer)
+
+    def _showStates(self, states: dict, values: bool) -> None:
+        '''Show the *states* of nodes; their values only if *values*, and
+        never those that the user has changed since the camera last wrote.'''
+        if not states or not self.camera.isOpen():
+            return
+        params = [(p, name) for p, name in self._visibleParams()
+                  if name in states]
         with self._syncIgnored():
             self._updateLimits(params, states)
             for p, name in params:
@@ -388,11 +458,38 @@ class QGenicamTree(QCameraTree):
                     continue
                 if state['kind'] == 'register':
                     continue  # raw memory: read once, when the tree is built
+                if not values and state['access'] != EAccessMode.RO:
+                    continue
+                if self._outstanding(name):
+                    continue
                 value = self._scaledValue(name, state)
                 if value is None:
                     continue
                 p.setValue(value)
             self._updateEnabled(params, states)
+
+    def flush(self, timeout: float = 10.) -> bool:
+        '''Wait for the writes, and for the nodes that were asked for, and
+        show them (see :meth:`QCameraTree.flush`).'''
+        end = time.monotonic() + timeout
+        if not super().flush(timeout):
+            return False
+        reads = self._reads
+        if reads is None:
+            return True
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            if reads.idle() and self._readsShown == self._readsEmitted:
+                return True
+            if time.monotonic() >= end:
+                return False
+            time.sleep(0.001)
+
+    def stop(self) -> None:
+        '''Stop the writer and the reader, and the video source.'''
+        if self._reads is not None:
+            self._reads.close()
+        super().stop()
 
 
 if __name__ == '__main__':  # pragma: no cover

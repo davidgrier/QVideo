@@ -515,3 +515,24 @@ class QVideoScreen(GraphicsLayoutWidget):
         '''Make the view show the region of *width* by *height* pixels.'''
         self.view.setRange(xRange=(0, width), yRange=(0, height),
                            padding=0, update=True)
+
+    # Example
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def example(cls) -> None:  # pragma: no cover
+        '''Display noise from the simulated camera.'''
+        from QVideo.cameras.Noise import QNoiseCamera
+        app = pg.mkQApp(f'{cls.__name__} Example')
+        camera = QNoiseCamera()
+        source = QVideoSource(camera).start()
+        screen = cls()
+        screen.source = source
+        screen.show()
+        app.exec()
+        source.stop()
+        camera.close()
+
+
+if __name__ == '__main__':  # pragma: no cover
+    QVideoScreen.example()

@@ -27,11 +27,19 @@ app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 FRAME_DTYPES = (np.uint8, np.uint16)
 
 
-def readFrames(camera, n):
-    '''Return *n* frames from an open *camera*.'''
+def readFrames(camera, n, tries=1):
+    '''Return *n* frames from an open *camera*.
+
+    A read may fail for lack of a frame (a camera in a process of its own
+    waits 0.1 s for one, and a busy machine can take longer): *tries* is
+    how many times to ask for each frame before it is an error.
+    '''
     frames = []
     for _ in range(n):
-        ok, frame = camera.read()
+        for _ in range(tries):
+            ok, frame = camera.read()
+            if ok:
+                break
         assert ok, f'{camera.name} could not read frame {len(frames)}'
         frames.append(frame)
     return frames
@@ -238,7 +246,9 @@ class CameraConformance:
 
         def reader():
             try:
-                readFrames(self.camera, 20)
+                # The test is about the lock, not about frames that a busy
+                # machine is late with: it asks again for a frame that is.
+                readFrames(self.camera, 20, tries=5)
             except Exception as error:
                 errors.append(error)
 

@@ -12,12 +12,11 @@
 system so that every camera backend is controlled through the same API.  Property
 trees, display widgets, and a digital video recorder are built on top of that
 abstraction and require no camera-specific code. Components plug together quickly
-and easily to create robust GUI-enabled machine-vision applications that ``just work''
+and easily to create robust GUI-enabled machine-vision applications that "just work"
 out of the box. QVideo provides hassle-free support for high frame rates and extended
 bit depths, including pixel-accurate video recording with lossless compression.
-Optional jupyter integration facilitates rapid prototyping. Web-enabled display and control 
+Optional Jupyter integration facilitates rapid prototyping. Web-enabled display and control
 supports remote interaction and collaboration.
-
 
 <img src="https://raw.githubusercontent.com/davidgrier/QVideo/main/docs/dvrdemo.png" width="75%" alt="QVideo interface demo">
 

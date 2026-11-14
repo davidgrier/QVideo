@@ -387,16 +387,17 @@ these is a reason not to make it the default today:
       gone.  The class stays generic, because the tests send the noise
       camera through it.  Windows has no worker, so the Harvesters backends
       stay in the program there and keep the defect.
-- [ ] **Retire the Harvesters backends that nobody has tested?**  Flir has
-      run on hardware; Basler, IDS, MV and VimbaX have not (see
+- [x] **Harvesters backends stay** (decided 2026-11-13).  Flir has run on
+      hardware; Basler, IDS, MV and VimbaX have not (see
       `docs/compatibility.rst`).  Each is about 60 lines on top of
-      `QGenicamCamera`, which stays: it is the standard implementation and
-      Flir needs it.  Keeping them costs little; removing them strands
-      anyone whose camera needs a producer for a transport that Viva does
-      not speak.  Suggested path: wait until Viva has run on a camera of
-      another maker; mark the four as unverified in the help and the
-      documentation; warn when one is instantiated for one minor release;
-      remove them in the next major version if nobody has reported use.
+      `QGenicamCamera`.  The Harvesters path is the standard implementation
+      (GenTL producers, the vendors' own), and Viva, however well it works
+      on the Blackfly S, is the newer and in principle experimental one:
+      keeping the four costs little, and removing them would strand anyone
+      whose camera needs a producer.  The earlier plan (mark them
+      unverified, warn, remove in a major version) is dropped.  Open: the
+      docs and the `-g` help call Viva "the preferred GenICam interface";
+      that wording may need to agree with this.
 
 Cheaper, and worth doing whatever else is decided:
 
@@ -473,9 +474,11 @@ control that the user has changed since.
 - [x] Writes in a worker, coalesced, in order; `flush()`, `threaded=False`;
       hooks for the backends (Genicam scale factors, Viva access).  Tested with
       a camera whose setter waits on a gate.
-- [ ] **Check it on the Blackfly** (`-g` and `-f`): drag exposure, gain and
-      frame rate, and change the resolution while streaming.  The measurements
-      were made with the Noise camera (a frame of 33 ms and of 200 ms).
+- [x] **Checked on the Blackfly S** (`-g` and `-f`, 2026-11-13): the sliders
+      feel more responsive, changing the resolution while streaming works,
+      and `QCamcorder` is fine with the sliders (the panel width included).
+      The measurements in the spike were made with the Noise camera (a frame
+      of 33 ms and of 200 ms).
 - [x] **A slider next to the spin box** (2026-11-13): `widgets/QSliderSpinBox`
       and the parameter type `'sliderspin'` (`lib/_sliderspin.py`): a slider
       that maps position to value linearly, or logarithmically for a real range
@@ -983,7 +986,26 @@ Potential additions:
 
 ---
 
-## Screen() API and Composable Vision Pipelines
+## Screen() API and Composable Vision Pipelines  **Filter() done; the rest deferred 2026-11-13**
+
+Status, 2026-11-13 (the text below is the discussion of 2026-07-10):
+
+- [x] **`Filter()`**: built.  `QFilterPipeline` is the filter stage, and
+  `Filter()` (`interactive/filter.py`) lists the filters and builds them by
+  name.  The one-line `Filter(source, *filters)` over a pipeline was not
+  added: `QFilterPipeline(source, filters)` is already one line.
+- [x] **Viewing a source anywhere**: `QWebScreen` serves any source (a
+  filtered pipeline included) to a browser, which covers much of what
+  `Screen()` was for.
+- Deferred, not planned until someone has a use: **`Screen(source)`** and
+  **`Screen(source, overlay=...)`** (overlays draw through `QPainter`, so a
+  notebook screen needs a second drawing path), and the operator sugar
+  (`cam | filter | Screen()`).
+- Open, only if it bites: **overlays that detect on the raw frame** while a
+  filter crops or transforms the displayed one (boxes misaligned).  Not seen
+  yet (the user, 2026-11-13).  Moving detection into a filter stage
+  conflicts with the earlier decision that analysis is not transformation
+  (`QAnalysisWriter` notes); settle that first.
 
 `Camera()` (`interactive/camera.py`) already proves the "minimal code" factory
 pattern works well for QVideo: discover a backend, return something
@@ -1245,39 +1267,27 @@ image paths or GitHub-hosted raw URLs that require authentication.
 
 ---
 
-## OpenCV 5 Feature Adoption
+## OpenCV 5 Feature Adoption  **Compatible and adopted (4.17.0); tidied 2026-11-13**
 
 OpenCV 5 improves property setting (see the platform-specific capture
-backend selection added in `cameras/OpenCV/_camera.py`).  Findings from
-a full-codebase review (2026-07-10):
+backend selection in `cameras/OpenCV/_camera.py`).  A full-codebase review
+(2026-07-10) found nothing that breaks, and the dev environment has run on
+`cv2==5.0.0` since:
 
-- **Lower priority / cosmetic**, no action needed yet:
-  - Python bindings now accept keyword arguments broadly
-    (`cv2.fn(threshold=0.5)`) — could clean up the more
-    parameter-heavy calls in `threshold.py`, `exposure.py`,
-    `artistic.py`.
-  - `warpAffine`/`remap` interpolation was revised for accuracy in
-    5.x — affects `dejitter.py`'s `cv2.warpAffine` call; output will
-    shift slightly (not a bug), relevant only if chasing bit-exact
-    reproducibility across OpenCV versions.
-  - Redesigned DNN engine / ~80% ONNX coverage doesn't apply yet:
-    `overlays/yolo.py` uses `ultralytics` directly, not `cv2.dnn`.
-    OpenCV 5.0 shipped 2026-06-04 with ONNX operator coverage jumping
-    from ~22% to ~80%, and the dev environment is now actually on
-    `cv2==5.0.0` (confirmed `cv2.dnn.readNet`,
-    `cv2.dnn.ENGINE_AUTO`/`ENGINE_NEW`/`ENGINE_ORT`,
-    `cv2.dnn.NMSBoxes` all present). A YOLOv8/v11 `.onnx` export now
-    loads directly via `cv2.dnn.readNet(...)`, giving a genuinely
-    torch-free detection path.
-    Not yet prototyped against QVideo's `_YoloWorker`; would need
-    manual output decoding + `cv2.dnn.NMSBoxes` in place of
-    `ultralytics`' built-in postprocessing.
-  - No legacy C API (`CvMat`/`IplImage`/`cv2.cv`) usage anywhere in
-    the codebase — confirmed by grep, so the biggest OpenCV 5
-    breaking change doesn't touch QVideo at all.
-  - `numpy`/`opencv-python` are both unpinned in `pyproject.toml`, so
-    NumPy 2.x support in OpenCV 5 needs no dependency-constraint
-    action.
+- [x] **No legacy C API** (`CvMat`, `IplImage`, `cv2.cv`) anywhere in the
+  codebase (grep), so the biggest breaking change of OpenCV 5 does not touch
+  QVideo.
+- [x] **`numpy` and `opencv-python` are unpinned** in `pyproject.toml`, so
+  NumPy 2.x needs no action.
+- [x] **The new DNN engine** (ONNX operator coverage from about 22% to 80%,
+  `cv2.dnn.readNet`, `ENGINE_AUTO`/`ENGINE_NEW`/`ENGINE_ORT`, `NMSBoxes`)
+  is used: `lib/dnn.py` and the `cv2.dnn` backend of `_YoloWorker`, released
+  in 4.17.0 (see "OpenCV DNN Framework" below).
+- Cosmetic, no action: Python calls accept keyword arguments broadly
+  (`threshold.py`, `exposure.py` and `artistic.py` could use them), and the
+  interpolation of `warpAffine` and `remap` was revised in 5.x, so the output
+  of `dejitter.py` shifts slightly (not a bug; it matters only for
+  bit-exact reproducibility across OpenCV versions).
 
 ---
 
@@ -1386,14 +1396,14 @@ the CPU is enough for small models there.
       gives GPU inference with neither `torch` nor a source build.  Not
       yet checked whether the engine is usable that way.
 
-### Test case: torch-free YOLO via `cv2.dnn`
+### Test case: torch-free YOLO via `cv2.dnn`  **Built and released (4.17.0)**
 
-`overlays/yolo.py`'s `_YoloWorker` currently hard-requires
-`ultralytics`, which pulls in `torch` — the heaviest optional
-dependency in the project. Goal: add a `cv2.dnn`-based backend as a
-**second option alongside** the existing `ultralytics` path, not a
-replacement, and write up detailed instructions so users can prepare
-their own ONNX exports. Findings so far:
+`overlays/yolo.py`'s `_YoloWorker` had hard-required `ultralytics`, which
+pulls in `torch`, the heaviest optional dependency in the project.  It now has
+a `cv2.dnn` backend **alongside** the `ultralytics` path
+(`backend='auto'|'ultralytics'|'opencv'`; see the results above), and the
+documentation explains how to prepare an ONNX export.  The findings that
+shaped it, kept for the reasons they give:
 
 - **Keep `torch`/`ultralytics` as an opt-in accelerated backend.**
   OpenCV 5's new DNN engine is CPU-only at launch (its hardware

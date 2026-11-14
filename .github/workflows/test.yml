@@ -88,12 +88,14 @@ jobs:
       - name: Install package and test dependencies
         run: pip install -e ".[dev-${{ matrix.qt }}${{ matrix.extras }}]"
 
-      # -X faulthandler prints the Python stack of a segfault, with the test
-      # that was running (3.14 and 3.13 with PyQt6 crashed once each,
-      # 2026-11-08; fixed by the Python locks, 12 green runs since).
+      # -X faulthandler prints the Python stack of a segfault, but the stack
+      # of the crash of 2026-11-13 was "<invalid frame>" (3.13 with PyQt6, 26%
+      # into the suite, near test_launch.py; the crashes of 2026-11-08 were at
+      # 27%).  -v prints the name of each test before it runs, so that the log
+      # ends with the test that crashed.
       - name: Run tests
         if: matrix.extras != ',yolo'
-        run: python -X faulthandler -m pytest --tb=short -q
+        run: python -X faulthandler -m pytest --tb=short -v
 
       # One job measures coverage; pyproject.toml sets the floor.
       - name: Run tests with coverage

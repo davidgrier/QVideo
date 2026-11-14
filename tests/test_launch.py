@@ -1,4 +1,5 @@
 '''Unit tests for launch() and the applications that call it.'''
+import gc
 import logging
 import os
 import runpy
@@ -18,6 +19,28 @@ from QVideo.lib import _launch as launch_module
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
+def settle() -> None:
+    '''Deliver what earlier tests left in the event queue, and delete what
+    they dropped, before a test shows a window.
+
+    A splash screen processes events when it is shown.  The suite crashed
+    there twice (CI, Python 3.13 and 3.11 with PyQt6, 2026-11-13 and 14),
+    in a callback that an earlier test had connected to a signal; the cause
+    is not known, and a queue that is empty when the test starts cannot hand
+    it a stale event.
+    '''
+    gc.collect()
+    for _ in range(3):
+        app.processEvents()
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete)
+    gc.collect()
+
+
+def setUpModule() -> None:
+    settle()
+
+
 class _Widget(QtWidgets.QWidget):
     '''Stands in for an application: it records how it was built.'''
 
@@ -34,6 +57,7 @@ class _Talker(_Widget):
 class TestLaunch(unittest.TestCase):
 
     def setUp(self):
+        settle()
         # launch() reads the command line, which here is that of pytest
         argv = patch.object(sys, 'argv', ['application'])
         argv.start()

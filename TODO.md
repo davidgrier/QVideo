@@ -960,6 +960,13 @@ last frame, then `next_frame` returns `None` for ever; the old loop did
   (2026-11-13): a `lost` message, control taken back and not offered again.
   Tried on the Blackfly S (`webdemo -f`, cable pulled during a recording):
   the recording stopped and plays back, and the page announced the loss.
+- Tried 2026-11-14 with a USB webcam (OpenCV, `python -m QVideo -c`, macOS):
+  unplugging it during a recording stopped the recording, and the video
+  recorded before the loss plays back.  One dialog appeared (after the 2 s of
+  `lossTimeout`, which stays), saying that the camera was lost, that the
+  recording had stopped and that the saved frames are fine.  The OpenCV path, the recorder stop
+  and the dialog now have a hardware run each (Viva on the Blackfly S
+  2026-11-13, OpenCV on the webcam 2026-11-14).
 - Declined 2026-11-13: a placard on the screen (it could cover something
   important; an application may add one from `lost`); a `launch()` option to
   quit on loss (nobody has asked).

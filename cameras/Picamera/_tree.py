@@ -12,7 +12,8 @@ class QPicameraTree(QCameraTree):
 
     Convenience subclass of :class:`~QVideo.lib.QCameraTree.QCameraTree`
     that automatically creates and opens a :class:`QPicamera` if one is
-    not provided.
+    not provided.  The camera's ``resolution`` property, whose allowed
+    values are the sizes of the sensor modes, is a dropdown.
 
     Parameters
     ----------

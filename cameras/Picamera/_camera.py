@@ -59,6 +59,13 @@ class QPicamera(QCamera):
     including the HQ Camera, Camera Module 3, and similar sensors.
     Frames are delivered as RGB arrays.
 
+    The ``resolution`` property is a dropdown of the frame sizes that the
+    sensor offers (its native modes, which differ in field of view and in
+    the frame rate that they allow, and the size that the camera was
+    created with, if it is not one of them).  Choosing one restarts the
+    stream at that size.  ``width`` and ``height`` are then hidden; they
+    remain visible on a device that cannot list its modes.
+
     Requires the ``picamera2`` package, which is pre-installed on
     Raspberry Pi OS.  Install manually with::
 
@@ -86,6 +93,9 @@ class QPicamera(QCamera):
         Forwarded to :class:`~QVideo.lib.QCamera`.
     '''
 
+    #: ``resolution`` sets the width and the height together.
+    shapeProperties = ('width', 'height', 'resolution')
+
     def __init__(self, *args,
                  cameraID: int = 0,
                  width: int = 1280,
@@ -106,6 +116,8 @@ class QPicamera(QCamera):
         # Distinct from self._isOpen so that _setControl can cache values
         # between a stop/restart cycle (e.g. when fps changes while closed).
         self._deviceOpen: bool = False
+        # Label of each size on offer in the ``resolution`` dropdown.
+        self._sizeLabels: dict[str, tuple[int, int]] = {}
         self._device: Picamera2 | None = None
         self.open()
 
@@ -155,6 +167,7 @@ class QPicamera(QCamera):
         if self._device is None:
             return False
         self._readModelName()
+        self._probeSizes()
         # Save controls set before this restart (e.g. fps changed while
         # the device was closed).  _probeControls will overwrite
         # _controlValues from fresh metadata, so we save them here and
@@ -197,9 +210,40 @@ class QPicamera(QCamera):
         except Exception as ex:
             logger.debug(f'cannot read the camera model: {ex}')
 
+    def _probeSizes(self) -> None:
+        '''List the frame sizes to offer, as the sensor modes give them.
+
+        The sensor delivers a few native sizes (its modes), which differ in
+        field of view and in the frame rate that they allow.  The size that
+        the camera was asked for is added if it is not one of them (the
+        ISP scales it), so that the dropdown can show where the camera is.
+        An empty list, when the device cannot name its modes, leaves the
+        size to ``width`` and ``height``.  The modes can be read only
+        before the stream starts.
+        '''
+        try:
+            modes = self._device.sensor_modes
+            sizes = {tuple(int(n) for n in mode['size']) for mode in modes}
+        except Exception as ex:
+            logger.debug(f'cannot read the sensor modes: {ex}')
+            self._sizeLabels = {}
+            return
+        if sizes:
+            sizes.add((self._width, self._height))
+        self._sizeLabels = {f'{w}×{h}': (w, h)
+                            for w, h in sorted(sizes)}
+
     def _registerGeometry(self) -> None:
-        '''Register the size, color and orientation of the frames.'''
+        '''Register the size, color and orientation of the frames.
+
+        With a ``resolution`` the tree hides ``width`` and ``height``,
+        which it changes together.
+        '''
         register = self.registerProperty
+        if self._sizeLabels:
+            register('resolution', getter=self._getResolution,
+                     setter=self._setResolution, ptype=str,
+                     limits=list(self._sizeLabels))
         register('width', getter=self._getWidth,
                  setter=self._setWidth, ptype=int)
         register('height', getter=self._getHeight,
@@ -210,6 +254,9 @@ class QPicamera(QCamera):
                  setter=self._setHflip, ptype=bool)
         register('vflip', getter=self._getVflip,
                  setter=self._setVflip, ptype=bool)
+        if self._sizeLabels:
+            for name in ('width', 'height'):
+                self.properties[name].hidden = True
 
     @staticmethod
     def _limits(lo: float | None, hi: float | None) -> dict[str, float]:
@@ -397,6 +444,26 @@ class QPicamera(QCamera):
             return None
         return Transform(hflip=self._hflip, vflip=self._vflip)
 
+    def _getSize(self) -> tuple[int, int]:
+        width, height = self._device.camera_config['main']['size']
+        return int(width), int(height)
+
+    def _getResolution(self) -> str:
+        '''Return the label of the size that the stream has.'''
+        size = self._getSize()
+        for label, value in self._sizeLabels.items():
+            if value == size:
+                return label
+        return min(self._sizeLabels,
+                   key=lambda label: sum(
+                       abs(a - b)
+                       for a, b in zip(self._sizeLabels[label], size)))
+
+    def _setResolution(self, label: str) -> None:
+        '''Restart the stream at the size that *label* names.'''
+        self._width, self._height = self._sizeLabels[label]
+        self._reconfigure(self._sizeLabels[label])
+
     def _getWidth(self) -> int:
         return self._device.camera_config['main']['size'][0]
 
@@ -434,15 +501,15 @@ class QPicamera(QCamera):
         self._device.configure(
             self._device.create_preview_configuration(**kwargs))
 
-    def _reconfigure(self) -> None:
-        '''Restart the stream at its current size with the current format
-        and flips, and reapply the cached controls.
+    def _reconfigure(self, size: tuple[int, int] | None = None) -> None:
+        '''Restart the stream at *size* (by default its current size) with
+        the current format and flips, and reapply the cached controls.
 
         The size that :meth:`_setWidth` and :meth:`_setHeight` store takes
         effect at the next :meth:`_initialize`, not here.
         '''
         self._device.stop()
-        self._configure(self._device.camera_config['main']['size'])
+        self._configure(size or self._getSize())
         self._device.start()
         # _reconfigure does not rebuild properties, so if the new
         # configuration changes the available controls or their ranges the

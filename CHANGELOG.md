@@ -9,6 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`QPicamera` offers a `resolution` dropdown**, as `QOpenCVCamera` does: the
+  sizes of the sensor modes (read from `sensor_modes` before the stream
+  starts) and the size that the camera was created with.  Choosing one
+  restarts the stream at that size, keeps the controls and announces the new
+  shape; `width` and `height` are hidden.  A device that cannot list its modes
+  keeps `width` and `height`.  Tried on an IMX219.
+
 ---
 
 ## [4.27.1] — 2026-11-13

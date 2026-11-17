@@ -2,7 +2,7 @@
 import sys
 import unittest
 import numpy as np
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from qtpy import QtWidgets
 
 from QVideo.tests.signals import record
@@ -84,6 +84,10 @@ _AF_METADATA = {
     'AfState':      0,
 }
 
+# The sensor modes of an IMX219, twice (10 and 8 bit).
+_MODES = [(640, 480), (1640, 1232), (1920, 1080), (3280, 2464)] * 2
+
+
 def make_mock_device(width=1280, height=960, frame=None,
                      capture_ok=True, controls=None, metadata=None,
                      model='TestCamera'):
@@ -99,6 +103,7 @@ def make_mock_device(width=1280, height=960, frame=None,
     device.camera_config = {'main': {'size': (width, height),
                                      'format': 'RGB888'}}
     device.global_camera_info.return_value = [{'Model': model}]
+    device.sensor_modes = [{'size': size} for size in _MODES]
     if capture_ok:
         device.capture_array.return_value = frame.copy()
         request = MagicMock()
@@ -398,6 +403,73 @@ class TestLimits(unittest.TestCase):
         self.assertEqual(QPicamera._limits(None, 9), {'maximum': 9})
         self.assertEqual(QPicamera._limits(1, None), {'minimum': 1})
         self.assertEqual(QPicamera._limits(None, None), {})
+
+
+class TestResolution(unittest.TestCase):
+    '''The sensor modes are offered as a ``resolution`` dropdown.'''
+
+    def setUp(self):
+        self.cam, self.device = make_camera()
+
+    def tearDown(self):
+        self.cam.close()
+
+    def test_limits_are_the_unique_modes_and_the_requested_size(self):
+        self.assertEqual(
+            self.cam.properties['resolution'].limits,
+            ['640×480', '1280×960', '1640×1232', '1920×1080',
+             '3280×2464'])
+
+    def test_getter_names_the_current_size(self):
+        self.assertEqual(self.cam.get('resolution'), '1280×960')
+
+    def test_getter_names_the_nearest_size(self):
+        self.device.camera_config['main']['size'] = (1300, 1000)
+        self.assertEqual(self.cam.get('resolution'), '1280×960')
+
+    def test_width_and_height_are_hidden(self):
+        self.assertTrue(self.cam.properties['width'].hidden)
+        self.assertTrue(self.cam.properties['height'].hidden)
+
+    def test_set_restarts_the_stream_at_the_size(self):
+        self.device.reset_mock()
+        self.cam.set('resolution', '640×480')
+        self.device.stop.assert_called_once()
+        kwargs = self.device.create_preview_configuration.call_args.kwargs
+        self.assertEqual(kwargs['main']['size'], (640, 480))
+        self.device.start.assert_called_once()
+        self.assertEqual((self.cam._width, self.cam._height), (640, 480))
+
+    def test_set_announces_the_shape(self):
+        self.device.camera_config['main']['size'] = (1280, 960)
+
+        def configure(config):
+            self.device.camera_config['main']['size'] = (640, 480)
+
+        self.device.configure.side_effect = configure
+        shapes = record(self.cam.shapeChanged)
+        self.cam.set('resolution', '640×480')
+        self.assertEqual(len(shapes), 1)
+
+    def test_no_modes_no_property(self):
+        device = make_mock_device()
+        device.sensor_modes = []
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.addCleanup(cam.close)
+        self.assertNotIn('resolution', cam.properties)
+        self.assertFalse(cam.properties['width'].hidden)
+
+    def test_unreadable_modes_no_property(self):
+        device = make_mock_device()
+        type(device).sensor_modes = PropertyMock(
+            side_effect=RuntimeError('running'))
+        with patch.object(_MODULE, 'Picamera2', return_value=device), \
+                patch.object(_MODULE, 'Transform', MockTransform):
+            cam = QPicamera()
+        self.addCleanup(cam.close)
+        self.assertNotIn('resolution', cam.properties)
 
 
 class TestReconfigure(unittest.TestCase):

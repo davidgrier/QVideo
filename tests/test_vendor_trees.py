@@ -269,6 +269,16 @@ class TestVendorDefaults(unittest.TestCase):
                 self.assertEqual(settings['Gamma'], 1.0)
                 self.assertIs(settings['GammaEnable'], False)
 
+    def test_every_genicam_tree_enables_the_frame_rate(self):
+        from QVideo.cameras.IDS import QIDSTree
+        from QVideo.cameras.MV import QMVTree
+        for tree in (QGenicamTree, QFlirTree, QBaslerTree, QIDSTree,
+                     QMVTree):
+            with self.subTest(tree=tree.__name__):
+                self.assertIs(
+                    tree._DEFAULT_SETTINGS['AcquisitionFrameRateEnable'],
+                    True)
+
     def test_gamma_enable_is_a_standard_control(self):
         self.assertIn('GammaEnable', QGenicamTree.STANDARD_CONTROLS)
 

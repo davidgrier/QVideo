@@ -88,11 +88,14 @@ class QGenicamTree(QCameraTree):
 
     #: Settings that the tree applies to the camera, those that the camera
     #: has, so that the controls start in a known state.  Gamma is 1 and
-    #: off, as scientific applications expect; a vendor tree that sets its
-    #: own defaults starts from these.
+    #: off, as scientific applications expect.  The frame rate is enabled:
+    #: while it is not, the camera makes the frame rate read-only and the
+    #: tree shows no control that could enable it.  A vendor tree that sets
+    #: its own defaults starts from these.
     _DEFAULT_SETTINGS: ClassVar[dict[str, object]] = dict(
         Gamma=1.0,
         GammaEnable=False,
+        AcquisitionFrameRateEnable=True,
     )
 
     #: Emitted, from the worker thread, with the snapshots of the nodes

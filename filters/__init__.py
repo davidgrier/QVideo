@@ -7,6 +7,7 @@ from .momedian import MoMedian, QMoMedian
 from .momean import MoMean, QMoMean
 from .dejitter import DejitterFilter, QDejitterFilter
 from .normalize import Normalize, SmoothNormalize
+from .bayer import BayerFilter, QBayerFilter
 from .blob import BlobFilter, QBlobFilter
 from .circletransform import CircleTransformFilter, QCircleTransformFilter
 from .dog import DoGFilter, QDoGFilter
@@ -33,6 +34,7 @@ Median MoMedian QMoMedian
 MoMean QMoMean
 DejitterFilter QDejitterFilter
 Normalize SmoothNormalize
+BayerFilter QBayerFilter
 BlobFilter QBlobFilter
 CircleTransformFilter QCircleTransformFilter
 DoGFilter QDoGFilter

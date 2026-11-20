@@ -124,6 +124,23 @@ Supports pipeline export.
 .. automodule:: QVideo.filters.gamma
    :members:
 
+Bayer demosaicing
+-----------------
+
+:class:`~QVideo.filters.bayer.BayerFilter` converts the raw mosaic of a
+camera in a Bayer pixel format (``BayerRG8``, ``BayerGB12``, ...) to an RGB
+image.  The camera delivers the mosaic as a single-channel frame, which is
+indistinguishable from a monochrome image, so the pattern is a setting:
+``Off`` (the default) passes every frame through, and the pull-down of the
+companion widget lists the four patterns, named as GenICam names them in
+``PixelFormat``.  Frames with 3 or 4 channels, such as RGB or the YUV that
+the camera has converted, always pass through.  A frame of more than
+8 bits is converted at its own depth and keeps its levels.  Supports
+pipeline export.
+
+.. automodule:: QVideo.filters.bayer
+   :members:
+
 Intensity inversion
 --------------------
 

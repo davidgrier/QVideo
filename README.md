@@ -210,7 +210,7 @@ builds one without a window.
 
 | Category | Filters |
 |----------|---------|
-| Preprocessing | Color Channel, Dejitter, Difference of Gaussians, Exposure, Gamma Correction, Invert, Region of Interest, Smoothing, Unsharp Mask |
+| Preprocessing | Bayer to RGB, Color Channel, Dejitter, Difference of Gaussians, Exposure, Gamma Correction, Invert, Region of Interest, Smoothing, Unsharp Mask |
 | Edge detection | Canny, Laplacian, Sobel |
 | Segmentation | Threshold, Blob |
 | Background | Foreground, Running Mean, Running Median, Sample and Hold |

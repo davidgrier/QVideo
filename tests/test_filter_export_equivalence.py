@@ -9,6 +9,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 import QVideo.filters
+from QVideo.filters.bayer import BayerFilter
 from QVideo.filters.artistic import CartoonFilter, PencilSketchFilter
 from QVideo.filters.dog import DoGFilter
 from QVideo.filters.edge import EdgeFilter
@@ -42,6 +43,11 @@ CASES = [
     RGBFilter(channel=2),
     GammaFilter(gamma=2.2),
     InvertFilter(),
+    BayerFilter(pattern='Off'),
+    BayerFilter(pattern='BayerRG'),
+    BayerFilter(pattern='BayerGR'),
+    BayerFilter(pattern='BayerGB'),
+    BayerFilter(pattern='BayerBG'),
     UnsharpFilter(radius=2., amount=1.5),
     DoGFilter(),
     SobelFilter(direction='Horizontal', ksize=5),

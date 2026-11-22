@@ -49,7 +49,7 @@ jobs:
         qt: ["pyqt6"]
         os: ["ubuntu-latest"]
         include:
-          # Also install the (large) optional YOLO stack in one job.
+          # One job also installs the YOLO extra and measures coverage.
           - python-version: "3.12"
             qt: "pyqt6"
             extras: ",yolo"

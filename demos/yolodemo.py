@@ -3,14 +3,11 @@
 
 Run directly::
 
-    python -m QVideo.demos.yolodemo
     python -m QVideo.demos.yolodemo --model yolo11n.onnx
 
-A model whose name ends in ``.onnx`` runs with OpenCV, with no ``torch``;
-any other runs with ``ultralytics``.  ``--imgsz`` and ``--names`` describe an
-ONNX model, and ``--backend`` overrides the choice by extension.  See
-:mod:`QVideo.overlays.yolo` for how to prepare the file and for literature
-references.
+OpenCV runs the ONNX model, with no ``torch``.  ``--imgsz`` and ``--names``
+describe the model.  See :mod:`QVideo.overlays.yolo` for how to prepare the
+file and for literature references.
 '''
 
 from collections.abc import Sequence
@@ -43,16 +40,12 @@ class YoloDemo(Demo):
     cameraTree : QCameraTree
         The camera control tree widget to display alongside the video feed.
     model_name : str
-        YOLO model weights file passed to
-        :class:`~QVideo.overlays.yolo.QYoloWidget`.
-        Default: ``'yolo11n.pt'``.  A ``.onnx`` file runs with OpenCV.
-    backend : {'auto', 'ultralytics', 'opencv'}
-        What runs the network.  ``'auto'`` chooses by the extension of
-        *model_name*.
+        ONNX file passed to :class:`~QVideo.overlays.yolo.QYoloWidget`.
+        Default: ``'yolo11n.onnx'``.
     imgsz : int
-        Side of the input of an ONNX model [pixels].  Default: ``640``.
+        Side of the input of the model [pixels].  Default: ``640``.
     names : sequence of str or None
-        Names of the classes of an ONNX model.  The default is the 80
+        Names of the classes of the model.  The default is the 80
         names of COCO if the network has 80 classes.
     labels : bool
         Label each box with the name of its class.  Default: ``True``.
@@ -63,15 +56,14 @@ class YoloDemo(Demo):
 
     def __init__(self,
                  cameraTree: QCameraTree,
-                 model_name: str = 'yolo11n.pt',
-                 backend: str = 'auto',
+                 model_name: str = 'yolo11n.onnx',
                  imgsz: int = 640,
                  names: Sequence[str] | None = None,
                  labels: bool = True,
                  **kwargs) -> None:
         # _setupUi runs inside super().__init__
-        self._model = dict(model_name=model_name, backend=backend,
-                           imgsz=imgsz, names=names, labels=labels)
+        self._model = dict(model_name=model_name, imgsz=imgsz,
+                           names=names, labels=labels)
         super().__init__(cameraTree, **kwargs)
 
     def _setupUi(self) -> None:
@@ -92,23 +84,17 @@ def options(argv: Sequence[str] | None = None) -> dict:
         ('--model yolo11n.onnx', 'an ONNX model, run by OpenCV'),
         ('--model m.onnx --names a,b --imgsz 320', 'your own classes')))
     model = parser.add_argument_group('model')
-    model.add_argument('--model', default='yolo11n.pt', metavar='FILE',
-                       help='model file: .onnx runs with OpenCV, anything '
-                       'else with ultralytics (default: yolo11n.pt)')
-    model.add_argument('--backend', default='auto',
-                       choices=('auto', 'ultralytics', 'opencv'),
-                       help='what runs the network (default: by the '
-                       'extension of the model)')
+    model.add_argument('--model', default='yolo11n.onnx', metavar='FILE',
+                       help='ONNX model file (default: yolo11n.onnx)')
     model.add_argument('--imgsz', type=int, default=640, metavar='PIXELS',
-                       help='input size of an ONNX model (default: 640)')
+                       help='input size of the model (default: 640)')
     model.add_argument('--no-labels', dest='labels', action='store_false',
                        help='draw the boxes without the names of the classes')
     model.add_argument('--names', metavar='A,B,...',
-                       help='comma-separated class names of an ONNX model '
+                       help='comma-separated class names of the model '
                        '(default: COCO if the network has 80 classes)')
     args, _ = parser.parse_known_args(argv)
-    return dict(model_name=args.model, backend=args.backend,
-                imgsz=args.imgsz, labels=args.labels,
+    return dict(model_name=args.model, imgsz=args.imgsz, labels=args.labels,
                 names=args.names.split(',') if args.names else None)
 
 

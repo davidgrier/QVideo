@@ -57,24 +57,21 @@ YOLO
 `YOLO <https://docs.ultralytics.com/>`_ object-detection model on each video
 frame.  Detected bounding boxes and class labels are rendered in real time by
 :class:`~QVideo.overlays.yolo.QYoloOverlay`.  The confidence threshold can be
-adjusted from the widget; any model supported by the Ultralytics library can
-be selected at construction time.
+adjusted from the widget.
 
-Two things can run the network.  ``ultralytics`` loads a ``.pt`` file and
-uses a GPU if ``torch`` finds one.  OpenCV loads an ``.onnx`` file and
-needs nothing but QVideo, but it runs on the CPU: the ``opencv-python``
-wheels have no CUDA support.  The default (``backend='auto'``) picks OpenCV
-for a file that ends in ``.onnx`` and ``ultralytics`` for anything else::
+OpenCV runs the network from an ``.onnx`` file, on the CPU, with nothing but
+QVideo: there is no ``torch`` and no ``ultralytics`` to install.  The
+``opencv-python`` wheels have no CUDA support, so there is no GPU.  A
+``.pt`` file is refused, with a message that says how to export it::
 
-    widget = QYoloWidget(parent, model_name='yolo11n.onnx')   # OpenCV
-    widget = QYoloWidget(parent, model_name='yolo11n.pt')     # ultralytics
+    widget = QYoloWidget(parent, model_name='yolo11n.onnx')
 
 *Preparing an ONNX file.*  QVideo does not ship a model.  Ultralytics
 licenses its pretrained weights, and files exported from them, under the
 AGPL-3.0, which can bind the program that uses them; read
 `their terms <https://www.ultralytics.com/license>`_, or use a model
-whose license suits your work.  To export a model that you may use, on a
-machine that has ``ultralytics`` (``torch`` is needed for this step only,
+whose license suits your work.  To export a model that you may use, once, on
+a machine that has ``ultralytics`` (``torch`` is needed for this step only,
 not to run the file)::
 
     from ultralytics import YOLO
@@ -92,17 +89,11 @@ with the number of its class.
 .. note::
 
     The reader has been tested against the exports of ``yolo11n.pt`` and
-    ``yolo26n.pt`` by Ultralytics 8.4, with default options: it finds the objects that ``ultralytics`` finds, with
-    the same labels, and the boxes differ by a few pixels (OpenCV is given a
-    square, padded input).  Other exports are expected to work if they have
+    ``yolo26n.pt`` by Ultralytics 8.4, with default options: it finds the
+    objects that ``ultralytics`` finds, with the same labels, and the boxes
+    differ by a few pixels (OpenCV is given a square, padded input).  Other exports are expected to work if they have
     the layout above.  If one does not read, ``QYoloWidget`` logs the
     reason and shows no boxes.
-
-    Importing ``ultralytics`` makes OpenCV use one thread for the whole
-    program, which makes the ONNX model about four times slower.  QVideo
-    imports it only for a ``.pt`` model, and puts the number of threads
-    back.  A program of your own that imports it first should do the same
-    (``cv2.setNumThreads(n)``).
 
 .. automodule:: QVideo.overlays.yolo
    :members:

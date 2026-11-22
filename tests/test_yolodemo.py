@@ -2,9 +2,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from qtpy import QtCore, QtWidgets
-import QVideo.overlays.yolo as _yolo_mod
 from QVideo.cameras.Noise._tree import QNoiseTree
 from QVideo.demos.demo import Demo
 from QVideo.tests.onnxfile import writeIdentity
@@ -15,11 +14,15 @@ from QVideo.overlays.yolo import QYoloWidget, _YoloWorker
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-def make_demo():
-    with patch.object(_yolo_mod, 'YOLO', MagicMock()), \
-         patch.object(_YoloWorker, 'moveToThread'), \
+_directory = tempfile.TemporaryDirectory()
+_path = str(writeIdentity(Path(_directory.name) / 'model.onnx',
+                          (1, 3, 64, 64)))
+
+
+def make_demo(**kwargs):
+    with patch.object(_YoloWorker, 'moveToThread'), \
          patch.object(QtCore.QThread, 'start'):
-        return YoloDemo(QNoiseTree())
+        return YoloDemo(QNoiseTree(), model_name=_path, imgsz=64, **kwargs)
 
 
 class TestYoloDemoInit(unittest.TestCase):
@@ -40,18 +43,8 @@ class TestYoloDemoInit(unittest.TestCase):
         widget = make_demo()
         self.assertIs(widget.yolo.source, widget.screen.source)
 
-    def test_custom_model_name_accepted(self):
-        with patch.object(_yolo_mod, 'YOLO', MagicMock()), \
-             patch.object(_YoloWorker, 'moveToThread'), \
-             patch.object(QtCore.QThread, 'start'):
-            widget = YoloDemo(QNoiseTree(), model_name='yolo11s.pt')
-        self.assertIsInstance(widget, YoloDemo)
-
     def test_labels_option_reaches_the_overlay(self):
-        with patch.object(_yolo_mod, 'YOLO', MagicMock()), \
-             patch.object(_YoloWorker, 'moveToThread'), \
-             patch.object(QtCore.QThread, 'start'):
-            widget = YoloDemo(QNoiseTree(), labels=False)
+        widget = make_demo(labels=False)
         self.assertFalse(widget.yolo.overlay.labels)
 
     def test_controls_contains_yolo_widget(self):
@@ -65,18 +58,11 @@ class TestYoloDemoInit(unittest.TestCase):
         self.assertIn(widget.yolo.overlay, widget.screen._overlays)
 
 
-class TestYoloDemoOnnx(unittest.TestCase):
+class TestYoloDemoModel(unittest.TestCase):
 
-    def test_an_onnx_model_runs_with_opencv(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = writeIdentity(Path(directory) / 'model.onnx',
-                                 (1, 3, 64, 64))
-            with patch.object(_YoloWorker, 'moveToThread'), \
-                 patch.object(QtCore.QThread, 'start'):
-                widget = YoloDemo(QNoiseTree(), model_name=str(path),
-                                  imgsz=64, names=['a', 'b'])
+    def test_the_model_is_described_to_the_worker(self):
+        widget = make_demo(names=['a', 'b'])
         worker = widget.yolo._worker
-        self.assertEqual(worker.backend, 'opencv')
         self.assertEqual(worker.imgsz, 64)
         self.assertEqual(worker.names, ['a', 'b'])
 
@@ -85,14 +71,14 @@ class TestOptions(unittest.TestCase):
 
     def test_defaults(self):
         self.assertEqual(options([]), dict(
-            model_name='yolo11n.pt', backend='auto', imgsz=640, labels=True,
+            model_name='yolo11n.onnx', imgsz=640, labels=True,
             names=None))
 
     def test_the_model_and_its_description(self):
         got = options(['--model', 'cells.onnx', '--imgsz', '320',
-                       '--names', 'cell,bead', '--backend', 'opencv'])
+                       '--names', 'cell,bead'])
         self.assertEqual(got, dict(
-            model_name='cells.onnx', backend='opencv', imgsz=320, labels=True,
+            model_name='cells.onnx', imgsz=320, labels=True,
             names=['cell', 'bead']))
 
     def test_labels_are_on_unless_turned_off(self):

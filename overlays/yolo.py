@@ -1,10 +1,8 @@
 '''Real-time object detection overlay using YOLO.
 
-Two backends run the network.  ``ultralytics`` (and so ``torch``) loads a
-``.pt`` file and can use a GPU.  OpenCV loads an ``.onnx`` export and needs
-nothing beyond QVideo; it runs on the CPU.  ``backend='auto'`` chooses by the
-extension of the model file.  See the documentation of the overlays for how
-to prepare an ONNX file.
+OpenCV runs the network from an ``.onnx`` export, on the CPU, with nothing
+beyond QVideo: there is no ``torch`` and no ``ultralytics``.  See the
+documentation of the overlays for how to prepare an ONNX file.
 
 References
 ----------
@@ -36,38 +34,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 __all__ = ['QYoloOverlay', 'QYoloWidget', 'decode', 'COCO_NAMES']
-
-
-#: The ``ultralytics`` class ``YOLO``, once :func:`_loadYOLO` has imported it.
-YOLO = None
-#: Why the import of ``ultralytics`` failed, if it did.
-_importError = None
-
-
-def _loadYOLO():
-    '''Import ``ultralytics`` on first use and return its ``YOLO`` class.
-
-    The import is not done when this module is, because it has a side
-    effect on the whole program: ``ultralytics`` calls
-    ``cv2.setNumThreads(0)`` when it is imported, which leaves OpenCV with
-    one thread, and the ONNX model that OpenCV runs then takes four times
-    as long.  The number of threads is put back after the import, which
-    inference does not need changed.  Returns ``None`` if the import fails;
-    :data:`_importError` says why.
-    '''
-    global YOLO, _importError
-    if YOLO is not None:
-        return YOLO
-    threads = cv2.getNumThreads()
-    try:
-        from ultralytics import YOLO as cls
-    except Exception as ex:  # a broken install raises more than ImportError
-        _importError = ex
-        return None
-    finally:
-        cv2.setNumThreads(threads)
-    YOLO = cls
-    return cls
 
 
 #: The names of the 80 classes of the COCO data set, which the pretrained
@@ -168,20 +134,26 @@ class _YoloWorker(QtCore.QObject):
     Parameters
     ----------
     model_name : str
-        Name of the YOLO model weights file. Default: ``'yolo11n.pt'``.
+        Path of the ONNX file that holds the network.
+        Default: ``'yolo11n.onnx'``.
     confidence : float
         Minimum confidence threshold for reported detections.
         Default: ``0.25``.
-    backend : {'auto', 'ultralytics', 'opencv'}
-        What runs the network.  ``'auto'`` uses OpenCV for a ``.onnx`` file
-        and ``ultralytics`` for anything else.
     imgsz : int
-        Side of the square input of the network, for the OpenCV backend;
-        the size at which the model was exported.  Default: ``640``.
+        Side of the square input of the network; the size at which the
+        model was exported.  Default: ``640``.
     names : sequence of str or None
-        The name of each class, for the OpenCV backend.  The default is
-        the 80 names of COCO if the network has 80 classes, and the number
-        of the class otherwise.
+        The name of each class.  The default is the 80 names of COCO if the
+        network has 80 classes, and the number of the class otherwise.
+
+    Raises
+    ------
+    ImportError
+        If pandas is not installed.
+    ValueError
+        If *model_name* is a ``.pt`` file, which OpenCV cannot read.
+    FileNotFoundError
+        If the file does not exist.
 
     Signals
     -------
@@ -198,49 +170,35 @@ class _YoloWorker(QtCore.QObject):
     iou = 0.45
 
     def __init__(self,
-                 model_name: str = 'yolo11n.pt',
+                 model_name: str = 'yolo11n.onnx',
                  confidence: float = 0.25,
-                 backend: str = 'auto',
                  imgsz: int = 640,
                  names: Sequence[str] | None = None) -> None:
         super().__init__()
-        if backend == 'auto':
-            backend = ('opencv' if str(model_name).lower().endswith('.onnx')
-                       else 'ultralytics')
-        self._failing = False
-        if backend not in ('ultralytics', 'opencv'):
-            raise ValueError(f'Unknown YOLO backend {backend!r}: '
-                             "use 'auto', 'ultralytics' or 'opencv'")
         if pd is None:
             raise ImportError(
                 'pandas is required for QYoloWidget.'
                 '\n\tInstall it with: pip install pandas'
                 '\n\tor: pip install "QVideo[overlays]"')
-        self.backend = backend
+        if str(model_name).lower().endswith('.pt'):
+            raise ValueError(
+                f'{str(model_name)!r} is a PyTorch file, which OpenCV '
+                'cannot read.  Export it once to ONNX, on a machine that '
+                'has ultralytics:'
+                f'\n\tYOLO({str(model_name)!r}).export(format="onnx")')
+        self._failing = False
         self.confidence = confidence
         self.imgsz = imgsz
         self.names = names
-        if backend == 'opencv':
-            self.model = DNN(model_name, size=(imgsz, imgsz))
-            return
-        YOLO = _loadYOLO()
-        if YOLO is None:
-            raise ImportError(
-                'ultralytics is required for QYoloWidget.'
-                '\n\tInstall it with: pip install ultralytics'
-                '\n\tSee https://docs.ultralytics.com/ for more information.'
-                "\n\tOr use an ONNX file, which OpenCV runs: "
-                "backend='opencv'."
-            ) from _importError
         try:
-            self.model = YOLO(model_name)
+            self.model = DNN(model_name, size=(imgsz, imgsz))
         except FileNotFoundError as err:
             raise FileNotFoundError(
-                f'YOLO model "{model_name}" not found.'
-                '\n\tProvide the name of a pretrained ultralytics model'
-                '\n\tor the full path to a custom YOLO weights file.'
-                '\n\tSee https://docs.ultralytics.com/models/ '
-                'for available pretrained models.') from err
+                f'No YOLO model file {str(model_name)!r}.  QVideo does not '
+                'ship one: give the path of an ONNX file (--model in the '
+                'demo), or export one from a .pt file, on a machine that '
+                f'has ultralytics:\n\tYOLO("yolo11n.pt").export('
+                'format="onnx")') from err
 
     @QtCore.Slot(np.ndarray)
     def process(self, image: Image) -> None:
@@ -252,10 +210,7 @@ class _YoloWorker(QtCore.QObject):
             Video frame to analyze.
         '''
         try:
-            if self.backend == 'opencv':
-                features = self._detectOpenCV(image)
-            else:
-                features = self._detectUltralytics(image)
+            features = self._detect(image)
             self._failing = False
         except Exception as exc:
             # The traceback of the first failure: a bug in the detection
@@ -270,20 +225,8 @@ class _YoloWorker(QtCore.QObject):
             features = None
         self.newData.emit(features)
 
-    def _detectUltralytics(self, image: Image):
-        '''Return the detections of *image* by ultralytics, or ``None``.'''
-        results = self.model(image, verbose=False, conf=self.confidence)
-        boxes = results[0].boxes
-        if len(boxes) == 0:
-            return None
-        xyxy = boxes.xyxy.cpu().numpy()
-        conf = boxes.conf.cpu().numpy()
-        cls = boxes.cls.cpu().numpy().astype(int)
-        return self._features(xyxy, conf, cls,
-                              [results[0].names[c] for c in cls])
-
-    def _detectOpenCV(self, image: Image):
-        '''Return the detections of *image* by OpenCV, or ``None``.'''
+    def _detect(self, image: Image):
+        '''Return the detections of *image*, or ``None``.'''
         image = prepare(image)
         padded, scale, pad = letterbox(image, self.model.size)
         output = self.model.forward(padded)[0]
@@ -429,13 +372,12 @@ class QYoloWidget(QOverlayWidget):
     parent : QtWidgets.QWidget or None
         Parent widget.
     model_name : str
-        YOLO model weights file. Default: ``'yolo11n.pt'``.
+        ONNX file that holds the network.  Default: ``'yolo11n.onnx'``.
     confidence : float
         Initial confidence threshold. Default: ``0.25``.
-    backend, imgsz, names :
-        What runs the network, and the size and class names of an ONNX
-        model.  See :class:`_YoloWorker`.  The default runs a ``.onnx``
-        file with OpenCV and anything else with ``ultralytics``.
+    imgsz, names :
+        The size and the class names of the model.  See
+        :class:`_YoloWorker`.
     labels : bool
         Label each box with the name of its class.  The check box
         "Labels" changes it.  Default: ``True``.
@@ -443,14 +385,13 @@ class QYoloWidget(QOverlayWidget):
 
     def __init__(self,
                  parent: QtWidgets.QWidget | None = None,
-                 model_name: str = 'yolo11n.pt',
+                 model_name: str = 'yolo11n.onnx',
                  confidence: float = 0.25,
-                 backend: str = 'auto',
                  imgsz: int = 640,
                  names: Sequence[str] | None = None,
                  labels: bool = True) -> None:
         worker = _YoloWorker(model_name=model_name, confidence=confidence,
-                             backend=backend, imgsz=imgsz, names=names)
+                             imgsz=imgsz, names=names)
         super().__init__('YOLO', QYoloOverlay(labels), worker, parent)
 
     def _setupUi(self) -> None:

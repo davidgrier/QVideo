@@ -18,6 +18,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   shape; `width` and `height` are hidden.  A device that cannot list its modes
   keeps `width` and `height`.  Tried on an IMX219.
 
+### Removed
+
+- **The `ultralytics` backend of `QYoloWidget`** (breaking).  OpenCV runs the
+  network from an `.onnx` file, as it did for `.onnx` files since 4.17.0, and
+  nothing else: `backend=` (and `--backend` of `yolodemo`) is gone, a `.pt`
+  file raises a `ValueError` that says how to export it, and the default model
+  is `yolo11n.onnx`.  The `yolo` extra is now `pandas`, so installing it no
+  longer pulls in `torch` (about 50 packages).  There is no GPU: the
+  `opencv-python` wheels have no CUDA support.  Export once, on a machine
+  that has `ultralytics`: `YOLO('m.pt').export(format='onnx')`.
+
 ---
 
 ## [4.27.1] — 2026-11-13

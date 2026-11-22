@@ -222,13 +222,13 @@ builds one without a window.
 
 Overlays render analysis results directly on the live `QVideoScreen`.  Each
 needs its own optional packages: `pip install QVideo[trackpy]` for the trackpy
-overlay, `pip install QVideo[yolo]` for the YOLO overlay (which pulls in
-PyTorch), or `pip install QVideo[overlays]` for both.
+overlay, `pip install QVideo[yolo]` for the YOLO overlay (an ONNX model run
+by OpenCV: no PyTorch), or `pip install QVideo[overlays]` for both.
 
 | Overlay | Class | Description |
 |---------|-------|-------------|
 | Particle tracking | `QTrackpyWidget` | Live particle detection and tracking using `trackpy` |
-| Object detection | `QYoloWidget` | Real-time bounding-box detection using YOLO (`ultralytics`) |
+| Object detection | `QYoloWidget` | Real-time bounding-box detection using YOLO (ONNX, run by OpenCV) |
 
 ## Acknowledgements
 

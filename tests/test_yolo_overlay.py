@@ -18,11 +18,6 @@ from QVideo.overlays.yolo import (  # noqa: E402
 from QVideo.lib.dnn import DNN  # noqa: E402
 from QVideo.tests.onnxfile import writeIdentity  # noqa: E402
 
-# Replace module-level YOLO with a mock so tests never touch real ultralytics.
-mock_YOLO_cls = MagicMock()
-_mod.YOLO = mock_YOLO_cls
-
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
@@ -43,28 +38,19 @@ def _make_features(n: int = 2) -> pd.DataFrame:
     })[:n]
 
 
-def _make_mock_results(n: int = 2):
-    '''Return a mock ultralytics Results list with n detections.'''
-    boxes = MagicMock()
-    boxes.__len__ = MagicMock(return_value=n)
-    xyxy = np.array([[10, 10, 20, 20], [30, 30, 50, 50]], dtype=np.float32)[:n]
-    conf = np.array([0.9, 0.7], dtype=np.float32)[:n]
-    cls = np.array([0, 1], dtype=np.float32)[:n]
-    boxes.xyxy.cpu().numpy.return_value = xyxy
-    boxes.conf.cpu().numpy.return_value = conf
-    boxes.cls.cpu().numpy.return_value = cls
-    result = MagicMock()
-    result.boxes = boxes
-    result.names = {0: 'cat', 1: 'dog'}
-    return [result]
-
-
 class MockSource(QtCore.QObject):
     newFrame = QtCore.Signal(np.ndarray)
 
 
+_directory = tempfile.TemporaryDirectory()
+_path = str(writeIdentity(Path(_directory.name) / 'yolo.onnx',
+                          (1, 3, 64, 64)))
+
+
 def _make_widget(**kwargs):
     '''Create a QYoloWidget with the background thread neutralized.'''
+    kwargs.setdefault('model_name', _path)
+    kwargs.setdefault('imgsz', 64)
     with patch.object(_YoloWorker, 'moveToThread'), \
          patch.object(QtCore.QThread, 'start'):
         w = QYoloWidget(**kwargs)
@@ -77,109 +63,69 @@ def _make_widget(**kwargs):
 
 class TestYoloWorkerInit(unittest.TestCase):
 
-    def setUp(self):
-        mock_YOLO_cls.reset_mock()
-
-    def test_loads_model(self):
-        _YoloWorker()
-        mock_YOLO_cls.assert_called_once_with('yolo11n.pt')
-
-    def test_custom_model_name(self):
-        _YoloWorker(model_name='yolo11s.pt')
-        mock_YOLO_cls.assert_called_once_with('yolo11s.pt')
+    def test_loads_the_network_with_opencv(self):
+        worker = _YoloWorker(model_name=_path, imgsz=64)
+        self.assertIsInstance(worker.model, DNN)
+        self.assertEqual(worker.model.size, (64, 64))
 
     def test_raises_when_pandas_missing(self):
         with patch.object(_mod, 'pd', None):
             with self.assertRaises(ImportError):
-                _YoloWorker()
+                _YoloWorker(model_name=_path, imgsz=64)
 
-    def test_raises_when_yolo_missing(self):
-        with patch.object(_mod, '_loadYOLO', return_value=None):
-            with self.assertRaises(ImportError):
-                _YoloWorker()
+    def test_a_missing_file_raises_and_says_what_to_do(self):
+        with self.assertRaises(FileNotFoundError) as caught:
+            _YoloWorker(model_name='nothing.onnx')
+        self.assertIn('export', str(caught.exception))
 
-    def test_the_error_names_why_the_import_failed(self):
-        broken = OSError('libtorch could not be loaded')
-        with patch.object(_mod, '_loadYOLO', return_value=None), \
-                patch.object(_mod, '_importError', broken):
-            with self.assertRaises(ImportError) as caught:
-                _YoloWorker()
-        self.assertIs(caught.exception.__cause__, broken)
+    def test_a_pt_file_is_refused_with_the_way_to_export_it(self):
+        with self.assertRaises(ValueError) as caught:
+            _YoloWorker(model_name='yolo11n.pt')
+        self.assertIn('export', str(caught.exception))
+        self.assertIn('onnx', str(caught.exception))
 
-    def test_raises_on_missing_model_file(self):
-        mock_YOLO_cls.side_effect = FileNotFoundError
-        with self.assertRaises(FileNotFoundError):
-            _YoloWorker()
-        mock_YOLO_cls.side_effect = None
+    def test_the_backend_is_gone(self):
+        with self.assertRaises(TypeError):
+            _YoloWorker(model_name=_path, backend='opencv')
+
+    def test_importing_the_module_does_not_import_ultralytics(self):
+        import subprocess
+        import sys
+        code = ('import sys\n'
+                'import QVideo.overlays.yolo\n'
+                'print("ultralytics" in sys.modules)')
+        done = subprocess.run([sys.executable, '-c', code],
+                              capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.stdout.strip(), 'False', done.stderr)
 
 
-class TestYoloWorkerDetect(unittest.TestCase):
+class TestYoloWorkerFailures(unittest.TestCase):
 
     def setUp(self):
-        mock_YOLO_cls.reset_mock()
-        self._worker = _YoloWorker()
-        self._worker.model = MagicMock()
-
-    def test_detect_emits_dataframe_on_detections(self):
-        self._worker.model.return_value = _make_mock_results(2)
-        spy = record(self._worker.newData)
-        self._worker.process(_make_frame())
-        self.assertEqual(len(spy), 1)
-        features = spy[0][0]
-        self.assertIsNotNone(features)
-        self.assertEqual(len(features), 2)
-
-    def test_detect_emits_none_on_no_detections(self):
-        self._worker.model.return_value = _make_mock_results(0)
-        spy = record(self._worker.newData)
-        self._worker.process(_make_frame())
-        self.assertEqual(len(spy), 1)
-        self.assertIsNone(spy[0][0])
-
-    def test_detect_emits_none_on_exception(self):
-        self._worker.model.side_effect = RuntimeError('oops')
-        spy = record(self._worker.newData)
-        self._worker.process(_make_frame())
-        self.assertEqual(len(spy), 1)
-        self.assertIsNone(spy[0][0])
+        self._worker = _YoloWorker(model_name=_path, imgsz=64)
+        self._worker.model = MagicMock(size=(64, 64))
+        self._worker.model.forward.side_effect = RuntimeError('oops')
 
     def test_the_first_failure_is_logged_with_its_traceback(self):
-        self._worker.model.side_effect = RuntimeError('oops')
         with self.assertLogs(_mod.logger, 'WARNING') as logs:
             self._worker.process(_make_frame())
         self.assertEqual(len(logs.records), 1)
         self.assertIsNotNone(logs.records[0].exc_info)
 
     def test_the_failures_that_follow_are_not_warnings(self):
-        self._worker.model.side_effect = RuntimeError('oops')
         self._worker.process(_make_frame())
         with self.assertNoLogs(_mod.logger, 'WARNING'):
             self._worker.process(_make_frame())
 
     def test_a_failure_after_a_success_is_reported_again(self):
-        self._worker.model.side_effect = RuntimeError('oops')
         self._worker.process(_make_frame())
-        self._worker.model.side_effect = None
-        self._worker.model.return_value = _make_mock_results(1)
+        self._worker.model.forward.side_effect = None
+        self._worker.model.forward.return_value = [
+            _output((32, 32, 16, 16, 0.9, 0.1))]
         self._worker.process(_make_frame())
-        self._worker.model.side_effect = RuntimeError('again')
+        self._worker.model.forward.side_effect = RuntimeError('again')
         with self.assertLogs(_mod.logger, 'WARNING'):
             self._worker.process(_make_frame())
-
-    def test_detect_dataframe_has_expected_columns(self):
-        self._worker.model.return_value = _make_mock_results(1)
-        spy = record(self._worker.newData)
-        self._worker.process(_make_frame())
-        features = spy[0][0]
-        for col in ('x1', 'y1', 'x2', 'y2', 'confidence', 'class', 'label'):
-            self.assertIn(col, features.columns)
-
-    def test_detect_passes_confidence_to_model(self):
-        self._worker.confidence = 0.5
-        self._worker.model.return_value = _make_mock_results(0)
-        self._worker.process(_make_frame())
-        _, kwargs = self._worker.model.call_args
-        self.assertEqual(kwargs['conf'], 0.5)
 
 
 # ---------------------------------------------------------------------------
@@ -316,7 +262,7 @@ class TestQYoloWidgetConfidence(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# the OpenCV backend
+# detections
 # ---------------------------------------------------------------------------
 
 def _output(*rows) -> np.ndarray:
@@ -366,46 +312,6 @@ class TestDecode(unittest.TestCase):
         np.testing.assert_allclose(boxes, [[40, 35, 60, 45]])
 
 
-class TestLoadYOLO(unittest.TestCase):
-
-    def test_importing_the_module_does_not_import_ultralytics(self):
-        import subprocess
-        import sys
-        code = ('import sys\n'
-                'import QVideo.overlays.yolo\n'
-                'print("ultralytics" in sys.modules)')
-        done = subprocess.run([sys.executable, '-c', code],
-                              capture_output=True, text=True, timeout=120)
-        self.assertEqual(done.stdout.strip(), 'False', done.stderr)
-
-    def test_the_threads_of_opencv_are_put_back(self):
-        import sys
-        import types
-        fake = types.ModuleType('ultralytics')
-        fake.YOLO = MagicMock()
-
-        def side_effect_of_the_import(count):
-            calls.append(count)
-
-        calls = []
-        with patch.dict(sys.modules, {'ultralytics': fake}), \
-                patch.object(_mod, 'YOLO', None), \
-                patch.object(_mod.cv2, 'getNumThreads', return_value=7), \
-                patch.object(_mod.cv2, 'setNumThreads',
-                             side_effect=side_effect_of_the_import):
-            cls = _mod._loadYOLO()
-            _mod.YOLO = None            # do not leave the fake behind
-        self.assertIs(cls, fake.YOLO)
-        self.assertEqual(calls, [7])
-
-    def test_a_failed_import_is_reported_not_raised(self):
-        import sys
-        with patch.dict(sys.modules, {'ultralytics': None}), \
-                patch.object(_mod, 'YOLO', None):
-            self.assertIsNone(_mod._loadYOLO())
-        self.assertIsNotNone(_mod._importError)
-
-
 class TestOpenCVWorker(unittest.TestCase):
 
     @classmethod
@@ -418,30 +324,8 @@ class TestOpenCVWorker(unittest.TestCase):
     def tearDownClass(cls):
         cls.dir.cleanup()
 
-    def setUp(self):
-        mock_YOLO_cls.reset_mock()
-
     def _worker(self, **kwargs):
         return _YoloWorker(model_name=self.path, imgsz=64, **kwargs)
-
-    def test_auto_chooses_opencv_for_an_onnx_file(self):
-        worker = self._worker()
-        self.assertEqual(worker.backend, 'opencv')
-        self.assertIsInstance(worker.model, DNN)
-        mock_YOLO_cls.assert_not_called()
-
-    def test_auto_chooses_ultralytics_for_a_pt_file(self):
-        self.assertEqual(_YoloWorker().backend, 'ultralytics')
-
-    def test_opencv_does_not_need_ultralytics(self):
-        with patch.object(_mod, 'YOLO', None), \
-                patch.object(_mod, '_loadYOLO') as load:
-            self.assertEqual(self._worker().backend, 'opencv')
-        load.assert_not_called()
-
-    def test_an_unknown_backend_raises(self):
-        with self.assertRaises(ValueError):
-            _YoloWorker(backend='tensorflow')
 
     def test_a_missing_onnx_file_raises(self):
         with self.assertRaises(FileNotFoundError):
@@ -512,9 +396,9 @@ class TestOpenCVWorker(unittest.TestCase):
         worker.process(np.zeros((64, 64, 3), np.uint8))
         self.assertEqual(len(spy), 1)
 
-    def test_the_widget_passes_the_backend_on(self):
+    def test_the_widget_passes_the_model_on(self):
         w = _make_widget(model_name=self.path, imgsz=64)
-        self.assertEqual(w._worker.backend, 'opencv')
+        self.assertIsInstance(w._worker.model, DNN)
 
 
 if __name__ == '__main__':  # pragma: no cover

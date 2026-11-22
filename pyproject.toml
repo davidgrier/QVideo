@@ -54,7 +54,7 @@ circletransform = ["dgimage>=0.2.0"]
 # numba is not imported by QVideo: trackpy uses it, and finds features
 # about five times faster with it
 trackpy  = ["trackpy", "pandas", "numba"]
-yolo     = ["ultralytics"]
+yolo     = ["pandas"]
 overlays = ["QVideo[trackpy,yolo]"]
 # viva-genicam publishes wheels for these platforms only; elsewhere (a
 # Raspberry Pi, an Intel Mac) pip would have to build it from source with a

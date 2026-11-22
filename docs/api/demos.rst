@@ -207,7 +207,7 @@ YoloDemo
 --------
 
 Detected objects drawn as labeled boxes on the live video, using a YOLO model
-from the `Ultralytics <https://docs.ultralytics.com/>`_ library.
+in ONNX format, run by OpenCV.
 
 .. literalinclude:: /../demos/yolodemo.py
    :language: python

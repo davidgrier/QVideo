@@ -18,6 +18,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   shape; `width` and `height` are hidden.  A device that cannot list its modes
   keeps `width` and `height`.  Tried on an IMX219.
 
+### Fixed
+
+- **A demo or application whose widget cannot be built quits with a message**
+  instead of hanging behind the splash screen.  `launch` ended the program
+  only for an `ImportError`; a missing model file (`FileNotFoundError`) or a
+  bad argument (`ValueError`) now does the same, any other exception ends it
+  with the traceback in the log, and the camera tree is stopped first, so the
+  capture thread no longer reads a camera that has closed.
+
 ### Removed
 
 - **The `ultralytics` backend of `QYoloWidget`** (breaking).  OpenCV runs the

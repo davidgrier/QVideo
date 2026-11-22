@@ -223,6 +223,25 @@ class TestLaunch(unittest.TestCase):
             self.run_launch(widget)
         self.assertIn('install trackpy', str(raised.exception))
 
+    def test_a_missing_file_ends_the_program_with_its_message(self):
+        widget = MagicMock(side_effect=FileNotFoundError('no model.onnx'))
+        with self.assertRaises(SystemExit) as raised:
+            self.run_launch(widget)
+        self.assertIn('no model.onnx', str(raised.exception))
+
+    def test_a_bad_argument_ends_the_program_with_its_message(self):
+        widget = MagicMock(side_effect=ValueError('not a model'))
+        with self.assertRaises(SystemExit) as raised:
+            self.run_launch(widget)
+        self.assertIn('not a model', str(raised.exception))
+
+    def test_any_other_failure_ends_the_program_and_is_logged(self):
+        widget = MagicMock(side_effect=RuntimeError('broken'))
+        with self.assertLogs('QVideo.lib._launch', 'ERROR'), \
+                self.assertRaises(SystemExit) as raised:
+            self.run_launch(widget)
+        self.assertIn('broken', str(raised.exception))
+
 
 APPLICATIONS = [('QVideo.demos.demo', 'Demo'),
                 ('QVideo.demos.filterdemo', 'FilterDemo'),

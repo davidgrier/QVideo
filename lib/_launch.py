@@ -39,6 +39,9 @@ from QVideo.lib._splash import say, splash
 from QVideo.lib.QCameraOpener import QCameraOpener
 from QVideo.cameras import chooser
 
+
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from QVideo.lib.QCamera import QCamera
 
@@ -141,14 +144,24 @@ class _Launcher:
 
         Called on the main thread when the opener has the camera.  A widget
         that raises ``ImportError`` (it needs a package that is not
-        installed) ends the program with that message.
+        installed), ``OSError`` (a file that it needs is missing) or
+        ``ValueError`` (an argument that it cannot use) ends the program
+        with that message.  Any other exception ends it too, with the
+        traceback in the log, because an exception in a slot would leave the
+        splash screen up and the program hanging.
         '''
         say(self.screen, 'Building the interface...')
+        tree = chooser.make_tree(key, camera).start()
         try:
-            central = self.widget(chooser.make_tree(key, camera).start(),
-                                  **self.kwargs)
-        except ImportError as error:
+            central = self.widget(tree, **self.kwargs)
+        except (ImportError, OSError, ValueError) as error:
+            tree.stop()
             self.fail(f'Error: {error}')
+            return
+        except Exception as error:
+            logger.exception('The interface could not be built')
+            tree.stop()
+            self.fail(f'Error: {error!r}')
             return
         self.opener.camera = None       # the interface has it now
         self.window.setCentralWidget(central)

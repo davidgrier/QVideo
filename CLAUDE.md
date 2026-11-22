@@ -484,13 +484,14 @@ type error fails the workflow, with the version of pyright pinned in
 (`fail_under` in `pyproject.toml`; the suite measures 96%).  Keep the floor
 below the measured value: it makes a regression visible and is no target.
 
-Run `pyright` in an environment with PyQt6 and no other Qt binding, as CI
-does (`pip install -e ".[dev-pyqt6]" pyright==1.1.414` in a new virtual
-environment): with PyQt5 installed beside it, pyright reads the PyQt5 stubs
-and reports errors that CI does not.  The Qt stubs, `pyqtgraph` and OpenCV are loosely
-typed, so a line that is right at run time sometimes carries a
-`# pyright: ignore[rule]`; use the narrowest rule that names the problem,
-and prefer a `cast` or an annotation where it says something true.
+Run `pyright` in an environment with PyQt6 and no other Qt binding, as CI does
+(`pip install -e ".[dev-pyqt6]" PyQt6==6.12.0 pyright==1.1.414` in a new
+virtual environment; the stubs of PyQt6 6.12.1 report errors that 6.12.0 does
+not, so CI pins it): with PyQt5 installed beside it, pyright reads the PyQt5
+stubs and reports errors that CI does not. The Qt stubs, `pyqtgraph` and OpenCV
+are loosely typed, so a line that is right at run time sometimes carries a `#
+pyright: ignore[rule]`; use the narrowest rule that names the problem, and
+prefer a `cast` or an annotation where it says something true.
 
 `ruff check .` (configured in `pyproject.toml`: pyflakes, bugbear, the
 79-character limit, and for the package, not the tests, `SIM` without

@@ -20,6 +20,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **CI is green again.**  The `Types` job pins PyQt6 6.12.0 (the stubs of
+  6.12.1 report 42 errors in `lib/`); the DNN engine test uses the engine
+  name that the installed OpenCV has (`ENGINE_OPENCV` in 5.1, `ENGINE_NEW` in
+  5.0) and skips without one; `QPicamera` passes `strict=True` to `zip`.
 - **A demo or application whose widget cannot be built quits with a message**
   instead of hanging behind the splash screen.  `launch` ended the program
   only for an `ImportError`; a missing model file (`FileNotFoundError`) or a

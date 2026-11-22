@@ -124,7 +124,13 @@ class TestDNN(unittest.TestCase):
             DNN(bad)
 
     def test_the_engine_can_be_chosen(self):
-        net = DNN(self.path, size=(48, 32), engine=cv2.dnn.ENGINE_CLASSIC)
+        # OpenCV 5.0 calls it ENGINE_NEW, 5.1 ENGINE_OPENCV.
+        names = ('ENGINE_OPENCV', 'ENGINE_NEW')
+        engine = next((getattr(cv2.dnn, name) for name in names
+                       if hasattr(cv2.dnn, name)), None)
+        if engine is None:
+            self.skipTest('no named DNN engine in this OpenCV')
+        net = DNN(self.path, size=(48, 32), engine=engine)
         self.assertEqual(net.forward(np.zeros((32, 48, 3), np.uint8))[0]
                          .shape, (1, 3, 32, 48))
 

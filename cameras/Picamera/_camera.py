@@ -457,7 +457,8 @@ class QPicamera(QCamera):
         return min(self._sizeLabels,
                    key=lambda label: sum(
                        abs(a - b)
-                       for a, b in zip(self._sizeLabels[label], size)))
+                       for a, b in zip(self._sizeLabels[label], size,
+                                       strict=True)))
 
     def _setResolution(self, label: str) -> None:
         '''Restart the stream at the size that *label* names.'''

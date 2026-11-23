@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.29.0] — 2026-11-23
+
 ### Added
 
 - **`QPicamera` offers a `resolution` dropdown**, as `QOpenCVCamera` does: the

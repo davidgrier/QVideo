@@ -452,7 +452,7 @@ _HEAD = ('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
 
 #: What a browser sees before it is paired.
 DENIED = (_HEAD + '<body><main><p>This video is private.</p>'
-          '<p>Scan the QR code on the instrument with this device\'s '
+          "<p>Scan the QR code on the instrument with this device's "
           'camera.</p></main></body></html>')
 
 #: What a browser sees when its code does not pair.

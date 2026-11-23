@@ -11,7 +11,7 @@ import sys
 import unittest
 
 try:
-    import trackpy  # noqa: F401
+    import trackpy
 except ImportError:  # pragma: no cover
     trackpy = None
 

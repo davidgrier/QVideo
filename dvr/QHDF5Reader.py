@@ -9,7 +9,7 @@ try:
 except (ImportError, ModuleNotFoundError):
     h5py = None
 try:
-    import hdf5plugin  # noqa: F401  registers the filters of the files
+    import hdf5plugin
 except (ImportError, ModuleNotFoundError):
     hdf5plugin = None
 

@@ -512,10 +512,10 @@ class TestNoSource(PipelineTestCase):
 
 
 class TestDroppingAStack(unittest.TestCase):
-    """Dropping the last reference to a running pipeline must not abort Qt
-    ("QThread: Destroyed while thread is still running")."""
+    '''Dropping the last reference to a running pipeline must not abort Qt
+    ("QThread: Destroyed while thread is still running").'''
 
-    CODE = """
+    CODE = '''
 import os, gc
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 import numpy as np
@@ -537,7 +537,7 @@ def build():
 build()
 gc.collect()
 print('survived')
-"""
+'''
 
     def test_dropping_a_running_pipeline_is_safe(self):
         result = subprocess.run([sys.executable, '-c', self.CODE],
@@ -547,7 +547,7 @@ print('survived')
         self.assertNotIn('Destroyed while thread', result.stderr)
 
     def test_a_pipeline_takes_no_parent(self):
-        """A parent would let Qt delete the running thread."""
+        '''A parent would let Qt delete the running thread.'''
         parameters = inspect.signature(QFilterPipeline).parameters
         self.assertNotIn('parent', parameters)
 

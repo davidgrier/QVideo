@@ -3,7 +3,7 @@ import subprocess
 import sys
 import unittest
 
-_BLOCK = """
+_BLOCK = '''
 import sys
 from importlib.abc import MetaPathFinder
 
@@ -15,7 +15,7 @@ class Block(MetaPathFinder):
 
 
 sys.meta_path.insert(0, Block())
-"""
+'''
 
 
 def run(code: str) -> subprocess.CompletedProcess:

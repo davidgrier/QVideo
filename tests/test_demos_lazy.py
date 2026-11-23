@@ -26,7 +26,7 @@ class TestLazyDemos(unittest.TestCase):
 
     def test_an_unknown_name_is_an_attribute_error(self):
         with self.assertRaises(AttributeError):
-            demos.NoSuchDemo       # noqa: B018
+            demos.NoSuchDemo
 
     def test_a_demo_is_not_imported_until_it_is_asked_for(self):
         out = run('import sys, QVideo.demos\n'

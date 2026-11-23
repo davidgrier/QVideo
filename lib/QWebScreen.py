@@ -1194,7 +1194,7 @@ class QWebScreen(QtCore.QObject):
         from QVideo.lib import QVideoSource
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
             sys.argv)
-        key, camera = chooser.open_camera()
+        _key, camera = chooser.open_camera()
         source = QVideoSource(camera).start()
         web = cls(source)
         try:

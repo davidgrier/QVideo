@@ -1,6 +1,6 @@
 from importlib.metadata import version, PackageNotFoundError
 try:
-    import qtpy  # noqa: F401  (selects the Qt binding)
+    import qtpy
 except RuntimeError as error:
     raise ImportError(
         'QVideo needs a Qt binding.  Install one with '

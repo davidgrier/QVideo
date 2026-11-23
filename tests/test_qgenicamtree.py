@@ -98,8 +98,8 @@ for _key in list(sys.modules):
     if 'Genicam._tree' in _key:
         del sys.modules[_key]
 
-from QVideo.cameras.Genicam._camera import QGenicamCamera  # noqa: E402
-from QVideo.cameras.Genicam._tree import QGenicamTree      # noqa: E402
+from QVideo.cameras.Genicam._camera import QGenicamCamera
+from QVideo.cameras.Genicam._tree import QGenicamTree
 
 _cam_module  = sys.modules['QVideo.cameras.Genicam._camera']
 _nodes_module = sys.modules['QVideo.cameras.Genicam._nodes']

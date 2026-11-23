@@ -77,7 +77,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
     sys.modules.setdefault(_name, _mod)
 
 # Import directly from the submodule to avoid pulling in QVimbaXTree
-from QVideo.lib.errors import QDriverError  # noqa: E402
+from QVideo.lib.errors import QDriverError
 from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.cameras.Vimbax._camera import QVimbaXCamera
 

@@ -11,12 +11,12 @@ from qtpy import QtCore, QtWidgets
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 from QVideo.tests.signals import record
-import QVideo.overlays.yolo as _mod  # noqa: E402
-from QVideo.overlays.yolo import (  # noqa: E402
+import QVideo.overlays.yolo as _mod
+from QVideo.overlays.yolo import (
     _YoloWorker, QYoloOverlay, QYoloWidget, decode, COCO_NAMES,
 )
-from QVideo.lib.dnn import DNN  # noqa: E402
-from QVideo.tests.onnxfile import writeIdentity  # noqa: E402
+from QVideo.lib.dnn import DNN
+from QVideo.tests.onnxfile import writeIdentity
 
 # ---------------------------------------------------------------------------
 # helpers

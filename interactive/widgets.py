@@ -60,7 +60,7 @@ def _eight(frame: 'Image', contrast: 'str | tuple[float, float]',
 
 
 def _encode(frame: 'Image', ext: str) -> bytes:
-    """Return *frame* (8 bits) encoded as an image file of type *ext*."""
+    '''Return *frame* (8 bits) encoded as an image file of type *ext*.'''
     if frame.ndim == 3 and frame.shape[2] == 3:
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     ok, buf = cv2.imencode(ext, frame)

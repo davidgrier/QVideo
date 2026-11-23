@@ -43,13 +43,13 @@ from pathlib import Path
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
-import cv2  # noqa: E402
-import numpy as np  # noqa: E402
-from qtpy import QtCore, QtWidgets  # noqa: E402
-import qtpy  # noqa: E402
+import cv2
+import numpy as np
+from qtpy import QtCore, QtWidgets
+import qtpy
 
-from QVideo.lib import QCamera, QVideoSource  # noqa: E402
-from QVideo.lib.videotypes import FrameInfo  # noqa: E402
+from QVideo.lib import QCamera, QVideoSource
+from QVideo.lib.videotypes import FrameInfo
 
 __all__ = ['machine', 'measure', 'benchmarkFilters', 'benchmarkRecord']
 
@@ -72,7 +72,8 @@ def machine() -> dict[str, str]:
     if sys.platform == 'darwin':
         import subprocess
         done = subprocess.run(['sysctl', '-n', 'machdep.cpu.brand_string'],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True,
+                              check=False)
         cpu = done.stdout.strip() or cpu
     elif Path('/proc/cpuinfo').exists():
         for line in Path('/proc/cpuinfo').read_text().splitlines():

@@ -598,7 +598,7 @@ class TestCameraRecord(unittest.TestCase):
         self.assertIn('size changed', str(caught.exception))
 
     def clock(self, step):
-        """A clock that advances *step* seconds each time it is read."""
+        '''A clock that advances *step* seconds each time it is read.'''
         now = [0.]
 
         def perf_counter():
@@ -727,7 +727,7 @@ class TestShowAndLevels(unittest.TestCase):
         self.assertEqual(show.call_args.args[1], 'full')
 
     def run_live(self, frame, levels=None, mode=None, reads=3):
-        """Run a live view over *reads* frames; return (shown, widget)."""
+        '''Run a live view over *reads* frames; return (shown, widget).'''
         from QVideo.interactive.widgets import live_view
         shown = []
         calls = []

@@ -77,17 +77,17 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
 # Ensure the already-loaded genapi has a proper EVisibility type.
 sys.modules['genicam.genapi'].EVisibility = _EVisibility
 
-from QVideo.cameras.Genicam import QGenicamTree  # noqa: E402
-from QVideo.cameras.Basler._camera  import QBaslerCamera   # noqa: E402
-from QVideo.cameras.Basler._tree   import QBaslerTree   # noqa: E402
-from QVideo.cameras.Flir._camera   import QFlirCamera   # noqa: E402
-from QVideo.cameras.Flir._tree     import QFlirTree     # noqa: E402
-from QVideo.cameras.IDS._camera    import QIDSCamera    # noqa: E402
-from QVideo.cameras.IDS._tree      import QIDSTree      # noqa: E402
-from QVideo.cameras.MV._camera     import QMVCamera     # noqa: E402
-from QVideo.cameras.MV._tree       import QMVTree       # noqa: E402
-from QVideo.cameras.Vimbax._camera import QVimbaXCamera # noqa: E402
-from QVideo.cameras.Vimbax._tree   import QVimbaXTree   # noqa: E402
+from QVideo.cameras.Genicam import QGenicamTree
+from QVideo.cameras.Basler._camera  import QBaslerCamera
+from QVideo.cameras.Basler._tree   import QBaslerTree
+from QVideo.cameras.Flir._camera   import QFlirCamera
+from QVideo.cameras.Flir._tree     import QFlirTree
+from QVideo.cameras.IDS._camera    import QIDSCamera
+from QVideo.cameras.IDS._tree      import QIDSTree
+from QVideo.cameras.MV._camera     import QMVCamera
+from QVideo.cameras.MV._tree       import QMVTree
+from QVideo.cameras.Vimbax._camera import QVimbaXCamera
+from QVideo.cameras.Vimbax._tree   import QVimbaXTree
 
 _cam_module = sys.modules['QVideo.cameras.Genicam._camera']
 _PRODUCER   = '/fake/producer.cti'

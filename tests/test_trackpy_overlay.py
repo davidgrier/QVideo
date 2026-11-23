@@ -7,8 +7,8 @@ from qtpy import QtCore, QtWidgets
 
 
 from QVideo.tests.signals import record
-import QVideo.overlays.trackpy as _mod  # noqa: E402
-from QVideo.overlays.trackpy import (  # noqa: E402
+import QVideo.overlays.trackpy as _mod
+from QVideo.overlays.trackpy import (
     _TrackpyWorker, QTrackpyOverlay, QTrackpyWidget,
 )
 

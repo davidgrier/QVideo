@@ -78,7 +78,7 @@ def describe(f: VideoFilter) -> str:
 class TestExportedCode(unittest.TestCase):
 
     def check(self, f, image, source):
-        """Compare the code of *f* with *f*, on *image*."""
+        '''Compare the code of *f* with *f*, on *image*.'''
         namespace = {}
         exec(source, namespace)
         want = f(image.copy())

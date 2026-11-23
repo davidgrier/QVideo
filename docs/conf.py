@@ -1,4 +1,4 @@
-"""Sphinx configuration for QVideo."""
+'''Sphinx configuration for QVideo.'''
 
 import os
 import sys

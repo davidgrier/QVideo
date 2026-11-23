@@ -1386,8 +1386,8 @@ class TestStates(unittest.TestCase):
         self.assertEqual(states['Height']['value'], 1)
 
     def test_the_lock_is_taken_once(self):
-        """A reader that queues for the lock once for every node is slow;
-        the nested entries of the thread that holds it do not queue."""
+        '''A reader that queues for the lock once for every node is slow;
+        the nested entries of the thread that holds it do not queue.'''
         cam = self.camera()
         real, depth, outermost = cam._mutex, [0], [0]
 

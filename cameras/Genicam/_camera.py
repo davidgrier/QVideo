@@ -68,7 +68,7 @@ except ImportError as exc:
     ) from exc
 
 
-from QVideo.cameras.Genicam import _nodes  # noqa: E402
+from QVideo.cameras.Genicam import _nodes
 
 logger = logging.getLogger(__name__)
 

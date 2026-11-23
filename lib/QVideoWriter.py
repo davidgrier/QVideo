@@ -221,11 +221,11 @@ class QVideoWriter(QtCore.QObject, metaclass=QABCMeta):
         '''Write *frame*, which is open for writing, to the file.'''
 
     def remedy(self) -> str:
-        """Suggest what to try when the writer cannot keep up.
+        '''Suggest what to try when the writer cannot keep up.
 
         A recorder says it when it stops a recording that fell behind the
         camera.  A writer that knows a better way to do it overrides this.
-        """
+        '''
         return 'lower the frame size or rate'
 
     @QtCore.Slot()

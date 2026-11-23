@@ -478,7 +478,7 @@ class TestLostCamera(unittest.TestCase):
 
 class TestDroppingARunningSource(unittest.TestCase):
 
-    CODE = """
+    CODE = '''
 import os
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 import gc
@@ -496,7 +496,7 @@ def build():
 build()
 gc.collect()
 print('survived')
-"""
+'''
 
     def test_dropping_a_running_source_is_safe(self):
         result = subprocess.run([sys.executable, '-c', self.CODE],

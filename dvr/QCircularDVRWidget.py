@@ -93,7 +93,7 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         saver = self._saver
         # Qt deletes children after it emits destroyed, so wait for a
         # save in progress here: a running thread must not be deleted
-        self.destroyed.connect(lambda: saver.wait())
+        self.destroyed.connect(lambda: saver.wait())  # noqa: PLW0108
         stopAtQuit(saver.wait)
         stopAtQuit(self._buffer.clear)
 

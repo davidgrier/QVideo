@@ -72,7 +72,7 @@ for _name, _mod in [('harvesters',      _mock_harvesters),
                     ('genicam.gentl',   _mock_gentl)]:
     sys.modules.setdefault(_name, _mod)
 
-from QVideo.lib.errors import QDriverError  # noqa: E402
+from QVideo.lib.errors import QDriverError
 from QVideo.cameras.Genicam._camera import QGenicamCamera
 from QVideo.cameras.Basler._camera import QBaslerCamera
 

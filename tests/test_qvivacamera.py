@@ -540,7 +540,7 @@ class TestChanges(unittest.TestCase):
         return self.time
 
     def change(self, name, value):
-        """The camera changes a feature by itself."""
+        '''The camera changes a feature by itself.'''
         device = self.camera._device._device
         (device.set_bool if isinstance(value, bool)
          else device.set_float)(name, value)
@@ -635,13 +635,13 @@ class TestOnlyWhenNeeded(unittest.TestCase):
         return self.time
 
     def frames(self, n):
-        """Read *n* frames, half a second apart."""
+        '''Read *n* frames, half a second apart.'''
         for _ in range(n):
             self.camera.saferead()
             self.time += 0.6
 
     def settle(self):
-        """Watch, and read until the camera stops asking."""
+        '''Watch, and read until the camera stops asking.'''
         self.camera.watch(['AcquisitionFrameRate'])
         self.frames(self.camera.QUIET + 1)
         self.assertFalse(self.camera._armed)

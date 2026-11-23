@@ -301,7 +301,7 @@ class _Counting(_FakeVideoReader):
 
 
 class _Lying(_Counting):
-    """A reader that claims ten frames but has only seven."""
+    '''A reader that claims ten frames but has only seven.'''
 
     def read(self):
         if self._framenumber >= 7:

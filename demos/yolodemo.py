@@ -75,11 +75,11 @@ class YoloDemo(Demo):
 
 
 def options(argv: Sequence[str] | None = None) -> dict:
-    """Return the keyword arguments of :class:`YoloDemo` from *argv*.
+    '''Return the keyword arguments of :class:`YoloDemo` from *argv*.
 
     The parser has the camera flags too, so that ``--help`` lists everything;
     the camera is chosen from the same command line by ``launch``.
-    """
+    '''
     parser = argumentParser(YoloDemo, examples=(
         ('--model yolo11n.onnx', 'an ONNX model, run by OpenCV'),
         ('--model m.onnx --names a,b --imgsz 320', 'your own classes')))

@@ -21,7 +21,8 @@ QUniformityWidget
 
 :class:`~QVideo.widgets.QUniformityWidget.QUniformityWidget` plots the mean
 intensity along x and along y for every frame that the screen displays.
-Flat traces mean that the illumination is uniform.  See
+A gray image has one trace per axis and a color image has three, red, green
+and blue.  Flat traces mean that the illumination is uniform.  See
 :class:`~QVideo.demos.uniformitydemo.UniformityDemo`.
 
 .. automodule:: QVideo.widgets.QUniformityWidget

@@ -9,6 +9,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.30.0] — 2026-11-23
+
+### Changed
+
+- **`QUniformityWidget` plots the red, green and blue profiles of a color
+  frame** as three traces, in place of the one trace of the luminance, so that
+  a color cast in the illumination shows.  A gray frame has one trace, now
+  black.
+
 ## [4.29.0] — 2026-11-23
 
 ### Added

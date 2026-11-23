@@ -89,15 +89,13 @@ class TestQUniformityWidgetSetFrame(unittest.TestCase):
         _, y = self.widget._ycurve.getData()
         self.assertEqual(len(y), _GRAY.shape[0])
 
-    def test_color_xcurve_length(self):
+    def test_color_traces_have_the_length_of_the_axes(self):
         self.widget.setFrame(_COLOR)
-        _, y = self.widget._xcurve.getData()
-        self.assertEqual(len(y), _COLOR.shape[1])
-
-    def test_color_ycurve_length(self):
-        self.widget.setFrame(_COLOR)
-        _, y = self.widget._ycurve.getData()
-        self.assertEqual(len(y), _COLOR.shape[0])
+        for curves, n in ((self.widget._xcolor, _COLOR.shape[1]),
+                          (self.widget._ycolor, _COLOR.shape[0])):
+            for curve in curves:
+                _, y = curve.getData()
+                self.assertEqual(len(y), n)
 
     def test_uniform_image_flat_xcurve(self):
         image = np.full((8, 16), 100, dtype=np.uint8)
@@ -111,15 +109,29 @@ class TestQUniformityWidgetSetFrame(unittest.TestCase):
         _, y = self.widget._ycurve.getData()
         np.testing.assert_array_almost_equal(y, np.full(8, 100.0))
 
-    def test_color_is_reduced_to_luminance(self):
+    def test_color_has_a_trace_for_each_channel(self):
         image = np.zeros((4, 8, 3), dtype=np.uint8)
         image[:, :, 0] = 60   # R
         image[:, :, 1] = 120  # G
         image[:, :, 2] = 180  # B
         self.widget.setFrame(image)
-        _, y = self.widget._xcurve.getData()
-        luminance = 0.299 * 60 + 0.587 * 120 + 0.114 * 180
-        np.testing.assert_allclose(y, np.full(8, luminance), atol=1.0)
+        for curves in (self.widget._xcolor, self.widget._ycolor):
+            for curve, value in zip(curves, (60, 120, 180), strict=True):
+                _, y = curve.getData()
+                np.testing.assert_allclose(y, value)
+
+    def test_a_fourth_channel_is_not_plotted(self):
+        image = np.zeros((4, 8, 4), dtype=np.uint8)
+        self.widget.setFrame(image)
+        self.assertEqual(len(self.widget._xcolor), 3)
+
+    def test_gray_shows_one_trace_and_color_shows_three(self):
+        self.widget.setFrame(_GRAY)
+        self.assertTrue(self.widget._xcurve.isVisible())
+        self.assertFalse(any(c.isVisible() for c in self.widget._xcolor))
+        self.widget.setFrame(_COLOR)
+        self.assertFalse(self.widget._xcurve.isVisible())
+        self.assertTrue(all(c.isVisible() for c in self.widget._xcolor))
 
 
 if __name__ == '__main__':

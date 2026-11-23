@@ -1,10 +1,9 @@
 '''Live illumination-uniformity widget.'''
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from qtpy import QtCore
 import numpy as np
 import pyqtgraph as pg
-from QVideo.lib.imageops import grayscale
 
 if TYPE_CHECKING:
     from QVideo.lib.QVideoScreen import QVideoScreen
@@ -23,8 +22,10 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
     indicate uniform illumination; any slope, dip, or peak localizes
     non-uniformity spatially.
 
-    For color images the mean is taken across channels before
-    projecting, giving a single luminance profile per axis.
+    A gray image has one trace per axis.  A color image has three,
+    red, green and blue, so that a color cast in the illumination shows
+    up as traces that differ.  (An image with an alpha channel is
+    plotted without it.)
 
     Parameters
     ----------
@@ -34,6 +35,8 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
     parent : QWidget or None
         Parent widget.
     '''
+
+    COLORS: ClassVar[tuple[str, ...]] = ('r', 'g', 'b')
 
     def __init__(self,
                  screen: QVideoScreen | None = None,
@@ -46,24 +49,33 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
             self.screen = screen
 
     def _setupUi(self) -> None:
-        pen = pg.mkPen('r', width=1)
         dark = pg.mkPen('k')
         label_style = {'color': '#000'}
 
         self._xplot = self.addPlot(row=0, col=0)
         self._xplot.setLabel('bottom', 'x (px)', **label_style)
-        self._xplot.setLabel('left', 'Intensity', **label_style)
-        self._xcurve = self._xplot.plot(pen=pen)
-
         self._yplot = self.addPlot(row=1, col=0)
         self._yplot.setLabel('bottom', 'y (px)', **label_style)
-        self._yplot.setLabel('left', 'Intensity', **label_style)
-        self._ycurve = self._yplot.plot(pen=pen)
-
         for plot in (self._xplot, self._yplot):
+            plot.setLabel('left', 'Intensity', **label_style)
             for axis in ('bottom', 'left'):
                 plot.getAxis(axis).setPen(dark)
                 plot.getAxis(axis).setTextPen(dark)
+
+        # the trace of a gray image, and the three of a color image
+        self._xcurve = self._xplot.plot(pen=pg.mkPen('k', width=1))
+        self._ycurve = self._yplot.plot(pen=pg.mkPen('k', width=1))
+        self._xcolor = [self._xplot.plot(pen=pg.mkPen(c, width=1))
+                        for c in self.COLORS]
+        self._ycolor = [self._yplot.plot(pen=pg.mkPen(c, width=1))
+                        for c in self.COLORS]
+        self._showColor(False)
+
+    def _showColor(self, color: bool) -> None:
+        self._xcurve.setVisible(not color)
+        self._ycurve.setVisible(not color)
+        for curve in (*self._xcolor, *self._ycolor):
+            curve.setVisible(color)
 
     @property
     def screen(self) -> QVideoScreen | None:
@@ -85,7 +97,16 @@ class QUniformityWidget(pg.GraphicsLayoutWidget):
         ----------
         image : numpy.ndarray
             Current video frame, shape ``(H, W)`` or ``(H, W, C)``.
+            A color frame is plotted as its first three channels (red,
+            green and blue).
         '''
-        image = grayscale(image)
-        self._xcurve.setData(image.mean(axis=0))
-        self._ycurve.setData(image.mean(axis=1))
+        color = image.ndim == 3
+        self._showColor(color)
+        if not color:
+            self._xcurve.setData(image.mean(axis=0))
+            self._ycurve.setData(image.mean(axis=1))
+            return
+        for c, (xc, yc) in enumerate(zip(self._xcolor, self._ycolor,
+                                         strict=True)):
+            xc.setData(image[:, :, c].mean(axis=0))
+            yc.setData(image[:, :, c].mean(axis=1))

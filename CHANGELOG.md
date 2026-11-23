@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`QCircularDVRWidget` no longer raises `RuntimeError: wrapped C/C++ object of type _Saver has been deleted`** when it is destroyed.  The saving thread was a child of the widget, and Qt deletes the children of a widget before it emits `destroyed`, so the wait for a save in progress found the thread gone (and a running thread must not be deleted).  The thread now has no parent and lives until the save is done.  This was the cause of the failures of `test_mainwindow` that depended on the order of the tests: pytest-qt reports an exception caught in the event loop against whichever test is running when the widget is collected.
 - **CI is green again.**  The `Types` job pins PyQt6 6.12.0 (the stubs of
   6.12.1 report 42 errors in `lib/`); the DNN engine test uses the engine
   name that the installed OpenCV has (`ENGINE_OPENCV` in 5.1, `ENGINE_NEW` in

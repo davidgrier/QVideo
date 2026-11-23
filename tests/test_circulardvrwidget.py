@@ -61,6 +61,28 @@ class TestConstruction(unittest.TestCase):
         self.assertIs(widget.source, source)
 
 
+class TestDestruction(unittest.TestCase):
+
+    def test_the_saver_is_not_a_child_of_the_widget(self):
+        '''Qt deletes the children of a widget before it emits destroyed.
+
+        A child saver would be gone when the widget waits for it, and a
+        thread that is still running must not be deleted.
+        '''
+        widget = QCircularDVRWidget()
+        self.assertIsNone(widget._saver.parent())
+
+    def test_deleting_the_widget_keeps_the_saver_until_it_is_done(self):
+        widget = QCircularDVRWidget()
+        saver = widget._saver
+        widget.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete)
+        app.processEvents()
+        saver.wait()
+        self.assertFalse(saver.isRunning())
+
+
 class TestSourceProperty(unittest.TestCase):
 
     def test_set_source_enables_save_button(self):

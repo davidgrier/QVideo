@@ -2,6 +2,7 @@
 from collections.abc import Callable
 from pathlib import Path
 from qtpy import QtCore, QtWidgets
+import contextlib
 import logging
 
 from QVideo.lib.QVideoSource import QVideoSource
@@ -23,13 +24,19 @@ class _Saver(QtCore.QThread):
     The result of the job is in :attr:`ok` when :attr:`finished` is emitted.
     '''
 
-    def __init__(self, parent: QtCore.QObject) -> None:
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.job: Callable[[], bool] = lambda: False
         self.ok = False
 
     def run(self) -> None:
         self.ok = self.job()
+
+
+def _wait(saver: _Saver) -> None:
+    '''Wait for *saver*; at exit Python may have deleted it already.'''
+    with contextlib.suppress(RuntimeError):
+        saver.wait()
 
 
 class QCircularDVRWidget(QtWidgets.QWidget):
@@ -85,15 +92,17 @@ class QCircularDVRWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._buffer = QCircularBuffer()
         self._source: QVideoSource | None = None
-        self._saver = _Saver(self)
+        # No parent: Qt deletes the children of a widget before it emits
+        # destroyed, and must not delete a thread that is still running.
+        self._saver = _Saver()
         self._saving = ''
         self._setupUi()
         self._connectSignals()
         self.source = source
         saver = self._saver
-        # Qt deletes children after it emits destroyed, so wait for a
-        # save in progress here: a running thread must not be deleted
-        self.destroyed.connect(lambda: saver.wait())  # noqa: PLW0108
+        # The widget holds the saver only through this closure, so the
+        # thread outlives the widget until a save in progress is done
+        self.destroyed.connect(lambda: _wait(saver))
         stopAtQuit(saver.wait)
         stopAtQuit(self._buffer.clear)
 

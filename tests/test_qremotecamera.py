@@ -193,13 +193,20 @@ class TestRemoteCamera(unittest.TestCase):
         self.assertTrue(wait_for(lambda: not alive(pid)))
 
     def test_a_dead_worker_is_an_error_not_a_hang(self):
+        lost = record(self.camera.lost)
         self.camera._process.kill()
         self.camera._process.wait()
         with self.assertRaises(QCameraError):
             self.camera.get('fps')
-        ok, frame = self.camera.saferead()
-        self.assertFalse(ok)
-        self.assertTrue(wait_for(lambda: self.camera._lostReason))
+
+        # The listener thread notes the death, and the next read makes it
+        # the loss of the camera; which of the two is first does not matter.
+        # (The read clears the reason, so the reason is not what to look at.)
+        def read_fails_and_the_camera_is_lost() -> bool:
+            ok, frame = self.camera.saferead()
+            return not ok and bool(lost)
+        self.assertTrue(wait_for(read_fails_and_the_camera_is_lost))
+        self.assertEqual(len(lost), 1)
 
     def test_a_worker_that_goes_while_a_frame_arrives_is_a_failed_read(self):
         # The announcement of a frame of a new ring is read, and the worker

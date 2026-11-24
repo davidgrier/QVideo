@@ -62,6 +62,20 @@ the first CI run failed once in `test_qcamcorder` and crashed in a teardown
   affected; only the one that a test caught was changed.
 - `QImage.constBits()` is already sized in PySide6 (`setsize` is PyQt's).
 
+- **A test of ours that raced (2026-11-24, fixed).**
+  `test_a_dead_worker_is_an_error_not_a_hang` failed in the `pyqt6,yolo` job
+  (the one that counts) on a commit that changed only `TODO.md`.  After the
+  worker was killed, the test read once and then waited for the private
+  `_lostReason`; if the listener thread noted the death before that read, the
+  read made it the loss of the camera (`_deviceLost`), which closes the camera
+  and clears the reason, so the test waited 10 s for a value that was gone.
+  It passed whenever the read came first, and the listener is usually the slower
+  (0 failures in 30 runs on a Mac), which is why it showed once.  It now reads
+  until the public `lost` signal has come, once.  Reproduced by making the
+  listener first.  The same commit had the PySide6 job segfault at 22% of the
+  run, after `tests/test_filterrackdemo.py`, so PySide6 still crashes at random
+  in places other than the ones found.
+
 Other jobs:
 
 - Python 3.11 / PyQt5 has failed intermittently.

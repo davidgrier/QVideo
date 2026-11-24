@@ -23,8 +23,9 @@ Crashes of the suite in CI have had three causes so far.
   a bare `QObject` slot in a stand-alone script (no QVideo) crashed PySide6 in
   10 of 10 runs and PyQt6 in 2 of 10.  A function or a bound method does not
   help, because PyQt and PySide make a proxy object for it, and the proxy is
-  destroyed just the same (PyQt's by `deleteLater`, so a test needs an event
-  loop to see it).  A receiver that is never destroyed survived every test.
+  destroyed just the same (a function connected in PyQt survived 30 of 30 runs
+  of a script that never ran an event loop, and crashed in the suite, which
+  does; probably the proxy is deleted later, which was not checked).  A receiver that is never destroyed survived every test.
   The fix is `_Tap` in `lib/QFilterPipeline.py`: one long-lived receiver for
   each source, and a stage adds a plain Python inbox to it and takes it away.
   Left: the connection of `shapeChanged` to the stage is still direct (the
@@ -40,8 +41,8 @@ Crashes of the suite in CI have had three causes so far.
   of v4.29.0 and 1 of 5 of the current code crashed there.  `test_launch.py`
   alone passed 30 of 30 runs on both, so the crash needs the state that
   earlier tests leave.  Not investigated.  A first step: bisect the order of
-  the tests (run the files before it in halves, with `-p no:randomly` if a
-  plugin shuffles them).
+  the tests (run the files that come before it in halves, in the order that
+  pytest uses, and see which half still crashes).
 
 Differences of PySide6 that made tests fail there and not under PyQt6, found
 on 2026-11-24 when the suite ran to its end under PySide6 for the first time

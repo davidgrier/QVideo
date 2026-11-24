@@ -238,6 +238,17 @@ then opens it in a `QRemoteCamera` on macOS and Linux, and there is no
 command-line flag for that.  The camera class itself stays an ordinary
 in-process `QCamera`.
 
+Any backend can run in a worker (`QRemoteCamera(key)`), so a backend and its
+tree must keep to what crosses the process, which is plain data: the types of
+the registered properties are `bool`, `int`, `float` or `str` and their
+metadata can be pickled; the frames are `uint8` or `uint16`; the camera can be
+made without a `QApplication`; and its tree asks the camera for registered
+properties and methods, or for `nodeTree`, `hasNode` and `states`, and never
+for a native object or a callback.  `tests/test_conformance_remote.py` runs the
+whole contract through the worker with the noise camera.  The protocol,
+including what it does not guarantee (every frame), is in the docstring of
+`lib/remote/protocol.py`: change it there when the code changes.
+
 When adding a new backend, update all four of the following:
 
 1. `cameras/chooser.py` — add an entry to `BACKENDS` (module path, camera

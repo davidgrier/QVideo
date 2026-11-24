@@ -527,39 +527,49 @@ becomes a default.  **Overdue (2026-11-24):** the first release that has it was
 worker by default on macOS and Linux (`BACKENDS`, the `worker` field), so
 both conditions have passed.
 
-- [ ] **Docstrings.**  Every public class, method and property of
-      `lib/remote/camera.py` has a NumPy-style docstring that says what the
-      caller needs and nothing of the implementation; the private modules
-      `lib/remote/protocol.py` and `lib/remote/worker.py` say what each function
-      does.  Run the docstrings through the documentation build and read the
-      pages, not only the source.
-- [ ] **The protocol, in one place.**  Describe it once, in the docstring of
-      `lib/remote/protocol.py` or in `docs/architecture.rst`: the two channels, the
-      layout of the ring and of an announcement, the requests and their
-      answers, the life of the worker (start, close, death of the parent,
-      death of the worker), what is guaranteed about frames and what is not.
-      A person who writes a backend or fixes a bug should not have to read the
-      code to learn it.
-- [ ] **Check every claim against what the code does**: the platforms, "any
-      backend", the numbers of the measurements, the statement in
-      `docs/compatibility.rst` that it avoids the lock of the `genicam`
-      binding (true only when measured with the Flir), and the text of
-      `docs/architecture.rst`.  Anything that has not been measured says so.
-      One behavior to state plainly: the proxy delivers the newest frame and
-      discards the rest if it falls behind, where an in-process camera hands
-      over the frames of its driver's queue, late.
-- [ ] **A page for the person who chooses**: when to run a camera in a
-      process of its own and when not (what it fixes, what it costs, what it
-      cannot do), how (`QRemoteCamera('flir')`), a short example, and what to
-      do when the worker does not start.
-- [ ] **The older documentation**: `QVideoSource` is called the standard way
-      to drive a camera, the quickstart, the READMEs of `lib/`, `cameras/` and
-      `tests/`, and the flag lists in `QCamcorder.py` and `demos/__init__.py`
-      should agree with the new framework, and `CLAUDE.md` should say how a
-      backend's tree and camera are kept compatible with it.
-- [ ] **The documentation builds without a warning**, the examples in the
-      docstrings run, and a reader who has never seen the code can follow the
-      page from the start.  Ask someone who does not know QVideo to try it.
+**Done 2026-11-24, except the last box.**
+
+- [x] **Docstrings.**  No public class, method or property of
+      `lib/remote/camera.py`, `worker.py` or `protocol.py` lacks one.  The
+      class docstring of `QRemoteCamera` now says what a caller needs: frames
+      (the newest, the rest lost), settings (they wait for the worker), what
+      happens when the worker goes, what a camera must offer (types of
+      properties, `uint8` or `uint16` frames, no `QApplication`), the forms of
+      the key, and what raises.  Built into the documentation, with no warning.
+- [x] **The protocol, in one place.**  The docstring of
+      `lib/remote/protocol.py` (published in the API reference): the channels,
+      every request and event, the layout of the ring and of the
+      announcement, how a frame is read, what is guaranteed and what is not,
+      and the life of the worker (start, close, death of the program, death of
+      the worker).  Every statement was read against `camera.py` and
+      `worker.py`.  The guarantee about an overwritten frame is stated as far as
+      the check goes: it has no memory barrier.
+- [x] **Check every claim against what the code does.**  The platforms
+      (macOS and Linux; Windows raises `QCameraError`), "any backend" (true for
+      a camera with the types above, or `module:Class`; now said), and the
+      newest-frame behavior (now said in four places).  The measurements are
+      labelled with their camera (Blackfly S; three runs); the start of 3.7 s is
+      for OpenCV and is the only cost that has a number.  Taken out of
+      `docs/compatibility.rst`: a plan "in `TODO.md`" that has been carried out,
+      and programs "in `devel/genicam_gil/`", which is not in the repository.
+      Not checked: a crash of a vendor's library (a kill and a pulled cable
+      have been tried).
+- [x] **A page for the person who chooses**: `docs/remote.rst` (in the
+      contents after the compatibility page): when it is used, what it fixes,
+      what it costs and cannot do, an example that was run (the noise camera),
+      and what each failure to start means.
+- [x] **The older documentation**: `docs/architecture.rst` and
+      `docs/compatibility.rst` now point to the new page and the protocol;
+      `lib/remote/__init__.py` describes the protocol as it is; `CLAUDE.md`
+      says what a backend and its tree must keep to for the worker.  No
+      stale `-r` flag was found in the READMEs, `QCamcorder.py`,
+      `demos/__init__.py` or the quickstart.
+- [x] **The documentation builds without a warning** (checked 2026-11-24:
+      `sphinx-build -E docs`), and the example on the new page runs.
+- [ ] **Ask someone who does not know QVideo to follow the new page from the
+      start**, and to try the example.  I cannot do this one.
+      Still unmeasured, and said so on the page: the copy of a frame through the
+      ring, the delay of a frame and of a setting.
 
 
 ## Smooth controls in the camera tree  **Done 2026-11-13**

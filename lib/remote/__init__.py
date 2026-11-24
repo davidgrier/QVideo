@@ -15,8 +15,10 @@ The package has three parts:
     It opens the camera, reads frames into a ring of shared memory and
     answers the proxy.
 ``protocol``
-    What the two agree on: the layout of the ring, the datagram that
-    announces a frame, and the tags of the messages.
+    What the two agree on, written out in full: the channels, the requests
+    and the events, the layout of the ring and of the announcement of a frame,
+    what is guaranteed about frames, and what happens when either process
+    dies.
 
 Nothing outside this package uses ``worker`` or ``protocol``.
 '''

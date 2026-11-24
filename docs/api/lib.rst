@@ -19,6 +19,12 @@ QRemoteCamera
 .. automodule:: QVideo.lib.remote.camera
    :members:
 
+The protocol of the remote camera
+---------------------------------
+
+.. automodule:: QVideo.lib.remote.protocol
+   :members:
+
 QCameraOpener
 -------------
 

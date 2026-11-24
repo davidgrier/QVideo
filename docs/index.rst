@@ -17,6 +17,7 @@ Run the full camcorder application directly::
 
    quickstart
    compatibility
+   remote
    stability
    performance
    jupyter

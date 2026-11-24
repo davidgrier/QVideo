@@ -35,9 +35,33 @@ class QRemoteCamera(QCamera):
     :class:`~QVideo.lib.QCameraTree` use it as they use any other.
     Reading a frame waits on a socket, which does not hold the interpreter.
 
-    A thread of this object listens to the worker, so that the worker can
-    say something when nobody has asked: that a read failed, that it has
-    gone.  A failure goes to the log, with the message of the worker.
+    **Frames.**  A read returns the newest frame.  If the program is slower
+    than the camera, the frames in between are lost: the worker never waits
+    for the program.  (A camera in the program hands over the frames of its
+    driver's queue, late.)  A read that finds no frame within :attr:`TIMEOUT`
+    returns ``(False, None)``.
+
+    **Settings.**  A property is read and written in the worker, and the call
+    waits for the answer, which waits for the frame that the worker is reading.
+    A failure in the worker raises
+    :exc:`~QVideo.lib.errors.QCameraError` here, with its message.
+
+    **When the worker goes.**  A worker that ends (the vendor's library
+    crashed, or the process was killed) makes every request raise
+    :exc:`~QVideo.lib.errors.QCameraError`, and the next read makes the camera
+    lost, as it does for a camera in the program: the camera closes and emits
+    ``lost`` with the reason, and the program goes on.  A failure of the
+    worker to read a frame is logged here, with its message, at most once a
+    second.
+
+    **What the camera must offer.**  The backend runs in the worker as it runs
+    in the program, but what crosses the process is plain data: the type of a
+    property must be ``bool``, ``int``, ``float`` or ``str`` and its metadata
+    must be picklable, a frame is ``uint8`` or ``uint16``, gray or color, and
+    the calls that a tree makes of a GenICam camera (``nodeTree``,
+    ``hasNode``, ``states``) are forwarded when the camera has them.  The
+    camera is made without a ``QApplication``.  The protocol is in
+    :mod:`QVideo.lib.remote.protocol`.
 
     It is available on macOS and Linux.  On Windows opening it raises
     :exc:`~QVideo.lib.errors.QCameraError`.
@@ -45,13 +69,22 @@ class QRemoteCamera(QCamera):
     Parameters
     ----------
     key : str
-        Key of the backend in ``QVideo.cameras.chooser.BACKENDS``.
+        Key of the backend in ``QVideo.cameras.chooser.BACKENDS`` (``'flir'``
+        names the Flir backend), or ``'module:Class'`` for a camera class that
+        is not in the table.
     cameraID : int
         Index of the camera.  Default: ``0``.
     python : str, optional
-        Interpreter of the worker.  Default: this one.
+        Interpreter of the worker, which must have QVideo.  Default: this one.
     only : list of str, optional
         Names of the properties to offer.  Default: all of them.
+
+    Raises
+    ------
+    QVideo.lib.errors.QCameraError
+        If the worker does not open the camera within :attr:`OPENING`
+        seconds, or ends first, or says that it cannot (no camera, no
+        producer), or on Windows.
     '''
 
     #: How long to wait for a frame before :meth:`read` returns [s].
@@ -363,15 +396,22 @@ class QRemoteCamera(QCamera):
     # ------------------------------------------------------------------
 
     def saferead(self) -> QCamera.CameraData:
-        '''Read the newest frame.  The worker serializes the camera, so
-        this does not hold the lock of the proxy while it waits.'''
+        '''Read the newest frame; see :meth:`read`.'''
         return self.read()
 
     def read(self) -> QCamera.CameraData:
         '''Wait for a frame and return the newest one.
 
-        Returns ``(False, None)`` if none comes within :attr:`TIMEOUT`,
-        so that the caller can look at whether it should go on.
+        The frames that came while the program was busy are skipped.
+
+        Returns
+        -------
+        ok, frame
+            ``(True, frame)``, or ``(False, None)`` if no frame comes within
+            :attr:`TIMEOUT` (so that the caller can look at whether it should
+            go on), if the worker overwrote the frame before it was copied,
+            or if the camera is lost.  A read after the worker has ended makes
+            the camera lost.
         '''
         reason = self._lostReason
         if reason is not None:          # the worker says it, or has ended

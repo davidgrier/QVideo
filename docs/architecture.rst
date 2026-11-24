@@ -90,12 +90,17 @@ its own, and is itself a :class:`~QVideo.lib.QCamera.QCamera`: it has the
 properties and the methods of the camera in the worker, so a
 :class:`~QVideo.lib.QVideoSource.QVideoSource`, a
 :class:`~QVideo.lib.QCameraTree.QCameraTree` and everything that uses them
-work as they do with any camera.  Frames cross in a ring of shared memory;
-a request, such as setting a property, waits for the answer of the worker.
+work as they do with any camera.  Frames cross in a ring of shared memory,
+and the program gets the newest one: the frames that arrive while it is busy
+are lost.  A request, such as setting a property, waits for the answer of the
+worker.  The protocol, what it guarantees about frames and what happens when
+either process dies are in :mod:`QVideo.lib.remote.protocol`, and
+:doc:`remote` says when to use it.
 The chooser opens the GenICam backends that use Harvesters this way, in
 every program that uses :func:`~QVideo.lib.launch` and in ``Camera()``;
 there is no flag.  It also keeps the program alive when the vendor's
-library crashes, and lets the worker use another Python than the program.
+library crashes, and lets the worker use another Python than the program
+(the ``python`` argument of the class).
 It is available on macOS and Linux; on Windows these backends open in the
 program.  The Viva and OpenCV backends wait without holding the lock and
 need no worker.

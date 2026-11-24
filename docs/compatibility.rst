@@ -208,8 +208,8 @@ through Viva.
 
 For a backend that uses Harvesters, QVideo runs the camera in a process of
 its own, which has an interpreter lock of its own, whenever the chooser opens
-it (every application, ``Camera()``, ``python QCamcorder.py -f``).  There is
-no flag.  It is available on macOS and Linux; on Windows these backends
+it (every application, ``Camera()``, ``python QCamcorder.py -f``; see
+:doc:`remote`).  There is no flag.  It is available on macOS and Linux; on Windows these backends
 still run in the program and have the defect.  The Viva, OpenCV and
 Raspberry Pi backends do not need it.  Creating the class yourself, as in
 ``QFlirCamera()``, keeps the camera in the program.
@@ -249,5 +249,4 @@ or less, a 99th percentile of 25 ms or less, and 9 holograms a second):
      - 8.7
      - 9.8
 
-The plan to deal with it is in ``TODO.md``, and the programs that measured
-it are in ``devel/genicam_gil/``.
+The programs that made these measurements are not part of the repository.

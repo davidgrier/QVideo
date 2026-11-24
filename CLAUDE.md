@@ -89,12 +89,19 @@ hard dependency: pip cannot say "use whichever is installed", and a forced
 install would break Raspberry Pi systems that use the system `python3-pyqt*`
 packages.  `import QVideo` with no binding raises an `ImportError` naming the
 extras.  PySide6 is experimental: the library and the whole test suite run
-under it, but the interpreter crashes at random inside pyqtgraph's `PlotItem`
-constructor, at `QWidgetAction.setDefaultWidget`, while
-`tests/test_mainwindow.py` builds its plots.  How often depends on the
-platform: about half of the runs of the suite on a macOS development
-machine (Python 3.14, PySide6 6.12), and none that we have seen in CI on
-Linux (Python 3.12).  CI runs PySide6 as an allowed-failure job.  Abstract
+under it, and three full runs on 2026-11-23 (PySide6 6.12, macOS) had no
+failure.  It had crashed at random inside pyqtgraph's `PlotItem` constructor,
+at `QWidgetAction.setDefaultWidget`, while `tests/test_mainwindow.py` builds
+its plots (about half of the runs on that machine earlier); it did not in
+those runs, but the cause was never found.  A crash that was found and fixed
+was ours: a receiver of a direct connection that is destroyed while the
+source emits (see `_Tap` in `lib/QFilterPipeline.py`), which PySide6 does
+not survive and PyQt6 usually does.  Two differences of PySide6 to know when
+a test fails there and not under PyQt: a lambda that is connected to the
+signal of an object in another thread runs in that thread, and the override
+of a slot is not called when the sender lives in another thread (connect to
+a slot that is not overridden, as `QCameraTree._onPropertiesChanged`).  CI
+runs PySide6 as an allowed-failure job.  Abstract
 `QObject` classes use the shared `QABCMeta` (`lib/_qabc.py`) rather than
 defining their own metaclass, and `__setattr__` overrides on `QObject`
 subclasses must use `super().__setattr__` (`object.__setattr__` is rejected

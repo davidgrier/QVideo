@@ -2,13 +2,15 @@
 import inspect
 import subprocess
 import sys
+import gc
 import threading
 import time
 import unittest
 from unittest.mock import patch
+import weakref
 import numpy as np
 from qtpy import QtCore, QtTest, QtWidgets
-from QVideo.lib.QFilterPipeline import QFilterPipeline
+from QVideo.lib.QFilterPipeline import QFilterPipeline, _Tap
 from QVideo.lib.QFilterRack import QFilterRack
 from QVideo.lib.QVideoFilter import QVideoFilter, VideoFilter
 from QVideo.lib.videotypes import FrameInfo
@@ -28,6 +30,18 @@ class _Source(QtCore.QObject):
         info = FrameInfo(index, float(index))
         self.newFrame.emit(np.full((4, 4), index, dtype=np.uint8), info)
         return info
+
+
+class _Receiver(QtCore.QObject):
+    '''Keeps what a signal sends to its slot.'''
+
+    def __init__(self):
+        super().__init__()
+        self.seen = []
+
+    @QtCore.Slot(QtCore.QSize)
+    def take(self, size):
+        self.seen.append(size)
 
 
 class _Add(VideoFilter):
@@ -347,6 +361,53 @@ class TestWhileFramesArrive(PipelineTestCase):
             thread.join()
 
 
+class TestTheTapOfASource(PipelineTestCase):
+    '''A pipeline does not connect to its source: it uses the tap.
+
+    A receiver that is destroyed while another thread emits crashes the
+    interpreter (PySide6 almost every time, PyQt6 now and then), so the
+    receiver of a source is made once and lives as long as the source.
+    '''
+
+    def setUp(self):
+        self.make()
+
+    def test_pipelines_of_one_source_share_its_tap(self):
+        other = QFilterPipeline(self.source, [])
+        self.addCleanup(other.stop)
+        self.assertIs(_Tap.of(self.source), _Tap.of(self.source))
+        self.assertEqual(len(_Tap.of(self.source)._inboxes), 2)
+
+    def test_both_pipelines_get_every_frame(self):
+        other = QFilterPipeline(self.source, [])
+        self.addCleanup(other.stop)
+        seen = []
+        other.newFrame.connect(lambda frame, info: seen.append(int(frame[0, 0])))
+        self.source.send(7)
+        self.assertTrue(wait_until(lambda: self.out and seen))
+        self.assertEqual(seen, [7])
+
+    def test_a_pipeline_that_is_dropped_leaves_the_tap(self):
+        tap = _Tap.of(self.source)
+        pipeline = QFilterPipeline(self.source, [])
+        stage = weakref.ref(pipeline._stage)
+        self.assertEqual(len(tap._inboxes), 2)
+        pipeline.stop()
+        del pipeline
+        gc.collect()
+        self.assertIsNone(stage())
+        self.assertEqual(len(tap._inboxes), 1)
+
+    def test_a_new_upstream_moves_the_pipeline_to_its_tap(self):
+        other = _Source()
+        old, new = _Tap.of(self.source), _Tap.of(other)
+        self.pipeline.upstream = other
+        self.assertEqual(len(old._inboxes), 0)
+        self.assertEqual(len(new._inboxes), 1)
+        self.pipeline.upstream = None
+        self.assertEqual(len(new._inboxes), 0)
+
+
 class TestSourceInterface(PipelineTestCase):
     '''The pipeline can stand in for a QVideoSource.'''
 
@@ -408,10 +469,13 @@ class TestSourceInterface(PipelineTestCase):
 
     def test_shape_changes_are_forwarded(self):
         self.make()
-        seen = []
-        self.pipeline.shapeChanged.connect(seen.append)
+        # A lambda would not do: PySide6 runs it in the thread of the sender,
+        # which is the pipeline's, and that has no event loop.  A slot of an
+        # object of this thread is what a screen has.
+        receiver = _Receiver()
+        self.pipeline.shapeChanged.connect(receiver.take)
         self.source.shapeChanged.emit(QtCore.QSize(8, 6))
-        self.assertEqual(seen, [QtCore.QSize(8, 6)])
+        self.assertEqual(receiver.seen, [QtCore.QSize(8, 6)])
 
     def test_changing_the_source_reroutes_frames(self):
         self.make()

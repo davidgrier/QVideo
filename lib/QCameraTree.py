@@ -186,7 +186,7 @@ class QCameraTree(ParameterTree):
         self._tree.sigTreeStateChanged.connect(self._sync)
         self._source.lost.connect(self._disable)
         self.camera.watch(self._parameters)
-        self.camera.propertiesChanged.connect(self._showChanges)
+        self.camera.propertiesChanged.connect(self._onPropertiesChanged)
         stopAtQuit(self.stop)
 
     def _setupUi(self) -> None:
@@ -247,6 +247,17 @@ class QCameraTree(ParameterTree):
             yield
         finally:
             self._ignoreSync = ignoring
+
+    @QtCore.Slot(object)
+    def _onPropertiesChanged(self, values: dict) -> None:
+        '''Pass what the camera changed on to :meth:`_showChanges`.
+
+        The signal is connected to this method, which no subclass overrides,
+        and not to :meth:`_showChanges`, which a subclass does: PySide6 never
+        calls the override of a slot when the sender lives in another thread
+        (the camera lives in the thread of its source), and PyQt6 does.
+        '''
+        self._showChanges(values)
 
     @QtCore.Slot(object)
     def _showChanges(self, values: dict) -> None:

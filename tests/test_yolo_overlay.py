@@ -162,7 +162,8 @@ def _render(overlay, size=(200, 100), shape=(100, 200)):
     overlay.paint(painter, None)
     painter.end()
     ptr = image.constBits()
-    ptr.setsize(image.sizeInBytes())
+    if hasattr(ptr, 'setsize'):     # PyQt's pointer; PySide6's is sized
+        ptr.setsize(image.sizeInBytes())
     pixels = np.frombuffer(ptr, np.uint8).reshape(size[1], size[0], 4)
     return pixels[..., :3].copy()
 

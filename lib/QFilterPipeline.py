@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 __all__ = ['QFilterPipeline']
 
 
-DIRECT = QtCore.Qt.ConnectionType.DirectConnection
+_DIRECT = QtCore.Qt.ConnectionType.DirectConnection
 
 
 class _Inbox:
@@ -52,25 +52,18 @@ class _Tap(QtCore.QObject):
 
     '''The one receiver of the frames of a source, for all of its stages.
 
-    A source emits ``newFrame`` from its own thread.  The stage of a
-    pipeline cannot be connected to it directly and be taken away again:
-    a stage waits for frames in a thread without an event loop, so the
-    connection has to be direct, and then the receiver runs in the thread
-    that emits.  A Qt object (or the proxy that PyQt and PySide make for a
-    function) that is destroyed while another thread is about to call it
-    crashes the interpreter, with PySide6 almost every time and with PyQt6
-    now and then.  So the tap is made once for a source, is connected once,
-    and lives as long as the source does.  A stage does not connect to the
-    source: it puts its :class:`_Inbox` with the tap and takes it away, which
-    is a change of a list that is made with a lock, and nothing that Qt
-    destroys.
+    A receiver of a direct connection runs in the thread that emits, and one
+    that is destroyed while another thread may be calling it crashes the
+    interpreter.  So nothing that Qt destroys is connected to the source
+    for a stage: the tap is made once for a source, is connected once and
+    lives as long as the source does, and a stage adds its :class:`_Inbox`
+    to the tap and removes it, which is a change of a tuple under a lock.
 
-    The shape is the exception.  The stage lives in the thread of the
-    pipeline, which has no event loop, so a queued connection to it would
-    never be delivered, and the connection of ``shapeChanged`` is direct and
-    ends when the stage is destroyed.  That is the hazard again, but it needs
-    a source that changes its shape in the moment that a pipeline is
-    destroyed, and not a frame at every few milliseconds.
+    ``shapeChanged`` is the exception: the stage lives in the thread of its
+    pipeline, which has no event loop, so the connection to it must be
+    direct and ends when the stage is destroyed.  Only a source that changes
+    its shape at the moment that a pipeline is destroyed can meet the
+    hazard.
     '''
 
     shapeChanged = QtCore.Signal(QtCore.QSize)
@@ -81,8 +74,8 @@ class _Tap(QtCore.QObject):
         super().__init__()
         self._lock = threading.Lock()
         self._inboxes: tuple[_Inbox, ...] = ()
-        source.newFrame.connect(self._take, DIRECT)
-        source.shapeChanged.connect(self.shapeChanged, DIRECT)
+        source.newFrame.connect(self._take, _DIRECT)
+        source.shapeChanged.connect(self.shapeChanged, _DIRECT)
 
     @classmethod
     def of(cls, source: 'QVideoSource') -> '_Tap':
@@ -125,8 +118,8 @@ class _FilterStage(QtCore.QObject):
     def __init__(self, filters: Iterable[VideoFilter], depth: int) -> None:
         super().__init__()
         self._box = _Inbox(depth)
-        self._tap: _Tap | None = None
-        self._unlink = lambda: None
+        # The tap that the stage is on, and what takes the stage off it.
+        self._link: tuple[_Tap, weakref.finalize] | None = None
         self._filters = tuple(filters)
         self._upstream: QVideoSource | None = None
         #: Metadata of the frame that ``saferead`` returned last.
@@ -138,18 +131,19 @@ class _FilterStage(QtCore.QObject):
 
     @upstream.setter
     def upstream(self, source: 'QVideoSource | None') -> None:
-        if self._tap is not None:
-            self._unlink()
-            self._tap.shapeChanged.disconnect(self.shapeChanged)
-            self._tap = None
+        if self._link is not None:
+            tap, unlink = self._link
+            unlink()
+            tap.shapeChanged.disconnect(self.shapeChanged)
+            self._link = None
         self._upstream = source
         if source is None:
             return
-        tap = self._tap = _Tap.of(source)
+        tap = _Tap.of(source)
         tap.add(self._box)
-        tap.shapeChanged.connect(self.shapeChanged, DIRECT)
+        tap.shapeChanged.connect(self.shapeChanged, _DIRECT)
         # A stage that is dropped without a word still leaves the tap.
-        self._unlink = weakref.finalize(self, tap.remove, self._box)
+        self._link = (tap, weakref.finalize(self, tap.remove, self._box))
 
     @property
     def filters(self) -> tuple[VideoFilter, ...]:

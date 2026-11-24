@@ -9,6 +9,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **`QFilterPipeline` is as it was in 4.29.0.**  The `_Tap` of 4.30.1, which
+  kept the receiver of a source for as long as the source lived so that a
+  stage could be dropped while the source emitted, is removed: it added about
+  80 lines to avoid a hazard that needs a pipeline to be dropped while its
+  source emits (a change of camera, or the end of the program), which PyQt6
+  rarely meets.  **PySide6 meets it often**: a pipeline that is dropped while
+  its camera streams can crash the program.  The test that made and stopped a
+  pipeline every few milliseconds is now a test at the pace of a person, and
+  is skipped under PySide6.  The hazard and what is known of it are in
+  `TODO.md`.
+
 ## [4.30.1] — 2026-11-23
 
 ### Fixed

@@ -4,9 +4,9 @@ Ideas for upgrades and extensions, in no particular order.
 
 ---
 
-## Flaky CI jobs  **Two causes found and fixed; one remains (2026-11-24)**
+## Flaky CI jobs  **Open: a hazard in the pipeline, and a crash near `test_launch.py` (2026-11-24)**
 
-Crashes of the suite in CI have had three causes so far.
+Crashes of the suite in CI have had three causes so far (one is fixed).
 
 - **`QMutexLocker` in the pipeline (2026-11-08, fixed).**  Python 3.14 and
   3.13 / PyQt6 on Ubuntu each segfaulted once, about 27% into the suite.
@@ -15,23 +15,36 @@ Crashes of the suite in CI have had three causes so far.
   `QVideoSource` and `QFrameRelay` now use Python's locks (0 crashes in 160
   runs, from about one in three).
 - **The receiver of a direct connection, destroyed while a thread emits
-  (2026-11-23, fixed in 4.30.1).**  `TestWhileFramesArrive` crashed PySide6
-  in CI and in 25 of 25 runs on macOS.  The stage of a `QFilterPipeline` was
-  the receiver of a direct connection to `newFrame`, so its slot ran in the
-  thread of the source, and a Qt object that is destroyed while another thread
-  is about to call it crashes the interpreter.  It is not PySide6's alone:
-  a bare `QObject` slot in a stand-alone script (no QVideo) crashed PySide6 in
-  10 of 10 runs and PyQt6 in 2 of 10.  A function or a bound method does not
-  help, because PyQt and PySide make a proxy object for it, and the proxy is
-  destroyed just the same (a function connected in PyQt survived 30 of 30 runs
+  (2026-11-23; found, fixed in 4.30.1, and reverted 2026-11-24; open).**
+  The stage of a `QFilterPipeline` is the receiver of a direct connection to
+  the `newFrame` of its source, so its slot runs in the thread of the source,
+  and a Qt object that is destroyed while another thread is about to call it
+  crashes the interpreter.  `TestWhileFramesArrive`, which made and stopped a
+  pipeline every few milliseconds while a thread emitted flat out, crashed
+  PySide6 in CI and in 25 of 25 runs on a Mac.  It is not PySide6's alone: a
+  bare `QObject` slot in a stand-alone script (no QVideo) crashed PySide6 in
+  10 of 10 runs and PyQt6 in 2 of 10.  A function or a bound method as the
+  receiver does not help, because PyQt and PySide make a proxy object for it,
+  and the proxy is destroyed just the same (a function survived 30 of 30 runs
   of a script that never ran an event loop, and crashed in the suite, which
-  does; probably the proxy is deleted later, which was not checked).  A receiver that is never destroyed survived every test.
-  The fix is `_Tap` in `lib/QFilterPipeline.py`: one long-lived receiver for
-  each source, and a stage adds a plain Python inbox to it and takes it away.
-  Left: the connection of `shapeChanged` to the stage is still direct (the
-  stage lives in a thread with no event loop, so it cannot be queued), so a
-  source that changes its shape at the moment a pipeline is destroyed has the
-  hazard.  Never seen.
+  does; probably the proxy is deleted later, which was not checked).  A
+  receiver that is never destroyed survived every test.  4.30.1 had a fix:
+  `_Tap`, one long-lived receiver for each source, to which a stage adds a
+  plain Python inbox and from which it takes it away (commits `e2c2c84` and
+  `ff0c752`).  **It was reverted** because it added about 80 lines to a simple
+  module to remove a hazard that needs a pipeline to be dropped while its
+  source emits: a change of camera, or the end of the program.  Without it, at
+  the pace of a person (five pipelines dropped and three changes of source
+  while a thread emits 200 frames a second), PyQt6 failed in 0 of 40 runs, and
+  PySide6 in 13 of 40 when the two tests ran together (0 of 30 and 1 of 30
+  alone, which was not explained).  Those two tests are skipped under PySide6.
+  So **under PyQt6 the hazard is real and rare; under PySide6 a pipeline that
+  is dropped while its camera streams can crash the program.**  A way to
+  protect the resources that are at risk, that is simpler than `_Tap`, is
+  wanted.  What is known: a receiver that is not destroyed while the source
+  can emit is safe; `disconnect` does not make a receiver safe to destroy; the
+  connection of `shapeChanged` to the stage is direct too, for the same reason
+  (the stage lives in a thread with no event loop, so it cannot be queued).
 - **A crash with no stack, near `test_launch.py`, on PyQt6 (open).**  It
   struck on 2026-11-13 (Python 3.13 / PyQt6 on Ubuntu, about 26% into the
   suite, on the merge commit of 4.26.1; the rerun passed) and, on a Mac, on

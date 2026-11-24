@@ -4,8 +4,7 @@ from collections.abc import Iterable
 from dataclasses import replace
 import logging
 import threading
-from typing import TYPE_CHECKING, ClassVar
-import weakref
+from typing import TYPE_CHECKING
 
 import numpy as np
 from qtpy import QtCore
@@ -22,82 +21,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 __all__ = ['QFilterPipeline']
-
-
-_DIRECT = QtCore.Qt.ConnectionType.DirectConnection
-
-
-class _Inbox:
-
-    '''The frames that wait for a :class:`_FilterStage`, and their lock.'''
-
-    def __init__(self, depth: int) -> None:
-        self.cond = threading.Condition()
-        self.queue: deque[tuple[Image, FrameInfo]] = deque(maxlen=depth)
-        self.dropped = 0
-        self.open = True
-
-    def put(self, frame: Image, info: FrameInfo) -> None:
-        '''Queue a frame; runs in the thread that emitted ``newFrame``.'''
-        with self.cond:
-            if not self.open:
-                return
-            if len(self.queue) == self.queue.maxlen:
-                self.dropped += 1
-            self.queue.append((frame, info))
-            self.cond.notify()
-
-
-class _Tap(QtCore.QObject):
-
-    '''The one receiver of the frames of a source, for all of its stages.
-
-    A receiver of a direct connection runs in the thread that emits, and one
-    that is destroyed while another thread may be calling it crashes the
-    interpreter.  So nothing that Qt destroys is connected to the source
-    for a stage: the tap is made once for a source, is connected once and
-    lives as long as the source does, and a stage adds its :class:`_Inbox`
-    to the tap and removes it, which is a change of a tuple under a lock.
-
-    ``shapeChanged`` is the exception: the stage lives in the thread of its
-    pipeline, which has no event loop, so the connection to it must be
-    direct and ends when the stage is destroyed.  Only a source that changes
-    its shape at the moment that a pipeline is destroyed can meet the
-    hazard.
-    '''
-
-    shapeChanged = QtCore.Signal(QtCore.QSize)
-
-    _taps: ClassVar[weakref.WeakKeyDictionary] = weakref.WeakKeyDictionary()
-
-    def __init__(self, source: 'QVideoSource') -> None:
-        super().__init__()
-        self._lock = threading.Lock()
-        self._inboxes: tuple[_Inbox, ...] = ()
-        source.newFrame.connect(self._take, _DIRECT)
-        source.shapeChanged.connect(self.shapeChanged, _DIRECT)
-
-    @classmethod
-    def of(cls, source: 'QVideoSource') -> '_Tap':
-        '''Return the tap of *source*, which is made the first time.'''
-        tap = cls._taps.get(source)
-        if tap is None:
-            tap = cls._taps[source] = cls(source)
-        return tap
-
-    def add(self, inbox: _Inbox) -> None:
-        with self._lock:
-            self._inboxes += (inbox,)
-
-    def remove(self, inbox: _Inbox) -> None:
-        with self._lock:
-            self._inboxes = tuple(i for i in self._inboxes if i is not inbox)
-
-    @QtCore.Slot(np.ndarray, object)
-    def _take(self, frame: Image, info: FrameInfo) -> None:
-        '''Hand a frame to the inboxes; runs in the thread that emits.'''
-        for inbox in self._inboxes:     # a tuple: replaced, never changed
-            inbox.put(frame, info)
 
 
 class _FilterStage(QtCore.QObject):
@@ -117,9 +40,10 @@ class _FilterStage(QtCore.QObject):
 
     def __init__(self, filters: Iterable[VideoFilter], depth: int) -> None:
         super().__init__()
-        self._box = _Inbox(depth)
-        # The tap that the stage is on, and what takes the stage off it.
-        self._link: tuple[_Tap, weakref.finalize] | None = None
+        self._cond = threading.Condition()
+        self._queue: deque[tuple[Image, FrameInfo]] = deque(maxlen=depth)
+        self._dropped = 0
+        self._open = True
         self._filters = tuple(filters)
         self._upstream: QVideoSource | None = None
         #: Metadata of the frame that ``saferead`` returned last.
@@ -131,19 +55,17 @@ class _FilterStage(QtCore.QObject):
 
     @upstream.setter
     def upstream(self, source: 'QVideoSource | None') -> None:
-        if self._link is not None:
-            tap, unlink = self._link
-            unlink()
-            tap.shapeChanged.disconnect(self.shapeChanged)
-            self._link = None
+        if self._upstream is not None:
+            self._upstream.newFrame.disconnect(self._deliver)
+            self._upstream.shapeChanged.disconnect(self.shapeChanged)
         self._upstream = source
         if source is None:
             return
-        tap = _Tap.of(source)
-        tap.add(self._box)
-        tap.shapeChanged.connect(self.shapeChanged, _DIRECT)
-        # A stage that is dropped without a word still leaves the tap.
-        self._link = (tap, weakref.finalize(self, tap.remove, self._box))
+        # The stage lives in a thread without an event loop: a queued
+        # connection to it would never be delivered.
+        direct = QtCore.Qt.ConnectionType.DirectConnection
+        source.newFrame.connect(self._deliver, direct)
+        source.shapeChanged.connect(self.shapeChanged, direct)
 
     @property
     def filters(self) -> tuple[VideoFilter, ...]:
@@ -151,7 +73,7 @@ class _FilterStage(QtCore.QObject):
 
     @filters.setter
     def filters(self, filters: Iterable[VideoFilter]) -> None:
-        with self._box.cond:
+        with self._cond:
             self._filters = tuple(filters)
 
     @property
@@ -165,15 +87,15 @@ class _FilterStage(QtCore.QObject):
 
     @property
     def depth(self) -> int:
-        return self._box.queue.maxlen or 1
+        return self._queue.maxlen or 1
 
     def isOpen(self) -> bool:
-        return self._box.open
+        return self._open
 
     def reopen(self) -> None:
         '''Accept frames again after :meth:`close`.'''
-        with self._box.cond:
-            self._box.open = True
+        with self._cond:
+            self._open = True
 
     def __enter__(self) -> '_FilterStage':
         return self
@@ -183,10 +105,21 @@ class _FilterStage(QtCore.QObject):
 
     def close(self) -> None:
         '''Discard waiting frames and wake a ``saferead`` that waits.'''
-        with self._box.cond:
-            self._box.open = False
-            self._box.queue.clear()
-            self._box.cond.notify_all()
+        with self._cond:
+            self._open = False
+            self._queue.clear()
+            self._cond.notify_all()
+
+    @QtCore.Slot(np.ndarray, object)
+    def _deliver(self, frame: Image, info: FrameInfo) -> None:
+        '''Queue a frame; runs in the thread that emitted ``newFrame``.'''
+        with self._cond:
+            if not self._open:
+                return
+            if len(self._queue) == self._queue.maxlen:
+                self._dropped += 1
+            self._queue.append((frame, info))
+            self._cond.notify()
 
     def saferead(self) -> tuple[bool, Image | None]:
         '''Return the next filtered frame; ``False`` once closed.
@@ -195,13 +128,13 @@ class _FilterStage(QtCore.QObject):
         collects frames) is not a result: the call waits for the next one.
         '''
         while True:
-            with self._box.cond:
-                while self._box.open and not self._box.queue:
-                    self._box.cond.wait()
-                if not self._box.open:
+            with self._cond:
+                while self._open and not self._queue:
+                    self._cond.wait()
+                if not self._open:
                     return False, None
-                frame, info = self._box.queue.popleft()
-                dropped, self._box.dropped = self._box.dropped, 0
+                frame, info = self._queue.popleft()
+                dropped, self._dropped = self._dropped, 0
             if dropped:
                 self.framesDropped.emit(dropped)
             result, levels = self._apply(frame, info.levels)

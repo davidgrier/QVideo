@@ -93,10 +93,11 @@ under it, and three full runs on 2026-11-23 (PySide6 6.12, macOS) had no
 failure.  It had crashed at random inside pyqtgraph's `PlotItem` constructor,
 at `QWidgetAction.setDefaultWidget`, while `tests/test_mainwindow.py` builds
 its plots (about half of the runs on that machine earlier); it did not in
-those runs, but the cause was never found.  A crash that was found and fixed
-was ours: a receiver of a direct connection that is destroyed while the
-source emits (see `_Tap` in `lib/QFilterPipeline.py`), which PySide6 does
-not survive and PyQt6 usually does.  Two differences of PySide6 to know when
+those runs, but the cause was never found.  A crash that was found is ours,
+and is not fixed: the stage of a `QFilterPipeline` is the receiver of a
+direct connection, and a stage that is destroyed while its source emits
+crashes PySide6 and, rarely, PyQt6 (a fix, `_Tap`, was released in 4.30.1 and
+reverted for its complexity; see `TODO.md`, "Flaky CI jobs").  Two differences of PySide6 to know when
 a test fails there and not under PyQt: a lambda that is connected to the
 signal of an object in another thread runs in that thread, and the override
 of a slot is not called when the sender lives in another thread (connect to

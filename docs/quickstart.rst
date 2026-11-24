@@ -13,8 +13,9 @@ QVideo needs a Qt binding.  PyQt6 is recommended; PyQt5 is also supported:
    pip install QVideo          # use a binding that is already installed
 
 PySide6 (``QVideo[pyside6]``) is experimental: interactions with core
-pyqtgraph features appear to cause intermittent crashes, so it is not yet
-recommended.
+pyqtgraph features appear to cause intermittent crashes, and a filter
+pipeline that is dropped while its camera streams (a change of camera, or the
+end of the program) can crash it, so it is not yet recommended.
 
 To record video to HDF5 files, add the ``dvr`` extra.  The recorder then
 compresses the frames without loss.  The ``av`` extra adds PyAV, which

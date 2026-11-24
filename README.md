@@ -63,7 +63,9 @@ pip install QVideo            # use a binding that is already installed
 ```
 
 PySide6 is experimental (`pip install "QVideo[pyside6]"`): interactions with
-core pyqtgraph features appear to cause intermittent crashes.
+core pyqtgraph features appear to cause intermittent crashes, and a filter
+pipeline that is dropped while its camera streams (a change of camera, or the
+end of the program) can crash it.
 
 ### Raspberry Pi
 

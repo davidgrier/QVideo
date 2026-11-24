@@ -384,9 +384,10 @@ Plan, with a gate before each large step:
 - [x] `QRemoteCamera`, the worker, the protocol, the ring; lifecycle: start,
       clean shutdown, death of the parent (the child exits and unlinks the
       shared memory), crash of the child (`read()` fails, the source says so).
-- [ ] `describe()`: the node tree as plain data, for `QGenicamTree`, which now
+- [x] `describe()`: the node tree as plain data, for `QGenicamTree`, which now
       calls `camera.node('Root')` and `camera.node(name)`, objects that cannot
-      cross a process.
+      cross a process.  Done in 4.12.0 under the name `nodeTree()`: the tree
+      builds from numbers, strings, lists and dicts.
 - [x] A change of shape (region of interest, binning) reallocates the ring,
       with a handshake (a generation number in every announcement).  How the
       change is announced is below.
@@ -394,9 +395,9 @@ Plan, with a gate before each large step:
       no hardware: `tests/test_qremotecamera.py` (shape change, shutdown,
       crash, orphan cleanup, reopening) and `tests/test_conformance_remote.py`
       (the whole contract of `tests/conformance.py`).
-- [x] Verify with the Flir (done, above).  [ ] Release QVideo; QHOT needs
-      only the new QVideo requirement, and can then drop `SWITCH_INTERVAL`
-      for a camera that runs in a worker.
+- [x] Verify with the Flir (done, above).  Released in 4.12.0 (2026-11-02);
+      QHOT dropped `SWITCH_INTERVAL` for a camera that runs in a worker (QHOT
+      2.2.0, 2026-11-03) and opens Harvesters cameras in a process of its own (`qhot -f`).
 
 Before `QRemoteCamera` can be the default (see "Defaults" below); each of
 these is a reason not to make it the default today:
@@ -411,12 +412,15 @@ these is a reason not to make it the default today:
       interface sends asynchronous, or at least off the GUI thread, and say
       what happens when the worker is in a long read (a setting waits for the
       read: up to a frame period, a second at one frame a second).
-- [ ] **What the trees need**: `node`, `hasNode`, `states`
-      (`describe()` above) and any other call that a backend's tree makes
-      beyond the registry of properties.  Audit `tests/test_vendor_trees.py`
-      and the tree of every backend.  Only plain values cross the process: a
-      backend that hands out callbacks or native objects needs a reply of
-      plain data.
+- [x] **What the trees need**, for `QGenicamTree`: `QRemoteCamera` forwards
+      `nodeTree`, `hasNode` and `states` (4.12.0), and the worker pushes the
+      states that the tree watches (`watch()`), so the tree does not wait for
+      the worker.
+- [ ] **The trees of the other backends**: audit any other call that a
+      backend's tree makes beyond the registry of properties, in
+      `tests/test_vendor_trees.py` and the tree of each backend.  Only plain
+      values cross the process: a backend that hands out callbacks or native
+      objects needs a reply of plain data.
 - [x] **Announce a change of shape from the worker**: done.  The worker
       compares the shape of each frame with the last one that it announced
       and sends a `shape` event ahead of the first frame of a new shape.
@@ -430,11 +434,15 @@ these is a reason not to make it the default today:
       starts: the permission belongs to the application that is responsible
       for the process.  Try it from an application bundle; if it fails, say
       what to do.  (From a terminal it works.)
+- [x] **The worker has died, in the interface** (4.23.0): a worker that ends
+      or loses its camera makes the next read close the proxy and emit
+      `lost`, and `QCamcorder` and the tree say so.  A way to run the very
+      same camera in the program for a debugger exists: create the class,
+      `QFlirCamera()`.
 - [ ] **Errors and debugging.**  Forward the logging of the worker to the
-      logging of the program, with the traceback of an exception as text, and
-      keep a way to run the very same camera in the program for a debugger
-      (done: create the class, `QFlirCamera()`).  Say in the interface when
-      the worker has died, not only in the log.
+      logging of the program, with the traceback of an exception as text.  (The
+      worker logs under `QVideo.remote.worker`; whether that reaches the
+      program's log is not recorded.)
 - [ ] **What it costs**, measured and written down: the start of the worker
       (3.7 s for OpenCV), the copy of a frame in and out of the ring, the
       latency of a frame and of a setting, and the highest rate at the largest
@@ -496,7 +504,10 @@ put it back.
 ## Review the documentation of the camera in a process of its own
 
 Do this before the first release that has `QRemoteCamera`, and again when it
-becomes a default.
+becomes a default.  **Overdue (2026-11-24):** the first release that has it was
+4.12.0 (2026-11-02), and since 2026-11-03 the Harvesters backends open in a
+worker by default on macOS and Linux (`BACKENDS`, the `worker` field), so
+both conditions have passed.
 
 - [ ] **Docstrings.**  Every public class, method and property of
       `lib/remote/camera.py` has a NumPy-style docstring that says what the

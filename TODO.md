@@ -819,8 +819,8 @@ while streaming included.
 - [x] **Tests** (2026-11-07): `tests/test_deepfilters.py` on counts for
   every deep filter, the pipeline, the rack and the notebook camera, the
   snapshot, both `.mp4` writers, the screen and the camcorder.  Not done: a
-  camera of viva-genicam's fake that makes Mono12 (it is not known whether it
-  can).
+  camera of viva-genicam's fake that makes Mono12 (shelved 2026-11-24; the
+  fake can make `Mono12p`, see below).
 - [x] **A contrast filter for deep frames**: decided 2026-11-07 *not* to
   build a filter; `QVideoScreen.autoLevels` (percentiles, smoothed) shows a
   dim image without changing the counts, and a filter that changes them
@@ -839,7 +839,26 @@ while streaming included.
   measurements above are all of mono.
 - Gamma and Exposure as `uint16` lookup tables, and Laplacian and Sobel with
   `CV_32F`, so that they need not take the 8 bit copy.
-- A test with a camera of viva-genicam's fake that makes Mono12, if it can.
+- **Shelved 2026-11-24:** tests of the deep path on viva-genicam's fake camera
+  (`viva_genicam.testing.FakeU3vCamera`, 0.12.0, already used by
+  `tests/test_qvivacamera.py` and `tests/test_conformance_viva.py`).  What it
+  does: `FakeU3vCamera(width, height, pixel_format=...)` fixes the format when
+  it is made.  Three formats are modelled end to end: `Mono8`, `Mono12p`
+  (`uint16`, values to 4095, and `QVivaCamera.levels` is `(0, 4095)`) and
+  `RGB8` (three channels).  Unpacked `Mono10`, `Mono12`, `Mono16` and the Bayer
+  formats give `uint16` frames whose values run to 53455 whatever the depth,
+  and the device has no `PixelFormat` entry for them, so `levels` is `None`;
+  `RGB16` is refused.  The format cannot be changed after connecting (its node
+  offers `Mono8`, `RGB8Packed` and `Mono12Packed`, and a switch fails with
+  "Mono12p payload is 3072 bytes; the image needs 4608"), so the check that
+  matters most, a change of bit depth while streaming, stays a check on a
+  camera.  The image is a gradient.  With that, a test could cover `Mono12p`
+  and `RGB8` through camera, pipeline, screen, snapshot, recording and
+  camcorder; it was judged not worth building until the fake does more.  An
+  upstream report (bit depth of the unpacked formats; switching the format)
+  has not been made.
+- `BayerRG8` frames from `QVivaCamera` arrive as raw 2-D mosaics, with no
+  demosaicing.  Whether that is meant for a color camera is not recorded here.
 - `Mono10Packed` on the Harvesters path (`QGenicamCamera`), which Harvesters
   does not unpack: decided not to fix while `viva` is the preferred path.
 - Known and accepted: the shape signal does not carry the dtype, and the first

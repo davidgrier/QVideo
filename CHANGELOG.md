@@ -9,6 +9,40 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.30.1] — 2026-11-23
+
+### Fixed
+
+- **A `QFilterPipeline` can be made and dropped while its source is emitting,
+  without crashing the interpreter.**  The stage of a pipeline was the
+  receiver of a direct connection to the `newFrame` of its source, so the
+  slot ran in the thread of the source, and a Qt object that is destroyed
+  while another thread is about to call it crashes the interpreter: PySide6
+  almost every time (`TestWhileFramesArrive` crashed in 25 of 25 runs, and in
+  CI), PyQt6 now and then (the same, on a bare `QObject`, in 2 of 10).  A
+  function or a method as the receiver does not help, because PyQt and PySide
+  make a proxy object for it, and that is destroyed just the same.  A source
+  now has one receiver, made the first time that a pipeline uses it and kept
+  as long as the source (`_Tap`), and a stage puts a plain Python inbox with
+  it, and takes it away when it is dropped.  The shape of the source is still
+  forwarded by a direct connection, which has the hazard in principle and
+  needs a change of shape at the moment that a pipeline is destroyed.
+- **`QCameraTree` shows the changes that a camera makes on its own under
+  PySide6.**  PySide6 never calls the override of a slot (`_showChanges`, which
+  `QGenicamTree` overrides) when the sender lives in another thread, and the
+  camera lives in the thread of its source.  The signal is now connected to
+  `_onPropertiesChanged`, which no subclass overrides, and that calls
+  `_showChanges`.  PyQt6 was not affected.
+
+### Tests
+
+- **The suite passes under PySide6.**  It had never run to its end there:
+  the crash above stopped it, and four tests of `QYoloOverlay` (a pointer that
+  PySide6 has sized already) and the test of the forwarded shape (a lambda is
+  run by PySide6 in the thread of the sender, which has no event loop) had
+  failed unseen.  Three full runs under PySide6 and PyQt6 on 2026-11-23 had
+  no failure and no crash.
+
 ## [4.30.0] — 2026-11-23
 
 ### Changed

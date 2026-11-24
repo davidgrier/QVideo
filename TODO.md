@@ -46,9 +46,12 @@ Crashes of the suite in CI have had three causes so far.
 
 Differences of PySide6 that made tests fail there and not under PyQt6, found
 on 2026-11-24 when the suite ran to its end under PySide6 for the first time
-(it passes now, three full runs on a Mac, and on Linux in CI after a rerun;
-the first CI run failed once in `test_qcamcorder` and crashed in a teardown
-8 tests later, which a rerun of the same commit did not repeat):
+(it passes in full on a Mac, three runs; on Linux in CI it still crashes at
+random: of the five runs after the fix of 4.30.1, three segfaulted, each in a
+different place, 33% in `test_qcamcorder` (a rerun of that commit passed),
+22% after `test_filterrackdemo` and 95% in `test_uniformitywidget`, and two
+passed.  The crashes after the fix are in widgets that build pyqtgraph plots,
+like the one that `CLAUDE.md` describes, and none is in the pipeline):
 
 - A lambda that is connected to the signal of an object that lives in another
   thread runs in that thread; PyQt runs it in the thread that connected.  A
@@ -73,8 +76,9 @@ the first CI run failed once in `test_qcamcorder` and crashed in a teardown
   (0 failures in 30 runs on a Mac), which is why it showed once.  It now reads
   until the public `lost` signal has come, once.  Reproduced by making the
   listener first.  The same commit had the PySide6 job segfault at 22% of the
-  run, after `tests/test_filterrackdemo.py`, so PySide6 still crashes at random
-  in places other than the ones found.
+  run, after `tests/test_filterrackdemo.py`, and the next commit's at 95%, in
+  `tests/test_uniformitywidget.py`, so PySide6 still crashes at random in
+  places other than the ones found, and the job stays allowed to fail.
 
 Other jobs:
 

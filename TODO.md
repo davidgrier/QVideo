@@ -4,24 +4,75 @@ Ideas for upgrades and extensions, in no particular order.
 
 ---
 
-## Flaky CI jobs
+## Flaky CI jobs  **Two causes found and fixed; one remains (2026-11-24)**
 
-- Python 3.14 and 3.13 / PyQt6 on Ubuntu each segfaulted once (2026-11-08,
-  about 27% into the suite).  Reproduced here with a stress script (pipelines
-  made and stopped while a thread emits frames): the crash was inside
-  `QMutexLocker`, and the pipeline, `QVideoSource` and `QFrameRelay` now use
-  Python's locks (0 crashes in 160 runs, from about one in three).  12 of the
-  13 runs since have passed (the other was a type error), so the CI is back
-  to `pytest -q` (2026-11-12); `-X faulthandler` stays, and prints the test
-  that was running if a segfault returns.
+Crashes of the suite in CI have had three causes so far.
+
+- **`QMutexLocker` in the pipeline (2026-11-08, fixed).**  Python 3.14 and
+  3.13 / PyQt6 on Ubuntu each segfaulted once, about 27% into the suite.
+  Reproduced with a stress script (pipelines made and stopped while a thread
+  emits frames): the crash was inside `QMutexLocker`, and the pipeline,
+  `QVideoSource` and `QFrameRelay` now use Python's locks (0 crashes in 160
+  runs, from about one in three).
+- **The receiver of a direct connection, destroyed while a thread emits
+  (2026-11-23, fixed in 4.30.1).**  `TestWhileFramesArrive` crashed PySide6
+  in CI and in 25 of 25 runs on macOS.  The stage of a `QFilterPipeline` was
+  the receiver of a direct connection to `newFrame`, so its slot ran in the
+  thread of the source, and a Qt object that is destroyed while another thread
+  is about to call it crashes the interpreter.  It is not PySide6's alone:
+  a bare `QObject` slot in a stand-alone script (no QVideo) crashed PySide6 in
+  10 of 10 runs and PyQt6 in 2 of 10.  A function or a bound method does not
+  help, because PyQt and PySide make a proxy object for it, and the proxy is
+  destroyed just the same (PyQt's by `deleteLater`, so a test needs an event
+  loop to see it).  A receiver that is never destroyed survived every test.
+  The fix is `_Tap` in `lib/QFilterPipeline.py`: one long-lived receiver for
+  each source, and a stage adds a plain Python inbox to it and takes it away.
+  Left: the connection of `shapeChanged` to the stage is still direct (the
+  stage lives in a thread with no event loop, so it cannot be queued), so a
+  source that changes its shape at the moment a pipeline is destroyed has the
+  hazard.  Never seen.
+- **A crash with no stack, near `test_launch.py`, on PyQt6 (open).**  It
+  struck on 2026-11-13 (Python 3.13 / PyQt6 on Ubuntu, about 26% into the
+  suite, on the merge commit of 4.26.1; the rerun passed) and, on a Mac, on
+  2026-11-24: `<invalid frame>` at 27%, in
+  `tests/test_launch.py::TestLaunch::test_a_bad_argument_ends_the_program_with_its_message`,
+  right after `tests/test_laplacian.py`.  It is **not new**: 1 of 5 full runs
+  of v4.29.0 and 1 of 5 of the current code crashed there.  `test_launch.py`
+  alone passed 30 of 30 runs on both, so the crash needs the state that
+  earlier tests leave.  Not investigated.  A first step: bisect the order of
+  the tests (run the files before it in halves, with `-p no:randomly` if a
+  plugin shuffles them).
+
+Differences of PySide6 that made tests fail there and not under PyQt6, found
+on 2026-11-24 when the suite ran to its end under PySide6 for the first time
+(it passes now, three full runs on a Mac, and on Linux in CI after a rerun;
+the first CI run failed once in `test_qcamcorder` and crashed in a teardown
+8 tests later, which a rerun of the same commit did not repeat):
+
+- A lambda that is connected to the signal of an object that lives in another
+  thread runs in that thread; PyQt runs it in the thread that connected.  A
+  pipeline's stage lives in the pipeline's thread, which has no event loop, so
+  the lambda never runs.  Connect a slot of an object of the receiving thread.
+- A subclass's override of a slot is never called when the sender lives in
+  another thread (a camera lives in the thread of its source); the slot of the
+  base class is.  `QCameraTree` connects to `_onPropertiesChanged`, which no
+  subclass overrides, and that calls the overridable `_showChanges`.  Other
+  connections in `lib/` to a slot that a subclass overrides may be
+  affected; only the one that a test caught was changed.
+- `QImage.constBits()` is already sized in PySide6 (`setsize` is PyQt's).
+
+Other jobs:
+
 - Python 3.11 / PyQt5 has failed intermittently.
-- The segfault came back once (2026-11-13, Python 3.13 / PyQt6 on Ubuntu, about
-  26% into the suite, on the merge commit of 4.26.1; the rerun passed), so
-  the fix of 2026-11-08 may not have been the whole story.  Not investigated.
-  Two flakes that were the tests' own are fixed: the page that waits 100 ms
-  for changes to arrive (`test_changes_that_come_fast_reach_a_page_...`,
-  a longer hold in the test), and the Windows job, which skipped the worker
+- Python 3.15 fails to install: `h5py` has no wheel there and needs HDF5.  It
+  is allowed to fail, and so is PySide6 (until it has been green for a few
+  releases).
+- Two flakes that were the tests' own are fixed: the page that waits 100 ms
+  for changes to arrive (`test_changes_that_come_fast_reach_a_page_...`, a
+  longer hold in the test), and the Windows job, which skipped the worker
   tests of `QRemoteCamera` except one class (now skipped too).
+- `-X faulthandler` stays in the CI, and prints the test that was running if
+  a segfault returns.
 
 ---
 
@@ -166,7 +217,29 @@ returns the camera's value only after that time.
 
 ---
 
-## Limit the work of the filter pipeline  **Idea; not sure how**
+## Limit the work of the filter pipeline  **Newest-frame and queue built; a limit to the screen's rate not built**
+
+**State of the pipeline (2026-11-24).**  There are three things that it could
+filter, and the code does two:
+
+- *Every frame:* `depth` greater than 1 keeps a bounded queue, drops the oldest
+  waiting frame when it is full and counts the drops in `framesDropped`.  This
+  is for a recording.
+- *As many as it can filter without piling up:* the default, `depth=1`.  Only
+  the newest frame waits, so a pipeline that is behind takes the latest frame
+  and an interactive display never lags.  The frames that it skips are
+  counted.  `QFrameRelay` does the same for the GUI thread.  This is what is
+  built, and it is why the display was never jerky in the measurements below.
+- *Only the frames that the screen will show:* **not built.**  The pipeline
+  does not know the rate of the screen.  `QVideoScreen.framerate` limits what
+  is displayed (a frame that comes too soon waits as the newest pending one),
+  and the pipeline filters the frames that arrive meanwhile and the screen
+  then does not show.  This is the CPU, heat and interpreter lock of the
+  measurements below, and nothing else.
+
+What is open is therefore only the third: whether it is worth a limit, and
+then how.  The questions under the table are about that.
+
 
 The pipeline runs its filters on every frame that the camera delivers, even
 when the screen can show fewer.  Measured with the Noise camera (500 fps,
@@ -459,7 +532,7 @@ becomes a default.
       page from the start.  Ask someone who does not know QVideo to try it.
 
 
-## Smooth controls in the camera tree  **Writes in a worker 2026-11-12; widget open**
+## Smooth controls in the camera tree  **Done 2026-11-13**
 
 The sliders of the web page felt better than the tree's.  The cause was not the
 widget: every edit called `camera.set()` and `camera.snapshot()` in the
@@ -486,9 +559,10 @@ control that the user has changed since.
       the spin box kept for exact entry; a drag writes live (the worker keeps
       the latest value).  Every number with a range gets one, whether or not it
       can be written now (a camera unlocks some as its settings change), and a
-      locked one is greyed.  Open: try it on the Blackfly (Viva and `-f`), the
-      width of the panel in `QCamcorder`, and whether the read-only numbers
-      (the resulting frame rate) are better as a spin box only.
+      locked one is greyed.  The three things that were open were settled the same
+      day: the Blackfly check above covers Viva and `-f` and the width of the
+      panel in `QCamcorder`, and the read-only numbers are a spin box only (the
+      last item).
 - [x] Genicam trees (`QGenicamTree`, the Harvesters path) read the camera in a
       worker (`_refresh`), after every item change and when the camera reports
       a change of its own (2026-11-13); Viva does not need it.
@@ -750,6 +824,25 @@ while streaming included.
   build a filter; `QVideoScreen.autoLevels` (percentiles, smoothed) shows a
   dim image without changing the counts, and a filter that changes them
   would have to sit after every quantitative stage.
+- [x] **A color camera** (checked 2026-11-24 by the user on a FLIR color
+  camera).  The formats that were tried and what was seen are not written
+  down here.  The code reads `Bayer..` formats of more than 8 bits as it reads
+  `Mono..` (`_DEEP_FORMAT` in `cameras/Genicam/_camera.py` and
+  `cameras/Viva/_camera.py`).
+
+**What is left.**  Nothing blocks the use of a deep camera.  Optional, all
+"later, if wanted":
+
+- Say here which color formats were tried (Bayer 10/12/16, `RGB`, `YUV`) and
+  what the screen, the filters, a snapshot and a recording did with each: the
+  measurements above are all of mono.
+- Gamma and Exposure as `uint16` lookup tables, and Laplacian and Sobel with
+  `CV_32F`, so that they need not take the 8 bit copy.
+- A test with a camera of viva-genicam's fake that makes Mono12, if it can.
+- `Mono10Packed` on the Harvesters path (`QGenicamCamera`), which Harvesters
+  does not unpack: decided not to fix while `viva` is the preferred path.
+- Known and accepted: the shape signal does not carry the dtype, and the first
+  frames after a change of format may still be in the old one.
 
 ---
 
@@ -888,7 +981,7 @@ silent.  Revisit only if a recording is ever found to have a gap; the
 
 ---
 
-## Camera loss  **Viva done 2026-11-07; the other backends open**
+## Camera loss  **Done for every backend (2026-11-13); OpenCV device identity untried on Windows and Linux**
 
 Replaces the hot-plug plan of 2026-10-28.  Decided 2026-11-07: QVideo does
 **not** reconnect (a solution in search of a problem); restarting the program

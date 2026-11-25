@@ -20,7 +20,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   open in a `QRemoteCamera`, as do all of them when the caller makes one
   (`QRemoteCamera('flir')`, for a `genicam` older than 1.6.1b1).  Viva and
   `QRemoteCamera` stay supported.  `docs/compatibility.rst` has the
-  measurements.
+  measurements.  The `genicam` extra now requires `genicam>1.6.0`, which
+  ordinary installs get when 1.6.1 is released; until then, install the beta
+  by hand (`pip install --pre genicam`).
 
 - **`QFilterPipeline` is as it was in 4.29.0.**  The `_Tap` of 4.30.1, which
   kept the receiver of a source for as long as the source lived so that a

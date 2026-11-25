@@ -62,7 +62,9 @@ overlays = ["QVideo[trackpy,yolo]"]
 genicam  = [
     "viva-genicam; (sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'win32' and platform_machine == 'AMD64')",
     "harvesters",
-    "genicam",
+    # 1.6.0 and older hold the interpreter lock while they wait for a frame
+    # (the Flir backend opens in the program and relies on the fix, 1.6.1).
+    "genicam>1.6.0",
 ]
 viva     = ["viva-genicam"]
 picamera = ["picamera2"]

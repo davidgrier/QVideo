@@ -95,9 +95,10 @@ VimbaX, all built on :class:`~QVideo.cameras.Genicam.QGenicamCamera`)
 remain.  GenICam through Harvesters is the standard implementation, and a
 vendor's producer can reach cameras that Viva cannot: Viva speaks USB3
 Vision and GigE Vision, and a producer can offer other transports.  The
-Harvesters backends need the producer file and they hold the interpreter
-lock, so QVideo runs them in a process of their own on macOS and Linux
-(see *Known issues*).
+Harvesters backends need the producer file.  The ``genicam`` binding that
+they use held the interpreter lock until release 1.6.1b1 (a beta), so QVideo
+runs Basler, IDS, MV and VimbaX in a process of their own on macOS and Linux,
+and Flir in the program (see *Known issues*).
 
 USB 3 cameras
 -------------
@@ -131,6 +132,23 @@ lock** while it waits for a frame or reads the camera.  Every other Python
 thread of the process, the thread of the interface included, waits while
 any thread is in such a call.  The Viva backend (``-g``) does not have this
 problem.
+
+.. note::
+
+   **genicam 1.6.1b1, a beta release, is reported to fix it, and a Flir
+   camera confirms that.**  The tests below ran with genicam 1.6.0.  With
+   1.6.1b1 and a Blackfly S (200 frames a second, macOS, Flir backend in the
+   program, ``QVideoSource``), four runs of a counter in the main thread
+   gave 95 to 98 % of its speed with no camera for the Python counter, 99 to
+   100 % for the NumPy counter, and the same median wake-up latency of an
+   unrelated thread (0.26 ms).  In ``QCamcorder`` the screen showed 66
+   frames a second with no stall in 25 s, and the event loop of the
+   interface waited a median of 0 ms and a 99th percentile of 3.3 to
+   3.6 ms.  A single wait of 354 ms in the first seconds of one of three
+   runs was not explained.  Nothing else of 1.6.1b1 has been tested, and
+   the other Harvesters backends have not been tried with it.  The Flir
+   backend therefore opens in the program; **with genicam 1.6.0 or older,
+   open it in a worker** (``QRemoteCamera('flir')``).
 
 *Measured* with a Blackfly S BFS-U3-13Y3M (1280 x 1024, 67 frames a
 second, USB 3), macOS, harvesters 1.4.3, genicam 1.6.0, Spinnaker 4.4:
@@ -206,13 +224,15 @@ Viva streamed a Blackfly S at 170 frames a second.  A second camera, a
 Blackfly S BFS-U3-04S2M-CS, delivered 500 frames a second at 720 x 540
 through Viva.
 
-For a backend that uses Harvesters, QVideo runs the camera in a process of
-its own, which has an interpreter lock of its own, whenever the chooser opens
-it (every application, ``Camera()``, ``python QCamcorder.py -f``; see
-:doc:`remote`).  There is no flag.  It is available on macOS and Linux; on Windows these backends
-still run in the program and have the defect.  The Viva, OpenCV and
-Raspberry Pi backends do not need it.  Creating the class yourself, as in
-``QFlirCamera()``, keeps the camera in the program.
+For a backend that uses Harvesters, except Flir (see the note above), QVideo
+runs the camera in a process of its own, which has an interpreter lock of its
+own, whenever the chooser opens it (every application, ``Camera()``,
+``python QCamcorder.py -b``; see :doc:`remote`).  There is no flag.  It is
+available on macOS and Linux; on Windows these backends still run in the
+program and have the defect.  The Viva, OpenCV and Raspberry Pi backends do
+not need it.  Creating the class yourself, as in ``QBaslerCamera()``, keeps
+the camera in the program.  A Flir camera can still be opened in a worker
+with ``QRemoteCamera('flir')``.
 
 Measured in QHOT with the Blackfly S and a trap added every 100 ms (the
 median of three runs; QHOT needs a median of the event loop of about 7 ms

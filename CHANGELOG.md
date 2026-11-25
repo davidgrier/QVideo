@@ -11,6 +11,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **The Flir backend opens in the program, not in a worker.**  `genicam`
+  1.6.1b1, a beta release, no longer holds the interpreter lock while it
+  waits for a frame.  With a Blackfly S at 200 frames a second, a counter in
+  the main thread ran at 95 to 98 % of its free speed, the NumPy counter at
+  99 to 100 %, and `QCamcorder` showed 66 frames a second without a stall.
+  Nothing else of the beta is tested, and Basler, IDS, MV and VimbaX still
+  open in a `QRemoteCamera`, as do all of them when the caller makes one
+  (`QRemoteCamera('flir')`, for a `genicam` older than 1.6.1b1).  Viva and
+  `QRemoteCamera` stay supported.  `docs/compatibility.rst` has the
+  measurements.
+
 - **`QFilterPipeline` is as it was in 4.29.0.**  The `_Tap` of 4.30.1, which
   kept the receiver of a source for as long as the source lived so that a
   stage could be dropped while the source emitted, is removed: it added about

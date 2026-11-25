@@ -5,10 +5,12 @@ GenTL producer (a vendor's ``.cti`` file); the backends of Basler, Flir,
 IDS, MATRIX VISION and Allied Vision only say which producer to load.
 
 For a GenICam camera, :class:`~QVideo.cameras.Viva.QVivaCamera` is the
-preferred interface.  This one needs a ``.cti`` file and its binding holds
-the interpreter lock, so the chooser opens it in a process of its own
-(:class:`~QVideo.lib.remote.camera.QRemoteCamera`) on macOS and Linux;
-creating the class yourself keeps it in the program.
+preferred interface.  This one needs a ``.cti`` file.  Its binding held
+the interpreter lock until ``genicam`` 1.6.1b1, so the chooser opens the
+backends that have not been tested with that release (Basler, IDS, MV and
+VimbaX) in a process of their own
+(:class:`~QVideo.lib.remote.camera.QRemoteCamera`) on macOS and Linux, and
+Flir in the program; creating the class yourself keeps it in the program.
 
 The camera has four parts, in this order.
 

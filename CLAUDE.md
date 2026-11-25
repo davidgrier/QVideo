@@ -234,10 +234,14 @@ Spinnaker) are soft dependencies: the import is wrapped in
 from those imports must also be inside the `try` block (not after it).
 
 A backend whose library holds the interpreter lock (the Harvesters
-backends) has `worker=True` in its `BACKENDS` entry: `chooser.create_camera`
-then opens it in a `QRemoteCamera` on macOS and Linux, and there is no
-command-line flag for that.  The camera class itself stays an ordinary
-in-process `QCamera`.
+backends, except Flir) has `worker=True` in its `BACKENDS` entry:
+`chooser.create_camera` then opens it in a `QRemoteCamera` on macOS and
+Linux, and there is no command-line flag for that.  The camera class itself
+stays an ordinary in-process `QCamera`.  Flir opens in the program since
+2026-11-25: `genicam` 1.6.1b1 (a beta) releases the lock while it waits for
+a frame (`docs/compatibility.rst`, "Known issues"; the other Harvesters
+backends are untested with it, and `QRemoteCamera('flir')` still works).
+Viva and `QRemoteCamera` stay supported.
 
 Any backend can run in a worker (`QRemoteCamera(key)`), so a backend and its
 tree must keep to what crosses the process, which is plain data: the types of

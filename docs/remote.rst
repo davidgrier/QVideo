@@ -11,15 +11,18 @@ and it looks like any other camera to the rest of the program.
 When it is used
 ---------------
 
-You do not have to ask.  The backends that use Harvesters (Basler, Flir, IDS,
-MV and VimbaX) open this way, on macOS and Linux, whenever the chooser opens
+You do not have to ask.  The backends that use Harvesters (Basler, IDS, MV
+and VimbaX) open this way, on macOS and Linux, whenever the chooser opens
 them: in every application that uses :func:`~QVideo.lib.launch`, in
-``Camera()`` and in ``python QCamcorder.py -f``.  There is no flag.  The
+``Camera()`` and in ``python QCamcorder.py -b``.  There is no flag.  The
 other backends do not need it, and open in the program: Viva, OpenCV and
-the Raspberry Pi camera do not hold the lock while they wait.
+the Raspberry Pi camera do not hold the lock while they wait, and neither
+does Flir with ``genicam`` 1.6.1b1 (a beta) or later.
 
-Create the camera class yourself, as in ``QFlirCamera()``, to keep a camera in
-the program.
+Create the camera class yourself, as in ``QBaslerCamera()``, to keep a camera
+in the program.  To run a camera that the chooser opens in the program in a
+worker, as for Flir with an older ``genicam``, make
+``QRemoteCamera('flir')``.
 
 What it fixes
 -------------

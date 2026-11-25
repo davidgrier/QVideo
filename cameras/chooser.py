@@ -39,13 +39,20 @@ the log before you trust a measurement: a backend whose package is missing
 looks just like a working one that shows noise.
 
 **Cameras in a process of their own.**  The GenICam backends that use
-Harvesters (Basler, Flir, IDS, MV and VimbaX) read frames through a binding
-that holds the interpreter lock, which freezes the other threads of the
-program.  :func:`create_camera` therefore opens them in a worker process
+Harvesters (Basler, IDS, MV and VimbaX) read frames through a binding that
+holds the interpreter lock, which freezes the other threads of the program.
+:func:`create_camera` therefore opens them in a worker process
 (:class:`~QVideo.lib.remote.camera.QRemoteCamera`) on macOS and Linux,
 whatever the caller, and there is no flag for it.  Creating the camera class
-yourself (``QFlirCamera()``) keeps it in the program.  On Windows, where the
-worker is not available, these backends open in the program.
+yourself (``QBaslerCamera()``) keeps it in the program.  On Windows, where
+the worker is not available, these backends open in the program.
+
+The Flir backend opens in the program: ``genicam`` 1.6.1b1 (a beta) releases
+the lock while it waits for a frame, and a Flir camera tested with it did
+not freeze the other threads.  The other Harvesters backends have not been
+tested with that release.  With an older ``genicam``, the Flir backend has
+the defect that the worker avoids: open it with
+``QRemoteCamera('flir')``.
 '''
 import contextlib
 import importlib
@@ -98,8 +105,9 @@ class _BackendEntry(NamedTuple):
         The help text of *flag*.
     worker : bool
         The backend reads frames through a library that holds the
-        interpreter lock (the ``genicam`` binding of Harvesters), so the
-        camera opens in a process of its own where that is available.
+        interpreter lock (the ``genicam`` binding of Harvesters before
+        1.6.1b1), so the camera opens in a process of its own where that is
+        available.
     '''
 
     module: str
@@ -121,7 +129,7 @@ BACKENDS: dict[str, _BackendEntry] = {
         '-b', 'Basler pylon camera', worker=True),
     'flir': _BackendEntry(
         'QVideo.cameras.Flir', 'QFlirCamera', 'QFlirTree', 'Flir',
-        '-f', 'Flir camera', worker=True),
+        '-f', 'Flir camera'),
     'ids': _BackendEntry(
         'QVideo.cameras.IDS', 'QIDSCamera', 'QIDSTree', 'IDS',
         '-i', 'IDS Imaging camera', worker=True),

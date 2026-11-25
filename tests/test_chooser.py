@@ -220,10 +220,10 @@ class TestTheWorker(unittest.TestCase):
     def test_the_harvesters_backends_use_the_worker(self):
         self.assertEqual(
             sorted(key for key, entry in BACKENDS.items() if entry.worker),
-            ['basler', 'flir', 'ids', 'mv', 'vimbax'])
+            ['basler', 'ids', 'mv', 'vimbax'])
 
     def test_the_others_do_not(self):
-        for key in ('viva', 'opencv', 'picamera', 'noise'):
+        for key in ('flir', 'viva', 'opencv', 'picamera', 'noise'):
             with self.subTest(key):
                 self.assertFalse(chooser_module.uses_worker(key))
 
@@ -231,11 +231,11 @@ class TestTheWorker(unittest.TestCase):
         for platform in ('darwin', 'linux'):
             with self.subTest(platform), \
                     patch.object(chooser_module.sys, 'platform', platform):
-                self.assertTrue(chooser_module.uses_worker('flir'))
+                self.assertTrue(chooser_module.uses_worker('basler'))
 
     def test_not_on_windows_where_there_is_no_worker(self):
         with patch.object(chooser_module.sys, 'platform', 'win32'):
-            self.assertFalse(chooser_module.uses_worker('flir'))
+            self.assertFalse(chooser_module.uses_worker('basler'))
 
     def test_a_camera_that_uses_it_is_made_by_the_worker(self):
         proxy, cls = MagicMock(), MagicMock()

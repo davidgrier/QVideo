@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [4.31.0] — 2026-11-25
+
 ### Changed
 
 - **The Flir backend opens in the program, not in a worker.**  `genicam`
